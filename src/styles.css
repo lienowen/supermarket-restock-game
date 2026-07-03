@@ -1,0 +1,38 @@
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: #2c241c;
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+}
+
+body {
+  display: grid;
+  place-items: center;
+}
+
+.shell {
+  width: min(100vw, 520px);
+  height: min(100vh, 925px);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 28px;
+  box-shadow:
+    0 0 0 4px rgba(210, 180, 140, 0.22),
+    0 28px 90px rgba(0, 0, 0, 0.45),
+    inset 0 0 60px rgba(255, 230, 190, 0.08);
+  background:
+    radial-gradient(circle at 50% 12%, rgba(255, 232, 190, 0.16), transparent 58%),
+    linear-gradient(180deg, #4a3d32 0%, #241c16 100%);
+}
+
+canvas {
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+  display: block;
+  touch-action: none;
+  user-select: none;
+  border-radius: 22px;
+}

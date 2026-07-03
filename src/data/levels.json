@@ -1,0 +1,58 @@
+{"version":2,"levels":[
+{"lv":1,"title":"First Sale","goal":"Tap an item, then tap an empty lane to move it.","tutorial":"Match 3 of the same item in one shelf to clear it!","timeLimit":0,"maxMoves":12,"star":[4,8],"skin":"2x2","pos":{"x":80,"y":340,"w":590,"h":590},"cells":[
+ {"col":0,"row":0,"lanes":[["milk"],["milk"],[]]},
+ {"col":1,"row":0,"lanes":[["milk"],["jam"],["jam"]]},
+ {"col":0,"row":1,"lanes":[["ketchup"],["ketchup"],[]]},
+ {"col":1,"row":1,"lanes":[["ketchup"],["jam"],[]]}
+]},
+{"lv":2,"title":"More Goods","goal":"Try moving items between shelves to make matches.","tutorial":"Look for pairs — move the third one in to complete the set.","timeLimit":0,"maxMoves":10,"star":[2,6],"skin":"3x2","pos":{"x":42,"y":326,"w":666,"h":428},"cells":[
+ {"col":0,"row":0,"lanes":[["milk"],["milk"],[]]},
+ {"col":1,"row":0,"lanes":[["ketchup"],["jam"],["jam"]]},
+ {"col":2,"row":0,"lanes":[["cola"],["milk"],["ketchup"]]},
+ {"col":0,"row":1,"lanes":[["cola"],["cola"],[]]},
+ {"col":1,"row":1,"lanes":[["ketchup"],[],[]]},
+ {"col":2,"row":1,"lanes":[["jam"],[],[]]}
+]},
+{"lv":3,"title":"Think Ahead","goal":"Some shelves have back-stock. Plan your moves!","tutorial":"Back-stock items block the sale. Clear the front row first.","timeLimit":0,"maxMoves":14,"star":[4,8],"skin":"3x3","pos":{"x":70,"y":284,"w":610,"h":610},"cells":[
+ {"col":0,"row":0,"lanes":[["milk"],["milk"],[]]},
+ {"col":1,"row":0,"lanes":[["ketchup"],["ketchup"],[]]},
+ {"col":2,"row":0,"lanes":[["cola","jam"],["jam"],["jam"]]},
+ {"col":0,"row":1,"lanes":[["ketchup"],["milk"],[]]},
+ {"col":1,"row":1,"lanes":[["cola"],["cola"],[]]},
+ {"col":2,"row":1,"lanes":[["milk"],[],[]]},
+ {"col":0,"row":2,"lanes":[["water"],["water"],[]]},
+ {"col":1,"row":2,"lanes":[["water"],[],[]]},
+ {"col":2,"row":2,"lanes":[[],[],[]]}
+]},
+{"lv":4,"title":"VIP Order","goal":"Clear the milk order first, then sell matching rows.","tutorial":"VIP mode: sell the milk shelf before any other.","timeLimit":200,"maxMoves":10,"star":[2,6],"badge":"vip","vip":"milk","skin":"3x5","pos":{"x":86,"y":214,"w":578,"h":700},"cells":[
+ {"col":0,"row":0,"lanes":[["milk"],["milk"],[]]},
+ {"col":1,"row":0,"lanes":[["donut"],["bread"],["donut"]],"lock":4},
+ {"col":2,"row":0,"lanes":[["teddy"],["jam"],["jam"]]},
+ {"col":0,"row":1,"lanes":[["popsicle"],["ketchup"],["ketchup"]]},
+ {"col":1,"row":1,"lanes":[["orange"],["milk"],["popsicle"]],"lock":1},
+ {"col":2,"row":1,"lanes":[["cola"],["cola"],["popsicle"]]},
+ {"col":0,"row":2,"lanes":[["orange"],["orange"],["bread"]]},
+ {"col":1,"row":2,"lanes":[["popsicle"],["teddy"],[]]},
+ {"col":2,"row":2,"lanes":[["ketchup"],["popsicle"],["ketchup"]]},
+ {"col":0,"row":3,"lanes":[["popsicle"],["milk"],[]]},
+ {"col":1,"row":3,"lanes":[["donut"],["ketchup"],["ketchup"]]},
+ {"col":2,"row":3,"lanes":[["milk"],[],[]]},
+ {"col":0,"row":4,"lanes":[["bread"],[],[]]},
+ {"col":1,"row":4,"lanes":[["teddy"],["cola"],[]]},
+ {"col":2,"row":4,"lanes":[["jam"],["milk"],[]]}
+]},
+{"lv":5,"title":"Chain Lock","goal":"Sell enough shelves to break the lock number.","tutorial":"A lock means you must sell that many other shelves first.","timeLimit":90,"maxMoves":12,"star":[2,5],"badge":"chain","skin":"4x3","pos":{"x":34,"y":320,"w":682,"h":512},"cells":[
+ {"col":0,"row":0,"lanes":[["milk"],["ketchup"],["jam"]]},
+ {"col":1,"row":0,"lanes":[["milk"],["milk"],[]]},
+ {"col":2,"row":0,"lanes":[["jam"],["jam"],[]],"lock":1},
+ {"col":3,"row":0,"lanes":[["ketchup"],["ketchup"],[]]},
+ {"col":0,"row":1,"lanes":[["cola"],["cola"],[]]},
+ {"col":1,"row":1,"lanes":[["cola"],[],[]]},
+ {"col":2,"row":1,"lanes":[["water"],["water"],[]]},
+ {"col":3,"row":1,"lanes":[["water"],[],[]]},
+ {"col":0,"row":2,"lanes":[[],[],[]]},
+ {"col":1,"row":2,"lanes":[["bread"],["bread"],[]]},
+ {"col":2,"row":2,"lanes":[["bread"],[],[]]},
+ {"col":3,"row":2,"lanes":[[],[],[]]}
+]}
+]}

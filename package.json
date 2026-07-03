@@ -1,0 +1,16 @@
+{
+  "name": "fridge-packing-prototype",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "validate": "node validate-shelf-levels.mjs",
+    "assets": "node scripts/prepare-game-assets.mjs",
+    "build": "npm run assets && vite build"
+  },
+  "devDependencies": {
+    "pngjs": "^7.0.0",
+    "vite": "6.4.2"
+  }
+}

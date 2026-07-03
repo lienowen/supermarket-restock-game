@@ -1,0 +1,18 @@
+{
+  "id": "shelf-3x3",
+  "masterSize": [1100, 1100],
+  "grid": [3, 3],
+  "lanesPerCell": 3,
+  "layers": { "back": "shelf-3x3-back.png", "front": "shelf-3x3-front.png" },
+  "cells": [
+    { "col":0,"row":0,"x":47,"y":74,"w":318,"h":294,"floorY":368,"laneXs":[100,206,312],"itemScale":1.0,"shadowScale":1.0 },
+    { "col":1,"row":0,"x":391,"y":74,"w":318,"h":294,"floorY":368,"laneXs":[444,550,656],"itemScale":1.0,"shadowScale":1.0 },
+    { "col":2,"row":0,"x":735,"y":74,"w":318,"h":294,"floorY":368,"laneXs":[788,894,1000],"itemScale":1.0,"shadowScale":1.0 },
+    { "col":0,"row":1,"x":47,"y":398,"w":318,"h":294,"floorY":692,"laneXs":[100,206,312],"itemScale":1.0,"shadowScale":1.0 },
+    { "col":1,"row":1,"x":391,"y":398,"w":318,"h":294,"floorY":692,"laneXs":[444,550,656],"itemScale":1.0,"shadowScale":1.0 },
+    { "col":2,"row":1,"x":735,"y":398,"w":318,"h":294,"floorY":692,"laneXs":[788,894,1000],"itemScale":1.0,"shadowScale":1.0 },
+    { "col":0,"row":2,"x":47,"y":722,"w":318,"h":294,"floorY":1016,"laneXs":[100,206,312],"itemScale":1.0,"shadowScale":1.0 },
+    { "col":1,"row":2,"x":391,"y":722,"w":318,"h":294,"floorY":1016,"laneXs":[444,550,656],"itemScale":1.0,"shadowScale":1.0 },
+    { "col":2,"row":2,"x":735,"y":722,"w":318,"h":294,"floorY":1016,"laneXs":[788,894,1000],"itemScale":1.0,"shadowScale":1.0 }
+  ]
+}

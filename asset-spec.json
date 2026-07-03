@@ -1,0 +1,81 @@
+{
+  "version": 2,
+  "canvas": { "width": 750, "height": 1334, "scale": 2 },
+  "rawDir": "public/img",
+  "gameDir": "public/game",
+
+  "item": {
+    "canvasSizes": {
+      "carton": [112, 192], "sauce": [112, 192], "pop": [112, 192],
+      "can": [112, 192], "bottle": [112, 192], "water": [112, 192],
+      "jar": [120, 176], "toy": [148, 148], "bread": [148, 148], "donut": [148, 148]
+    },
+    "anchor": "bottom-center",
+    "naming": "item-{id}.png",
+    "requirements": "transparent PNG, tight crop, bottom-aligned, no white bg, no baked text, front-facing or slight 3/4 view (no top-down)"
+  },
+
+  "shelf": {
+    "naming": "shelf-{cols}x{rows}.png",
+    "layers": { "back": "shelf-{cols}x{rows}-back.png", "front": "shelf-{cols}x{rows}-front.png" },
+    "lanesPerCell": 3,
+    "jsonRequired": ["laneXs", "floorY", "itemScale", "shadowScale"]
+  },
+
+  "shelves": [
+    { "id": "2x2", "cols": 2, "rows": 2, "masterSize": [750, 750] },
+    { "id": "3x2", "cols": 3, "rows": 2, "masterSize": [1100, 750] },
+    { "id": "4x3", "cols": 4, "rows": 3, "masterSize": [1500, 1126] },
+    { "id": "3x3", "cols": 3, "rows": 3, "masterSize": [1100, 1100] },
+    { "id": "3x5", "cols": 3, "rows": 5, "masterSize": [1100, 1834] }
+  ],
+
+  "shadow": {
+    "ellipse": { "file": "shadow-ellipse.png", "size": [128, 40] },
+    "types": {
+      "A_itemSelf": "baked into item PNG",
+      "B_contactDrop": "programmatic ellipse, scales per item kind, fades on lift",
+      "C_shelfInner": "baked into shelf-back PNG"
+    }
+  },
+
+  "overlays": {
+    "lock": "overlay-lock.png",
+    "adBadge": "overlay-ad-badge.png"
+  },
+
+  "result": {
+    "bg": "result-bg.png", "glow": "result-glow.png", "panel": "result-panel.png",
+    "ribbon": "result-ribbon.png", "star": "result-star.png",
+    "trumpetL": "result-trumpet-left.png", "trumpetR": "result-trumpet-right.png",
+    "confetti": ["result-confetti-01.png", "result-confetti-02.png", "result-confetti-03.png"],
+    "button": "result-button-bg.png",
+    "style": "cream wood, pink-purple, stars, ribbons, soft glow"
+  },
+
+  "ui": {
+    "topBarBg": "ui-top-bar-bg.png",
+    "levelBadgeBg": "ui-level-badge-bg.png",
+    "timerBg": "ui-timer-bg.png",
+    "starBg": "ui-star-counter-bg.png",
+    "pauseBtn": "ui-pause-btn.png",
+    "comboBg": "ui-combo-bar-bg.png",
+    "comboFill": "ui-combo-fill.png",
+    "adsIcon": "ui-ads-icon.png"
+  },
+
+  "items": [
+    "milk","ketchup","jam","donut","popsicle","teddy","cola","orange","water","bread",
+    "apple","cheese","honey","mustard","chocolate","lemonade","blueberry","peanut","olives","hazelnut"
+  ],
+
+  "principles": [
+    "Text/numbers NEVER baked into images — always code-rendered",
+    "Items use bottom-center anchor, standing on cell.floorY",
+    "Z-index = row * 100 + laneIndex for proper depth ordering",
+    "Shadows: item self (PNG), contact drop (programmatic ellipse), shelf inner (shelf-back PNG)",
+    "Overlays (locks, ads) are separate layers rendered above shelf-front",
+    "Result screen is layered components, not one flat image",
+    "All positioning via JSON shelf data — no hardcoded pixel coordinates"
+  ]
+}
