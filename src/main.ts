@@ -1,12 +1,15 @@
 import Phaser from "phaser";
 import "./styles.css";
+import { OpeningScene } from "./scenes/OpeningScene";
 import { GameScene } from "./scenes/GameScene";
 import { PolishOverlayScene } from "./scenes/PolishOverlayScene";
 import { ProgressionCustomerScene } from "./scenes/ProgressionCustomerScene";
+import { BackStockScene } from "./scenes/BackStockScene";
 import "./gameSessionIntegration";
 import "./performanceEconomyIntegration";
 import "./layoutCalibration";
 import "./interactions/immediateCartDrag";
+import "./guidancePolicy";
 
 new Phaser.Game({
   type: Phaser.AUTO,
@@ -22,5 +25,5 @@ new Phaser.Game({
     antialias: true,
     roundPixels: true
   },
-  scene: [GameScene, PolishOverlayScene, ProgressionCustomerScene]
+  scene: [OpeningScene, GameScene, PolishOverlayScene, ProgressionCustomerScene, BackStockScene]
 });
