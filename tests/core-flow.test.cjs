@@ -5,6 +5,7 @@ const { LEVELS } = require("../.test-dist/src/levels/levelConfigs.js");
 const { ShiftManager } = require("../.test-dist/src/systems/ShiftManager.js");
 const { CustomerStateMachine } = require("../.test-dist/src/systems/CustomerStateMachine.js");
 const { gameSession } = require("../.test-dist/src/systems/GameSession.js");
+const { calculatePerformanceStars } = require("../.test-dist/src/systems/PerformanceRating.js");
 const { GAME_RULES } = require("../.test-dist/src/gameConfig.js");
 const {
   getCartLoadState,
@@ -36,7 +37,8 @@ test("ShiftManager owns PREPARE -> OPEN -> RUSH -> CLOSING transitions", () => {
   assert.equal(manager.sales, 8);
 });
 
-test("GameSession rejects phase/sales overwrite from legacy scene sync", () => {
+test("GameSession rejects phase sales and wallet overwrite from legacy scene sync", () => {
+  gameSession.setCoins(7);
   gameSession.reset("day01");
   gameSession.openStore();
   gameSession.recordSale();
@@ -52,8 +54,53 @@ test("GameSession rejects phase/sales overwrite from legacy scene sync", () => {
 
   assert.equal(gameSession.phase, "OPEN");
   assert.equal(gameSession.sales, 2);
-  assert.equal(gameSession.snapshot.money, 50);
+  assert.equal(gameSession.snapshot.money, 7);
   assert.equal(gameSession.snapshot.stocked, 4);
+});
+
+test("Wallet coins survive day reset and can be earned cumulatively", () => {
+  gameSession.setCoins(20);
+  gameSession.earnCoins(12);
+  assert.equal(gameSession.coins, 32);
+
+  gameSession.reset("day02");
+  assert.equal(gameSession.coins, 32);
+});
+
+test("Performance stars reward completion quality instead of raw sales only", () => {
+  const base = {
+    phase: "OPEN",
+    soldCount: 0,
+    openSalesTarget: 4,
+    closingSalesTarget: 8,
+    missedSales: 0,
+    wrongStock: 0,
+    bestCombo: 0
+  };
+
+  assert.equal(calculatePerformanceStars({ ...base, phase: "PREPARE" }), 0);
+  assert.equal(calculatePerformanceStars(base), 1);
+  assert.equal(calculatePerformanceStars({ ...base, soldCount: 4, missedSales: 2 }), 2);
+  assert.equal(calculatePerformanceStars({
+    ...base,
+    phase: "CLOSING",
+    soldCount: 8,
+    bestCombo: 2
+  }), 3);
+  assert.equal(calculatePerformanceStars({
+    ...base,
+    phase: "CLOSING",
+    soldCount: 8,
+    bestCombo: 2,
+    wrongStock: 1
+  }), 2);
+  assert.equal(calculatePerformanceStars({
+    ...base,
+    phase: "CLOSING",
+    soldCount: 8,
+    bestCombo: 2,
+    missedSales: 1
+  }), 2);
 });
 
 test("Runtime rules follow the active day instead of staying on Day 1", () => {
@@ -138,7 +185,6 @@ test("Customer patience only changes when the simulation ticks it", () => {
   customer.transition("WAIT");
 
   const beforePause = customer.patienceRemainingMs;
-  // Global pause freezes the scene update loop, so tick() is intentionally not called.
   assert.equal(customer.patienceRemainingMs, beforePause);
 
   customer.tick(400);
