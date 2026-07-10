@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import "./styles.css";
 import { GameScene } from "./scenes/GameScene";
+import { PolishOverlayScene } from "./scenes/PolishOverlayScene";
 import "./layoutCalibration";
 
 new Phaser.Game({
@@ -10,8 +11,12 @@ new Phaser.Game({
   height: 1182,
   backgroundColor: "#151b1b",
   scale: {
-    mode: Phaser.Scale.FIT,
+    mode: Phaser.Scale.EXPAND,
     autoCenter: Phaser.Scale.CENTER_BOTH
   },
-  scene: [GameScene]
+  render: {
+    antialias: true,
+    roundPixels: true
+  },
+  scene: [GameScene, PolishOverlayScene]
 });
