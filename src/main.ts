@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import "./styles.css";
 import { GameScene } from "./scenes/GameScene";
 import { PolishOverlayScene } from "./scenes/PolishOverlayScene";
+import { ProgressionCustomerScene } from "./scenes/ProgressionCustomerScene";
 import "./layoutCalibration";
 
 new Phaser.Game({
@@ -18,5 +19,5 @@ new Phaser.Game({
     antialias: true,
     roundPixels: true
   },
-  scene: [GameScene, PolishOverlayScene]
+  scene: [GameScene, PolishOverlayScene, ProgressionCustomerScene]
 });
