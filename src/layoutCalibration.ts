@@ -1,7 +1,8 @@
 import Phaser from "phaser";
 import { Assets } from "./assets";
+import { GAME_RULES, type ProductId } from "./gameConfig";
 import { GameScene } from "./scenes/GameScene";
-import type { ProductId } from "./gameConfig";
+import { PolishOverlayScene } from "./scenes/PolishOverlayScene";
 
 type BoxItemLike = {
   image: Phaser.GameObjects.Image;
@@ -24,15 +25,34 @@ type SceneInternals = Phaser.Scene & {
   snapCart: (destination: "WAREHOUSE" | "SALES") => void;
   departureRequirement: () => number;
   showTransientHint: (message: string) => void;
+  guideTween?: Phaser.Tweens.Tween;
   __groundingHandler?: () => void;
   __cartShadow?: Phaser.GameObjects.Ellipse;
 };
+
+type CartGuideMode = "CART_TO_SALES" | "CART_TO_WAREHOUSE";
 
 type ScenePrototype = {
   create: () => void;
   spawnBox: (productId: ProductId, positionIndex: number, renewable: boolean) => BoxItemLike;
   setWorkerTexture: (texture: string, maxWidth: number, maxHeight: number) => void;
   snapCart: (destination: "WAREHOUSE" | "SALES") => void;
+  showCartGuide: (mode: CartGuideMode) => void;
+};
+
+type OverlayInternals = Phaser.Scene & {
+  gameScene?: {
+    stocked: number;
+    cartAtShelf: boolean;
+    loadedProducts: ProductId[];
+  };
+  tutorialTween?: Phaser.Tweens.Tween;
+  tutorialGraphics: Phaser.GameObjects.Graphics;
+};
+
+type OverlayPrototype = {
+  resolveTutorialStage: () => "BOX_TO_CART" | "CART_TO_SALES" | "RESTOCK" | "DONE";
+  updateTutorial: (force?: boolean) => void;
 };
 
 const WAREHOUSE_WORKER_GROUND = { x: 410, y: 950 };
@@ -48,6 +68,7 @@ const originalCreate = prototype.create;
 const originalSpawnBox = prototype.spawnBox;
 const originalSetWorkerTexture = prototype.setWorkerTexture;
 const originalSnapCart = prototype.snapCart;
+const originalShowCartGuide = prototype.showCartGuide;
 
 prototype.setWorkerTexture = function setWorkerTextureCalibrated(
   texture: string,
@@ -102,6 +123,17 @@ prototype.snapCart = function snapCartGrounded(
     duration: 260,
     ease: "Sine.Out"
   });
+};
+
+prototype.showCartGuide = function showStaticCartGuide(mode: CartGuideMode): void {
+  originalShowCartGuide.call(this, mode);
+  const scene = this as unknown as SceneInternals;
+
+  // Keep the arrow visible, but stop the endless cart blinking. A single static
+  // hint is clearer and less distracting after the player understands the action.
+  scene.guideTween?.stop();
+  scene.guideTween = undefined;
+  scene.cartSprite.setAlpha(1);
 };
 
 prototype.create = function createWithGroundCalibration(): void {
@@ -231,3 +263,30 @@ function capWorker(worker: Phaser.GameObjects.Image): void {
   const scale = Math.min(MAX_WORKER_WIDTH / sourceWidth, MAX_WORKER_HEIGHT / sourceHeight);
   worker.setScale(scale).setOrigin(0.5, 1);
 }
+
+// Tune the first-session tutorial without changing the reusable polish overlay.
+// During Day 1 preparation, loading one box is not enough to move the cart: keep
+// teaching box loading until the full 6/6 departure requirement is reached.
+const overlayPrototype = PolishOverlayScene.prototype as unknown as OverlayPrototype;
+const originalOverlayUpdateTutorial = overlayPrototype.updateTutorial;
+
+overlayPrototype.resolveTutorialStage = function resolveTutorialStageCalibrated():
+  "BOX_TO_CART" | "CART_TO_SALES" | "RESTOCK" | "DONE" {
+  const overlay = this as unknown as OverlayInternals;
+  const scene = overlay.gameScene;
+  if (!scene) return "BOX_TO_CART";
+  if (scene.stocked > 0) return "DONE";
+  if (scene.cartAtShelf) return "RESTOCK";
+  if (scene.loadedProducts.length >= GAME_RULES.firstMoveRequirement) return "CART_TO_SALES";
+  return "BOX_TO_CART";
+};
+
+overlayPrototype.updateTutorial = function updateStaticTutorial(force = false): void {
+  originalOverlayUpdateTutorial.call(this, force);
+  const overlay = this as unknown as OverlayInternals;
+
+  // The path/arrow itself remains visible as a clear hint, but does not pulse.
+  overlay.tutorialTween?.stop();
+  overlay.tutorialTween = undefined;
+  overlay.tutorialGraphics?.setAlpha(1);
+};
