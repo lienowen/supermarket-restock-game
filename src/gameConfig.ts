@@ -46,15 +46,18 @@ export const SLOT_PRODUCT_ORDER: ProductId[] = [
   "cola", "water", "milk", "cola", "water", "milk"
 ];
 
+// Backroom layout: two box columns on the left, clear working aisle on the right.
+// This keeps boxes away from the worker and from the cart route through the doorway.
 export const BOX_POSITIONS = [
-  { x: 95, y: 760 },
-  { x: 245, y: 760 },
-  { x: 395, y: 760 },
-  { x: 95, y: 920 },
-  { x: 245, y: 920 },
-  { x: 395, y: 920 }
+  { x: 110, y: 690 },
+  { x: 275, y: 690 },
+  { x: 110, y: 845 },
+  { x: 275, y: 845 },
+  { x: 110, y: 1000 },
+  { x: 275, y: 1000 }
 ] as const;
 
+// Shelf slots follow the visible two-row refrigerator layout.
 export const SLOT_POSITIONS = [
   { x: 865, y: 342 },
   { x: 1015, y: 342 },
