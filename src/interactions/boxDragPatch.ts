@@ -70,8 +70,13 @@ prototype.selectBox = function selectBoxWithoutScale(item: BoxItemLike): void {
 
   if (scene.shiftEnded || scene.movingCart || item.loaded || !item.image.visible) return;
 
+  if (scene.cartAtShelf) {
+    scene.showTransientHint("The cart is on the sales floor. Push it back to the warehouse before loading boxes.");
+    return;
+  }
+
   if (scene.loadedProducts.length >= GAME_RULES.cartCapacity) {
-    scene.showTransientHint("The cart is full. Restock a shelf slot first.");
+    scene.showTransientHint("The cart is full. Take it to the sales floor first.");
     return;
   }
 
@@ -79,20 +84,29 @@ prototype.selectBox = function selectBoxWithoutScale(item: BoxItemLike): void {
     scene.selectedBox.image.clearTint();
   }
 
-  // Selection must be idempotent. Repeated clicks never change image scale.
+  // Repeated clicks are idempotent: selection never changes scale.
   scene.selectedBox = item;
   item.image.setTint(0xfff0a6);
   scene.setWorkerTexture(Assets.characters.workerCarry, 255, 500);
   scene.updateHud();
 };
 
-prototype.spawnBox = function spawnBoxWithLogicalDrag(
+prototype.spawnBox = function spawnGroundedBox(
   productId: ProductId,
   positionIndex: number,
   renewable: boolean
 ): BoxItemLike {
   const scene = this as unknown as SceneInternals;
   const item = originalSpawnBox.call(this, productId, positionIndex, renewable);
+
+  // Ground sprites by their bottom edge instead of their image centre.
+  item.image.setOrigin(0.5, 1);
+  item.image.setDepth(16 + item.image.y / 10000);
+
+  const shadow = scene.add.ellipse(item.image.x, item.image.y + 4, 86, 20, 0x101515, 0.22)
+    .setDepth(15 + item.image.y / 10000);
+  item.image.setData("groundShadow", shadow);
+
   installBoxDrag(scene, item);
   return item;
 };
@@ -101,7 +115,6 @@ prototype.createCart = function createCartWithAislePlacement(): void {
   const scene = this as unknown as SceneInternals;
   originalCreateCart.call(this);
 
-  // Clear operating aisle: stock stays left, worker and cart use the right side.
   scene.cart.setPosition(CART_HOME.x, CART_HOME.y);
   scene.worker.setPosition(WORKER_HOME.x, WORKER_HOME.y);
   installCartDrag(scene);
@@ -109,29 +122,41 @@ prototype.createCart = function createCartWithAislePlacement(): void {
 
 prototype.handleCartTap = function handleCartTapWithoutTeleport(): void {
   const scene = this as unknown as SceneInternals;
-  if (scene.shiftEnded || scene.movingCart) return;
+  if (scene.shiftEnded || scene.movingCart || scene.restockBusy) return;
 
   if (scene.selectedBox) {
+    if (scene.cartAtShelf) {
+      scene.showTransientHint("Push the cart back to the warehouse before loading boxes.");
+      return;
+    }
     markCartLoadBusy(scene);
+    destroyBoxShadow(scene.selectedBox.image);
     scene.loadSelectedBox();
     return;
   }
 
-  if (!scene.cartAtShelf && scene.loadedProducts.length >= GAME_RULES.firstMoveRequirement) {
+  if (scene.cartAtShelf) {
+    const missingSlots = scene.shelfSlots.filter((slot) => !slot.product);
+    const hasMatchingStock = missingSlots.some((slot) => scene.loadedProducts.includes(slot.productId));
+
+    if (!hasMatchingStock && missingSlots.length > 0) {
+      scene.showTransientHint("No matching stock on the cart. Drag the cart back to the warehouse and reload.");
+      return;
+    }
+
+    if (scene.loadedProducts.length === 0) {
+      scene.showTransientHint("The cart is empty. Drag it back to the warehouse.");
+    }
+    return;
+  }
+
+  const required = departureRequirement(scene);
+  if (scene.loadedProducts.length >= required) {
     scene.showTransientHint("Cart ready. Drag it through the doorway to the sales floor.");
     return;
   }
 
-  if (!scene.cartAtShelf) {
-    scene.showTransientHint(
-      `Load ${GAME_RULES.firstMoveRequirement - scene.loadedProducts.length} more box(es) before moving the cart.`
-    );
-    return;
-  }
-
-  if (scene.loadedProducts.length === 0) {
-    scene.showTransientHint("The cart is empty. Bring a reserve box from the backroom.");
-  }
+  scene.showTransientHint(`Load ${required - scene.loadedProducts.length} more box(es) before leaving the warehouse.`);
 };
 
 prototype.tryRestockSlot = function tryRestockWithWorkerMovement(slot: ShelfSlotLike): void {
@@ -142,7 +167,9 @@ prototype.tryRestockSlot = function tryRestockWithWorkerMovement(slot: ShelfSlot
 
   const productIndex = scene.loadedProducts.indexOf(slot.productId);
   if (productIndex < 0) {
-    scene.showTransientHint(`This slot needs ${PRODUCTS[slot.productId].label}. Bring the matching box.`);
+    scene.showTransientHint(
+      `No ${PRODUCTS[slot.productId].label} on the cart. Push the cart back to the warehouse and load the matching box.`
+    );
     return;
   }
 
@@ -150,14 +177,20 @@ prototype.tryRestockSlot = function tryRestockWithWorkerMovement(slot: ShelfSlot
   scene.loadedProducts.splice(productIndex, 1);
   scene.cartCountText.setText(`${scene.loadedProducts.length}/${GAME_RULES.cartCapacity}`);
 
-  const product = scene.add.image(scene.cart.x + 20, scene.cart.y - 55, PRODUCTS[slot.productId].productKey)
+  const product = scene.add.image(
+    scene.cart.x + 20,
+    scene.cart.y - 55,
+    PRODUCTS[slot.productId].productKey
+  )
+    .setOrigin(0.5, 1)
     .setDepth(31);
-  scene.fitImage(product, 72, 112);
+  scene.fitImage(product, 60, 108);
 
   const pickupX = scene.cart.x - 95;
   const pickupY = scene.cart.y - 115;
   const approachX = Phaser.Math.Clamp(slot.hitArea.x - 105, 720, 1080);
   const approachY = Phaser.Math.Clamp(slot.hitArea.y + 185, 525, 760);
+  const targetY = slot.hitArea.y + 58;
 
   scene.setWorkerTexture(Assets.characters.workerIdle, 235, 470);
 
@@ -181,7 +214,7 @@ prototype.tryRestockSlot = function tryRestockWithWorkerMovement(slot: ShelfSlot
       scene.tweens.add({
         targets: product,
         x: slot.hitArea.x,
-        y: slot.hitArea.y,
+        y: targetY,
         duration: 520,
         ease: "Cubic.Out",
         onComplete: () => {
@@ -222,33 +255,57 @@ prototype.updateHud = function updateHudForLogicalActions(): void {
     return;
   }
 
-  if (scene.movingCart && !scene.cartAtShelf) {
-    scene.hintText.setText("3. Push the cart through the doorway to the sales floor");
+  if (scene.movingCart) {
+    scene.hintText.setText(
+      scene.cartAtShelf
+        ? "Push the cart back through the doorway to the warehouse"
+        : "Push the cart through the doorway to the sales floor"
+    );
     return;
   }
 
   if (scene.selectedBox) {
-    scene.hintText.setText(`2. Drag ${PRODUCTS[scene.selectedBox.productId].label} onto the cart`);
-    return;
-  }
-
-  if (!scene.cartAtShelf && scene.loadedProducts.length >= GAME_RULES.firstMoveRequirement) {
-    scene.hintText.setText("3. Cart ready · drag it through the doorway");
+    scene.hintText.setText(`Drag ${PRODUCTS[scene.selectedBox.productId].label} onto the cart`);
     return;
   }
 
   if (!scene.cartAtShelf) {
+    const required = departureRequirement(scene);
+
+    if (scene.loadedProducts.length >= required) {
+      scene.hintText.setText(
+        scene.storeOpen
+          ? "Cart loaded · drag it through the doorway to the sales floor"
+          : "Initial cart ready · drag it through the doorway to the sales floor"
+      );
+      return;
+    }
+
     scene.hintText.setText(
-      `1. Drag boxes onto cart · ${scene.loadedProducts.length}/${GAME_RULES.firstMoveRequirement}`
+      scene.storeOpen
+        ? `Warehouse · load reserve boxes · cart ${scene.loadedProducts.length}/${GAME_RULES.cartCapacity}`
+        : `Load initial boxes · ${scene.loadedProducts.length}/${GAME_RULES.firstMoveRequirement}`
     );
     return;
   }
 
-  const missingSlots = scene.shelfSlots.filter((slot) => !slot.product).length;
-  if (missingSlots > 0) {
+  const missingSlots = scene.shelfSlots.filter((slot) => !slot.product);
+  const matchingMissing = missingSlots.filter((slot) => scene.loadedProducts.includes(slot.productId));
+
+  if (missingSlots.length > 0 && matchingMissing.length > 0) {
     scene.hintText.setText(
-      `Tap a matching MISSING slot · ${missingSlots} empty · cart ${scene.loadedProducts.length}/${GAME_RULES.cartCapacity}`
+      `Restock a matching MISSING slot · ${missingSlots.length} empty · cart ${scene.loadedProducts.length}/${GAME_RULES.cartCapacity}`
     );
+    return;
+  }
+
+  if (missingSlots.length > 0) {
+    scene.hintText.setText("No matching stock · drag the cart back to the warehouse and reload");
+    return;
+  }
+
+  if (scene.storeOpen && scene.loadedProducts.length === 0) {
+    scene.hintText.setText("Shelves full · cart empty · return to warehouse before the next shortage");
   }
 };
 
@@ -269,6 +326,7 @@ function installBoxDrag(scene: SceneInternals, item: BoxItemLike): void {
     const blocked =
       scene.shiftEnded ||
       scene.movingCart ||
+      scene.cartAtShelf ||
       item.loaded ||
       !image.visible ||
       scene.loadedProducts.length >= GAME_RULES.cartCapacity;
@@ -276,8 +334,10 @@ function installBoxDrag(scene: SceneInternals, item: BoxItemLike): void {
     image.setData("dragBlocked", blocked);
 
     if (blocked) {
-      if (scene.loadedProducts.length >= GAME_RULES.cartCapacity) {
-        scene.showTransientHint("The cart is full. Restock a shelf slot first.");
+      if (scene.cartAtShelf) {
+        scene.showTransientHint("The cart is on the sales floor. Push it back to the warehouse first.");
+      } else if (scene.loadedProducts.length >= GAME_RULES.cartCapacity) {
+        scene.showTransientHint("The cart is full. Take it to the sales floor first.");
       }
       return;
     }
@@ -285,6 +345,7 @@ function installBoxDrag(scene: SceneInternals, item: BoxItemLike): void {
     scene.tweens.killTweensOf(image);
     prototype.selectBox.call(scene as unknown as GameScene, item);
     image.setDepth(46).setAlpha(0.96);
+    setBoxShadowVisible(image, false);
     scene.cartSprite.setTint(0xffef9f);
   });
 
@@ -294,13 +355,12 @@ function installBoxDrag(scene: SceneInternals, item: BoxItemLike): void {
       if (image.getData("dragBlocked")) return;
 
       image.setPosition(
-        Phaser.Math.Clamp(dragX, 45, 850),
+        Phaser.Math.Clamp(dragX, 45, 650),
         Phaser.Math.Clamp(dragY, 220, 1085)
       );
 
-      // Worker follows with damping so the box never appears to float by itself.
-      const targetWorkerX = Phaser.Math.Clamp(image.x + 100, 190, 735);
-      const targetWorkerY = Phaser.Math.Clamp(image.y - 55, 360, 930);
+      const targetWorkerX = Phaser.Math.Clamp(image.x + 100, 190, 650);
+      const targetWorkerY = Phaser.Math.Clamp(image.y - 70, 360, 930);
       scene.worker.setPosition(
         Phaser.Math.Linear(scene.worker.x, targetWorkerX, 0.38),
         Phaser.Math.Linear(scene.worker.y, targetWorkerY, 0.38)
@@ -323,6 +383,7 @@ function installBoxDrag(scene: SceneInternals, item: BoxItemLike): void {
     if (isOverCart(scene, image)) {
       scene.selectedBox = item;
       image.setAlpha(1).setDepth(16);
+      destroyBoxShadow(image);
       markCartLoadBusy(scene);
       scene.loadSelectedBox();
       return;
@@ -339,23 +400,25 @@ function installCartDrag(scene: SceneInternals): void {
   cart.setData("logicalCartDragReady", true);
   cart.setData("dragBlocked", false);
   cart.setData("loadBusy", false);
+  cart.setData("dragFromSales", false);
   scene.input.setDraggable(cart);
 
   cart.on("dragstart", () => {
+    const fromSales = scene.cartAtShelf;
+    const required = departureRequirement(scene);
     const blocked =
       scene.shiftEnded ||
-      scene.cartAtShelf ||
       scene.movingCart ||
+      scene.restockBusy ||
       Boolean(cart.getData("loadBusy")) ||
-      scene.loadedProducts.length < GAME_RULES.firstMoveRequirement;
+      (!fromSales && scene.loadedProducts.length < required);
 
     cart.setData("dragBlocked", blocked);
+    cart.setData("dragFromSales", fromSales);
 
     if (blocked) {
-      if (!scene.cartAtShelf && scene.loadedProducts.length < GAME_RULES.firstMoveRequirement) {
-        scene.showTransientHint(
-          `Load ${GAME_RULES.firstMoveRequirement - scene.loadedProducts.length} more box(es) first.`
-        );
+      if (!fromSales && scene.loadedProducts.length < required) {
+        scene.showTransientHint(`Load ${required - scene.loadedProducts.length} more box(es) first.`);
       }
       return;
     }
@@ -388,14 +451,24 @@ function installCartDrag(scene: SceneInternals): void {
 
   cart.on("dragend", () => {
     const blocked = Boolean(cart.getData("dragBlocked"));
+    const fromSales = Boolean(cart.getData("dragFromSales"));
     cart.setData("dragBlocked", false);
 
     if (blocked) return;
 
+    if (fromSales) {
+      if (cart.x <= DOORWAY_X) {
+        snapCartToWarehouse(scene);
+      } else {
+        snapCartToSalesFloor(scene);
+      }
+      return;
+    }
+
     if (cart.x >= DOORWAY_X) {
       snapCartToSalesFloor(scene);
     } else {
-      returnCartHome(scene);
+      snapCartToWarehouse(scene);
     }
   });
 }
@@ -425,12 +498,12 @@ function snapCartToSalesFloor(scene: SceneInternals): void {
   });
 }
 
-function returnCartHome(scene: SceneInternals): void {
+function snapCartToWarehouse(scene: SceneInternals): void {
   scene.tweens.add({
     targets: scene.cart,
     x: CART_HOME.x,
     y: CART_HOME.y,
-    duration: 220,
+    duration: 240,
     ease: "Sine.Out"
   });
 
@@ -438,15 +511,20 @@ function returnCartHome(scene: SceneInternals): void {
     targets: scene.worker,
     x: WORKER_HOME.x,
     y: WORKER_HOME.y,
-    duration: 220,
+    duration: 240,
     ease: "Sine.Out",
     onComplete: () => {
       scene.cart.setDepth(18);
+      scene.cartAtShelf = false;
       scene.movingCart = false;
       scene.setWorkerTexture(Assets.characters.workerIdle, 250, 490);
       scene.updateHud();
     }
   });
+}
+
+function departureRequirement(scene: SceneInternals): number {
+  return scene.storeOpen ? 1 : GAME_RULES.firstMoveRequirement;
 }
 
 function markCartLoadBusy(scene: SceneInternals): void {
@@ -457,6 +535,8 @@ function markCartLoadBusy(scene: SceneInternals): void {
 }
 
 function isOverCart(scene: SceneInternals, image: Phaser.GameObjects.Image): boolean {
+  if (scene.cartAtShelf) return false;
+
   const bounds = scene.cart.getBounds();
   const paddedBounds = new Phaser.Geom.Rectangle(
     bounds.x - 35,
@@ -476,14 +556,8 @@ function returnBoxHome(scene: SceneInternals, item: BoxItemLike, updateHud: bool
 
   if (scene.selectedBox === item) scene.selectedBox = undefined;
 
-  image.clearTint().setAlpha(1).setDepth(16);
-  scene.setWorkerTexture(
-    Assets.characters.workerIdle,
-    scene.cartAtShelf ? 235 : 250,
-    scene.cartAtShelf ? 470 : 490
-  );
-
-  const workerHome = scene.cartAtShelf ? WORKER_SALES_HOME : WORKER_HOME;
+  image.clearTint().setAlpha(1).setDepth(16 + homeY / 10000);
+  scene.setWorkerTexture(Assets.characters.workerIdle, 250, 490);
 
   scene.tweens.add({
     targets: image,
@@ -492,17 +566,29 @@ function returnBoxHome(scene: SceneInternals, item: BoxItemLike, updateHud: bool
     scaleX: homeScaleX,
     scaleY: homeScaleY,
     duration: 220,
-    ease: "Sine.Out"
+    ease: "Sine.Out",
+    onComplete: () => setBoxShadowVisible(image, true)
   });
 
   scene.tweens.add({
     targets: scene.worker,
-    x: workerHome.x,
-    y: workerHome.y,
+    x: WORKER_HOME.x,
+    y: WORKER_HOME.y,
     duration: 220,
     ease: "Sine.Out",
     onComplete: () => {
       if (updateHud) scene.updateHud();
     }
   });
+}
+
+function setBoxShadowVisible(image: Phaser.GameObjects.Image, visible: boolean): void {
+  const shadow = image.getData("groundShadow") as Phaser.GameObjects.Ellipse | undefined;
+  if (shadow?.active) shadow.setVisible(visible);
+}
+
+function destroyBoxShadow(image: Phaser.GameObjects.Image): void {
+  const shadow = image.getData("groundShadow") as Phaser.GameObjects.Ellipse | undefined;
+  if (shadow?.active) shadow.destroy();
+  image.setData("groundShadow", undefined);
 }
