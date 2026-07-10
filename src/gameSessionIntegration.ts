@@ -48,6 +48,7 @@ type RuntimeGameScene = Phaser.Scene & {
 type GameScenePrototype = {
   create: () => void;
   advanceBusinessPhase: () => void;
+  updateStars: () => void;
 };
 
 const prototype = GameScene.prototype as unknown as GameScenePrototype;
@@ -58,28 +59,30 @@ prototype.create = function createWithCanonicalShiftSession(): void {
 
   // Phaser restarts reuse the same Scene instance. Class field initializers are NOT
   // run again, so arrays/counters from Day 1 would otherwise survive into Day 2.
-  // Clear every restartable runtime field before creating new boxes and shelf slots.
   resetRestartableSceneState(scene);
 
   // Resolve the day first. GAME_RULES uses runtime getters backed by GameSession,
-  // so every subsequent timer/target lookup now reflects the actual active day.
+  // so every subsequent timer/target lookup reflects the actual active day.
   gameSession.reset(resolveActiveDay());
-  installCanonicalShiftAccessors(scene);
+  installCanonicalSessionAccessors(scene);
 
   // GameScene's class field is initialized before create(), which used to capture
-  // Day 1's 180 seconds even after switching to Day 2. Re-seed it after the active
-  // day is known and before GameScene starts its timer.
+  // Day 1's 180 seconds even after switching to Day 2.
   scene.remainingSeconds = GAME_RULES.shiftSeconds;
 
   originalCreate.call(this);
+  scene.stars = gameSession.performanceStars;
 
-  // Money/shelf counts remain presentation metrics for now. Shift state does not:
-  // phase, sales and shift-ended are already read from GameSession accessors.
   gameSession.syncPresentation({
     money: scene.money,
     stocked: scene.stocked,
     shiftEnded: scene.shiftEnded
   });
+};
+
+prototype.updateStars = function updatePerformanceStars(): void {
+  const scene = this as unknown as RuntimeGameScene;
+  scene.stars = gameSession.performanceStars;
 };
 
 prototype.advanceBusinessPhase = function advanceBusinessPhaseFromShiftManager(): void {
@@ -90,6 +93,7 @@ prototype.advanceBusinessPhase = function advanceBusinessPhaseFromShiftManager()
   if (!transition) return;
 
   if (transition.to === "RUSH") {
+    scene.stars = gameSession.performanceStars;
     scene.showPhaseBanner("LUNCH RUSH!");
     scene.showTransientHint("Rush hour: customers arrive faster. Prioritize matching stock.");
     scene.startCustomerLoop(GAME_RULES.customerIntervalRushMs);
@@ -98,6 +102,7 @@ prototype.advanceBusinessPhase = function advanceBusinessPhaseFromShiftManager()
   }
 
   if (transition.to === "CLOSING") {
+    scene.stars = gameSession.performanceStars;
     scene.purchaseEvent?.remove(false);
     scene.showPhaseBanner("CLOSING TIME");
     scene.showTransientHint("Customers are done. Return the cart to the backroom to finish the shift.");
@@ -106,9 +111,6 @@ prototype.advanceBusinessPhase = function advanceBusinessPhaseFromShiftManager()
 };
 
 function resetRestartableSceneState(scene: RuntimeGameScene): void {
-  // Stop stale references first. Scene restart usually clears its plugins, but doing
-  // this explicitly prevents an old timer/tween reference from firing during a day
-  // transition frame.
   scene.purchaseEvent?.remove(false);
   scene.timerEvent?.remove(false);
   scene.guideTween?.stop();
@@ -125,7 +127,7 @@ function resetRestartableSceneState(scene: RuntimeGameScene): void {
   scene.movingCart = false;
   scene.restockBusy = false;
 
-  scene.money = 0;
+  // Wallet coins deliberately survive Scene restarts and Day changes.
   scene.stars = 0;
   scene.stocked = 0;
   scene.combo = 0;
@@ -143,12 +145,13 @@ function resetRestartableSceneState(scene: RuntimeGameScene): void {
   scene.__pendingShiftTransition = undefined;
 }
 
-function installCanonicalShiftAccessors(scene: RuntimeGameScene): void {
+function installCanonicalSessionAccessors(scene: RuntimeGameScene): void {
   // TypeScript class fields create own properties. Remove them before installing
-  // accessors so GameScene cannot silently maintain a second copy of shift state.
+  // accessors so GameScene cannot silently maintain a second copy of canonical state.
   delete (scene as unknown as Record<string, unknown>).phase;
   delete (scene as unknown as Record<string, unknown>).soldCount;
   delete (scene as unknown as Record<string, unknown>).shiftEnded;
+  delete (scene as unknown as Record<string, unknown>).money;
 
   Object.defineProperty(scene, "phase", {
     configurable: true,
@@ -159,17 +162,20 @@ function installCanonicalShiftAccessors(scene: RuntimeGameScene): void {
 
       if (next === "OPEN" && gameSession.phase === "PREPARE") {
         gameSession.openStore();
+        scene.stars = gameSession.performanceStars;
         return;
       }
 
       if (next === "RESULT") {
         gameSession.finishShift();
+        scene.stars = gameSession.performanceStars;
         return;
       }
 
       // Recovery fallback only. Normal OPEN/RUSH/CLOSING transitions are driven by
       // ShiftManager.openStore()/recordSale()/finishShift().
       gameSession.restoreShiftState(next, gameSession.sales);
+      scene.stars = gameSession.performanceStars;
     }
   });
 
@@ -184,12 +190,14 @@ function installCanonicalShiftAccessors(scene: RuntimeGameScene): void {
 
       if (normalized === current + 1) {
         scene.__pendingShiftTransition = gameSession.recordSale();
+        scene.stars = gameSession.performanceStars;
         return;
       }
 
       // Used only for restart/save recovery. Normal sales must increment exactly
       // once and pass through ShiftManager.recordSale().
       gameSession.restoreShiftState(gameSession.phase, normalized);
+      scene.stars = gameSession.performanceStars;
     }
   });
 
@@ -198,6 +206,13 @@ function installCanonicalShiftAccessors(scene: RuntimeGameScene): void {
     enumerable: true,
     get: () => gameSession.snapshot.shiftEnded,
     set: (ended: boolean) => gameSession.setShiftEnded(Boolean(ended))
+  });
+
+  Object.defineProperty(scene, "money", {
+    configurable: true,
+    enumerable: true,
+    get: () => gameSession.coins,
+    set: (coins: number) => gameSession.setCoins(coins)
   });
 }
 
@@ -212,6 +227,4 @@ function resolveActiveDay(): LevelId {
   }
 }
 
-// Keep the import referenced in production bundles; this also makes accidental
-// removal of character assets visible to TypeScript during refactors.
 void Assets.characters.workerIdle;
