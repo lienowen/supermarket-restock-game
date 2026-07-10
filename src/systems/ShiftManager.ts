@@ -50,6 +50,11 @@ export class ShiftManager {
     return this.phase === "OPEN" || this.phase === "RUSH";
   }
 
+  hydrate(phase: ShiftPhase, soldCount: number): void {
+    this.phase = phase;
+    this.soldCount = Math.max(0, Math.floor(soldCount));
+  }
+
   reset(): void {
     this.phase = "PREPARE";
     this.soldCount = 0;
