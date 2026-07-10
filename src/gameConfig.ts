@@ -54,24 +54,27 @@ export const SLOT_PRODUCT_ORDER: ProductId[] = [
   "cola", "water", "milk", "cola", "water", "milk"
 ];
 
-// Ground contact points, not sprite centres. Box sprites use origin (0.5, 1).
+// Ground contact points. The PNG sprites use origin (0.5, 1), so these y values
+// are the actual floor contact lines rather than image centres.
 export const BOX_POSITIONS = [
-  { x: 105, y: 735 },
-  { x: 265, y: 735 },
-  { x: 105, y: 880 },
-  { x: 265, y: 880 },
-  { x: 105, y: 1025 },
-  { x: 265, y: 1025 }
+  { x: 105, y: 790 },
+  { x: 265, y: 790 },
+  { x: 105, y: 930 },
+  { x: 265, y: 930 },
+  { x: 105, y: 1060 },
+  { x: 265, y: 1060 }
 ] as const;
 
-// Fixed planogram: each slot has a real product type and a bottom contact line.
+// Refrigerator planogram. productBottomY is the physical shelf-contact line.
+// The lower row is intentionally calibrated separately so repeat restocks land
+// on the second shelf instead of floating above it.
 export const SLOT_POSITIONS = [
-  { x: 865, y: 342, productBottomY: 402 },
-  { x: 1015, y: 342, productBottomY: 402 },
-  { x: 1165, y: 342, productBottomY: 402 },
-  { x: 865, y: 505, productBottomY: 565 },
-  { x: 1015, y: 505, productBottomY: 565 },
-  { x: 1165, y: 505, productBottomY: 565 }
+  { x: 865, y: 342, productBottomY: 420 },
+  { x: 1015, y: 342, productBottomY: 420 },
+  { x: 1165, y: 342, productBottomY: 420 },
+  { x: 865, y: 505, productBottomY: 598 },
+  { x: 1015, y: 505, productBottomY: 598 },
+  { x: 1165, y: 505, productBottomY: 598 }
 ] as const;
 
 export const GAME_RULES = {
