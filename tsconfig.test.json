@@ -11,6 +11,8 @@
     "forceConsistentCasingInFileNames": true
   },
   "include": [
+    "src/assets.ts",
+    "src/gameConfig.ts",
     "src/domain/gameTypes.ts",
     "src/levels/levelConfigs.ts",
     "src/systems/ShiftManager.ts",
