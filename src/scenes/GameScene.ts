@@ -1,335 +1,428 @@
 import Phaser from "phaser";
+import { AssetPaths, Assets } from "../assets";
+
+type ProductId = "cola" | "water" | "milk";
+
+type ProductDefinition = {
+  id: ProductId;
+  label: string;
+  boxKey: string;
+  productKey: string;
+};
 
 type BoxItem = {
-  productId: "cola" | "water" | "milk";
-  color: number;
-  label: string;
-  node: Phaser.GameObjects.Container;
+  productId: ProductId;
+  image: Phaser.GameObjects.Image;
   loaded: boolean;
 };
 
 type ShelfSlot = {
   index: number;
-  occupied: boolean;
-  frame: Phaser.GameObjects.Rectangle;
-  label: Phaser.GameObjects.Text;
-  product?: Phaser.GameObjects.Container;
+  productId: ProductId;
+  hitArea: Phaser.GameObjects.Rectangle;
+  missingTag: Phaser.GameObjects.Image;
+  product?: Phaser.GameObjects.Image;
 };
+
+const PRODUCTS: Record<ProductId, ProductDefinition> = {
+  cola: {
+    id: "cola",
+    label: "COLA",
+    boxKey: Assets.props.boxCola,
+    productKey: Assets.products.cola
+  },
+  water: {
+    id: "water",
+    label: "WATER",
+    boxKey: Assets.props.boxWater,
+    productKey: Assets.products.water
+  },
+  milk: {
+    id: "milk",
+    label: "MILK",
+    boxKey: Assets.props.boxMilk,
+    productKey: Assets.products.milk
+  }
+};
+
+const INITIAL_BOX_ORDER: ProductId[] = ["cola", "water", "milk", "cola", "water", "milk"];
+const SLOT_PRODUCT_ORDER: ProductId[] = ["cola", "water", "milk", "cola", "water", "milk"];
 
 export class GameScene extends Phaser.Scene {
   private boxes: BoxItem[] = [];
   private shelfSlots: ShelfSlot[] = [];
   private selectedBox?: BoxItem;
+  private loadedProducts: ProductId[] = [];
 
   private cart!: Phaser.GameObjects.Container;
+  private cartSprite!: Phaser.GameObjects.Image;
   private cartCountText!: Phaser.GameObjects.Text;
-  private cartLoaded = 0;
+  private worker!: Phaser.GameObjects.Image;
   private cartAtShelf = false;
   private movingCart = false;
 
   private taskText!: Phaser.GameObjects.Text;
   private hintText!: Phaser.GameObjects.Text;
   private moneyText!: Phaser.GameObjects.Text;
+  private starText!: Phaser.GameObjects.Text;
+  private timerText!: Phaser.GameObjects.Text;
+  private hintBubble!: Phaser.GameObjects.Image;
+  private menuButton!: Phaser.GameObjects.Image;
+
   private money = 0;
+  private stars = 0;
   private stocked = 0;
   private storeOpen = false;
+  private shiftEnded = false;
+  private remainingSeconds = 300;
+  private customerSequence = 0;
+  private pauseOverlay?: Phaser.GameObjects.Container;
+  private purchaseEvent?: Phaser.Time.TimerEvent;
 
   constructor() {
     super("game");
   }
 
-  create(): void {
-    this.drawStaticScene();
-    this.createBoxes();
-    this.createCart();
-    this.createShelf();
-    this.updateHud();
-
-    this.scale.on("resize", () => {
-      // Phaser FIT mode handles presentation scaling; logical coordinates stay fixed.
+  preload(): void {
+    Object.entries(AssetPaths).forEach(([key, path]) => {
+      this.load.image(key, path);
     });
   }
 
-  private drawStaticScene(): void {
-    // Top HUD
-    this.add.rectangle(665, 78, 1330, 156, 0x182020);
-    this.add.rectangle(275, 78, 550, 132, 0x111818).setStrokeStyle(2, 0x243333);
-    this.add.text(182, 28, "☀ Morning Shift", {
+  create(): void {
+    this.cameras.main.setBackgroundColor("#151b1b");
+    this.createStage();
+    this.createHud();
+    this.createWorker();
+    this.createBoxes();
+    this.createCart();
+    this.createShelfSlots();
+    this.startShiftTimer();
+    this.updateHud();
+  }
+
+  private createStage(): void {
+    this.add.image(339, 669, Assets.backgrounds.backroom)
+      .setDisplaySize(678, 1026)
+      .setDepth(0);
+
+    this.add.image(1004, 669, Assets.backgrounds.salesfloor)
+      .setDisplaySize(652, 1026)
+      .setDepth(0);
+
+    this.add.rectangle(678, 669, 7, 1026, 0x141919, 0.95).setDepth(2);
+
+    this.add.rectangle(98, 192, 182, 48, 0x244f2e, 0.96)
+      .setStrokeStyle(2, 0x7ca17f)
+      .setDepth(4);
+    this.add.text(22, 178, "BACKROOM", {
       fontFamily: "Arial",
-      fontSize: "28px",
+      fontSize: "26px",
       color: "#ffffff",
       fontStyle: "bold"
-    });
-    this.add.text(182, 64, "Restock Drinks", {
+    }).setDepth(5);
+
+    this.add.rectangle(795, 192, 192, 48, 0x3f6688, 0.96)
+      .setStrokeStyle(2, 0x86a5bf)
+      .setDepth(4);
+    this.add.text(710, 178, "SALES FLOOR", {
+      fontFamily: "Arial",
+      fontSize: "26px",
+      color: "#ffffff",
+      fontStyle: "bold"
+    }).setDepth(5);
+
+    this.add.image(1020, 510, Assets.props.shelf)
+      .setDisplaySize(555, 690)
+      .setDepth(3);
+  }
+
+  private createHud(): void {
+    this.add.rectangle(665, 78, 1330, 156, 0x111818, 0.98).setDepth(50);
+
+    this.add.image(285, 78, Assets.ui.taskPanel)
+      .setDisplaySize(560, 132)
+      .setDepth(51);
+
+    this.add.image(83, 76, Assets.ui.workerAvatar)
+      .setDisplaySize(110, 110)
+      .setDepth(53);
+
+    this.add.text(154, 27, "Morning Shift", {
+      fontFamily: "Arial",
+      fontSize: "25px",
+      color: "#f7e9b0",
+      fontStyle: "bold"
+    }).setDepth(53);
+
+    this.add.text(154, 61, "Restock Drinks", {
       fontFamily: "Arial",
       fontSize: "34px",
       color: "#ffffff",
       fontStyle: "bold"
-    });
+    }).setDepth(53);
 
-    this.taskText = this.add.text(182, 111, "", {
-      fontFamily: "Arial",
-      fontSize: "22px",
-      color: "#e8f1f1"
-    });
-
-    this.add.rectangle(655, 78, 104, 124, 0x313433).setStrokeStyle(3, 0x4b4c49);
-    this.add.text(625, 32, "📋", { fontSize: "40px" });
-    this.add.text(624, 101, "Tasks", {
+    this.taskText = this.add.text(154, 110, "", {
       fontFamily: "Arial",
       fontSize: "21px",
-      color: "#ffffff",
-      fontStyle: "bold"
-    });
+      color: "#e8f1f1"
+    }).setDepth(53);
 
-    this.moneyText = this.add.text(970, 62, "⭐ 0", {
+    const taskButton = this.add.image(655, 78, Assets.ui.taskButton)
+      .setDisplaySize(104, 112)
+      .setDepth(53)
+      .setInteractive({ useHandCursor: true });
+    taskButton.on("pointerdown", () => this.showTransientHint("Goal: load boxes, move the cart, then refill every MISSING slot."));
+
+    this.add.image(860, 78, Assets.ui.star)
+      .setDisplaySize(55, 55)
+      .setDepth(53);
+    this.starText = this.add.text(900, 55, "0", {
       fontFamily: "Arial",
       fontSize: "31px",
       color: "#ffffff",
       fontStyle: "bold"
-    });
-    this.add.text(1065, 62, "⏱ 05:00", {
+    }).setDepth(53);
+
+    this.add.image(986, 78, Assets.ui.coin)
+      .setDisplaySize(54, 54)
+      .setDepth(53);
+    this.moneyText = this.add.text(1022, 55, "0", {
       fontFamily: "Arial",
       fontSize: "31px",
       color: "#ffffff",
       fontStyle: "bold"
-    });
+    }).setDepth(53);
 
-    // Static stage
-    this.add.rectangle(338, 669, 676, 1026, 0x555652);
-    this.add.rectangle(1003, 669, 654, 1026, 0xd5c8b6);
-    this.add.rectangle(678, 669, 7, 1026, 0x151a1a);
-
-    this.add.rectangle(95, 193, 170, 45, 0x254e2e);
-    this.add.text(31, 179, "BACKROOM", {
+    this.add.image(1102, 78, Assets.ui.timer)
+      .setDisplaySize(52, 52)
+      .setDepth(53);
+    this.timerText = this.add.text(1136, 55, "05:00", {
       fontFamily: "Arial",
-      fontSize: "26px",
+      fontSize: "31px",
       color: "#ffffff",
       fontStyle: "bold"
-    });
+    }).setDepth(53);
 
-    this.add.rectangle(794, 193, 180, 45, 0x3d6386);
-    this.add.text(716, 179, "SALES FLOOR", {
+    this.menuButton = this.add.image(1265, 78, Assets.ui.menu)
+      .setDisplaySize(72, 72)
+      .setDepth(54)
+      .setInteractive({ useHandCursor: true });
+    this.menuButton.on("pointerdown", () => this.togglePauseOverlay());
+
+    this.add.image(665, 1120, Assets.ui.stepCard)
+      .setDisplaySize(720, 104)
+      .setDepth(51);
+
+    this.hintText = this.add.text(665, 1118, "", {
       fontFamily: "Arial",
-      fontSize: "26px",
-      color: "#ffffff",
-      fontStyle: "bold"
-    });
-
-    // Backroom static decoration
-    this.add.rectangle(105, 420, 160, 410, 0x314e37).setStrokeStyle(5, 0x1f2b21);
-    this.add.text(54, 260, "EXIT", {
-      fontSize: "27px",
-      color: "#d9ffe0",
-      backgroundColor: "#4c9b5b",
-      padding: { x: 9, y: 5 }
-    });
-
-    for (let i = 0; i < 4; i++) {
-      this.add.rectangle(545, 280 + i * 125, 190, 14, 0xc86513);
-      this.add.rectangle(485, 280 + i * 125, 10, 120, 0x174d87);
-      this.add.rectangle(605, 280 + i * 125, 10, 120, 0x174d87);
-      if (i < 3) {
-        this.add.rectangle(546, 240 + i * 125, 130, 75, 0xa67a42);
-      }
-    }
-
-    // Sales-floor fridge/shelf frame
-    this.add.rectangle(1004, 500, 535, 650, 0x202a31).setStrokeStyle(8, 0x111719);
-    this.add.rectangle(1004, 224, 535, 78, 0x2581be);
-    this.add.text(890, 198, "COLD DRINKS", {
-      fontFamily: "Arial",
-      fontSize: "38px",
-      color: "#ffffff",
-      fontStyle: "bold"
-    });
-    [367, 522, 677].forEach((y) => {
-      this.add.rectangle(1004, y, 505, 12, 0xb7c1c4);
-    });
-
-    // Bottom guidance strip
-    this.hintText = this.add.text(665, 1117, "", {
-      fontFamily: "Arial",
-      fontSize: "28px",
-      color: "#152020",
+      fontSize: "25px",
+      color: "#172020",
       fontStyle: "bold",
-      backgroundColor: "#f4e8c8",
-      padding: { x: 22, y: 14 },
-      align: "center"
-    }).setOrigin(0.5);
+      align: "center",
+      wordWrap: { width: 640 }
+    }).setOrigin(0.5).setDepth(53);
+
+    this.hintBubble = this.add.image(520, 530, Assets.ui.hintBubble)
+      .setDisplaySize(330, 155)
+      .setAlpha(0)
+      .setDepth(40);
+  }
+
+  private createWorker(): void {
+    this.worker = this.add.image(470, 615, Assets.characters.workerIdle)
+      .setDepth(12);
+    this.fitImage(this.worker, 260, 500);
   }
 
   private createBoxes(): void {
-    const products: Array<Omit<BoxItem, "node" | "loaded">> = [
-      { productId: "cola", color: 0xa23a28, label: "COLA" },
-      { productId: "water", color: 0x3e78aa, label: "WATER" },
-      { productId: "milk", color: 0xd9e2e7, label: "MILK" },
-      { productId: "cola", color: 0xa23a28, label: "COLA" },
-      { productId: "water", color: 0x3e78aa, label: "WATER" },
-      { productId: "milk", color: 0xd9e2e7, label: "MILK" }
+    const positions = [
+      { x: 95, y: 760 },
+      { x: 245, y: 760 },
+      { x: 395, y: 760 },
+      { x: 95, y: 925 },
+      { x: 245, y: 925 },
+      { x: 395, y: 925 }
     ];
 
-    products.forEach((p, i) => {
-      const col = i % 3;
-      const row = Math.floor(i / 3);
-      const x = 95 + col * 145;
-      const y = 760 + row * 155;
-
-      const body = this.add.rectangle(0, 0, 118, 118, 0xb78b52)
-        .setStrokeStyle(4, 0x6f5435);
-      const band = this.add.rectangle(0, 25, 94, 46, p.color);
-      const label = this.add.text(0, 25, p.label, {
-        fontFamily: "Arial",
-        fontSize: "19px",
-        color: p.productId === "milk" ? "#2c4b62" : "#ffffff",
-        fontStyle: "bold"
-      }).setOrigin(0.5);
-
-      const node = this.add.container(x, y, [body, band, label])
-        .setSize(118, 118)
+    INITIAL_BOX_ORDER.forEach((productId, index) => {
+      const definition = PRODUCTS[productId];
+      const position = positions[index];
+      const image = this.add.image(position.x, position.y, definition.boxKey)
+        .setDisplaySize(128, 128)
+        .setDepth(15)
         .setInteractive({ useHandCursor: true });
 
-      const item: BoxItem = { ...p, node, loaded: false };
-      node.on("pointerdown", () => this.selectBox(item));
+      const item: BoxItem = {
+        productId,
+        image,
+        loaded: false
+      };
+
+      image.on("pointerdown", () => this.selectBox(item));
       this.boxes.push(item);
     });
   }
 
   private createCart(): void {
-    const tub = this.add.rectangle(0, 0, 245, 145, 0x6c7777)
-      .setStrokeStyle(7, 0x283333);
-    const panel = this.add.rectangle(0, 15, 132, 67, 0x466b1f);
-    const label = this.add.text(0, 15, "REPLENISH\nCART", {
-      fontFamily: "Arial",
-      fontSize: "20px",
-      color: "#ffffff",
-      align: "center",
-      fontStyle: "bold"
-    }).setOrigin(0.5);
-    const handle = this.add.rectangle(-92, -95, 92, 10, 0x1f2828);
-    const wheelL = this.add.circle(-78, 88, 20, 0x222727);
-    const wheelR = this.add.circle(78, 88, 20, 0x222727);
+    this.cartSprite = this.add.image(0, 0, Assets.props.cart)
+      .setDisplaySize(270, 255);
 
-    this.cartCountText = this.add.text(92, -55, "0/6", {
+    this.cartCountText = this.add.text(104, -92, "0/6", {
       fontFamily: "Arial",
       fontSize: "22px",
       color: "#ffffff",
       fontStyle: "bold",
-      backgroundColor: "#172020",
-      padding: { x: 7, y: 3 }
+      backgroundColor: "#182020",
+      padding: { x: 8, y: 4 }
     }).setOrigin(0.5);
 
-    this.cart = this.add.container(450, 800, [
-      tub, panel, label, handle, wheelL, wheelR, this.cartCountText
-    ]).setSize(260, 220).setInteractive({ useHandCursor: true });
+    this.cart = this.add.container(475, 830, [this.cartSprite, this.cartCountText])
+      .setSize(285, 265)
+      .setDepth(20)
+      .setInteractive({ useHandCursor: true });
 
     this.cart.on("pointerdown", () => this.handleCartTap());
   }
 
-  private createShelf(): void {
+  private createShelfSlots(): void {
     const positions = [
-      [855, 330], [1005, 330], [1155, 330],
-      [855, 485], [1005, 485], [1155, 485]
-    ] as const;
+      { x: 875, y: 365 },
+      { x: 1020, y: 365 },
+      { x: 1165, y: 365 },
+      { x: 875, y: 570 },
+      { x: 1020, y: 570 },
+      { x: 1165, y: 570 }
+    ];
 
-    positions.forEach(([x, y], index) => {
-      const frame = this.add.rectangle(x, y, 116, 118, 0x2d353a, 0.82)
-        .setStrokeStyle(4, 0xe9ecec, 0.75)
+    positions.forEach((position, index) => {
+      const hitArea = this.add.rectangle(position.x, position.y, 112, 150, 0x173038, 0.08)
+        .setStrokeStyle(2, 0xe9eeee, 0.45)
+        .setDepth(7)
         .setInteractive({ useHandCursor: true });
-      const label = this.add.text(x, y + 39, "MISSING", {
-        fontFamily: "Arial",
-        fontSize: "17px",
-        color: "#ff665c",
-        fontStyle: "bold",
-        backgroundColor: "#7b271f",
-        padding: { x: 6, y: 3 }
-      }).setOrigin(0.5);
 
-      const slot: ShelfSlot = { index, occupied: false, frame, label };
-      frame.on("pointerdown", () => this.tryRestockSlot(slot));
+      const missingTag = this.add.image(position.x, position.y + 50, Assets.ui.missingTag)
+        .setDisplaySize(102, 38)
+        .setDepth(9);
+
+      const slot: ShelfSlot = {
+        index,
+        productId: SLOT_PRODUCT_ORDER[index],
+        hitArea,
+        missingTag
+      };
+
+      hitArea.on("pointerdown", () => this.tryRestockSlot(slot));
       this.shelfSlots.push(slot);
     });
   }
 
   private selectBox(item: BoxItem): void {
-    if (item.loaded || this.cartAtShelf || this.movingCart || this.storeOpen) return;
+    if (item.loaded || this.movingCart || this.shiftEnded) return;
 
     if (this.selectedBox && this.selectedBox !== item) {
-      this.selectedBox.node.setScale(1);
+      this.selectedBox.image.setScale(1);
+      this.selectedBox.image.clearTint();
     }
 
     this.selectedBox = item;
-    item.node.setScale(1.12);
+    item.image.setScale(1.12).setTint(0xffffcc);
+    this.setWorkerState("carry");
     this.updateHud();
   }
 
   private handleCartTap(): void {
-    if (this.movingCart) return;
+    if (this.movingCart || this.shiftEnded) return;
 
-    if (this.selectedBox && !this.cartAtShelf) {
+    if (this.selectedBox) {
       const item = this.selectedBox;
       this.selectedBox = undefined;
-      item.node.disableInteractive();
+      item.image.disableInteractive().clearTint();
 
       this.tweens.add({
-        targets: item.node,
+        targets: item.image,
         x: this.cart.x,
-        y: this.cart.y - 30,
-        scaleX: 0.45,
-        scaleY: 0.45,
-        duration: 360,
+        y: this.cart.y - 25,
+        scaleX: 0.38,
+        scaleY: 0.38,
+        duration: 380,
         ease: "Cubic.Out",
         onComplete: () => {
           item.loaded = true;
-          item.node.setVisible(false);
-          this.cartLoaded += 1;
-          this.cartCountText.setText(`${this.cartLoaded}/6`);
+          item.image.setVisible(false);
+          this.loadedProducts.push(item.productId);
+          this.updateCartCount();
+          this.setWorkerState("idle");
           this.updateHud();
         }
       });
       return;
     }
 
-    if (!this.cartAtShelf && this.cartLoaded >= 6) {
-      this.movingCart = true;
-      this.updateHud();
-
-      this.tweens.add({
-        targets: this.cart,
-        x: 730,
-        y: 760,
-        duration: 900,
-        ease: "Sine.InOut",
-        onComplete: () => {
-          this.movingCart = false;
-          this.cartAtShelf = true;
-          this.updateHud();
-        }
-      });
+    if (!this.cartAtShelf && this.loadedProducts.length >= 6) {
+      this.moveCartToShelf();
     }
   }
 
+  private moveCartToShelf(): void {
+    this.movingCart = true;
+    this.cart.setVisible(false);
+
+    this.worker.setTexture(Assets.characters.workerPush)
+      .setPosition(500, 690)
+      .setVisible(true);
+    this.fitImage(this.worker, 400, 560);
+    this.worker.setDepth(24);
+
+    this.updateHud();
+
+    this.tweens.add({
+      targets: this.worker,
+      x: 760,
+      y: 735,
+      duration: 1050,
+      ease: "Sine.InOut",
+      onComplete: () => {
+        this.movingCart = false;
+        this.cartAtShelf = true;
+        this.cart.setPosition(755, 850).setVisible(true);
+        this.worker.setTexture(Assets.characters.workerIdle)
+          .setPosition(700, 650)
+          .setDepth(12);
+        this.fitImage(this.worker, 230, 440);
+        this.updateHud();
+      }
+    });
+  }
+
   private tryRestockSlot(slot: ShelfSlot): void {
-    if (!this.cartAtShelf || slot.occupied || this.cartLoaded <= 0 || this.movingCart) return;
+    if (!this.cartAtShelf || slot.product || this.movingCart || this.shiftEnded) return;
 
-    this.cartLoaded -= 1;
-    this.cartCountText.setText(`${this.cartLoaded}/6`);
+    const productIndex = this.loadedProducts.indexOf(slot.productId);
+    if (productIndex < 0) {
+      this.showTransientHint(`Load a ${PRODUCTS[slot.productId].label} box first.`);
+      return;
+    }
 
-    const token = this.createBottle(this.cart.x, this.cart.y - 20, 0x3f9f4b, "DRINK");
+    this.loadedProducts.splice(productIndex, 1);
+    this.updateCartCount();
+
+    const definition = PRODUCTS[slot.productId];
+    const token = this.add.image(this.cart.x, this.cart.y - 45, definition.productKey)
+      .setDepth(30);
+    this.fitImage(token, 62, 112);
+
     this.tweens.add({
       targets: token,
-      x: slot.frame.x,
-      y: slot.frame.y,
-      scaleX: 0.85,
-      scaleY: 0.85,
-      duration: 420,
+      x: slot.hitArea.x,
+      y: slot.hitArea.y,
+      duration: 430,
       ease: "Cubic.Out",
       onComplete: () => {
-        slot.occupied = true;
         slot.product = token;
-        slot.label.setVisible(false);
-        slot.frame.setStrokeStyle(3, 0x7cc37f, 0.6);
-        this.stocked += 1;
+        slot.missingTag.setVisible(false);
+        slot.hitArea.setStrokeStyle(2, 0x7dc982, 0.55);
+        this.stocked = this.shelfSlots.filter((s) => Boolean(s.product)).length;
         this.updateHud();
 
         if (this.stocked >= this.shelfSlots.length && !this.storeOpen) {
@@ -339,92 +432,132 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  private createBottle(
-    x: number,
-    y: number,
-    color: number,
-    label: string
-  ): Phaser.GameObjects.Container {
-    const body = this.add.rectangle(0, 5, 42, 76, color)
-      .setStrokeStyle(3, 0x1f2a2a);
-    const cap = this.add.rectangle(0, -40, 18, 12, 0x253434);
-    const text = this.add.text(0, 6, label, {
-      fontFamily: "Arial",
-      fontSize: "9px",
-      color: "#ffffff",
-      fontStyle: "bold"
-    }).setOrigin(0.5);
-
-    return this.add.container(x, y, [body, cap, text]);
-  }
-
   private openStore(): void {
     this.storeOpen = true;
+    this.stars = Math.max(this.stars, 1);
+    this.resetSupplyBoxes();
     this.updateHud();
+    this.showTransientHint("Store open! Customers are buying. Keep refilling new MISSING slots.");
 
-    this.time.addEvent({
-      delay: 1500,
+    this.purchaseEvent = this.time.addEvent({
+      delay: 2200,
       loop: true,
       callback: () => this.customerPurchase()
     });
   }
 
   private customerPurchase(): void {
-    const available = this.shelfSlots.filter((s) => s.occupied && s.product);
+    if (this.shiftEnded) return;
+
+    const available = this.shelfSlots.filter((slot) => Boolean(slot.product));
     if (available.length === 0) return;
 
     const slot = Phaser.Utils.Array.GetRandom(available);
-    const customer = this.add.circle(1260, 785, 29, 0xe1a75e)
-      .setStrokeStyle(4, 0x59412c);
+    const useFirstCustomer = this.customerSequence % 2 === 0;
+    this.customerSequence += 1;
+
+    const idleKey = useFirstCustomer
+      ? Assets.characters.customer01Idle
+      : Assets.characters.customer02Idle;
+    const basketKey = useFirstCustomer
+      ? Assets.characters.customer01Basket
+      : Assets.characters.customer02Basket;
+
+    const customer = this.add.image(1285, 905, idleKey)
+      .setDepth(26);
+    this.fitImage(customer, 145, 270);
 
     this.tweens.add({
       targets: customer,
-      x: slot.frame.x + 40,
-      y: 700,
-      duration: 700,
+      x: slot.hitArea.x + 45,
+      y: 790,
+      duration: 780,
       ease: "Sine.InOut",
       onComplete: () => {
-        slot.occupied = false;
         slot.product?.destroy();
         slot.product = undefined;
-        slot.label.setVisible(true);
-        slot.frame.setStrokeStyle(4, 0xe9ecec, 0.75);
-        this.stocked = Math.max(0, this.stocked - 1);
+        slot.missingTag.setVisible(true);
+        slot.hitArea.setStrokeStyle(2, 0xe9eeee, 0.45);
+        this.stocked = this.shelfSlots.filter((s) => Boolean(s.product)).length;
+
+        customer.setTexture(basketKey);
+        this.fitImage(customer, 160, 285);
 
         this.money += 10;
-        this.moneyText.setText(`⭐ ${this.money}`);
-
-        const income = this.add.text(slot.frame.x, slot.frame.y - 45, "+$10", {
-          fontFamily: "Arial",
-          fontSize: "26px",
-          color: "#ffe36a",
-          fontStyle: "bold"
-        }).setOrigin(0.5);
-
-        this.tweens.add({
-          targets: income,
-          y: income.y - 80,
-          alpha: 0,
-          duration: 800,
-          onComplete: () => income.destroy()
-        });
+        if (this.money >= 50) this.stars = Math.max(this.stars, 2);
+        if (this.money >= 100) this.stars = Math.max(this.stars, 3);
+        this.spawnIncomeText(slot.hitArea.x, slot.hitArea.y - 55, 10);
+        this.updateHud();
 
         this.tweens.add({
           targets: customer,
-          x: 1280,
-          y: 900,
+          x: 1370,
+          y: 930,
           alpha: 0,
-          duration: 650,
+          duration: 720,
+          delay: 180,
           onComplete: () => customer.destroy()
         });
-
-        this.updateHud();
       }
     });
   }
 
+  private spawnIncomeText(x: number, y: number, amount: number): void {
+    const income = this.add.text(x, y, `+$${amount}`, {
+      fontFamily: "Arial",
+      fontSize: "28px",
+      color: "#ffe36a",
+      fontStyle: "bold",
+      stroke: "#5b3d00",
+      strokeThickness: 4
+    }).setOrigin(0.5).setDepth(45);
+
+    this.tweens.add({
+      targets: income,
+      y: y - 85,
+      alpha: 0,
+      duration: 850,
+      onComplete: () => income.destroy()
+    });
+  }
+
+  private resetSupplyBoxes(): void {
+    this.boxes.forEach((item) => {
+      item.loaded = false;
+      item.image.setVisible(true)
+        .setScale(1)
+        .clearTint()
+        .setInteractive({ useHandCursor: true });
+    });
+  }
+
+  private setWorkerState(state: "idle" | "carry"): void {
+    const key = state === "carry"
+      ? Assets.characters.workerCarry
+      : Assets.characters.workerIdle;
+
+    this.worker.setTexture(key)
+      .setVisible(true)
+      .setPosition(this.cartAtShelf ? 700 : 470, this.cartAtShelf ? 650 : 615)
+      .setDepth(12);
+
+    this.fitImage(this.worker, state === "carry" ? 290 : 260, state === "carry" ? 500 : 500);
+  }
+
+  private updateCartCount(): void {
+    this.cartCountText.setText(`${this.loadedProducts.length}/6`);
+  }
+
   private updateHud(): void {
+    this.stocked = this.shelfSlots.filter((slot) => Boolean(slot.product)).length;
     this.taskText.setText(`Task Progress: ${this.stocked}/6`);
+    this.moneyText.setText(String(this.money));
+    this.starText.setText(String(this.stars));
+
+    if (this.shiftEnded) {
+      this.hintText.setText(`Shift complete · earnings $${this.money} · stars ${this.stars}/3`);
+      return;
+    }
 
     if (this.storeOpen) {
       this.hintText.setText("Store open · customers are buying · refill new MISSING slots");
@@ -437,20 +570,103 @@ export class GameScene extends Phaser.Scene {
     }
 
     if (this.cartAtShelf) {
-      this.hintText.setText("4. Tap a MISSING slot to restock");
+      this.hintText.setText("4. Tap a MISSING slot to restock the matching product");
       return;
     }
 
     if (this.selectedBox) {
-      this.hintText.setText("2. Put the selected box on the cart");
+      this.hintText.setText("2. Tap the cart to load the selected box");
       return;
     }
 
-    if (this.cartLoaded >= 6) {
-      this.hintText.setText("3. Cart ready · tap the cart to move");
+    if (this.loadedProducts.length >= 6) {
+      this.hintText.setText("3. Cart ready · tap the cart to move to the sales floor");
       return;
     }
 
-    this.hintText.setText("1. Tap a box to pick it up");
+    this.hintText.setText("1. Tap a drink box to pick it up");
+  }
+
+  private showTransientHint(message: string): void {
+    this.hintBubble.setAlpha(1).setScale(1);
+
+    const text = this.add.text(this.hintBubble.x, this.hintBubble.y - 5, message, {
+      fontFamily: "Arial",
+      fontSize: "20px",
+      color: "#172020",
+      fontStyle: "bold",
+      align: "center",
+      wordWrap: { width: 270 }
+    }).setOrigin(0.5).setDepth(41);
+
+    this.tweens.add({
+      targets: [this.hintBubble, text],
+      alpha: 0,
+      duration: 300,
+      delay: 1900,
+      onComplete: () => text.destroy()
+    });
+  }
+
+  private startShiftTimer(): void {
+    this.updateTimerText();
+    this.time.addEvent({
+      delay: 1000,
+      loop: true,
+      callback: () => {
+        if (this.shiftEnded || this.pauseOverlay?.visible) return;
+        this.remainingSeconds = Math.max(0, this.remainingSeconds - 1);
+        this.updateTimerText();
+        if (this.remainingSeconds === 0) {
+          this.endShift();
+        }
+      }
+    });
+  }
+
+  private updateTimerText(): void {
+    const minutes = Math.floor(this.remainingSeconds / 60);
+    const seconds = this.remainingSeconds % 60;
+    this.timerText.setText(`${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`);
+  }
+
+  private endShift(): void {
+    if (this.shiftEnded) return;
+    this.shiftEnded = true;
+    this.purchaseEvent?.remove(false);
+    this.stars = Math.max(this.stars, this.money >= 100 ? 3 : this.money >= 50 ? 2 : this.storeOpen ? 1 : 0);
+    this.updateHud();
+    this.showTransientHint(`Morning shift complete! Final earnings: $${this.money}`);
+  }
+
+  private togglePauseOverlay(): void {
+    if (!this.pauseOverlay) {
+      const shade = this.add.rectangle(665, 669, 1330, 1026, 0x081010, 0.72);
+      const panel = this.add.rectangle(665, 625, 430, 250, 0x1b2424, 0.98)
+        .setStrokeStyle(3, 0x596969);
+      const title = this.add.text(665, 575, "PAUSED", {
+        fontFamily: "Arial",
+        fontSize: "42px",
+        color: "#ffffff",
+        fontStyle: "bold"
+      }).setOrigin(0.5);
+      const subtitle = this.add.text(665, 650, "Tap the menu button again to continue", {
+        fontFamily: "Arial",
+        fontSize: "21px",
+        color: "#d7e0e0"
+      }).setOrigin(0.5);
+
+      this.pauseOverlay = this.add.container(0, 0, [shade, panel, title, subtitle])
+        .setDepth(80)
+        .setVisible(true);
+      return;
+    }
+
+    this.pauseOverlay.setVisible(!this.pauseOverlay.visible);
+  }
+
+  private fitImage(image: Phaser.GameObjects.Image, maxWidth: number, maxHeight: number): void {
+    const scale = Math.min(maxWidth / image.width, maxHeight / image.height);
+    image.setScale(scale);
   }
 }
