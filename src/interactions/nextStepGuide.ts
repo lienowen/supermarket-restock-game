@@ -3,6 +3,7 @@ import { GAME_RULES } from "../gameConfig";
 import { GameScene } from "../scenes/GameScene";
 
 type ShelfSlotLike = {
+  productId: string;
   missingTag: Phaser.GameObjects.Image;
   product?: Phaser.GameObjects.Image;
 };
@@ -33,6 +34,8 @@ type GuideState = {
   cartTween?: Phaser.Tweens.Tween;
   missingTween?: Phaser.Tweens.Tween;
   highlightedMissing?: Phaser.GameObjects.Image;
+  missingBaseScaleX?: number;
+  missingBaseScaleY?: number;
 };
 
 const prototype = GameScene.prototype as unknown as ScenePrototype;
@@ -47,7 +50,11 @@ prototype.createCart = function createCartWithNextStepGuide(): void {
   (scene as unknown as { __nextStepGuide?: GuideState }).__nextStepGuide = state;
 
   scene.cart.on("dragstart", () => {
-    if (state.phase === "cart-ready") hideCartGuide(scene, state);
+    if (state.phase === "cart-ready") {
+      hideCartGuide(scene, state);
+      // If the player releases before crossing the doorway, updateHud can show the guide again.
+      state.phase = "loading";
+    }
   });
 };
 
@@ -92,7 +99,13 @@ prototype.tryRestockSlot = function tryRestockSlotAndClearGuide(slot: ShelfSlotL
   const scene = this as unknown as SceneInternals;
   const state = (scene as unknown as { __nextStepGuide?: GuideState }).__nextStepGuide;
 
-  if (state?.phase === "shelf-ready" && slot.missingTag === state.highlightedMissing) {
+  const validGuidedRestock =
+    state?.phase === "shelf-ready" &&
+    slot.missingTag === state.highlightedMissing &&
+    scene.cartAtShelf &&
+    scene.loadedProducts.includes(slot.productId);
+
+  if (validGuidedRestock && state) {
     hideMissingGuide(state);
     state.phase = "done";
   }
@@ -138,7 +151,7 @@ function showCartGuide(scene: SceneInternals, state: GuideState): void {
   state.graphics.fillTriangle(775, 760, 742, 742, 742, 778);
   state.graphics.setVisible(true);
 
-  state.labelBg.setPosition(690, 700).setVisible(true);
+  state.labelBg.setPosition(690, 700).setSize(310, 54).setVisible(true);
   state.label.setPosition(690, 700).setText("拖动推车到卖场 →").setVisible(true);
 
   state.cartTween?.stop();
@@ -169,6 +182,8 @@ function showMissingGuide(
 ): void {
   hideMissingGuide(state);
   state.highlightedMissing = missingTag;
+  state.missingBaseScaleX = missingTag.scaleX;
+  state.missingBaseScaleY = missingTag.scaleY;
   missingTag.setAlpha(1);
 
   state.labelBg.setPosition(missingTag.x, missingTag.y + 86).setSize(330, 54).setVisible(true);
@@ -177,8 +192,8 @@ function showMissingGuide(
   state.missingTween = scene.tweens.add({
     targets: missingTag,
     alpha: 0.35,
-    scaleX: missingTag.scaleX * 1.1,
-    scaleY: missingTag.scaleY * 1.1,
+    scaleX: state.missingBaseScaleX * 1.1,
+    scaleY: state.missingBaseScaleY * 1.1,
     duration: 420,
     yoyo: true,
     repeat: -1,
@@ -192,12 +207,15 @@ function hideMissingGuide(state: GuideState): void {
 
   if (state.highlightedMissing?.active) {
     state.highlightedMissing.setAlpha(1);
-    const baseScaleX = state.highlightedMissing.displayWidth / Math.max(1, state.highlightedMissing.width);
-    const baseScaleY = state.highlightedMissing.displayHeight / Math.max(1, state.highlightedMissing.height);
-    state.highlightedMissing.setScale(baseScaleX, baseScaleY);
+    if (state.missingBaseScaleX !== undefined && state.missingBaseScaleY !== undefined) {
+      state.highlightedMissing.setScale(state.missingBaseScaleX, state.missingBaseScaleY);
+    }
   }
 
   state.highlightedMissing = undefined;
+  state.missingBaseScaleX = undefined;
+  state.missingBaseScaleY = undefined;
+
   if (state.phase !== "cart-ready") {
     state.labelBg.setVisible(false);
     state.label.setVisible(false);
