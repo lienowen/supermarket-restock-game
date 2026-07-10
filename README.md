@@ -1,6 +1,6 @@
 # Supermarket Restock Game
 
-A brand-new H5 prototype for a static-scene + dynamic-object supermarket management game.
+A Phaser 3 + TypeScript H5 game prototype focused on a fast backroom-to-sales-floor restocking loop.
 
 ## Stack
 
@@ -10,16 +10,24 @@ A brand-new H5 prototype for a static-scene + dynamic-object supermarket managem
 
 ## Current playable loop
 
-1. Tap a box in the backroom.
-2. Tap the replenishment cart to load it.
-3. Load all 6 boxes.
-4. Tap the cart to move it to the sales floor.
-5. Tap a visible `MISSING` shelf slot.
-6. Product flies into that exact slot.
-7. When the shelf is filled, the store opens.
-8. Customers buy products automatically.
-9. Sold slots become `MISSING` again.
-10. Player keeps restocking while money increases.
+1. Drag matching product boxes from the backroom onto the replenishment cart.
+2. The first Day 1 trip can leave after 3 boxes, so the core loop starts quickly.
+3. Drag the loaded cart through the doorway to the sales floor.
+4. Tap a matching `MISSING` shelf slot.
+5. The worker restocks that exact slot and the cart count updates.
+6. Fill the remaining slots with additional trips as needed.
+7. When all initial shelf slots are filled, the store opens.
+8. Customers buy products and sold slots become `MISSING` again.
+9. Return the cart to the backroom for matching stock and keep shelves available.
+10. Day 2 adds waiting customers with patience bars; restock in time to save the sale.
+
+## Controls
+
+- **Boxes:** drag onto the cart.
+- **Cart:** drag between backroom and sales floor.
+- **Shelf slots:** tap the matching `MISSING` slot to restock.
+- **Waiting customers:** tap once to ask them to wait and extend patience.
+- **Pause:** freezes the main shift and Day 2 customer waiting timers.
 
 ## Run
 
@@ -40,27 +48,28 @@ http://localhost:5173
 npm run build
 ```
 
-## Asset plan
+## Assets
 
-Final art should go under:
+Runtime art is loaded from:
 
 ```text
 public/assets/day01/
+public/assets/ui/
 ```
 
-Recommended first batch:
+Core Day 1 assets include:
 
-- `backroom_bg.webp`
-- `salesfloor_bg.webp`
+- `backroom_bg.png`
+- `salesfloor_bg.png`
 - `cart.png`
 - `box_cola.png`
 - `box_water.png`
 - `box_milk.png`
-- `shelf_frame.png` (without products)
+- `shelf_frame.png`
 - `product_cola.png`
 - `product_water.png`
 - `product_milk.png`
-- `customer_01.png`
-- `customer_02.png`
+- worker action sprites
+- customer idle/basket sprites
 
-The prototype currently uses runtime-drawn placeholders so gameplay can be tested before final art arrives.
+Keep replacement files on transparent backgrounds and preserve filenames so the runtime asset map does not need to change.
