@@ -1,3 +1,4 @@
+import Phaser from "phaser";
 import type { ProductId } from "./gameConfig";
 import { GameScene } from "./scenes/GameScene";
 import { ProgressionCustomerScene } from "./scenes/ProgressionCustomerScene";
