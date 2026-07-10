@@ -1,0 +1,23 @@
+import { mkdirSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { resolve } from "node:path";
+
+const npx = process.platform === "win32" ? "npx.cmd" : "npx";
+const compile = spawnSync(
+  npx,
+  ["--no-install", "tsc", "-p", "tsconfig.test.json"],
+  { stdio: "inherit" }
+);
+
+if (compile.status !== 0) process.exit(compile.status ?? 1);
+
+mkdirSync(resolve(".test-dist"), { recursive: true });
+writeFileSync(resolve(".test-dist/package.json"), '{"type":"commonjs"}\n', "utf8");
+
+const run = spawnSync(
+  process.execPath,
+  ["--test", "tests/core-flow.test.cjs"],
+  { stdio: "inherit" }
+);
+
+process.exit(run.status ?? 1);
