@@ -5,6 +5,7 @@ import { PolishOverlayScene } from "./scenes/PolishOverlayScene";
 import { ProgressionCustomerScene } from "./scenes/ProgressionCustomerScene";
 import "./gameSessionIntegration";
 import "./layoutCalibration";
+import "./interactions/immediateCartDrag";
 
 new Phaser.Game({
   type: Phaser.AUTO,
