@@ -1,5 +1,6 @@
 import { Assets } from "./assets";
-import { ACTIVE_LEVEL } from "./levels/levelConfigs";
+import { LEVELS, ACTIVE_LEVEL } from "./levels/levelConfigs";
+import { gameSession } from "./systems/GameSession";
 
 export type ProductId = "cola" | "water" | "milk";
 
@@ -78,19 +79,35 @@ export const SLOT_POSITIONS = [
   { x: 1165, y: 505, productBottomY: 598 }
 ] as const;
 
+/**
+ * Rules that vary by day are runtime getters. Day changes happen through
+ * GameSession, so Day 2+ can never silently keep Day 1 timing or sales targets.
+ */
 export const GAME_RULES = {
-  shiftSeconds: ACTIVE_LEVEL.shiftSeconds,
+  get shiftSeconds(): number {
+    return LEVELS[gameSession.day].shiftSeconds;
+  },
   cartCapacity: 6,
   firstMoveRequirement: 3,
   reopenMoveRequirement: 1,
-  normalSalesTarget: ACTIVE_LEVEL.salesTargets.openToRush,
-  rushSalesTarget: ACTIVE_LEVEL.salesTargets.rushToClosing,
-  customerIntervalOpenMs: ACTIVE_LEVEL.customerIntervalsMs.open,
-  customerIntervalRushMs: ACTIVE_LEVEL.customerIntervalsMs.rush,
+  get normalSalesTarget(): number {
+    return LEVELS[gameSession.day].salesTargets.openToRush;
+  },
+  get rushSalesTarget(): number {
+    return LEVELS[gameSession.day].salesTargets.rushToClosing;
+  },
+  get customerIntervalOpenMs(): number {
+    return LEVELS[gameSession.day].customerIntervalsMs.open;
+  },
+  get customerIntervalRushMs(): number {
+    return LEVELS[gameSession.day].customerIntervalsMs.rush;
+  },
   reserveRespawnDelayMs: 700,
   comboWindowMs: 4200,
   maxStars: 3,
   starSalesThresholds: [3, 6, 8]
 } as const;
 
+// Kept for compatibility with older imports; runtime gameplay must use
+// GAME_RULES getters or LEVELS[gameSession.day], not this Day 1 constant.
 export { ACTIVE_LEVEL };
