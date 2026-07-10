@@ -81,7 +81,7 @@ export const SLOT_POSITIONS = [
 export const GAME_RULES = {
   shiftSeconds: ACTIVE_LEVEL.shiftSeconds,
   cartCapacity: 6,
-  firstMoveRequirement: 6,
+  firstMoveRequirement: 3,
   reopenMoveRequirement: 1,
   normalSalesTarget: ACTIVE_LEVEL.salesTargets.openToRush,
   rushSalesTarget: ACTIVE_LEVEL.salesTargets.rushToClosing,
