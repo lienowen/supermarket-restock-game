@@ -11,10 +11,34 @@ type RuntimeGameScene = Phaser.Scene & {
   soldCount: number;
   shiftEnded: boolean;
   money: number;
+  stars: number;
   stocked: number;
+  combo: number;
+  comboDeadline: number;
   remainingSeconds: number;
+  customerSequence: number;
+  reserveStockStarted: boolean;
+
+  boxes: unknown[];
+  shelfSlots: unknown[];
+  selectedBox?: unknown;
+  loadedProducts: unknown[];
+  nextBoxId: number;
+
+  cartAtShelf: boolean;
+  movingCart: boolean;
+  restockBusy: boolean;
+
+  guideMode: string;
+  guideTween?: Phaser.Tweens.Tween;
+  highlightedMissing?: Phaser.GameObjects.Image;
+  highlightedMissingScale?: { x: number; y: number };
+  pauseOverlay?: Phaser.GameObjects.Container;
+
   purchaseEvent?: Phaser.Time.TimerEvent;
+  timerEvent?: Phaser.Time.TimerEvent;
   __pendingShiftTransition?: ShiftTransition;
+
   showPhaseBanner: (text: string) => void;
   showTransientHint: (message: string) => void;
   startCustomerLoop: (delay: number) => void;
@@ -31,6 +55,11 @@ const originalCreate = prototype.create;
 
 prototype.create = function createWithCanonicalShiftSession(): void {
   const scene = this as unknown as RuntimeGameScene;
+
+  // Phaser restarts reuse the same Scene instance. Class field initializers are NOT
+  // run again, so arrays/counters from Day 1 would otherwise survive into Day 2.
+  // Clear every restartable runtime field before creating new boxes and shelf slots.
+  resetRestartableSceneState(scene);
 
   // Resolve the day first. GAME_RULES uses runtime getters backed by GameSession,
   // so every subsequent timer/target lookup now reflects the actual active day.
@@ -75,6 +104,44 @@ prototype.advanceBusinessPhase = function advanceBusinessPhaseFromShiftManager()
     scene.updateHud();
   }
 };
+
+function resetRestartableSceneState(scene: RuntimeGameScene): void {
+  // Stop stale references first. Scene restart usually clears its plugins, but doing
+  // this explicitly prevents an old timer/tween reference from firing during a day
+  // transition frame.
+  scene.purchaseEvent?.remove(false);
+  scene.timerEvent?.remove(false);
+  scene.guideTween?.stop();
+
+  if (scene.pauseOverlay?.active) scene.pauseOverlay.destroy(true);
+
+  scene.boxes = [];
+  scene.shelfSlots = [];
+  scene.loadedProducts = [];
+  scene.selectedBox = undefined;
+  scene.nextBoxId = 1;
+
+  scene.cartAtShelf = false;
+  scene.movingCart = false;
+  scene.restockBusy = false;
+
+  scene.money = 0;
+  scene.stars = 0;
+  scene.stocked = 0;
+  scene.combo = 0;
+  scene.comboDeadline = 0;
+  scene.customerSequence = 0;
+  scene.reserveStockStarted = false;
+
+  scene.guideMode = "NONE";
+  scene.guideTween = undefined;
+  scene.highlightedMissing = undefined;
+  scene.highlightedMissingScale = undefined;
+  scene.pauseOverlay = undefined;
+  scene.purchaseEvent = undefined;
+  scene.timerEvent = undefined;
+  scene.__pendingShiftTransition = undefined;
+}
 
 function installCanonicalShiftAccessors(scene: RuntimeGameScene): void {
   // TypeScript class fields create own properties. Remove them before installing
