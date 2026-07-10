@@ -4,6 +4,7 @@ import { GameScene } from "./scenes/GameScene";
 import { PolishOverlayScene } from "./scenes/PolishOverlayScene";
 import { ProgressionCustomerScene } from "./scenes/ProgressionCustomerScene";
 import "./gameSessionIntegration";
+import "./performanceEconomyIntegration";
 import "./layoutCalibration";
 import "./interactions/immediateCartDrag";
 
