@@ -1,3 +1,4 @@
+import Phaser from "phaser";
 import { GameScene } from "./scenes/GameScene";
 import { PolishOverlayScene } from "./scenes/PolishOverlayScene";
 import { gameSession } from "./systems/GameSession";
