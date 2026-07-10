@@ -1,18 +1,21 @@
 import Phaser from "phaser";
 import { AssetPaths, Assets } from "../assets";
-
-type ProductId = "cola" | "water" | "milk";
-
-type ProductDefinition = {
-  id: ProductId;
-  label: string;
-  boxKey: string;
-  productKey: string;
-};
+import {
+  BOX_POSITIONS,
+  GAME_RULES,
+  INITIAL_BOX_ORDER,
+  PRODUCTS,
+  SLOT_POSITIONS,
+  SLOT_PRODUCT_ORDER,
+  type ProductId
+} from "../gameConfig";
 
 type BoxItem = {
+  id: number;
   productId: ProductId;
   image: Phaser.GameObjects.Image;
+  positionIndex: number;
+  renewable: boolean;
   loaded: boolean;
 };
 
@@ -22,37 +25,15 @@ type ShelfSlot = {
   hitArea: Phaser.GameObjects.Rectangle;
   missingTag: Phaser.GameObjects.Image;
   product?: Phaser.GameObjects.Image;
+  reservedForCustomer: boolean;
 };
-
-const PRODUCTS: Record<ProductId, ProductDefinition> = {
-  cola: {
-    id: "cola",
-    label: "COLA",
-    boxKey: Assets.props.boxCola,
-    productKey: Assets.products.cola
-  },
-  water: {
-    id: "water",
-    label: "WATER",
-    boxKey: Assets.props.boxWater,
-    productKey: Assets.products.water
-  },
-  milk: {
-    id: "milk",
-    label: "MILK",
-    boxKey: Assets.props.boxMilk,
-    productKey: Assets.products.milk
-  }
-};
-
-const INITIAL_BOX_ORDER: ProductId[] = ["cola", "water", "milk", "cola", "water", "milk"];
-const SLOT_PRODUCT_ORDER: ProductId[] = ["cola", "water", "milk", "cola", "water", "milk"];
 
 export class GameScene extends Phaser.Scene {
   private boxes: BoxItem[] = [];
   private shelfSlots: ShelfSlot[] = [];
   private selectedBox?: BoxItem;
   private loadedProducts: ProductId[] = [];
+  private nextBoxId = 1;
 
   private cart!: Phaser.GameObjects.Container;
   private cartSprite!: Phaser.GameObjects.Image;
@@ -66,18 +47,25 @@ export class GameScene extends Phaser.Scene {
   private moneyText!: Phaser.GameObjects.Text;
   private starText!: Phaser.GameObjects.Text;
   private timerText!: Phaser.GameObjects.Text;
+  private comboText!: Phaser.GameObjects.Text;
+  private bubbleText!: Phaser.GameObjects.Text;
   private hintBubble!: Phaser.GameObjects.Image;
-  private menuButton!: Phaser.GameObjects.Image;
 
   private money = 0;
   private stars = 0;
   private stocked = 0;
+  private soldCount = 0;
+  private combo = 0;
+  private comboDeadline = 0;
   private storeOpen = false;
   private shiftEnded = false;
-  private remainingSeconds = 300;
+  private remainingSeconds = GAME_RULES.shiftSeconds;
   private customerSequence = 0;
+  private reserveStockStarted = false;
+
   private pauseOverlay?: Phaser.GameObjects.Container;
   private purchaseEvent?: Phaser.Time.TimerEvent;
+  private timerEvent?: Phaser.Time.TimerEvent;
 
   constructor() {
     super("game");
@@ -94,7 +82,7 @@ export class GameScene extends Phaser.Scene {
     this.createStage();
     this.createHud();
     this.createWorker();
-    this.createBoxes();
+    this.createInitialBoxes();
     this.createCart();
     this.createShelfSlots();
     this.startShiftTimer();
@@ -172,43 +160,45 @@ export class GameScene extends Phaser.Scene {
       .setDisplaySize(104, 112)
       .setDepth(53)
       .setInteractive({ useHandCursor: true });
-    taskButton.on("pointerdown", () => this.showTransientHint("Goal: load boxes, move the cart, then refill every MISSING slot."));
+    taskButton.on("pointerdown", () => {
+      this.showTransientHint("Load matching products, fill the shelf, then keep up with customer demand.");
+    });
 
-    this.add.image(860, 78, Assets.ui.star)
+    this.add.image(835, 78, Assets.ui.star)
       .setDisplaySize(55, 55)
       .setDepth(53);
-    this.starText = this.add.text(900, 55, "0", {
+    this.starText = this.add.text(875, 55, "0", {
       fontFamily: "Arial",
       fontSize: "31px",
       color: "#ffffff",
       fontStyle: "bold"
     }).setDepth(53);
 
-    this.add.image(986, 78, Assets.ui.coin)
+    this.add.image(965, 78, Assets.ui.coin)
       .setDisplaySize(54, 54)
       .setDepth(53);
-    this.moneyText = this.add.text(1022, 55, "0", {
+    this.moneyText = this.add.text(1002, 55, "0", {
       fontFamily: "Arial",
       fontSize: "31px",
       color: "#ffffff",
       fontStyle: "bold"
     }).setDepth(53);
 
-    this.add.image(1102, 78, Assets.ui.timer)
+    this.add.image(1090, 78, Assets.ui.timer)
       .setDisplaySize(52, 52)
       .setDepth(53);
-    this.timerText = this.add.text(1136, 55, "05:00", {
+    this.timerText = this.add.text(1126, 55, "05:00", {
       fontFamily: "Arial",
       fontSize: "31px",
       color: "#ffffff",
       fontStyle: "bold"
     }).setDepth(53);
 
-    this.menuButton = this.add.image(1265, 78, Assets.ui.menu)
+    const menuButton = this.add.image(1265, 78, Assets.ui.menu)
       .setDisplaySize(72, 72)
       .setDepth(54)
       .setInteractive({ useHandCursor: true });
-    this.menuButton.on("pointerdown", () => this.togglePauseOverlay());
+    menuButton.on("pointerdown", () => this.togglePauseOverlay());
 
     this.add.image(665, 1120, Assets.ui.stepCard)
       .setDisplaySize(720, 104)
@@ -223,93 +213,204 @@ export class GameScene extends Phaser.Scene {
       wordWrap: { width: 640 }
     }).setOrigin(0.5).setDepth(53);
 
-    this.hintBubble = this.add.image(520, 530, Assets.ui.hintBubble)
-      .setDisplaySize(330, 155)
+    this.comboText = this.add.text(1005, 885, "", {
+      fontFamily: "Arial",
+      fontSize: "27px",
+      color: "#ffe36a",
+      fontStyle: "bold",
+      stroke: "#3b2c15",
+      strokeThickness: 5
+    }).setOrigin(0.5).setDepth(45);
+
+    this.hintBubble = this.add.image(520, 520, Assets.ui.hintBubble)
+      .setDisplaySize(360, 165)
       .setAlpha(0)
       .setDepth(40);
+
+    this.bubbleText = this.add.text(520, 515, "", {
+      fontFamily: "Arial",
+      fontSize: "19px",
+      color: "#243030",
+      fontStyle: "bold",
+      align: "center",
+      wordWrap: { width: 290 }
+    }).setOrigin(0.5).setAlpha(0).setDepth(41);
   }
 
   private createWorker(): void {
-    this.worker = this.add.image(470, 615, Assets.characters.workerIdle)
-      .setDepth(12);
-    this.fitImage(this.worker, 260, 500);
+    this.worker = this.add.image(500, 620, Assets.characters.workerIdle).setDepth(12);
+    this.fitImage(this.worker, 250, 490);
   }
 
-  private createBoxes(): void {
-    const positions = [
-      { x: 95, y: 760 },
-      { x: 245, y: 760 },
-      { x: 395, y: 760 },
-      { x: 95, y: 925 },
-      { x: 245, y: 925 },
-      { x: 395, y: 925 }
-    ];
-
+  private createInitialBoxes(): void {
     INITIAL_BOX_ORDER.forEach((productId, index) => {
-      const definition = PRODUCTS[productId];
-      const position = positions[index];
-      const image = this.add.image(position.x, position.y, definition.boxKey)
-        .setDisplaySize(128, 128)
-        .setDepth(15)
-        .setInteractive({ useHandCursor: true });
-
-      const item: BoxItem = {
-        productId,
-        image,
-        loaded: false
-      };
-
-      image.on("pointerdown", () => this.selectBox(item));
-      this.boxes.push(item);
+      this.spawnBox(productId, index, false);
     });
   }
 
-  private createCart(): void {
-    this.cartSprite = this.add.image(0, 0, Assets.props.cart)
-      .setDisplaySize(270, 255);
+  private spawnBox(productId: ProductId, positionIndex: number, renewable: boolean): BoxItem {
+    const position = BOX_POSITIONS[positionIndex];
+    const image = this.add.image(position.x, position.y, PRODUCTS[productId].boxKey)
+      .setDepth(16)
+      .setInteractive({ useHandCursor: true });
+    this.fitImage(image, 126, 126);
 
-    this.cartCountText = this.add.text(104, -92, "0/6", {
+    const item: BoxItem = {
+      id: this.nextBoxId++,
+      productId,
+      image,
+      positionIndex,
+      renewable,
+      loaded: false
+    };
+
+    image.on("pointerdown", () => this.selectBox(item));
+    this.boxes.push(item);
+    return item;
+  }
+
+  private selectBox(item: BoxItem): void {
+    if (this.shiftEnded || this.movingCart || item.loaded || !item.image.visible) return;
+    if (this.loadedProducts.length >= GAME_RULES.cartCapacity) {
+      this.showTransientHint("The cart is full. Restock a shelf slot first.");
+      return;
+    }
+
+    if (this.selectedBox && this.selectedBox !== item) {
+      this.selectedBox.image.clearTint();
+      this.selectedBox.image.setScale(this.selectedBox.image.scaleX / 1.08);
+    }
+
+    this.selectedBox = item;
+    item.image.setTint(0xfff0a6);
+    item.image.setScale(item.image.scaleX * 1.08);
+    this.setWorkerTexture(Assets.characters.workerCarry, 255, 500);
+    this.updateHud();
+  }
+
+  private createCart(): void {
+    this.cartSprite = this.add.image(0, 0, Assets.props.cart);
+    this.fitImage(this.cartSprite, 280, 250);
+
+    this.cartCountText = this.add.text(85, -72, "0/6", {
       fontFamily: "Arial",
-      fontSize: "22px",
+      fontSize: "24px",
       color: "#ffffff",
       fontStyle: "bold",
-      backgroundColor: "#182020",
+      backgroundColor: "#152020",
       padding: { x: 8, y: 4 }
     }).setOrigin(0.5);
 
-    this.cart = this.add.container(475, 830, [this.cartSprite, this.cartCountText])
-      .setSize(285, 265)
-      .setDepth(20)
+    this.cart = this.add.container(470, 825, [this.cartSprite, this.cartCountText])
+      .setSize(300, 270)
+      .setDepth(18)
       .setInteractive({ useHandCursor: true });
 
     this.cart.on("pointerdown", () => this.handleCartTap());
   }
 
-  private createShelfSlots(): void {
-    const positions = [
-      { x: 875, y: 365 },
-      { x: 1020, y: 365 },
-      { x: 1165, y: 365 },
-      { x: 875, y: 570 },
-      { x: 1020, y: 570 },
-      { x: 1165, y: 570 }
-    ];
+  private handleCartTap(): void {
+    if (this.shiftEnded || this.movingCart) return;
 
-    positions.forEach((position, index) => {
-      const hitArea = this.add.rectangle(position.x, position.y, 112, 150, 0x173038, 0.08)
-        .setStrokeStyle(2, 0xe9eeee, 0.45)
-        .setDepth(7)
+    if (this.selectedBox) {
+      this.loadSelectedBox();
+      return;
+    }
+
+    if (!this.cartAtShelf && this.loadedProducts.length >= GAME_RULES.firstMoveRequirement) {
+      this.moveCartToShelf();
+      return;
+    }
+
+    if (!this.cartAtShelf) {
+      this.showTransientHint(`Load ${GAME_RULES.firstMoveRequirement - this.loadedProducts.length} more box(es) before moving the cart.`);
+      return;
+    }
+
+    if (this.loadedProducts.length === 0) {
+      this.showTransientHint("The cart is empty. Pick a new reserve box from the backroom.");
+    }
+  }
+
+  private loadSelectedBox(): void {
+    const item = this.selectedBox;
+    if (!item) return;
+
+    this.selectedBox = undefined;
+    item.image.clearTint();
+    item.image.disableInteractive();
+
+    this.tweens.add({
+      targets: item.image,
+      x: this.cart.x,
+      y: this.cart.y - 30,
+      scaleX: item.image.scaleX * 0.45,
+      scaleY: item.image.scaleY * 0.45,
+      duration: 380,
+      ease: "Cubic.Out",
+      onComplete: () => {
+        item.loaded = true;
+        item.image.setVisible(false);
+        this.loadedProducts.push(item.productId);
+        this.setWorkerTexture(Assets.characters.workerIdle, 250, 490);
+        this.cartCountText.setText(`${this.loadedProducts.length}/${GAME_RULES.cartCapacity}`);
+
+        if (item.renewable) {
+          this.scheduleReserveRespawn(item.productId, item.positionIndex);
+        }
+
+        this.updateHud();
+      }
+    });
+  }
+
+  private moveCartToShelf(): void {
+    this.movingCart = true;
+    this.setWorkerTexture(Assets.characters.workerPush, 275, 500);
+    this.worker.setPosition(615, 750);
+    this.updateHud();
+
+    this.tweens.add({
+      targets: this.cart,
+      x: 735,
+      y: 800,
+      duration: 950,
+      ease: "Sine.InOut"
+    });
+
+    this.tweens.add({
+      targets: this.worker,
+      x: 660,
+      y: 700,
+      duration: 950,
+      ease: "Sine.InOut",
+      onComplete: () => {
+        this.movingCart = false;
+        this.cartAtShelf = true;
+        this.setWorkerTexture(Assets.characters.workerIdle, 235, 470);
+        this.worker.setPosition(720, 690);
+        this.updateHud();
+      }
+    });
+  }
+
+  private createShelfSlots(): void {
+    SLOT_POSITIONS.forEach((position, index) => {
+      const productId = SLOT_PRODUCT_ORDER[index];
+      const hitArea = this.add.rectangle(position.x, position.y, 118, 128, 0xffffff, 0.001)
+        .setDepth(25)
         .setInteractive({ useHandCursor: true });
 
-      const missingTag = this.add.image(position.x, position.y + 50, Assets.ui.missingTag)
-        .setDisplaySize(102, 38)
-        .setDepth(9);
+      const missingTag = this.add.image(position.x, position.y + 30, Assets.ui.missingTag)
+        .setDisplaySize(112, 44)
+        .setDepth(24);
 
       const slot: ShelfSlot = {
         index,
-        productId: SLOT_PRODUCT_ORDER[index],
+        productId,
         hitArea,
-        missingTag
+        missingTag,
+        reservedForCustomer: false
       };
 
       hitArea.on("pointerdown", () => this.tryRestockSlot(slot));
@@ -317,309 +418,201 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  private selectBox(item: BoxItem): void {
-    if (item.loaded || this.movingCart || this.shiftEnded) return;
-
-    if (this.selectedBox && this.selectedBox !== item) {
-      this.selectedBox.image.setScale(1);
-      this.selectedBox.image.clearTint();
-    }
-
-    this.selectedBox = item;
-    item.image.setScale(1.12).setTint(0xffffcc);
-    this.setWorkerState("carry");
-    this.updateHud();
-  }
-
-  private handleCartTap(): void {
-    if (this.movingCart || this.shiftEnded) return;
-
-    if (this.selectedBox) {
-      const item = this.selectedBox;
-      this.selectedBox = undefined;
-      item.image.disableInteractive().clearTint();
-
-      this.tweens.add({
-        targets: item.image,
-        x: this.cart.x,
-        y: this.cart.y - 25,
-        scaleX: 0.38,
-        scaleY: 0.38,
-        duration: 380,
-        ease: "Cubic.Out",
-        onComplete: () => {
-          item.loaded = true;
-          item.image.setVisible(false);
-          this.loadedProducts.push(item.productId);
-          this.updateCartCount();
-          this.setWorkerState("idle");
-          this.updateHud();
-        }
-      });
-      return;
-    }
-
-    if (!this.cartAtShelf && this.loadedProducts.length >= 6) {
-      this.moveCartToShelf();
-    }
-  }
-
-  private moveCartToShelf(): void {
-    this.movingCart = true;
-    this.cart.setVisible(false);
-
-    this.worker.setTexture(Assets.characters.workerPush)
-      .setPosition(500, 690)
-      .setVisible(true);
-    this.fitImage(this.worker, 400, 560);
-    this.worker.setDepth(24);
-
-    this.updateHud();
-
-    this.tweens.add({
-      targets: this.worker,
-      x: 760,
-      y: 735,
-      duration: 1050,
-      ease: "Sine.InOut",
-      onComplete: () => {
-        this.movingCart = false;
-        this.cartAtShelf = true;
-        this.cart.setPosition(755, 850).setVisible(true);
-        this.worker.setTexture(Assets.characters.workerIdle)
-          .setPosition(700, 650)
-          .setDepth(12);
-        this.fitImage(this.worker, 230, 440);
-        this.updateHud();
-      }
-    });
-  }
-
   private tryRestockSlot(slot: ShelfSlot): void {
-    if (!this.cartAtShelf || slot.product || this.movingCart || this.shiftEnded) return;
+    if (this.shiftEnded || this.movingCart || !this.cartAtShelf) return;
+    if (slot.product || slot.reservedForCustomer) return;
 
     const productIndex = this.loadedProducts.indexOf(slot.productId);
     if (productIndex < 0) {
-      this.showTransientHint(`Load a ${PRODUCTS[slot.productId].label} box first.`);
+      this.showTransientHint(`This slot needs ${PRODUCTS[slot.productId].label}. Load the matching box.`);
       return;
     }
 
     this.loadedProducts.splice(productIndex, 1);
-    this.updateCartCount();
+    this.cartCountText.setText(`${this.loadedProducts.length}/${GAME_RULES.cartCapacity}`);
 
-    const definition = PRODUCTS[slot.productId];
-    const token = this.add.image(this.cart.x, this.cart.y - 45, definition.productKey)
-      .setDepth(30);
-    this.fitImage(token, 62, 112);
+    const product = this.add.image(this.cart.x, this.cart.y - 35, PRODUCTS[slot.productId].productKey)
+      .setDepth(31);
+    this.fitImage(product, 72, 112);
 
     this.tweens.add({
-      targets: token,
+      targets: product,
       x: slot.hitArea.x,
       y: slot.hitArea.y,
-      duration: 430,
+      duration: 440,
       ease: "Cubic.Out",
       onComplete: () => {
-        slot.product = token;
+        slot.product = product;
         slot.missingTag.setVisible(false);
-        slot.hitArea.setStrokeStyle(2, 0x7dc982, 0.55);
-        this.stocked = this.shelfSlots.filter((s) => Boolean(s.product)).length;
-        this.updateHud();
+        this.stocked += 1;
+        this.recordRestockCombo();
 
         if (this.stocked >= this.shelfSlots.length && !this.storeOpen) {
           this.openStore();
         }
+
+        this.updateHud();
       }
     });
   }
 
+  private recordRestockCombo(): void {
+    if (!this.storeOpen) return;
+
+    const now = this.time.now;
+    this.combo = now <= this.comboDeadline ? this.combo + 1 : 1;
+    this.comboDeadline = now + GAME_RULES.comboWindowMs;
+
+    if (this.combo >= 2) {
+      const bonus = Math.min(10, this.combo * 2);
+      this.money += bonus;
+      this.comboText.setText(`RESTOCK x${this.combo}  +${bonus}`);
+      this.comboText.setAlpha(1).setScale(0.8);
+      this.tweens.add({
+        targets: this.comboText,
+        alpha: 0,
+        scaleX: 1.15,
+        scaleY: 1.15,
+        duration: 900,
+        ease: "Cubic.Out"
+      });
+    }
+  }
+
   private openStore(): void {
     this.storeOpen = true;
-    this.stars = Math.max(this.stars, 1);
-    this.resetSupplyBoxes();
-    this.updateHud();
-    this.showTransientHint("Store open! Customers are buying. Keep refilling new MISSING slots.");
+    this.showTransientHint("Store open! Customers will create new MISSING slots. Keep restocking.");
+    this.startReserveStock();
 
     this.purchaseEvent = this.time.addEvent({
-      delay: 2200,
+      delay: GAME_RULES.customerIntervalMs,
       loop: true,
       callback: () => this.customerPurchase()
     });
   }
 
-  private customerPurchase(): void {
-    if (this.shiftEnded) return;
+  private startReserveStock(): void {
+    if (this.reserveStockStarted) return;
+    this.reserveStockStarted = true;
 
-    const available = this.shelfSlots.filter((slot) => Boolean(slot.product));
+    const reserveOrder: ProductId[] = ["cola", "water", "milk", "cola", "water", "milk"];
+    reserveOrder.forEach((productId, index) => {
+      this.time.delayedCall(index * 100, () => this.spawnBox(productId, index, true));
+    });
+  }
+
+  private scheduleReserveRespawn(productId: ProductId, positionIndex: number): void {
+    this.time.delayedCall(GAME_RULES.reserveRespawnDelayMs, () => {
+      if (!this.shiftEnded) this.spawnBox(productId, positionIndex, true);
+    });
+  }
+
+  private customerPurchase(): void {
+    if (!this.storeOpen || this.shiftEnded) return;
+
+    const available = this.shelfSlots.filter((slot) => slot.product && !slot.reservedForCustomer);
     if (available.length === 0) return;
 
-    const slot = Phaser.Utils.Array.GetRandom(available);
-    const useFirstCustomer = this.customerSequence % 2 === 0;
+    const slot = this.pickWeightedSlot(available);
+    slot.reservedForCustomer = true;
+
+    const customerKeys = this.customerSequence % 2 === 0
+      ? { idle: Assets.characters.customer01Idle, basket: Assets.characters.customer01Basket }
+      : { idle: Assets.characters.customer02Idle, basket: Assets.characters.customer02Basket };
     this.customerSequence += 1;
 
-    const idleKey = useFirstCustomer
-      ? Assets.characters.customer01Idle
-      : Assets.characters.customer02Idle;
-    const basketKey = useFirstCustomer
-      ? Assets.characters.customer01Basket
-      : Assets.characters.customer02Basket;
-
-    const customer = this.add.image(1285, 905, idleKey)
-      .setDepth(26);
-    this.fitImage(customer, 145, 270);
+    const customer = this.add.image(1310, 840, customerKeys.idle).setDepth(35);
+    this.fitImage(customer, 170, 330);
 
     this.tweens.add({
       targets: customer,
-      x: slot.hitArea.x + 45,
+      x: slot.hitArea.x + 20,
       y: 790,
-      duration: 780,
+      duration: 720,
       ease: "Sine.InOut",
       onComplete: () => {
-        slot.product?.destroy();
+        const soldProduct = slot.product;
         slot.product = undefined;
+        slot.reservedForCustomer = false;
+        soldProduct?.destroy();
         slot.missingTag.setVisible(true);
-        slot.hitArea.setStrokeStyle(2, 0xe9eeee, 0.45);
-        this.stocked = this.shelfSlots.filter((s) => Boolean(s.product)).length;
+        this.stocked = Math.max(0, this.stocked - 1);
 
-        customer.setTexture(basketKey);
-        this.fitImage(customer, 160, 285);
+        customer.setTexture(customerKeys.basket);
+        this.fitImage(customer, 180, 340);
 
-        this.money += 10;
-        if (this.money >= 50) this.stars = Math.max(this.stars, 2);
-        if (this.money >= 100) this.stars = Math.max(this.stars, 3);
-        this.spawnIncomeText(slot.hitArea.x, slot.hitArea.y - 55, 10);
+        const price = PRODUCTS[slot.productId].price;
+        this.money += price;
+        this.soldCount += 1;
+        this.updateStars();
+        this.showIncome(slot.hitArea.x, slot.hitArea.y - 55, price);
         this.updateHud();
 
         this.tweens.add({
           targets: customer,
-          x: 1370,
+          x: 1300,
           y: 930,
           alpha: 0,
-          duration: 720,
-          delay: 180,
+          duration: 680,
+          ease: "Sine.In",
           onComplete: () => customer.destroy()
         });
+
+        const missingCount = this.shelfSlots.filter((candidate) => !candidate.product).length;
+        if (missingCount >= 3) {
+          this.showTransientHint(`${missingCount} shelves are empty. Restock quickly to protect sales.`);
+        }
       }
     });
   }
 
-  private spawnIncomeText(x: number, y: number, amount: number): void {
-    const income = this.add.text(x, y, `+$${amount}`, {
+  private pickWeightedSlot(slots: ShelfSlot[]): ShelfSlot {
+    const totalWeight = slots.reduce((sum, slot) => sum + PRODUCTS[slot.productId].saleWeight, 0);
+    let cursor = Phaser.Math.FloatBetween(0, totalWeight);
+
+    for (const slot of slots) {
+      cursor -= PRODUCTS[slot.productId].saleWeight;
+      if (cursor <= 0) return slot;
+    }
+
+    return slots[slots.length - 1];
+  }
+
+  private showIncome(x: number, y: number, amount: number): void {
+    const income = this.add.text(x, y, `+${amount}`, {
       fontFamily: "Arial",
-      fontSize: "28px",
+      fontSize: "27px",
       color: "#ffe36a",
       fontStyle: "bold",
-      stroke: "#5b3d00",
-      strokeThickness: 4
-    }).setOrigin(0.5).setDepth(45);
+      stroke: "#4c3515",
+      strokeThickness: 5
+    }).setOrigin(0.5).setDepth(60);
 
     this.tweens.add({
       targets: income,
-      y: y - 85,
+      y: y - 90,
       alpha: 0,
       duration: 850,
+      ease: "Cubic.Out",
       onComplete: () => income.destroy()
     });
   }
 
-  private resetSupplyBoxes(): void {
-    this.boxes.forEach((item) => {
-      item.loaded = false;
-      item.image.setVisible(true)
-        .setScale(1)
-        .clearTint()
-        .setInteractive({ useHandCursor: true });
-    });
-  }
-
-  private setWorkerState(state: "idle" | "carry"): void {
-    const key = state === "carry"
-      ? Assets.characters.workerCarry
-      : Assets.characters.workerIdle;
-
-    this.worker.setTexture(key)
-      .setVisible(true)
-      .setPosition(this.cartAtShelf ? 700 : 470, this.cartAtShelf ? 650 : 615)
-      .setDepth(12);
-
-    this.fitImage(this.worker, state === "carry" ? 290 : 260, state === "carry" ? 500 : 500);
-  }
-
-  private updateCartCount(): void {
-    this.cartCountText.setText(`${this.loadedProducts.length}/6`);
-  }
-
-  private updateHud(): void {
-    this.stocked = this.shelfSlots.filter((slot) => Boolean(slot.product)).length;
-    this.taskText.setText(`Task Progress: ${this.stocked}/6`);
-    this.moneyText.setText(String(this.money));
-    this.starText.setText(String(this.stars));
-
-    if (this.shiftEnded) {
-      this.hintText.setText(`Shift complete · earnings $${this.money} · stars ${this.stars}/3`);
-      return;
-    }
-
-    if (this.storeOpen) {
-      this.hintText.setText("Store open · customers are buying · refill new MISSING slots");
-      return;
-    }
-
-    if (this.movingCart) {
-      this.hintText.setText("3. Push the cart to the shelf");
-      return;
-    }
-
-    if (this.cartAtShelf) {
-      this.hintText.setText("4. Tap a MISSING slot to restock the matching product");
-      return;
-    }
-
-    if (this.selectedBox) {
-      this.hintText.setText("2. Tap the cart to load the selected box");
-      return;
-    }
-
-    if (this.loadedProducts.length >= 6) {
-      this.hintText.setText("3. Cart ready · tap the cart to move to the sales floor");
-      return;
-    }
-
-    this.hintText.setText("1. Tap a drink box to pick it up");
-  }
-
-  private showTransientHint(message: string): void {
-    this.hintBubble.setAlpha(1).setScale(1);
-
-    const text = this.add.text(this.hintBubble.x, this.hintBubble.y - 5, message, {
-      fontFamily: "Arial",
-      fontSize: "20px",
-      color: "#172020",
-      fontStyle: "bold",
-      align: "center",
-      wordWrap: { width: 270 }
-    }).setOrigin(0.5).setDepth(41);
-
-    this.tweens.add({
-      targets: [this.hintBubble, text],
-      alpha: 0,
-      duration: 300,
-      delay: 1900,
-      onComplete: () => text.destroy()
-    });
+  private updateStars(): void {
+    this.stars = GAME_RULES.starSalesThresholds.filter((threshold) => this.soldCount >= threshold).length;
+    this.stars = Math.min(GAME_RULES.maxStars, this.stars);
   }
 
   private startShiftTimer(): void {
     this.updateTimerText();
-    this.time.addEvent({
+    this.timerEvent = this.time.addEvent({
       delay: 1000,
       loop: true,
       callback: () => {
-        if (this.shiftEnded || this.pauseOverlay?.visible) return;
+        if (this.shiftEnded) return;
         this.remainingSeconds = Math.max(0, this.remainingSeconds - 1);
         this.updateTimerText();
-        if (this.remainingSeconds === 0) {
-          this.endShift();
-        }
+        if (this.remainingSeconds <= 0) this.endShift();
       }
     });
   }
@@ -627,46 +620,165 @@ export class GameScene extends Phaser.Scene {
   private updateTimerText(): void {
     const minutes = Math.floor(this.remainingSeconds / 60);
     const seconds = this.remainingSeconds % 60;
-    this.timerText.setText(`${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`);
+    this.timerText.setText(`${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`);
   }
 
   private endShift(): void {
     if (this.shiftEnded) return;
     this.shiftEnded = true;
     this.purchaseEvent?.remove(false);
-    this.stars = Math.max(this.stars, this.money >= 100 ? 3 : this.money >= 50 ? 2 : this.storeOpen ? 1 : 0);
+    this.timerEvent?.remove(false);
+    this.selectedBox?.image.clearTint();
+    this.selectedBox = undefined;
     this.updateHud();
-    this.showTransientHint(`Morning shift complete! Final earnings: $${this.money}`);
+
+    const shade = this.add.rectangle(665, 591, 1330, 1182, 0x071010, 0.78);
+    const panel = this.add.rectangle(665, 575, 620, 430, 0xf4e7c9, 0.98)
+      .setStrokeStyle(8, 0x4c7148);
+    const title = this.add.text(665, 435, "SHIFT COMPLETE", {
+      fontFamily: "Arial",
+      fontSize: "46px",
+      color: "#25382d",
+      fontStyle: "bold"
+    }).setOrigin(0.5);
+    const summary = this.add.text(665, 555,
+      `Sales: ${this.soldCount}\nCoins: ${this.money}\nStars: ${this.stars}/${GAME_RULES.maxStars}`,
+      {
+        fontFamily: "Arial",
+        fontSize: "31px",
+        color: "#25382d",
+        align: "center",
+        lineSpacing: 12
+      }
+    ).setOrigin(0.5);
+    const retry = this.add.rectangle(665, 720, 260, 72, 0x4f8b4c)
+      .setStrokeStyle(4, 0x2f5f32)
+      .setInteractive({ useHandCursor: true });
+    const retryText = this.add.text(665, 720, "PLAY AGAIN", {
+      fontFamily: "Arial",
+      fontSize: "27px",
+      color: "#ffffff",
+      fontStyle: "bold"
+    }).setOrigin(0.5);
+
+    retry.on("pointerdown", () => this.scene.restart());
+    retryText.setInteractive({ useHandCursor: true }).on("pointerdown", () => this.scene.restart());
+
+    this.pauseOverlay = this.add.container(0, 0, [shade, panel, title, summary, retry, retryText]).setDepth(100);
   }
 
   private togglePauseOverlay(): void {
-    if (!this.pauseOverlay) {
-      const shade = this.add.rectangle(665, 669, 1330, 1026, 0x081010, 0.72);
-      const panel = this.add.rectangle(665, 625, 430, 250, 0x1b2424, 0.98)
-        .setStrokeStyle(3, 0x596969);
-      const title = this.add.text(665, 575, "PAUSED", {
-        fontFamily: "Arial",
-        fontSize: "42px",
-        color: "#ffffff",
-        fontStyle: "bold"
-      }).setOrigin(0.5);
-      const subtitle = this.add.text(665, 650, "Tap the menu button again to continue", {
-        fontFamily: "Arial",
-        fontSize: "21px",
-        color: "#d7e0e0"
-      }).setOrigin(0.5);
+    if (this.shiftEnded) return;
 
-      this.pauseOverlay = this.add.container(0, 0, [shade, panel, title, subtitle])
-        .setDepth(80)
-        .setVisible(true);
+    if (this.pauseOverlay) {
+      this.pauseOverlay.destroy(true);
+      this.pauseOverlay = undefined;
+      this.time.paused = false;
+      this.tweens.resumeAll();
       return;
     }
 
-    this.pauseOverlay.setVisible(!this.pauseOverlay.visible);
+    const shade = this.add.rectangle(665, 591, 1330, 1182, 0x071010, 0.7);
+    const panel = this.add.rectangle(665, 575, 500, 270, 0xf4e7c9, 0.98)
+      .setStrokeStyle(8, 0x4c7148);
+    const title = this.add.text(665, 515, "PAUSED", {
+      fontFamily: "Arial",
+      fontSize: "46px",
+      color: "#25382d",
+      fontStyle: "bold"
+    }).setOrigin(0.5);
+    const resume = this.add.rectangle(665, 640, 240, 70, 0x4f8b4c)
+      .setInteractive({ useHandCursor: true });
+    const resumeText = this.add.text(665, 640, "RESUME", {
+      fontFamily: "Arial",
+      fontSize: "27px",
+      color: "#ffffff",
+      fontStyle: "bold"
+    }).setOrigin(0.5);
+
+    this.pauseOverlay = this.add.container(0, 0, [shade, panel, title, resume, resumeText]).setDepth(100);
+    const close = () => this.togglePauseOverlay();
+    resume.on("pointerdown", close);
+    resumeText.setInteractive({ useHandCursor: true }).on("pointerdown", close);
+
+    this.tweens.pauseAll();
+    this.time.paused = true;
+  }
+
+  private showTransientHint(message: string): void {
+    if (this.shiftEnded) return;
+
+    this.hintBubble.setAlpha(1);
+    this.bubbleText.setText(message).setAlpha(1);
+    this.tweens.killTweensOf(this.hintBubble);
+    this.tweens.killTweensOf(this.bubbleText);
+
+    this.tweens.add({
+      targets: [this.hintBubble, this.bubbleText],
+      alpha: 0,
+      delay: 1800,
+      duration: 350
+    });
+  }
+
+  private updateHud(): void {
+    this.moneyText.setText(String(this.money));
+    this.starText.setText(String(this.stars));
+
+    if (this.storeOpen) {
+      this.taskText.setText(`Sales ${this.soldCount} · Shelf ${this.stocked}/${this.shelfSlots.length}`);
+    } else {
+      this.taskText.setText(`Initial Restock ${this.stocked}/${this.shelfSlots.length}`);
+    }
+
+    if (this.shiftEnded) {
+      this.hintText.setText("Shift complete");
+      return;
+    }
+
+    if (this.movingCart) {
+      this.hintText.setText("3. Push the cart to the sales floor");
+      return;
+    }
+
+    if (this.selectedBox) {
+      this.hintText.setText(`2. Tap the cart to load ${PRODUCTS[this.selectedBox.productId].label}`);
+      return;
+    }
+
+    if (!this.cartAtShelf && this.loadedProducts.length >= GAME_RULES.firstMoveRequirement) {
+      this.hintText.setText("3. Cart ready · tap it to move to the shelf");
+      return;
+    }
+
+    if (!this.cartAtShelf) {
+      this.hintText.setText(`1. Pick boxes · cart ${this.loadedProducts.length}/${GAME_RULES.firstMoveRequirement}`);
+      return;
+    }
+
+    const missingSlots = this.shelfSlots.filter((slot) => !slot.product).length;
+    if (!this.storeOpen) {
+      this.hintText.setText(`4. Tap MISSING slots · ${missingSlots} remaining`);
+      return;
+    }
+
+    if (missingSlots > 0) {
+      this.hintText.setText(`Store open · refill ${missingSlots} MISSING slot(s) · cart ${this.loadedProducts.length}/6`);
+      return;
+    }
+
+    this.hintText.setText("Store open · shelves full · watch for the next customer");
+  }
+
+  private setWorkerTexture(texture: string, maxWidth: number, maxHeight: number): void {
+    this.worker.setTexture(texture);
+    this.fitImage(this.worker, maxWidth, maxHeight);
   }
 
   private fitImage(image: Phaser.GameObjects.Image, maxWidth: number, maxHeight: number): void {
-    const scale = Math.min(maxWidth / image.width, maxHeight / image.height);
+    const sourceWidth = Math.max(1, image.width);
+    const sourceHeight = Math.max(1, image.height);
+    const scale = Math.min(maxWidth / sourceWidth, maxHeight / sourceHeight);
     image.setScale(scale);
   }
 }
