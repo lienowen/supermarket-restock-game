@@ -1,0 +1,12 @@
+public/assets/day01/backroom_bg.png
+public/assets/day01/salesfloor_bg.png
+public/assets/day01/cart.png
+public/assets/day01/shelf_frame.png
+public/assets/day01/box_cola.png
+public/assets/day01/box_water.png
+public/assets/day01/box_milk.png
+public/assets/day01/product_cola.png
+public/assets/day01/product_water.png
+public/assets/day01/product_milk.png
+public/assets/day01/customer_01.png
+public/assets/day01/customer_02.png
