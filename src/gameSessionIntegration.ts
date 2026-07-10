@@ -12,6 +12,7 @@ type RuntimeGameScene = Phaser.Scene & {
   shiftEnded: boolean;
   money: number;
   stocked: number;
+  remainingSeconds: number;
   purchaseEvent?: Phaser.Time.TimerEvent;
   __pendingShiftTransition?: ShiftTransition;
   showPhaseBanner: (text: string) => void;
@@ -31,8 +32,16 @@ const originalCreate = prototype.create;
 prototype.create = function createWithCanonicalShiftSession(): void {
   const scene = this as unknown as RuntimeGameScene;
 
+  // Resolve the day first. GAME_RULES uses runtime getters backed by GameSession,
+  // so every subsequent timer/target lookup now reflects the actual active day.
   gameSession.reset(resolveActiveDay());
   installCanonicalShiftAccessors(scene);
+
+  // GameScene's class field is initialized before create(), which used to capture
+  // Day 1's 180 seconds even after switching to Day 2. Re-seed it after the active
+  // day is known and before GameScene starts its timer.
+  scene.remainingSeconds = GAME_RULES.shiftSeconds;
+
   originalCreate.call(this);
 
   // Money/shelf counts remain presentation metrics for now. Shift state does not:
