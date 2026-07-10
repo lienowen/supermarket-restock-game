@@ -27,13 +27,13 @@ export const LEVELS: Record<LevelId, LevelConfig> = {
   day02: {
     id: "day02",
     title: "First Customers",
-    objective: "Keep drink shelves available while a small customer flow shops.",
+    objective: "Keep shelves available, use nearby Back Stock first, and save waiting customers.",
     zones: ["backroom", "drinks"],
     shiftSeconds: 210,
     salesTargets: { openToRush: 6, rushToClosing: 12 },
     customerIntervalsMs: { open: 2400, rush: 1350 },
     customerMix: { normal: 0.85, family: 0.15 },
-    features: { ...baseFeatures, rushHour: true }
+    features: { ...baseFeatures, customerWaiting: true, rushHour: true }
   },
   day03: {
     id: "day03",
