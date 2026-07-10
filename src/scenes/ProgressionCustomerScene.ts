@@ -3,6 +3,7 @@ import { Assets } from "../assets";
 import { PRODUCTS, type ProductId } from "../gameConfig";
 import type { ShiftPhase } from "../domain/gameTypes";
 import { CustomerStateMachine } from "../systems/CustomerStateMachine";
+import { gameSession } from "../systems/GameSession";
 
 type PlayDay = "day01" | "day02";
 
@@ -54,6 +55,7 @@ export class ProgressionCustomerScene extends Phaser.Scene {
   private nextDayButton?: Phaser.GameObjects.Container;
   private dayBanner?: Phaser.GameObjects.Container;
   private attachEvent?: Phaser.Time.TimerEvent;
+  private pauseApplied = false;
 
   constructor() {
     super({ key: "progression-customer", active: true });
@@ -61,6 +63,7 @@ export class ProgressionCustomerScene extends Phaser.Scene {
 
   create(): void {
     this.currentDay = this.readActiveDay();
+    gameSession.setActiveDay(this.currentDay);
     this.attachEvent = this.time.addEvent({
       delay: 120,
       loop: true,
@@ -70,6 +73,10 @@ export class ProgressionCustomerScene extends Phaser.Scene {
 
   update(_time: number, delta: number): void {
     if (!this.attached || !this.gameScene?.scene.isActive()) return;
+
+    this.syncPauseState();
+    this.syncSharedSession();
+    if (this.pauseApplied) return;
 
     this.updateWaitingCustomers(delta);
 
@@ -86,6 +93,7 @@ export class ProgressionCustomerScene extends Phaser.Scene {
 
     this.gameScene = scene;
     this.attached = true;
+    this.syncSharedSession();
     this.showDayBanner();
 
     if (this.currentDay === "day02") this.startWaitingCustomerLoop();
@@ -106,8 +114,37 @@ export class ProgressionCustomerScene extends Phaser.Scene {
     this.dayBanner?.destroy(true);
     this.dayBanner = undefined;
 
+    if (this.pauseApplied) this.tweens.resumeAll();
+    this.pauseApplied = false;
+    gameSession.setPaused(false);
     this.gameScene = undefined;
     this.attached = false;
+  }
+
+  private syncPauseState(): void {
+    const paused = Boolean(this.gameScene?.time.paused);
+    gameSession.setPaused(paused);
+    if (paused === this.pauseApplied) return;
+
+    this.pauseApplied = paused;
+    if (paused) {
+      this.tweens.pauseAll();
+    } else {
+      this.tweens.resumeAll();
+    }
+  }
+
+  private syncSharedSession(): void {
+    const scene = this.gameScene;
+    if (!scene) return;
+
+    gameSession.syncRuntime({
+      phase: scene.phase,
+      soldCount: scene.soldCount,
+      money: scene.money,
+      stocked: scene.stocked,
+      shiftEnded: scene.shiftEnded
+    });
   }
 
   private readActiveDay(): PlayDay {
@@ -123,6 +160,7 @@ export class ProgressionCustomerScene extends Phaser.Scene {
   }
 
   private writeActiveDay(day: PlayDay): void {
+    gameSession.setActiveDay(day);
     try {
       localStorage.setItem(STORAGE_KEY, day);
     } catch {
@@ -207,7 +245,7 @@ export class ProgressionCustomerScene extends Phaser.Scene {
 
   private trySpawnWaitingCustomer(): void {
     const scene = this.gameScene;
-    if (!scene || scene.shiftEnded) return;
+    if (!scene || scene.shiftEnded || gameSession.isPaused) return;
     if (scene.phase !== "OPEN" && scene.phase !== "RUSH") return;
     if (this.waitingCustomers.size >= 1) return;
 
@@ -286,7 +324,7 @@ export class ProgressionCustomerScene extends Phaser.Scene {
   }
 
   private askCustomerToWait(customer: WaitingCustomer): void {
-    if (!customer.arrived || customer.resolving || customer.askedToWait) return;
+    if (this.pauseApplied || !customer.arrived || customer.resolving || customer.askedToWait) return;
     if (customer.machine.current !== "WAIT") return;
 
     customer.askedToWait = true;
@@ -299,6 +337,8 @@ export class ProgressionCustomerScene extends Phaser.Scene {
   }
 
   private updateWaitingCustomers(delta: number): void {
+    if (gameSession.isPaused) return;
+
     for (const customer of [...this.waitingCustomers]) {
       if (customer.resolving || !customer.arrived) continue;
 
@@ -323,7 +363,7 @@ export class ProgressionCustomerScene extends Phaser.Scene {
   private resolveWaitingCustomer(customer: WaitingCustomer): void {
     const scene = this.gameScene;
     const product = customer.slot.product;
-    if (!scene || !product || customer.resolving) return;
+    if (!scene || !product || customer.resolving || gameSession.isPaused) return;
 
     customer.resolving = true;
     customer.machine.transition("BUY");
@@ -342,6 +382,7 @@ export class ProgressionCustomerScene extends Phaser.Scene {
     scene.showIncome(customer.slot.hitArea.x, customer.slot.hitArea.y - 55, price + saveBonus);
     scene.advanceBusinessPhase();
     scene.updateHud();
+    this.syncSharedSession();
 
     const basketKey = customer.id % 2 === 0
       ? Assets.characters.customer02Basket
@@ -362,7 +403,7 @@ export class ProgressionCustomerScene extends Phaser.Scene {
   }
 
   private missWaitingCustomer(customer: WaitingCustomer): void {
-    if (customer.resolving) return;
+    if (customer.resolving || gameSession.isPaused) return;
     customer.resolving = true;
 
     this.showFloatingText(customer.container.x, customer.container.y - 320, "MISSED SALE", 0xff7a6e);
