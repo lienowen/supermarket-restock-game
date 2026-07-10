@@ -18,6 +18,7 @@
     "src/systems/ShiftManager.ts",
     "src/systems/CustomerStateMachine.ts",
     "src/systems/GameSession.ts",
+    "src/systems/PerformanceRating.ts",
     "src/systems/interactionRules.ts"
   ]
 }
