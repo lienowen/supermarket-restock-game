@@ -683,7 +683,10 @@ export class GameScene extends Phaser.Scene {
           x: approachX,
           y: approachY,
           duration: 420,
-          ease: "Sine.InOut"
+          ease: "Sine.InOut",
+          onComplete: () => {
+            this.setWorkerTexture(Assets.characters.workerRestock, 220, 440);
+          }
         });
 
         this.tweens.add({

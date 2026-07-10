@@ -18,6 +18,7 @@ export const Assets = {
   characters: {
     workerIdle: "worker-idle",
     workerCarry: "worker-carry-box",
+    workerRestock: "worker-restock",
     workerPush: "worker-push-cart",
     customer01Idle: "customer-01-idle",
     customer01Basket: "customer-01-basket",
@@ -51,6 +52,7 @@ export const AssetPaths = {
   [Assets.products.milk]: "./assets/day01/product_milk.png",
   [Assets.characters.workerIdle]: "./assets/day01/worker_idle.png",
   [Assets.characters.workerCarry]: "./assets/day01/worker_carry_box.png",
+  [Assets.characters.workerRestock]: "./assets/day01/worker_restock.png",
   [Assets.characters.workerPush]: "./assets/day01/worker_push_cart.png",
   [Assets.characters.customer01Idle]: "./assets/day01/customer_01_idle.png",
   [Assets.characters.customer01Basket]: "./assets/day01/customer_01_basket.png",
