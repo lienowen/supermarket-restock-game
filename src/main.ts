@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import "./styles.css";
 import { GameScene } from "./scenes/GameScene";
+import "./interactions/boxDragPatch";
 
 new Phaser.Game({
   type: Phaser.AUTO,
