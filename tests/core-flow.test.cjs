@@ -5,6 +5,7 @@ const { LEVELS } = require("../.test-dist/src/levels/levelConfigs.js");
 const { ShiftManager } = require("../.test-dist/src/systems/ShiftManager.js");
 const { CustomerStateMachine } = require("../.test-dist/src/systems/CustomerStateMachine.js");
 const { gameSession } = require("../.test-dist/src/systems/GameSession.js");
+const { GAME_RULES } = require("../.test-dist/src/gameConfig.js");
 const {
   getCartLoadState,
   canDragBox,
@@ -53,6 +54,22 @@ test("GameSession rejects phase/sales overwrite from legacy scene sync", () => {
   assert.equal(gameSession.sales, 2);
   assert.equal(gameSession.snapshot.money, 50);
   assert.equal(gameSession.snapshot.stocked, 4);
+});
+
+test("Runtime rules follow the active day instead of staying on Day 1", () => {
+  gameSession.reset("day01");
+  assert.equal(GAME_RULES.shiftSeconds, 180);
+  assert.equal(GAME_RULES.normalSalesTarget, 4);
+  assert.equal(GAME_RULES.rushSalesTarget, 8);
+  assert.equal(GAME_RULES.customerIntervalOpenMs, 2600);
+  assert.equal(GAME_RULES.customerIntervalRushMs, 1450);
+
+  gameSession.reset("day02");
+  assert.equal(GAME_RULES.shiftSeconds, 210);
+  assert.equal(GAME_RULES.normalSalesTarget, 6);
+  assert.equal(GAME_RULES.rushSalesTarget, 12);
+  assert.equal(GAME_RULES.customerIntervalOpenMs, 2400);
+  assert.equal(GAME_RULES.customerIntervalRushMs, 1350);
 });
 
 test("Cart load states are visually distinct", () => {
