@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "outDir": ".test-dist",
+    "rootDir": ".",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": [
+    "src/domain/gameTypes.ts",
+    "src/levels/levelConfigs.ts",
+    "src/systems/ShiftManager.ts",
+    "src/systems/CustomerStateMachine.ts",
+    "src/systems/GameSession.ts",
+    "src/systems/interactionRules.ts"
+  ]
+}
