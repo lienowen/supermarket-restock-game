@@ -78,8 +78,13 @@ export class BackStockScene extends Phaser.Scene {
     this.gameScene = scene;
     this.attached = true;
     this.inventory = { ...INITIAL_BACK_STOCK };
+
+    // Day 2 should not repeat Day 1's full six-slot setup. Keep one of each drink
+    // from the previous shift so the player can open after a single three-case trip.
+    this.seedOpeningShelfStock(scene);
     this.createPanel();
     this.updateVisibility();
+
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.detach());
     this.scene.bringToTop();
   }
@@ -91,6 +96,32 @@ export class BackStockScene extends Phaser.Scene {
     this.gameScene = undefined;
     this.attached = false;
     this.lastPhase = undefined;
+  }
+
+  private seedOpeningShelfStock(scene: RuntimeGameScene): void {
+    if (scene.phase !== "PREPARE" || scene.stocked > 0) return;
+
+    const seeded = new Set<ProductId>();
+    for (const slot of scene.shelfSlots) {
+      if (seeded.has(slot.productId) || slot.product) continue;
+
+      const definition = PRODUCTS[slot.productId];
+      const product = scene.add.image(slot.hitArea.x, slot.productBottomY, definition.productKey)
+        .setOrigin(0.5, 1)
+        .setDepth(22);
+      this.fitImage(product, definition.shelfWidth, definition.shelfHeight);
+
+      slot.product = product;
+      slot.missingTag.setVisible(false);
+      seeded.add(slot.productId);
+      scene.stocked += 1;
+
+      if (seeded.size >= 3) break;
+    }
+
+    scene.updateStars();
+    scene.updateHud();
+    scene.showTransientHint("Day 2 starts with 3 shelf items. Load one COLA, WATER and MILK case to open.");
   }
 
   private createPanel(): void {
