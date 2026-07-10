@@ -12,12 +12,13 @@ type BoxItemLike = {
   loaded: boolean;
 };
 
-type SceneInternals = GameScene & {
+type SceneInternals = {
+  input: Phaser.Input.InputPlugin;
+  tweens: Phaser.Tweens.TweenManager;
   selectedBox?: BoxItemLike;
   loadedProducts: ProductId[];
   cart: Phaser.GameObjects.Container;
   cartSprite: Phaser.GameObjects.Image;
-  worker: Phaser.GameObjects.Image;
   cartAtShelf: boolean;
   movingCart: boolean;
   shiftEnded: boolean;
@@ -52,7 +53,7 @@ prototype.selectBox = function selectBoxWithoutScale(item: BoxItemLike): void {
     scene.selectedBox.image.clearTint();
   }
 
-  // Selection is intentionally idempotent: repeated clicks never multiply scale.
+  // Repeated clicks are idempotent: never multiply the current scale.
   scene.selectedBox = item;
   item.image.setTint(0xfff0a6);
   scene.setWorkerTexture(Assets.characters.workerCarry, 255, 500);
@@ -119,7 +120,7 @@ function installSmoothDrag(scene: SceneInternals, item: BoxItemLike): void {
     }
 
     scene.tweens.killTweensOf(image);
-    prototype.selectBox.call(scene as unknown as GameScene, item);
+    prototype.selectBox.call(scene, item);
     image.setDepth(46).setAlpha(0.96);
     scene.cartSprite.setTint(0xffef9f);
   });
