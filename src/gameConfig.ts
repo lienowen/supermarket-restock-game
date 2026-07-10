@@ -1,4 +1,5 @@
 import { Assets } from "./assets";
+import { ACTIVE_LEVEL } from "./levels/levelConfigs";
 
 export type ProductId = "cola" | "water" | "milk";
 
@@ -78,16 +79,18 @@ export const SLOT_POSITIONS = [
 ] as const;
 
 export const GAME_RULES = {
-  shiftSeconds: 180,
+  shiftSeconds: ACTIVE_LEVEL.shiftSeconds,
   cartCapacity: 6,
   firstMoveRequirement: 6,
   reopenMoveRequirement: 1,
-  normalSalesTarget: 4,
-  rushSalesTarget: 8,
-  customerIntervalOpenMs: 2600,
-  customerIntervalRushMs: 1450,
+  normalSalesTarget: ACTIVE_LEVEL.salesTargets.openToRush,
+  rushSalesTarget: ACTIVE_LEVEL.salesTargets.rushToClosing,
+  customerIntervalOpenMs: ACTIVE_LEVEL.customerIntervalsMs.open,
+  customerIntervalRushMs: ACTIVE_LEVEL.customerIntervalsMs.rush,
   reserveRespawnDelayMs: 700,
   comboWindowMs: 4200,
   maxStars: 3,
   starSalesThresholds: [3, 6, 8]
 } as const;
+
+export { ACTIVE_LEVEL };
