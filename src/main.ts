@@ -28,6 +28,7 @@ import "./closingFlowIntegration";
 import "./closingGuideFixIntegration";
 import "./phaseAtmosphereIntegration";
 import "./uiPolishIntegration";
+import "./mobileTouchIntegration";
 
 installResponsiveShell();
 
