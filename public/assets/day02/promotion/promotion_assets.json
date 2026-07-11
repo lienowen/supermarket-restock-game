@@ -1,0 +1,110 @@
+{
+  "basePath": "/assets/day02/promotion",
+  "assets": {
+    "promotionRoomBg": {
+      "path": "/assets/day02/promotion/background/promotion_room_bg.png",
+      "width": 1448,
+      "height": 1086
+    },
+    "promoShelfLeft": {
+      "path": "/assets/day02/promotion/fixtures/promo_shelf_left.png",
+      "width": 387,
+      "height": 484
+    },
+    "promoShelfCenter": {
+      "path": "/assets/day02/promotion/fixtures/promo_shelf_center.png",
+      "width": 383,
+      "height": 470
+    },
+    "promoShelfRight": {
+      "path": "/assets/day02/promotion/fixtures/promo_shelf_right.png",
+      "width": 390,
+      "height": 484
+    },
+    "checkoutCounter": {
+      "path": "/assets/day02/promotion/fixtures/checkout_counter.png",
+      "width": 509,
+      "height": 395
+    },
+    "serviceDesk": {
+      "path": "/assets/day02/promotion/fixtures/service_desk.png",
+      "width": 478,
+      "height": 325
+    },
+    "damagedGoodsBin": {
+      "path": "/assets/day02/promotion/fixtures/damaged_goods_bin.png",
+      "width": 367,
+      "height": 381
+    },
+    "promoSlotEmpty": {
+      "path": "/assets/day02/promotion/ui/promo_slot_empty.png",
+      "width": 284,
+      "height": 353
+    },
+    "promoSlotFilledCola": {
+      "path": "/assets/day02/promotion/ui/promo_slot_filled_cola.png",
+      "width": 282,
+      "height": 358
+    },
+    "promoSlotFilledWater": {
+      "path": "/assets/day02/promotion/ui/promo_slot_filled_water.png",
+      "width": 278,
+      "height": 358
+    },
+    "promoSlotFilledMilk": {
+      "path": "/assets/day02/promotion/ui/promo_slot_filled_milk.png",
+      "width": 289,
+      "height": 358
+    },
+    "customerQueueMarker": {
+      "path": "/assets/day02/promotion/ui/customer_queue_marker.png",
+      "width": 241,
+      "height": 280
+    },
+    "repairAlertIcon": {
+      "path": "/assets/day02/promotion/ui/repair_alert_icon.png",
+      "width": 219,
+      "height": 260
+    },
+    "promoDayBanner": {
+      "path": "/assets/day02/promotion/ui/promo_day_banner.png",
+      "width": 485,
+      "height": 180
+    },
+    "cashRegisterButton": {
+      "path": "/assets/day02/promotion/ui/cash_register_button.png",
+      "width": 340,
+      "height": 155
+    },
+    "serviceRequestBubble": {
+      "path": "/assets/day02/promotion/ui/service_request_bubble.png",
+      "width": 466,
+      "height": 250
+    },
+    "returnExchangeIcon": {
+      "path": "/assets/day02/promotion/ui/return_exchange_icon.png",
+      "width": 245,
+      "height": 250
+    },
+    "fridgeBrokenIcon": {
+      "path": "/assets/day02/promotion/ui/fridge_broken_icon.png",
+      "width": 255,
+      "height": 253
+    },
+    "cashierIdle": {
+      "path": "/assets/day02/promotion/characters/cashier_idle.png",
+      "width": 397,
+      "height": 1261
+    },
+    "customerWaitingCheckout": {
+      "path": "/assets/day02/promotion/characters/customer_waiting_checkout.png",
+      "width": 362,
+      "height": 867
+    },
+    "customerServiceRequest": {
+      "path": "/assets/day02/promotion/characters/customer_service_request.png",
+      "width": 427,
+      "height": 824
+    }
+  }
+}

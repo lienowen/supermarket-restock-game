@@ -1,0 +1,77 @@
+{
+  "canvas": {
+    "width": 1330,
+    "height": 1182
+  },
+  "background": {
+    "x": 665,
+    "y": 591,
+    "displayWidth": 1330,
+    "displayHeight": 1000
+  },
+  "promoShelves": [
+    {
+      "asset": "promoShelfLeft",
+      "x": 420,
+      "y": 555,
+      "displayWidth": 245,
+      "displayHeight": 325
+    },
+    {
+      "asset": "promoShelfCenter",
+      "x": 680,
+      "y": 555,
+      "displayWidth": 245,
+      "displayHeight": 325
+    },
+    {
+      "asset": "promoShelfRight",
+      "x": 940,
+      "y": 555,
+      "displayWidth": 245,
+      "displayHeight": 325
+    }
+  ],
+  "checkoutCounter": {
+    "x": 1100,
+    "y": 810,
+    "displayWidth": 315,
+    "displayHeight": 270
+  },
+  "serviceDesk": {
+    "x": 250,
+    "y": 790,
+    "displayWidth": 310,
+    "displayHeight": 250
+  },
+  "damagedGoodsBin": {
+    "x": 1085,
+    "y": 980,
+    "displayWidth": 190,
+    "displayHeight": 185
+  },
+  "cashier": {
+    "x": 1080,
+    "y": 810,
+    "displayWidth": 175,
+    "displayHeight": 355,
+    "origin": [
+      0.5,
+      1
+    ]
+  },
+  "customerQueue": [
+    {
+      "x": 910,
+      "y": 940
+    },
+    {
+      "x": 790,
+      "y": 940
+    },
+    {
+      "x": 670,
+      "y": 940
+    }
+  ]
+}
