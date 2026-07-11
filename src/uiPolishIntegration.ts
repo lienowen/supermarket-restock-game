@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { Assets } from "./assets";
 import { GameScene } from "./scenes/GameScene";
 import { StorefrontScene } from "./scenes/StorefrontScene";
+import { gameSession } from "./systems/GameSession";
 
 type RuntimeGameScene = Phaser.Scene & {
   taskText: Phaser.GameObjects.Text;
@@ -39,15 +40,34 @@ gamePrototype.create = function createWithUnifiedHud(): void {
   const scene = this as unknown as RuntimeGameScene;
   scene.__compactHud?.destroy(true);
 
+  const day = dayCopy();
   const blocker = scene.add.rectangle(665, 71, 1330, 142, 0x0d1719, 0.985)
     .setStrokeStyle(2, 0x324449, 0.9)
     .setInteractive();
 
-  const title = scene.add.text(28, 19, "RESTOCK DRINKS", {
+  const dayBadgeBg = scene.add.rectangle(88, 42, 132, 54, day.color, 1)
+    .setStrokeStyle(3, 0xffe49a, 0.95);
+  const dayBadgeText = scene.add.text(88, 42, day.label, {
     fontFamily: "Arial",
-    fontSize: "28px",
+    fontSize: "24px",
+    color: "#ffffff",
+    fontStyle: "bold",
+    letterSpacing: 2
+  }).setOrigin(0.5);
+
+  const title = scene.add.text(172, 18, day.title, {
+    fontFamily: "Arial",
+    fontSize: "27px",
     color: "#ffffff",
     fontStyle: "bold"
+  });
+
+  const mode = scene.add.text(172, 49, day.subtitle, {
+    fontFamily: "Arial",
+    fontSize: "14px",
+    color: "#ffd98a",
+    fontStyle: "bold",
+    letterSpacing: 1
   });
 
   const helpHit = scene.add.rectangle(0, 0, 610, 126, 0xffffff, 0.001)
@@ -56,10 +76,10 @@ gamePrototype.create = function createWithUnifiedHud(): void {
   helpHit.on("pointerdown", () => scene.showTransientHint(scene.phaseHelpText()));
 
   scene.taskText
-    .setPosition(28, 68)
-    .setFontSize(19)
+    .setPosition(172, 76)
+    .setFontSize(18)
     .setColor("#cfe1dc")
-    .setWordWrapWidth(570)
+    .setWordWrapWidth(435)
     .setDepth(60);
 
   const starChip = createChip(scene, 740, "★", "BEST", 0xffcc3f);
@@ -107,7 +127,10 @@ gamePrototype.create = function createWithUnifiedHud(): void {
 
   scene.__compactHud = scene.add.container(0, 0, [
     blocker,
+    dayBadgeBg,
+    dayBadgeText,
     title,
+    mode,
     helpHit,
     starChip,
     coinChip,
@@ -120,6 +143,33 @@ gamePrototype.create = function createWithUnifiedHud(): void {
     scene.__compactHud = undefined;
   });
 };
+
+function dayCopy(): { label: string; title: string; subtitle: string; color: number } {
+  if (gameSession.day === "day02") {
+    return {
+      label: "DAY 2",
+      title: "HOT DEAL EXPANSION",
+      subtitle: "TWO-ROOM INVENTORY CHALLENGE",
+      color: 0x9a531e
+    };
+  }
+
+  if (gameSession.day === "day03") {
+    return {
+      label: "DAY 3",
+      title: "CUSTOMER SERVICE",
+      subtitle: "REQUESTS · WAITING · SUBSTITUTES",
+      color: 0x6b438f
+    };
+  }
+
+  return {
+    label: "DAY 1",
+    title: "RESTOCK DRINKS",
+    subtitle: "FIRST SHIFT · LEARN THE STORE",
+    color: 0x3f7f4d
+  };
+}
 
 function createChip(
   scene: Phaser.Scene,
