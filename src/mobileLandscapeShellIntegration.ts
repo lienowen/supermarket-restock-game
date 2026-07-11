@@ -176,6 +176,7 @@ function ensureStorefrontActions(): void {
 
   const buttons: Array<{ action: string; label: string; primary?: boolean }> = [
     { action: "start", label: "START SHIFT", primary: true },
+    { action: "contract", label: "CONTRACT" },
     { action: "days", label: "DAYS" },
     { action: "upgrades", label: "UPGRADES" },
     { action: "store", label: "STORE" },
@@ -217,6 +218,9 @@ function runStorefrontAction(action: string): void {
     case "start":
       scene.startShift(resolveStoredDay());
       return;
+    case "contract":
+      scene.showToast("CONTRACT");
+      break;
     case "days":
       scene.openDaySelector();
       break;
