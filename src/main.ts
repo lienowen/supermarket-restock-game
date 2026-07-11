@@ -24,6 +24,7 @@ import "./restockFeedbackIntegration";
 import "./dayOneHookIntegration";
 import "./dayOneTutorialIntegration";
 import "./dayTwoHookIntegration";
+import "./dayTwoSceneExpansionIntegration";
 import "./levelPacingIntegration";
 import "./serviceEventPacingIntegration";
 import "./closingFlowIntegration";
