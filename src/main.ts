@@ -49,6 +49,7 @@ import "./settingsRuntimeIntegration";
 import "./mobileLandscapeShellIntegration";
 import "./currentDutyHighlightIntegration";
 import "./shiftContractIntegration";
+import "./replayShiftTwistIntegration";
 
 installResponsiveShell();
 
