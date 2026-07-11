@@ -25,6 +25,12 @@ export const Assets = {
     customer02Idle: "customer-02-idle",
     customer02Basket: "customer-02-basket"
   },
+  day02: {
+    backStockRack: "day02-back-stock-rack",
+    backStockCola: "day02-back-stock-cola",
+    backStockWater: "day02-back-stock-water",
+    backStockMilk: "day02-back-stock-milk"
+  },
   ui: {
     workerAvatar: "ui-worker-avatar",
     coin: "ui-icon-coin",
@@ -35,7 +41,9 @@ export const Assets = {
     taskButton: "ui-button-tasks",
     hintBubble: "ui-hint-bubble",
     stepCard: "ui-step-card",
-    missingTag: "ui-missing-tag"
+    missingTag: "ui-missing-tag",
+    openingStorefront: "ui-opening-storefront",
+    openingShiftBadge: "ui-opening-shift-badge"
   }
 } as const;
 
@@ -58,6 +66,10 @@ export const AssetPaths = {
   [Assets.characters.customer01Basket]: "./assets/day01/customer_01_basket.png",
   [Assets.characters.customer02Idle]: "./assets/day01/customer_02_idle.png",
   [Assets.characters.customer02Basket]: "./assets/day01/customer_02_basket.png",
+  [Assets.day02.backStockRack]: "./assets/day02/back_stock_rack.png",
+  [Assets.day02.backStockCola]: "./assets/day02/back_stock_cola.png",
+  [Assets.day02.backStockWater]: "./assets/day02/back_stock_water.png",
+  [Assets.day02.backStockMilk]: "./assets/day02/back_stock_milk.png",
   [Assets.ui.workerAvatar]: "./assets/ui/ui_worker_avatar.png",
   [Assets.ui.coin]: "./assets/ui/ui_icon_coin.png",
   [Assets.ui.star]: "./assets/ui/ui_icon_star.png",
@@ -67,7 +79,9 @@ export const AssetPaths = {
   [Assets.ui.taskButton]: "./assets/ui/ui_button_tasks.png",
   [Assets.ui.hintBubble]: "./assets/ui/ui_hint_bubble.png",
   [Assets.ui.stepCard]: "./assets/ui/ui_step_card.png",
-  [Assets.ui.missingTag]: "./assets/ui/ui_missing_tag.png"
+  [Assets.ui.missingTag]: "./assets/ui/ui_missing_tag.png",
+  [Assets.ui.openingStorefront]: "./assets/ui/opening_storefront.png",
+  [Assets.ui.openingShiftBadge]: "./assets/ui/opening_shift_badge.png"
 } as const;
 
 export type AssetKey = keyof typeof AssetPaths;
