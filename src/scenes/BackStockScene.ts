@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { AssetPaths, Assets } from "../assets";
 import { PRODUCTS, type ProductId } from "../gameConfig";
 import type { ShiftPhase } from "../domain/gameTypes";
 import { gameSession } from "../systems/GameSession";
@@ -25,8 +26,9 @@ type RuntimeGameScene = Phaser.Scene & {
 
 type StockButton = {
   productId: ProductId;
-  bg: Phaser.GameObjects.Rectangle;
-  label: Phaser.GameObjects.Text;
+  card: Phaser.GameObjects.Image;
+  glow: Phaser.GameObjects.Rectangle;
+  countBadge: Phaser.GameObjects.Rectangle;
   count: Phaser.GameObjects.Text;
 };
 
@@ -34,6 +36,12 @@ const INITIAL_BACK_STOCK: Record<ProductId, number> = {
   cola: 2,
   water: 2,
   milk: 2
+};
+
+const STOCK_CARD_KEYS: Record<ProductId, string> = {
+  cola: Assets.day02.backStockCola,
+  water: Assets.day02.backStockWater,
+  milk: Assets.day02.backStockMilk
 };
 
 export class BackStockScene extends Phaser.Scene {
@@ -47,6 +55,13 @@ export class BackStockScene extends Phaser.Scene {
 
   constructor() {
     super({ key: "back-stock", active: true });
+  }
+
+  preload(): void {
+    this.loadIfMissing(Assets.day02.backStockRack);
+    this.loadIfMissing(Assets.day02.backStockCola);
+    this.loadIfMissing(Assets.day02.backStockWater);
+    this.loadIfMissing(Assets.day02.backStockMilk);
   }
 
   create(): void {
@@ -79,8 +94,8 @@ export class BackStockScene extends Phaser.Scene {
     this.attached = true;
     this.inventory = { ...INITIAL_BACK_STOCK };
 
-    // Day 2 should not repeat Day 1's full six-slot setup. Keep one of each drink
-    // from the previous shift so the player can open after a single three-case trip.
+    // Day 2 starts with one of each drink still on the shelf, so opening needs only
+    // one three-case trip instead of repeating the complete Day 1 setup.
     this.seedOpeningShelfStock(scene);
     this.createPanel();
     this.updateVisibility();
@@ -121,51 +136,48 @@ export class BackStockScene extends Phaser.Scene {
 
     scene.updateStars();
     scene.updateHud();
-    scene.showTransientHint("Day 2 starts with 3 shelf items. Load one COLA, WATER and MILK case to open.");
+    scene.showTransientHint("Day 2 starts at Shelf 3/6. Bring one COLA, WATER and MILK case to open.");
   }
 
   private createPanel(): void {
     this.panel?.destroy(true);
     this.buttons.clear();
 
-    const bg = this.add.rectangle(1045, 985, 440, 118, 0x132724, 0.96)
-      .setStrokeStyle(3, 0x7fc08b, 0.9);
-    const title = this.add.text(845, 945, "BACK STOCK", {
-      fontFamily: "Arial",
-      fontSize: "20px",
-      color: "#dff6df",
-      fontStyle: "bold"
-    });
-    const subtitle = this.add.text(845, 974, "Quick refill · use before warehouse trips", {
+    const rack = this.add.image(1070, 925, Assets.day02.backStockRack)
+      .setDisplaySize(510, 330);
+    const subtitle = this.add.text(1070, 794, "QUICK REFILL · USE BEFORE A WAREHOUSE TRIP", {
       fontFamily: "Arial",
       fontSize: "14px",
-      color: "#bcd0c8"
-    });
+      color: "#dbe9e4",
+      fontStyle: "bold",
+      backgroundColor: "#132724",
+      padding: { x: 12, y: 6 }
+    }).setOrigin(0.5);
 
-    const children: Phaser.GameObjects.GameObject[] = [bg, title, subtitle];
+    const children: Phaser.GameObjects.GameObject[] = [rack, subtitle];
     const products: ProductId[] = ["cola", "water", "milk"];
 
     products.forEach((productId, index) => {
-      const x = 900 + index * 135;
-      const buttonBg = this.add.rectangle(x, 1022, 118, 42, 0x27423c, 1)
-        .setStrokeStyle(2, 0x719b86)
+      const x = 900 + index * 170;
+      const y = 985;
+      const glow = this.add.rectangle(x, y, 130, 130, 0xffd75a, 0.14)
+        .setStrokeStyle(4, 0xffd75a, 1)
+        .setVisible(false);
+      const card = this.add.image(x, y, STOCK_CARD_KEYS[productId])
+        .setDisplaySize(118, 118)
         .setInteractive({ useHandCursor: true });
-      const label = this.add.text(x - 48, 1011, PRODUCTS[productId].label, {
+      const countBadge = this.add.rectangle(x + 43, y - 43, 48, 32, 0x10201d, 0.96)
+        .setStrokeStyle(2, 0xffd75a, 0.95);
+      const count = this.add.text(x + 43, y - 44, "x2", {
         fontFamily: "Arial",
-        fontSize: "15px",
-        color: "#ffffff",
-        fontStyle: "bold"
-      });
-      const count = this.add.text(x + 43, 1011, "x2", {
-        fontFamily: "Arial",
-        fontSize: "15px",
+        fontSize: "17px",
         color: "#ffd75a",
         fontStyle: "bold"
-      }).setOrigin(1, 0);
+      }).setOrigin(0.5);
 
-      buttonBg.on("pointerdown", () => this.quickRestock(productId));
-      this.buttons.set(productId, { productId, bg: buttonBg, label, count });
-      children.push(buttonBg, label, count);
+      card.on("pointerdown", () => this.quickRestock(productId));
+      this.buttons.set(productId, { productId, card, glow, countBadge, count });
+      children.push(glow, card, countBadge, count);
     });
 
     this.panel = this.add.container(0, 0, children).setDepth(470);
@@ -188,15 +200,21 @@ export class BackStockScene extends Phaser.Scene {
         (slot) => slot.productId === button.productId && !slot.product && !slot.reservedForCustomer
       );
       const amount = this.inventory[button.productId];
+      const ready = amount > 0 && missing;
 
       button.count.setText(`x${amount}`);
-      button.bg.setFillStyle(
-        amount <= 0 ? 0x353b39 : missing ? 0x386b4a : 0x27423c,
-        1
-      );
-      button.bg.setStrokeStyle(2, missing && amount > 0 ? 0xffd75a : 0x719b86, missing ? 1 : 0.8);
-      button.label.setAlpha(amount > 0 ? 1 : 0.45);
-      button.count.setAlpha(amount > 0 ? 1 : 0.4);
+      button.glow.setVisible(ready);
+      button.card.setAlpha(amount > 0 ? 1 : 0.35);
+      button.countBadge.setAlpha(amount > 0 ? 1 : 0.45);
+      button.count.setAlpha(amount > 0 ? 1 : 0.45);
+
+      if (ready) {
+        button.card.setTint(0xffffff);
+      } else if (amount <= 0) {
+        button.card.setTint(0x8b9490);
+      } else {
+        button.card.clearTint();
+      }
     }
   }
 
@@ -204,8 +222,11 @@ export class BackStockScene extends Phaser.Scene {
     const scene = this.gameScene;
     if (!scene || gameSession.isPaused || scene.shiftEnded || scene.restockBusy) return;
 
+    const button = this.buttons.get(productId);
+    if (!button) return;
+
     if (this.inventory[productId] <= 0) {
-      this.showFloatingText(1045, 925, `${PRODUCTS[productId].label} BACK STOCK EMPTY`, 0xff8179);
+      this.showFloatingText(button.card.x, button.card.y - 92, `${PRODUCTS[productId].label} EMPTY`, 0xff8179);
       return;
     }
 
@@ -214,7 +235,7 @@ export class BackStockScene extends Phaser.Scene {
     );
 
     if (!slot) {
-      this.showFloatingText(1045, 925, `NO ${PRODUCTS[productId].label} GAP`, 0xb8d1c6);
+      this.showFloatingText(button.card.x, button.card.y - 92, `NO ${PRODUCTS[productId].label} GAP`, 0xb8d1c6);
       return;
     }
 
@@ -222,11 +243,21 @@ export class BackStockScene extends Phaser.Scene {
     scene.restockBusy = true;
     this.refreshButtons();
 
+    this.tweens.killTweensOf(button.card);
+    this.tweens.add({
+      targets: button.card,
+      scaleX: button.card.scaleX * 0.92,
+      scaleY: button.card.scaleY * 0.92,
+      duration: 70,
+      yoyo: true,
+      ease: "Sine.Out"
+    });
+
     const definition = PRODUCTS[productId];
-    const product = scene.add.image(1040, 980, definition.productKey)
+    const product = scene.add.image(button.card.x, button.card.y - 20, definition.productKey)
       .setOrigin(0.5, 1)
       .setDepth(31)
-      .setAlpha(0.9);
+      .setAlpha(0.92);
     this.fitImage(product, definition.shelfWidth, definition.shelfHeight);
 
     scene.tweens.add({
@@ -234,7 +265,7 @@ export class BackStockScene extends Phaser.Scene {
       x: slot.hitArea.x,
       y: slot.productBottomY,
       alpha: 1,
-      duration: 280,
+      duration: 240,
       ease: "Cubic.Out",
       onComplete: () => {
         slot.product = product;
@@ -266,6 +297,10 @@ export class BackStockScene extends Phaser.Scene {
       ease: "Cubic.Out",
       onComplete: () => text.destroy()
     });
+  }
+
+  private loadIfMissing(key: keyof typeof AssetPaths): void {
+    if (!this.textures.exists(key)) this.load.image(key, AssetPaths[key]);
   }
 
   private fitImage(image: Phaser.GameObjects.Image, maxWidth: number, maxHeight: number): void {
