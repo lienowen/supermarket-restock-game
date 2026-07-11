@@ -25,10 +25,10 @@ type GameScenePrototype = {
 };
 
 const DOORWAY_X = 690;
-const CART_MIN_X = 455;
-const CART_MAX_X = 820;
-const CART_MIN_Y = 790;
-const CART_MAX_Y = 970;
+const CART_MIN_X = 430;
+const CART_MAX_X = 850;
+const CART_MIN_Y = 760;
+const CART_MAX_Y = 985;
 
 const prototype = GameScene.prototype as unknown as GameScenePrototype;
 const originalCreate = prototype.create;
@@ -42,44 +42,56 @@ function installImmediateCartDrag(scene: ImmediateCartScene): void {
   const cart = scene.cart;
   if (!cart?.active) return;
 
-  // Replace every older cart drag listener with one deterministic path.
+  // Replace every older cart listener and rebuild a forgiving hit area around
+  // the full artwork, labels and handle. The player should not need pixel-perfect aim.
+  cart.disableInteractive();
   cart.removeAllListeners("dragstart");
   cart.removeAllListeners("drag");
   cart.removeAllListeners("dragend");
   cart.removeAllListeners("pointerdown");
   cart.removeAllListeners("pointerup");
 
+  cart.setSize(430, 390);
+  cart.setInteractive(
+    new Phaser.Geom.Rectangle(-215, -325, 430, 390),
+    Phaser.Geom.Rectangle.Contains
+  );
   scene.input.setDraggable(cart);
 
-  // No movement threshold and no hold threshold: the first pointer movement is drag.
+  // No movement threshold and no hold threshold: first movement starts the drag.
   scene.input.dragDistanceThreshold = 0;
   scene.input.dragTimeThreshold = 0;
   scene.game.canvas.style.touchAction = "none";
-
   if (cart.input) cart.input.cursor = "grab";
 
+  // Interrupt an unfinished snap immediately on press. Previously movingCart made
+  // the cart ignore input during the whole landing tween, which felt unresponsive.
+  cart.on("pointerdown", () => {
+    if (scene.time.paused || scene.shiftEnded || scene.restockBusy) return;
+    scene.tweens.killTweensOf(cart);
+    scene.tweens.killTweensOf(scene.worker);
+    scene.movingCart = false;
+    if (cart.input) cart.input.cursor = "grabbing";
+  });
+
   cart.on("dragstart", () => {
-    const blocked =
-      scene.time.paused ||
-      scene.shiftEnded ||
-      scene.movingCart ||
-      scene.restockBusy;
+    const blocked = scene.time.paused || scene.shiftEnded || scene.restockBusy;
 
     cart.setData("immediateDragBlocked", blocked);
     cart.setData("immediateDragFromSales", scene.cartAtShelf);
-    cart.setData("immediateUnderloaded", !scene.cartAtShelf && scene.loadedProducts.length < scene.departureRequirement());
+    cart.setData(
+      "immediateUnderloaded",
+      !scene.cartAtShelf && scene.loadedProducts.length < scene.departureRequirement()
+    );
     cart.setData("immediateHintShown", false);
 
     if (blocked) return;
 
-    // Cancel any residual positioning tween before the pointer starts moving.
     scene.tweens.killTweensOf(cart);
     scene.tweens.killTweensOf(scene.worker);
-
     scene.clearGuide();
     scene.movingCart = true;
-    cart.setDepth(38);
-    cart.setScale(1);
+    cart.setDepth(38).setScale(1);
     if (cart.input) cart.input.cursor = "grabbing";
 
     scene.setWorkerTexture(Assets.characters.workerPush, 250, 455);
@@ -92,13 +104,11 @@ function installImmediateCartDrag(scene: ImmediateCartScene): void {
     (_pointer: Phaser.Input.Pointer, dragX: number, dragY: number) => {
       if (cart.getData("immediateDragBlocked")) return;
 
-      // Direct pointer mapping: no lerp, no tween, no pre-drag animation.
+      // Direct pointer mapping: no lerp, tween or pre-drag scale animation.
       cart.setPosition(
         Phaser.Math.Clamp(dragX, CART_MIN_X, CART_MAX_X),
         Phaser.Math.Clamp(dragY, CART_MIN_Y, CART_MAX_Y)
       );
-
-      // Keep the worker visually attached to the push action without lagging behind.
       scene.worker.setPosition(cart.x - 108, cart.y);
 
       const underloaded = Boolean(cart.getData("immediateUnderloaded"));
@@ -115,15 +125,12 @@ function installImmediateCartDrag(scene: ImmediateCartScene): void {
     if (cart.input) cart.input.cursor = "grab";
 
     const blocked = Boolean(cart.getData("immediateDragBlocked"));
+    cart.setData("immediateDragBlocked", false);
     if (blocked) return;
 
     const fromSales = Boolean(cart.getData("immediateDragFromSales"));
     const underloaded = Boolean(cart.getData("immediateUnderloaded"));
 
-    cart.setData("immediateDragBlocked", false);
-
-    // The player can move instantly even when underloaded; business rules are
-    // enforced only after release, so the input itself never feels delayed.
     if (!fromSales && underloaded) {
       if (!cart.getData("immediateHintShown")) {
         const missing = Math.max(0, scene.departureRequirement() - scene.loadedProducts.length);
