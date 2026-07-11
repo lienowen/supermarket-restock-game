@@ -44,6 +44,7 @@ import "./shiftMainlineIntegration";
 import "./dayTwoMainStoreCustomerGateIntegration";
 import "./openingOperationsIntegration";
 import "./storefrontMenuIntegration";
+import "./deliveryInventoryIntegration";
 import "./storeOpeningActionIntegration";
 
 installResponsiveShell();
