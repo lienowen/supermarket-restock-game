@@ -3,6 +3,7 @@ import { AssetPaths, Assets } from "../assets";
 
 const STORAGE_KEY = "supermarket.activeDay";
 const AUXILIARY_SCENES = ["polish-overlay", "progression-customer", "back-stock"] as const;
+type OpeningDay = "day01" | "day02" | "day03";
 
 export class OpeningScene extends Phaser.Scene {
   private finished = false;
@@ -21,8 +22,8 @@ export class OpeningScene extends Phaser.Scene {
     this.finished = false;
 
     const day = this.resolveDay();
-    const isDay2 = day === "day02";
-    const backgroundKey = isDay2 ? Assets.backgrounds.salesfloor : Assets.ui.openingStorefront;
+    const advancedDay = day !== "day01";
+    const backgroundKey = advancedDay ? Assets.backgrounds.salesfloor : Assets.ui.openingStorefront;
 
     this.cameras.main.setBackgroundColor("#0c1413");
 
@@ -35,10 +36,11 @@ export class OpeningScene extends Phaser.Scene {
       1330,
       1182,
       0x07100f,
-      isDay2 ? 0.48 : 0.12
+      advancedDay ? 0.48 : 0.12
     );
 
-    const dayChip = this.add.text(665, 92, isDay2 ? "DAY 2" : "DAY 1", {
+    const dayNumber = Number(day.slice(-2));
+    const dayChip = this.add.text(665, 92, `DAY ${dayNumber}`, {
       fontFamily: "Arial",
       fontSize: "24px",
       color: "#ffd75a",
@@ -48,30 +50,28 @@ export class OpeningScene extends Phaser.Scene {
       padding: { x: 20, y: 10 }
     }).setOrigin(0.5).setAlpha(0);
 
-    const shiftBadge = isDay2
+    const shiftBadge = day === "day02"
       ? this.add.image(665, 430, Assets.ui.openingShiftBadge)
           .setDisplaySize(980, 380)
           .setAlpha(0)
           .setY(455)
-      : undefined;
+      : day === "day03"
+        ? this.createDay3Badge().setAlpha(0).setY(455)
+        : undefined;
 
-    const leftTip = this.createTip(
-      315,
-      810,
-      "BACKROOM",
-      isDay2 ? "Prepare one opening trip" : "Load the first cases",
-      0x244f2e,
-      0x8fd09a
-    );
+    const leftSubtitle = day === "day01"
+      ? "Load the first cases"
+      : day === "day02"
+        ? "Prepare one opening trip"
+        : "Stage mixed stock and keep Back Stock ready";
+    const rightSubtitle = day === "day01"
+      ? "Match products to empty slots"
+      : day === "day02"
+        ? "Use Back Stock before warehouse trips"
+        : "Tap requests: Restock, Wait or Substitute";
 
-    const rightTip = this.createTip(
-      1015,
-      810,
-      "SALES FLOOR",
-      isDay2 ? "Use Back Stock before warehouse trips" : "Match products to empty slots",
-      0x315f7d,
-      0x8fc5e8
-    );
+    const leftTip = this.createTip(315, 810, "BACKROOM", leftSubtitle, 0x244f2e, 0x8fd09a);
+    const rightTip = this.createTip(1015, 810, "SALES FLOOR", rightSubtitle, 0x315f7d, 0x8fc5e8);
 
     leftTip.setAlpha(0).setX(285);
     rightTip.setAlpha(0).setX(1045);
@@ -98,12 +98,7 @@ export class OpeningScene extends Phaser.Scene {
     start.on("pointerdown", finish);
     skip.on("pointerdown", finish);
 
-    this.tweens.add({
-      targets: background,
-      alpha: 1,
-      duration: 380,
-      ease: "Sine.Out"
-    });
+    this.tweens.add({ targets: background, alpha: 1, duration: 380, ease: "Sine.Out" });
     this.tweens.add({
       targets: dayChip,
       alpha: 1,
@@ -148,11 +143,39 @@ export class OpeningScene extends Phaser.Scene {
       ease: "Sine.Out"
     });
 
-    this.time.delayedCall(5200, finish);
+    this.time.delayedCall(day === "day03" ? 6000 : 5200, finish);
 
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      shade.destroy();
-    });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => shade.destroy());
+  }
+
+  private createDay3Badge(): Phaser.GameObjects.Container {
+    const panel = this.add.rectangle(0, 0, 930, 330, 0x10252a, 0.98)
+      .setStrokeStyle(6, 0xffd75a);
+    const title = this.add.text(0, -112, "DAY 3 · PLEASE WAIT", {
+      fontFamily: "Arial",
+      fontSize: "38px",
+      color: "#ffffff",
+      fontStyle: "bold"
+    }).setOrigin(0.5);
+    const subtitle = this.add.text(0, -55, "Customer service decisions", {
+      fontFamily: "Arial",
+      fontSize: "25px",
+      color: "#f7e8a9",
+      fontStyle: "bold"
+    }).setOrigin(0.5);
+    const options = this.add.text(0, 45, [
+      "RESTOCK NOW  · commit to the requested product",
+      "PLEASE WAIT   · extend patience once",
+      "OFFER SUBSTITUTE · faster, but the customer may refuse"
+    ].join("\n"), {
+      fontFamily: "Arial",
+      fontSize: "22px",
+      color: "#e4efeb",
+      align: "left",
+      lineSpacing: 16
+    }).setOrigin(0.5);
+
+    return this.add.container(665, 430, [panel, title, subtitle, options]);
   }
 
   private createTip(
@@ -206,12 +229,16 @@ export class OpeningScene extends Phaser.Scene {
     image.setScale(Math.max(width / sourceWidth, height / sourceHeight));
   }
 
-  private resolveDay(): "day01" | "day02" {
+  private resolveDay(): OpeningDay {
     const queryDay = new URLSearchParams(window.location.search).get("day");
+    if (queryDay === "3" || queryDay === "day03") return "day03";
     if (queryDay === "2" || queryDay === "day02") return "day02";
 
     try {
-      return localStorage.getItem(STORAGE_KEY) === "day02" ? "day02" : "day01";
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored === "day03") return "day03";
+      if (stored === "day02") return "day02";
+      return "day01";
     } catch {
       return "day01";
     }
