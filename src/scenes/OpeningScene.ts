@@ -51,23 +51,20 @@ export class OpeningScene extends Phaser.Scene {
     }).setOrigin(0.5).setAlpha(0);
 
     const shiftBadge = day === "day02"
-      ? this.add.image(665, 430, Assets.ui.openingShiftBadge)
-          .setDisplaySize(980, 380)
-          .setAlpha(0)
-          .setY(455)
+      ? this.createDay2Badge().setAlpha(0).setY(455)
       : day === "day03"
         ? this.createDay3Badge().setAlpha(0).setY(455)
         : undefined;
 
     const leftSubtitle = day === "day01"
-      ? "Load the first cases"
+      ? "Load the first case and earn a fast first win"
       : day === "day02"
-        ? "Prepare one opening trip"
+        ? "Choose today's deal, then stage extra matching cases"
         : "Stage mixed stock and keep Back Stock ready";
     const rightSubtitle = day === "day01"
-      ? "Match products to empty slots"
+      ? "Fill the single glowing gap to open"
       : day === "day02"
-        ? "Use Back Stock before warehouse trips"
+        ? "Use Back Stock for 3 flash-sale emergency saves"
         : "Tap requests: Restock, Wait or Substitute";
 
     const leftTip = this.createTip(315, 810, "BACKROOM", leftSubtitle, 0x244f2e, 0x8fd09a);
@@ -143,9 +140,39 @@ export class OpeningScene extends Phaser.Scene {
       ease: "Sine.Out"
     });
 
-    this.time.delayedCall(day === "day03" ? 6000 : 5200, finish);
+    this.time.delayedCall(day === "day01" ? 4700 : 6000, finish);
 
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => shade.destroy());
+  }
+
+  private createDay2Badge(): Phaser.GameObjects.Container {
+    const panel = this.add.rectangle(0, 0, 930, 330, 0x10252a, 0.98)
+      .setStrokeStyle(6, 0xffd75a);
+    const title = this.add.text(0, -112, "DAY 2 · TODAY'S HOT DEAL", {
+      fontFamily: "Arial",
+      fontSize: "37px",
+      color: "#ffffff",
+      fontStyle: "bold"
+    }).setOrigin(0.5);
+    const subtitle = this.add.text(0, -57, "Inventory planning + timed flash sale", {
+      fontFamily: "Arial",
+      fontSize: "25px",
+      color: "#f7e8a9",
+      fontStyle: "bold"
+    }).setOrigin(0.5);
+    const options = this.add.text(0, 48, [
+      "1. Pick COLA, WATER or MILK as today's promotion",
+      "2. Load extra matching stock before the lunch rush",
+      "3. Complete 3 Back Stock saves during the 20-second sale"
+    ].join("\n"), {
+      fontFamily: "Arial",
+      fontSize: "22px",
+      color: "#e4efeb",
+      align: "left",
+      lineSpacing: 16
+    }).setOrigin(0.5);
+
+    return this.add.container(665, 430, [panel, title, subtitle, options]);
   }
 
   private createDay3Badge(): Phaser.GameObjects.Container {
