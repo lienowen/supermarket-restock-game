@@ -22,6 +22,7 @@ export type GameSessionSnapshot = {
   missedSales: number;
   wrongStock: number;
   bestCombo: number;
+  satisfiedCustomers: number;
 };
 
 class GameSession {
@@ -33,6 +34,7 @@ class GameSession {
   private missedSales = 0;
   private wrongStock = 0;
   private bestCombo = 0;
+  private satisfiedCustomers = 0;
   private shiftManager = new ShiftManager(LEVELS.day01);
 
   get snapshot(): GameSessionSnapshot {
@@ -47,7 +49,8 @@ class GameSession {
       stars: this.performanceStars,
       missedSales: this.missedSales,
       wrongStock: this.wrongStock,
-      bestCombo: this.bestCombo
+      bestCombo: this.bestCombo,
+      satisfiedCustomers: this.satisfiedCustomers
     };
   }
 
@@ -111,6 +114,10 @@ class GameSession {
 
   recordMissedSale(): void {
     this.missedSales += 1;
+  }
+
+  recordSatisfiedCustomer(): void {
+    this.satisfiedCustomers += 1;
   }
 
   recordCombo(combo: number): void {
@@ -180,6 +187,7 @@ class GameSession {
     this.missedSales = 0;
     this.wrongStock = 0;
     this.bestCombo = 0;
+    this.satisfiedCustomers = 0;
   }
 }
 
