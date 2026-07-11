@@ -29,6 +29,7 @@ import "./dayTwoHookIntegration";
 import "./dayTwoChallengeRewardIntegration";
 import "./dayTwoOpeningExpansionIntegration";
 import "./promotionWingProductFixIntegration";
+import "./promotionWingProductionIntegration";
 import "./levelPacingIntegration";
 import "./serviceEventPacingIntegration";
 import "./closingFlowIntegration";
