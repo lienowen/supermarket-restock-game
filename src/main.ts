@@ -23,6 +23,7 @@ import "./customerLaneIntegration";
 import "./restockFeedbackIntegration";
 import "./dayOneHookIntegration";
 import "./dayOneTutorialIntegration";
+import "./dayTwoHookIntegration";
 import "./serviceEventPacingIntegration";
 import "./closingFlowIntegration";
 import "./closingGuideFixIntegration";
