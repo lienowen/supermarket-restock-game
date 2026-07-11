@@ -45,6 +45,7 @@ import "./storefrontMenuIntegration";
 import "./deliveryInventoryIntegration";
 import "./storeOpeningActionIntegration";
 import "./operatingHoursTimerIntegration";
+import "./settingsRuntimeIntegration";
 
 installResponsiveShell();
 
