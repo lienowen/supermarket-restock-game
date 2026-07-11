@@ -1,3 +1,4 @@
+import Phaser from "phaser";
 import type { ProductId } from "./gameConfig";
 import { PolishOverlayScene } from "./scenes/PolishOverlayScene";
 import { gameSession } from "./systems/GameSession";
