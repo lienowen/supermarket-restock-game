@@ -31,6 +31,7 @@ import "./dayTwoOpeningExpansionIntegration";
 import "./promotionWingProductFixIntegration";
 import "./promotionWingProductionIntegration";
 import "./promotionWingRestockFixIntegration";
+import "./promotionWingMainlineIntegration";
 import "./levelPacingIntegration";
 import "./serviceEventPacingIntegration";
 import "./closingFlowIntegration";
@@ -39,6 +40,7 @@ import "./closingCompletionFixIntegration";
 import "./phaseAtmosphereIntegration";
 import "./uiPolishIntegration";
 import "./mobileTouchIntegration";
+import "./shiftMainlineIntegration";
 
 installResponsiveShell();
 
