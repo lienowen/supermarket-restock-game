@@ -42,6 +42,9 @@ import "./uiPolishIntegration";
 import "./mobileTouchIntegration";
 import "./shiftMainlineIntegration";
 import "./dayTwoMainStoreCustomerGateIntegration";
+import "./openingOperationsIntegration";
+import "./storefrontMenuIntegration";
+import "./storeOpeningActionIntegration";
 
 installResponsiveShell();
 
