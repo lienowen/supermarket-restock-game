@@ -43,7 +43,8 @@ function createResultCard(scene: RuntimeGameScene): Phaser.GameObjects.Container
   const stars = Math.max(0, Math.min(3, snapshot.stars));
   const starLine = `${"★".repeat(stars)}${"☆".repeat(3 - stars)}`;
 
-  const shade = scene.add.rectangle(665, 591, 1330, 1182, 0x071010, 0.84);
+  const shade = scene.add.rectangle(665, 591, 1330, 1182, 0x071010, 0.84)
+    .setInteractive();
   const panel = scene.add.rectangle(665, 585, 720, 650, 0xf4e7c9, 0.99)
     .setStrokeStyle(8, 0x4c7148);
 
@@ -107,16 +108,13 @@ function createResultCard(scene: RuntimeGameScene): Phaser.GameObjects.Container
     wordWrap: { width: 600 }
   }).setOrigin(0.5);
 
-  const replayButton = makeButton(scene, 520, 835, "REPLAY SHIFT", 0x4f8b4c);
-  const continueLabel = snapshot.activeDay === "day01" ? "NEXT DAY" : "SHIFT INTRO";
-  const continueButton = makeButton(scene, 810, 835, continueLabel, 0x315f7d);
-
-  replayButton.on("pointerdown", () => {
+  const replayButton = makeButton(scene, 500, 855, "REPLAY SHIFT", 0x4f8b4c, () => {
     gameSession.reset(snapshot.activeDay);
     scene.scene.restart();
   });
 
-  continueButton.on("pointerdown", () => {
+  const continueLabel = snapshot.activeDay === "day01" ? "NEXT DAY" : "SHIFT INTRO";
+  const continueButton = makeButton(scene, 830, 855, continueLabel, 0x315f7d, () => {
     if (snapshot.activeDay === "day01") {
       try {
         localStorage.setItem("supermarket.activeDay", "day02");
@@ -147,9 +145,10 @@ function makeButton(
   x: number,
   y: number,
   label: string,
-  color: number
+  color: number,
+  action: () => void
 ): Phaser.GameObjects.Container {
-  const background = scene.add.rectangle(0, 0, 250, 70, color, 1)
+  const background = scene.add.rectangle(0, 0, 286, 78, color, 1)
     .setStrokeStyle(4, 0x294735);
   const text = scene.add.text(0, 0, label, {
     fontFamily: "Arial",
@@ -158,13 +157,28 @@ function makeButton(
     fontStyle: "bold"
   }).setOrigin(0.5);
 
-  return scene.add.container(x, y, [background, text])
-    .setSize(250, 70)
-    .setInteractive(
-      new Phaser.Geom.Rectangle(-125, -35, 250, 70),
-      Phaser.Geom.Rectangle.Contains
-    )
-    .setData("useHandCursor", true);
+  // A transparent hit plate is deliberately larger than the visible button.
+  // It owns the input directly, so clicks do not depend on container hit testing.
+  const hitPlate = scene.add.rectangle(0, 0, 326, 104, 0xffffff, 0.001)
+    .setInteractive({ useHandCursor: true });
+
+  const button = scene.add.container(x, y, [background, text, hitPlate]);
+  let activated = false;
+
+  hitPlate.on("pointerover", () => {
+    if (!activated) button.setScale(1.025);
+  });
+  hitPlate.on("pointerout", () => {
+    if (!activated) button.setScale(1);
+  });
+  hitPlate.on("pointerdown", () => {
+    if (activated) return;
+    activated = true;
+    button.setScale(0.985);
+    action();
+  });
+
+  return button;
 }
 
 function ratingMessage(stars: number, missedSales: number, wrongStock: number): string {
