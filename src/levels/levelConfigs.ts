@@ -15,23 +15,23 @@ const baseFeatures = {
 export const LEVELS: Record<LevelId, LevelConfig> = {
   day01: {
     id: "day01",
-    title: "Morning Restock",
-    objective: "Complete a fast first restock, serve the opening rush and close the store cleanly.",
+    title: "First Shift",
+    objective: "Clock in, stock the drinks shelf, serve four customers and close the store cleanly.",
     zones: ["backroom", "drinks"],
     shiftSeconds: 210,
-    salesTargets: { openToRush: 4, rushToClosing: 8 },
-    customerIntervalsMs: { open: 5600, rush: 4000 },
+    salesTargets: { openToRush: 2, rushToClosing: 4 },
+    customerIntervalsMs: { open: 6000, rush: 4300 },
     customerMix: { normal: 1 },
     features: { ...baseFeatures, rushHour: true }
   },
   day02: {
     id: "day02",
-    title: "Today's Hot Deal",
-    objective: "Open the Promotion Wing, serve a controlled customer wave and complete its store tasks.",
+    title: "Promotion Shift",
+    objective: "Prepare the store, run the promotion room, serve six customers and complete two store duties.",
     zones: ["backroom", "drinks", "promotion"],
     shiftSeconds: 300,
-    salesTargets: { openToRush: 6, rushToClosing: 15 },
-    customerIntervalsMs: { open: 6000, rush: 4300 },
+    salesTargets: { openToRush: 3, rushToClosing: 6 },
+    customerIntervalsMs: { open: 6500, rush: 4600 },
     customerMix: { normal: 0.7, family: 0.15, promotion: 0.15 },
     features: { ...baseFeatures, customerWaiting: true, rushHour: true }
   },
