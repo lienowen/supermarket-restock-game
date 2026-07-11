@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { AssetPaths, Assets } from "../assets";
 
 const STORAGE_KEY = "supermarket.activeDay";
+const AUXILIARY_SCENES = ["polish-overlay", "progression-customer", "back-stock"] as const;
 
 export class OpeningScene extends Phaser.Scene {
   private finished = false;
@@ -187,7 +188,12 @@ export class OpeningScene extends Phaser.Scene {
 
     this.input.enabled = false;
     this.cameras.main.fadeOut(180, 12, 20, 19);
-    this.time.delayedCall(190, () => this.scene.start("game"));
+    this.time.delayedCall(190, () => {
+      AUXILIARY_SCENES.forEach((key) => {
+        if (!this.scene.isActive(key)) this.scene.launch(key);
+      });
+      this.scene.start("game");
+    });
   }
 
   private loadIfMissing(key: keyof typeof AssetPaths): void {
