@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { GAME_RULES } from "./gameConfig";
 import { GameScene } from "./scenes/GameScene";
 import { BackStockScene } from "./scenes/BackStockScene";
+import { gameSession } from "./systems/GameSession";
 import type { ShiftTransition } from "./systems/ShiftManager";
 
 const FINAL_WAVE_SECONDS = 18;
@@ -57,6 +58,16 @@ const originalEndShift = gamePrototype.endShift;
 gamePrototype.advanceBusinessPhase = function advanceWithFinalWave(): void {
   const scene = this as unknown as RuntimeGameScene;
   const transition = scene.__pendingShiftTransition;
+
+  // The first two shifts are tutorials with explicit employee checklists. Once
+  // their target is complete, move directly to closing instead of spawning an
+  // unexplained extra wave of customers.
+  if (transition?.to === "CLOSING" && (gameSession.day === "day01" || gameSession.day === "day02")) {
+    originalAdvanceBusinessPhase.call(this);
+    scene.__closingTaskReady = true;
+    scene.updateHud();
+    return;
+  }
 
   if (transition?.to === "CLOSING") {
     scene.__pendingShiftTransition = undefined;
