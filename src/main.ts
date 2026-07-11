@@ -22,6 +22,7 @@ import "./cartWorkerSyncIntegration";
 import "./customerLaneIntegration";
 import "./restockFeedbackIntegration";
 import "./dayOneHookIntegration";
+import "./dayOneTutorialIntegration";
 import "./serviceEventPacingIntegration";
 import "./closingFlowIntegration";
 import "./closingGuideFixIntegration";
@@ -44,12 +45,6 @@ new Phaser.Game({
   render: {
     antialias: true,
     roundPixels: true
-  },
-  input: {
-    activePointers: 3,
-    touch: {
-      capture: true
-    }
   },
   scene: [
     StorefrontScene,
