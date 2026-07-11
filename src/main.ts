@@ -7,6 +7,7 @@ import { PolishOverlayScene } from "./scenes/PolishOverlayScene";
 import { ProgressionCustomerScene } from "./scenes/ProgressionCustomerScene";
 import { BackStockScene } from "./scenes/BackStockScene";
 import { PromotionWingScene } from "./scenes/PromotionWingScene";
+import { DayTwoRoomNavigationScene } from "./scenes/DayTwoRoomNavigationScene";
 import { installResponsiveShell } from "./responsiveShell";
 import "./gameSessionIntegration";
 import "./performanceEconomyIntegration";
@@ -25,7 +26,6 @@ import "./restockFeedbackIntegration";
 import "./dayOneHookIntegration";
 import "./dayOneTutorialIntegration";
 import "./dayTwoHookIntegration";
-import "./dayTwoSpaceExpansionIntegration";
 import "./dayTwoChallengeRewardIntegration";
 import "./dayTwoOpeningExpansionIntegration";
 import "./levelPacingIntegration";
@@ -60,6 +60,7 @@ new Phaser.Game({
     PolishOverlayScene,
     ProgressionCustomerScene,
     BackStockScene,
-    PromotionWingScene
+    PromotionWingScene,
+    DayTwoRoomNavigationScene
   ]
 });
