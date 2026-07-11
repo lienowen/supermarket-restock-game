@@ -48,6 +48,7 @@ import "./operatingHoursTimerIntegration";
 import "./settingsRuntimeIntegration";
 import "./mobileLandscapeShellIntegration";
 import "./currentDutyHighlightIntegration";
+import "./shiftContractIntegration";
 
 installResponsiveShell();
 
