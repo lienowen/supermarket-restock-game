@@ -12,6 +12,7 @@ import "./shiftResultIntegration";
 import "./layoutCalibration";
 import "./interactions/immediateCartDrag";
 import "./guidancePolicy";
+import "./cartVisualIntegration";
 
 new Phaser.Game({
   type: Phaser.AUTO,
