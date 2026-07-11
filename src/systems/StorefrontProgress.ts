@@ -13,6 +13,7 @@ export type ShiftResult = {
   missedSales: number;
   wrongStock: number;
   bestCombo: number;
+  satisfiedCustomers: number;
   walletCoins: number;
   completedAt: number;
 };
@@ -36,6 +37,7 @@ export function saveShiftResult(
     missedSales: Math.max(0, Math.floor(snapshot.missedSales)),
     wrongStock: Math.max(0, Math.floor(snapshot.wrongStock)),
     bestCombo: Math.max(0, Math.floor(snapshot.bestCombo)),
+    satisfiedCustomers: Math.max(0, Math.floor(snapshot.satisfiedCustomers)),
     walletCoins: Math.max(0, Math.floor(snapshot.money)),
     completedAt: Date.now()
   };
