@@ -6,6 +6,7 @@ import { GameScene } from "./scenes/GameScene";
 import { PolishOverlayScene } from "./scenes/PolishOverlayScene";
 import { ProgressionCustomerScene } from "./scenes/ProgressionCustomerScene";
 import { BackStockScene } from "./scenes/BackStockScene";
+import { installResponsiveShell } from "./responsiveShell";
 import "./gameSessionIntegration";
 import "./performanceEconomyIntegration";
 import "./customerDemandIntegration";
@@ -20,6 +21,12 @@ import "./cartVisualIntegration";
 import "./cartWorkerSyncIntegration";
 import "./customerLaneIntegration";
 import "./restockFeedbackIntegration";
+import "./dayOneHookIntegration";
+import "./closingFlowIntegration";
+import "./phaseAtmosphereIntegration";
+import "./uiPolishIntegration";
+
+installResponsiveShell();
 
 new Phaser.Game({
   type: Phaser.AUTO,
@@ -28,12 +35,19 @@ new Phaser.Game({
   height: 1182,
   backgroundColor: "#151b1b",
   scale: {
-    mode: Phaser.Scale.EXPAND,
-    autoCenter: Phaser.Scale.CENTER_BOTH
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+    expandParent: true
   },
   render: {
     antialias: true,
     roundPixels: true
+  },
+  input: {
+    activePointers: 3,
+    touch: {
+      capture: true
+    }
   },
   scene: [
     StorefrontScene,
