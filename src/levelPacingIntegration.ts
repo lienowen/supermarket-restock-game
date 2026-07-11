@@ -1,3 +1,4 @@
+import Phaser from "phaser";
 import { LEVELS } from "./levels/levelConfigs";
 import { GameScene } from "./scenes/GameScene";
 import { gameSession } from "./systems/GameSession";
