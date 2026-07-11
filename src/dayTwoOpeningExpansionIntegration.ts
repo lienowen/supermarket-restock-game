@@ -13,23 +13,29 @@ prototype.create = function createWithDayTwoAreaUnlock(): void {
   const scene = this as unknown as Phaser.Scene;
   if (resolveDay() !== "day02") return;
 
-  const background = scene.add.rectangle(665, 700, 760, 92, 0x9a4e1a, 0.96)
+  const background = scene.add.rectangle(665, 700, 860, 112, 0x9a4e1a, 0.97)
     .setStrokeStyle(5, 0xffd75a)
     .setDepth(80);
-  const eyebrow = scene.add.text(665, 679, "NEW SALES AREA UNLOCKED", {
+  const eyebrow = scene.add.text(665, 672, "THE STORE IS GETTING BIGGER", {
     fontFamily: "Arial",
     fontSize: "16px",
     color: "#ffe5a1",
     fontStyle: "bold",
     letterSpacing: 3
   }).setOrigin(0.5).setDepth(81);
-  const title = scene.add.text(665, 717, "PROMO END-CAP + MAIN COOLER", {
+  const title = scene.add.text(665, 711, "NEW ROOM UNLOCKED · PROMOTION WING", {
     fontFamily: "Arial",
     fontSize: "27px",
     color: "#ffffff",
     fontStyle: "bold"
   }).setOrigin(0.5).setDepth(81);
-  const badge = scene.add.container(0, 0, [background, eyebrow, title])
+  const subtitle = scene.add.text(665, 745, "Move through the store doorway and manage stock across two separate spaces.", {
+    fontFamily: "Arial",
+    fontSize: "16px",
+    color: "#fff0c4",
+    fontStyle: "bold"
+  }).setOrigin(0.5).setDepth(81);
+  const badge = scene.add.container(0, 0, [background, eyebrow, title, subtitle])
     .setDepth(80)
     .setAlpha(0)
     .setScale(0.9);
