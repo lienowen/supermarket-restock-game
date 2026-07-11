@@ -22,7 +22,9 @@ import "./cartWorkerSyncIntegration";
 import "./customerLaneIntegration";
 import "./restockFeedbackIntegration";
 import "./dayOneHookIntegration";
+import "./serviceEventPacingIntegration";
 import "./closingFlowIntegration";
+import "./closingGuideFixIntegration";
 import "./phaseAtmosphereIntegration";
 import "./uiPolishIntegration";
 
