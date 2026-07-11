@@ -10,12 +10,15 @@ import "./gameSessionIntegration";
 import "./performanceEconomyIntegration";
 import "./customerDemandIntegration";
 import "./shiftResultIntegration";
+import "./storefrontDay3Integration";
+import "./day3BackStockIntegration";
 import "./layoutCalibration";
 import "./boxGroundingIntegration";
 import "./interactions/immediateCartDrag";
 import "./guidancePolicy";
 import "./cartVisualIntegration";
 import "./cartWorkerSyncIntegration";
+import "./restockFeedbackIntegration";
 
 new Phaser.Game({
   type: Phaser.AUTO,
