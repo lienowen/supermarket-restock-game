@@ -150,8 +150,7 @@ function makeButton(
   color: number
 ): Phaser.GameObjects.Container {
   const background = scene.add.rectangle(0, 0, 250, 70, color, 1)
-    .setStrokeStyle(4, 0x294735)
-    .setInteractive({ useHandCursor: true });
+    .setStrokeStyle(4, 0x294735);
   const text = scene.add.text(0, 0, label, {
     fontFamily: "Arial",
     fontSize: "22px",
@@ -159,9 +158,13 @@ function makeButton(
     fontStyle: "bold"
   }).setOrigin(0.5);
 
-  const container = scene.add.container(x, y, [background, text]);
-  text.setInteractive({ useHandCursor: true }).on("pointerdown", () => background.emit("pointerdown"));
-  return container;
+  return scene.add.container(x, y, [background, text])
+    .setSize(250, 70)
+    .setInteractive(
+      new Phaser.Geom.Rectangle(-125, -35, 250, 70),
+      Phaser.Geom.Rectangle.Contains
+    )
+    .setData("useHandCursor", true);
 }
 
 function ratingMessage(stars: number, missedSales: number, wrongStock: number): string {
