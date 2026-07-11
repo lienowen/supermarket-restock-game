@@ -13,6 +13,7 @@ import "./layoutCalibration";
 import "./interactions/immediateCartDrag";
 import "./guidancePolicy";
 import "./cartVisualIntegration";
+import "./cartWorkerSyncIntegration";
 
 new Phaser.Game({
   type: Phaser.AUTO,
