@@ -3,6 +3,10 @@ import type { ProductId } from "./gameConfig";
 import { GameScene } from "./scenes/GameScene";
 import { PromotionWingScene } from "./scenes/PromotionWingScene";
 
+type BoundsTarget = {
+  getBounds: () => Phaser.Geom.Rectangle;
+};
+
 type RuntimeBox = {
   productId: ProductId;
   loaded: boolean;
@@ -178,7 +182,7 @@ function updatePromotionHighlight(scene: RuntimeWing): void {
 
 function showHighlight(
   scene: RuntimeGame | RuntimeWing,
-  target: Phaser.GameObjects.GameObject & Phaser.GameObjects.Components.GetBounds,
+  target: BoundsTarget,
   labelText: string,
   padding: number
 ): void {
@@ -187,10 +191,12 @@ function showHighlight(
   const label = scene.__dutyHighlightLabel;
   if (!highlight || !label) return;
 
+  const width = Math.max(82, bounds.width + padding * 2);
+  const height = Math.max(72, bounds.height + padding * 2);
   highlight
     .setPosition(bounds.centerX, bounds.centerY)
-    .setSize(Math.max(82, bounds.width + padding * 2), Math.max(72, bounds.height + padding * 2))
-    .setDisplaySize(Math.max(82, bounds.width + padding * 2), Math.max(72, bounds.height + padding * 2))
+    .setSize(width, height)
+    .setDisplaySize(width, height)
     .setVisible(true);
   label
     .setText(labelText)
