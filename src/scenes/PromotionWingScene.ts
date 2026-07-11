@@ -292,6 +292,27 @@ export class PromotionWingScene extends Phaser.Scene {
     });
   }
 
+  private placeProduct(slot: WingSlot, animate: boolean): void {
+    const product = this.add.image(slot.x, slot.y + 58, PRODUCTS[this.featuredProduct].productKey)
+      .setOrigin(0.5, 1)
+      .setDepth(8);
+    this.fitImage(product, PRODUCTS[this.featuredProduct].shelfWidth * 1.35, PRODUCTS[this.featuredProduct].shelfHeight * 1.35);
+
+    slot.product = product;
+    slot.missing.setVisible(false);
+
+    if (animate) {
+      product.setScale(product.scaleX * 0.72, product.scaleY * 0.72);
+      this.tweens.add({
+        targets: product,
+        scaleX: product.scaleX / 0.72,
+        scaleY: product.scaleY / 0.72,
+        duration: 220,
+        ease: "Back.Out"
+      });
+    }
+  }
+
   private restockSlot(slot: WingSlot): void {
     const game = this.gameScene;
     if (!game || this.restockBusy || slot.product || slot.reserved || game.shiftEnded) return;
