@@ -8,6 +8,7 @@ type RuntimeBox = {
   productId: ProductId;
   loaded: boolean;
   image: Phaser.GameObjects.Image;
+  shadow: Phaser.GameObjects.Ellipse;
 };
 
 type RuntimeSlot = {
@@ -113,13 +114,15 @@ function focusFirstColaCase(scene: RuntimeGameScene): void {
   const firstCase = scene.boxes.find((item) => item.positionIndex === 0 && item.productId === "cola");
   for (const item of scene.boxes) {
     const active = item === firstCase;
-    item.image.setAlpha(active ? 1 : 0.42);
     item.image.setData("dayOneLocked", !active);
     if (active) {
-      item.image.setTint(0xfff1a8);
+      item.image.setVisible(true).setAlpha(1).setTint(0xfff1a8);
+      item.shadow.setVisible(true);
       continue;
     }
-    item.image.disableInteractive();
+
+    item.image.disableInteractive().setVisible(false);
+    item.shadow.setVisible(false);
   }
 }
 
@@ -127,7 +130,12 @@ function unlockAllCases(scene: RuntimeGameScene): void {
   for (const item of scene.boxes) {
     item.image.setData("dayOneLocked", false);
     if (item.loaded || !item.image.active) continue;
-    item.image.clearTint().setAlpha(1).setInteractive({ useHandCursor: true });
+    item.image
+      .setVisible(true)
+      .clearTint()
+      .setAlpha(1)
+      .setInteractive({ useHandCursor: true });
+    item.shadow.setVisible(true);
     scene.input.setDraggable(item.image);
   }
 }
