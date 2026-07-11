@@ -17,6 +17,7 @@ type RuntimeGameScene = Phaser.Scene & {
   phase: ShiftPhase;
   shiftEnded: boolean;
   restockBusy: boolean;
+  __finalServiceActive?: boolean;
   customerSequence: number;
   stocked: number;
   money: number;
@@ -37,7 +38,12 @@ const prototype = GameScene.prototype as unknown as GameScenePrototype;
 
 prototype.customerPurchase = function purchaseFromClearCustomerLane(): void {
   const scene = this as unknown as RuntimeGameScene;
-  if (scene.shiftEnded || scene.restockBusy || (scene.phase !== "OPEN" && scene.phase !== "RUSH")) return;
+  const customersAllowed =
+    scene.phase === "OPEN" ||
+    scene.phase === "RUSH" ||
+    Boolean(scene.__finalServiceActive);
+
+  if (scene.shiftEnded || scene.restockBusy || !customersAllowed) return;
 
   const available = scene.shelfSlots.filter((slot) => slot.product && !slot.reservedForCustomer);
   if (available.length === 0) return;
@@ -55,7 +61,6 @@ prototype.customerPurchase = function purchaseFromClearCustomerLane(): void {
     .setDepth(35);
   scene.fitImage(customer, 140, 292);
 
-  // Customers browse from the far-right aisle. They never stand on shelf hit areas.
   const shoppingLaneX = 1255;
   const shoppingLaneY = 875;
   scene.tweens.add({
