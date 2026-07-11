@@ -25,6 +25,7 @@ import "./dayOneHookIntegration";
 import "./dayOneTutorialIntegration";
 import "./dayTwoHookIntegration";
 import "./dayTwoSceneExpansionIntegration";
+import "./dayTwoOpeningExpansionIntegration";
 import "./levelPacingIntegration";
 import "./serviceEventPacingIntegration";
 import "./closingFlowIntegration";
