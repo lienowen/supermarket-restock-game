@@ -89,7 +89,8 @@ const originalMissWaitingCustomer = progressionPrototype.missWaitingCustomer;
 
 progressionPrototype.missWaitingCustomer = function missWaitingCustomerWithRating(customer: unknown): void {
   const scene = this as unknown as RuntimeProgressionScene;
-  gameSession.recordMissedSale();
+  // ProgressionCustomerScene now owns the canonical missed-sale increment. This
+  // wrapper only refreshes rating/HUD so one lost customer is counted exactly once.
   originalMissWaitingCustomer.call(this, customer);
   scene.gameScene?.updateStars();
   scene.gameScene?.updateHud();
