@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import "./styles.css";
+import { StorefrontScene } from "./scenes/StorefrontScene";
 import { OpeningScene } from "./scenes/OpeningScene";
 import { GameScene } from "./scenes/GameScene";
 import { PolishOverlayScene } from "./scenes/PolishOverlayScene";
@@ -29,5 +30,12 @@ new Phaser.Game({
     antialias: true,
     roundPixels: true
   },
-  scene: [OpeningScene, GameScene, PolishOverlayScene, ProgressionCustomerScene, BackStockScene]
+  scene: [
+    StorefrontScene,
+    OpeningScene,
+    GameScene,
+    PolishOverlayScene,
+    ProgressionCustomerScene,
+    BackStockScene
+  ]
 });
