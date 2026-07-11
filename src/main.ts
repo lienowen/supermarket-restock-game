@@ -30,6 +30,7 @@ import "./dayTwoChallengeRewardIntegration";
 import "./dayTwoOpeningExpansionIntegration";
 import "./promotionWingProductFixIntegration";
 import "./promotionWingProductionIntegration";
+import "./promotionWingRestockFixIntegration";
 import "./levelPacingIntegration";
 import "./serviceEventPacingIntegration";
 import "./closingFlowIntegration";
