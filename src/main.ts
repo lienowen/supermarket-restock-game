@@ -23,8 +23,6 @@ import "./cartVisualIntegration";
 import "./cartWorkerSyncIntegration";
 import "./customerLaneIntegration";
 import "./restockFeedbackIntegration";
-import "./dayOneHookIntegration";
-import "./dayOneTutorialIntegration";
 import "./dayTwoHookIntegration";
 import "./dayTwoChallengeRewardIntegration";
 import "./dayTwoOpeningExpansionIntegration";
