@@ -1,3 +1,4 @@
+import Phaser from "phaser";
 import { GameScene } from "./scenes/GameScene";
 import { OpeningScene } from "./scenes/OpeningScene";
 import { StorefrontScene } from "./scenes/StorefrontScene";
@@ -5,7 +6,7 @@ import { StorefrontScene } from "./scenes/StorefrontScene";
 const SOUND_SETTING_KEY = "supermarket.settings.sound";
 const GUIDANCE_SETTING_KEY = "supermarket.settings.guidance";
 
-type RuntimeGameScene = GameScene & {
+type RuntimeGameScene = Phaser.Scene & {
   hintText: Phaser.GameObjects.Text;
   hintBubble: Phaser.GameObjects.Image;
   bubbleText: Phaser.GameObjects.Text;
