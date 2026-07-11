@@ -38,6 +38,8 @@ type RuntimeGameScene = Phaser.Scene & {
   purchaseEvent?: Phaser.Time.TimerEvent;
   timerEvent?: Phaser.Time.TimerEvent;
   __pendingShiftTransition?: ShiftTransition;
+  __rushPreparing?: boolean;
+  __rushCountdown?: Phaser.GameObjects.Container;
 
   showPhaseBanner: (text: string) => void;
   showTransientHint: (message: string) => void;
@@ -58,16 +60,11 @@ prototype.create = function createWithCanonicalShiftSession(): void {
   const scene = this as unknown as RuntimeGameScene;
 
   // Phaser restarts reuse the same Scene instance. Class field initializers are NOT
-  // run again, so arrays/counters from Day 1 would otherwise survive into Day 2.
+  // run again, so arrays/counters from the previous day must be cleared explicitly.
   resetRestartableSceneState(scene);
 
-  // Resolve the day first. GAME_RULES uses runtime getters backed by GameSession,
-  // so every subsequent timer/target lookup reflects the actual active day.
   gameSession.reset(resolveActiveDay());
   installCanonicalSessionAccessors(scene);
-
-  // GameScene's class field is initialized before create(), which used to capture
-  // Day 1's 180 seconds even after switching to Day 2.
   scene.remainingSeconds = GAME_RULES.shiftSeconds;
 
   originalCreate.call(this);
@@ -93,15 +90,14 @@ prototype.advanceBusinessPhase = function advanceBusinessPhaseFromShiftManager()
   if (!transition) return;
 
   if (transition.to === "RUSH") {
-    scene.stars = gameSession.performanceStars;
-    scene.showPhaseBanner("LUNCH RUSH!");
-    scene.showTransientHint("Rush hour: customers arrive faster. Prioritize matching stock.");
-    scene.startCustomerLoop(GAME_RULES.customerIntervalRushMs);
-    scene.updateHud();
+    beginRushPreparation(scene);
     return;
   }
 
   if (transition.to === "CLOSING") {
+    scene.__rushPreparing = false;
+    scene.__rushCountdown?.destroy(true);
+    scene.__rushCountdown = undefined;
     scene.stars = gameSession.performanceStars;
     scene.purchaseEvent?.remove(false);
     scene.showPhaseBanner("CLOSING TIME");
@@ -110,10 +106,88 @@ prototype.advanceBusinessPhase = function advanceBusinessPhaseFromShiftManager()
   }
 };
 
+function beginRushPreparation(scene: RuntimeGameScene): void {
+  if (scene.__rushPreparing || scene.shiftEnded) return;
+
+  scene.__rushPreparing = true;
+  scene.purchaseEvent?.remove(false);
+  scene.stars = gameSession.performanceStars;
+  scene.showTransientHint("Lunch rush starts in 8 seconds. Fill urgent gaps and prepare Back Stock now.");
+  scene.updateHud();
+
+  scene.__rushCountdown?.destroy(true);
+  const background = scene.add.rectangle(665, 300, 560, 118, 0x7b3f16, 0.96)
+    .setStrokeStyle(5, 0xffd75a);
+  const title = scene.add.text(665, 272, "RUSH PREPARATION", {
+    fontFamily: "Arial",
+    fontSize: "25px",
+    color: "#fff2bd",
+    fontStyle: "bold",
+    letterSpacing: 2
+  }).setOrigin(0.5);
+  const countdown = scene.add.text(665, 318, "RUSH IN 8", {
+    fontFamily: "Arial",
+    fontSize: "38px",
+    color: "#ffffff",
+    fontStyle: "bold",
+    stroke: "#4b2410",
+    strokeThickness: 6
+  }).setOrigin(0.5);
+
+  scene.__rushCountdown = scene.add.container(0, 0, [background, title, countdown])
+    .setDepth(860)
+    .setScale(0.88)
+    .setAlpha(0);
+
+  scene.tweens.add({
+    targets: scene.__rushCountdown,
+    alpha: 1,
+    scaleX: 1,
+    scaleY: 1,
+    duration: 180,
+    ease: "Back.Out"
+  });
+
+  let seconds = 8;
+  const tick = (): void => {
+    if (!scene.scene.isActive() || scene.shiftEnded || !scene.__rushPreparing) {
+      scene.__rushCountdown?.destroy(true);
+      scene.__rushCountdown = undefined;
+      return;
+    }
+
+    seconds -= 1;
+    if (seconds > 0) {
+      countdown.setText(`RUSH IN ${seconds}`);
+      scene.tweens.add({
+        targets: countdown,
+        scaleX: 1.12,
+        scaleY: 1.12,
+        duration: 90,
+        yoyo: true,
+        ease: "Sine.Out"
+      });
+      scene.time.delayedCall(1000, tick);
+      return;
+    }
+
+    scene.__rushPreparing = false;
+    scene.__rushCountdown?.destroy(true);
+    scene.__rushCountdown = undefined;
+    scene.showPhaseBanner("LUNCH RUSH!");
+    scene.showTransientHint("Rush hour: customers arrive faster. Prioritize waiting requests and matching stock.");
+    scene.startCustomerLoop(GAME_RULES.customerIntervalRushMs);
+    scene.updateHud();
+  };
+
+  scene.time.delayedCall(1000, tick);
+}
+
 function resetRestartableSceneState(scene: RuntimeGameScene): void {
   scene.purchaseEvent?.remove(false);
   scene.timerEvent?.remove(false);
   scene.guideTween?.stop();
+  scene.__rushCountdown?.destroy(true);
 
   if (scene.pauseOverlay?.active) scene.pauseOverlay.destroy(true);
 
@@ -127,7 +201,6 @@ function resetRestartableSceneState(scene: RuntimeGameScene): void {
   scene.movingCart = false;
   scene.restockBusy = false;
 
-  // Wallet coins deliberately survive Scene restarts and Day changes.
   scene.stars = 0;
   scene.stocked = 0;
   scene.combo = 0;
@@ -143,11 +216,11 @@ function resetRestartableSceneState(scene: RuntimeGameScene): void {
   scene.purchaseEvent = undefined;
   scene.timerEvent = undefined;
   scene.__pendingShiftTransition = undefined;
+  scene.__rushPreparing = false;
+  scene.__rushCountdown = undefined;
 }
 
 function installCanonicalSessionAccessors(scene: RuntimeGameScene): void {
-  // TypeScript class fields create own properties. Remove them before installing
-  // accessors so GameScene cannot silently maintain a second copy of canonical state.
   delete (scene as unknown as Record<string, unknown>).phase;
   delete (scene as unknown as Record<string, unknown>).soldCount;
   delete (scene as unknown as Record<string, unknown>).shiftEnded;
@@ -172,8 +245,6 @@ function installCanonicalSessionAccessors(scene: RuntimeGameScene): void {
         return;
       }
 
-      // Recovery fallback only. Normal OPEN/RUSH/CLOSING transitions are driven by
-      // ShiftManager.openStore()/recordSale()/finishShift().
       gameSession.restoreShiftState(next, gameSession.sales);
       scene.stars = gameSession.performanceStars;
     }
@@ -194,8 +265,6 @@ function installCanonicalSessionAccessors(scene: RuntimeGameScene): void {
         return;
       }
 
-      // Used only for restart/save recovery. Normal sales must increment exactly
-      // once and pass through ShiftManager.recordSale().
       gameSession.restoreShiftState(gameSession.phase, normalized);
       scene.stars = gameSession.performanceStars;
     }
@@ -218,10 +287,14 @@ function installCanonicalSessionAccessors(scene: RuntimeGameScene): void {
 
 function resolveActiveDay(): LevelId {
   const queryDay = new URLSearchParams(window.location.search).get("day");
+  if (queryDay === "3" || queryDay === "day03") return "day03";
   if (queryDay === "2" || queryDay === "day02") return "day02";
 
   try {
-    return localStorage.getItem("supermarket.activeDay") === "day02" ? "day02" : "day01";
+    const stored = localStorage.getItem("supermarket.activeDay");
+    if (stored === "day03") return "day03";
+    if (stored === "day02") return "day02";
+    return "day01";
   } catch {
     return "day01";
   }
