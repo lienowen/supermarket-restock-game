@@ -68,11 +68,13 @@ prototype.departureRequirement = function dayOneFirstTripRequirement(): number {
 
 prototype.openStore = function openAfterFirstFastWin(): void {
   const scene = this as unknown as RuntimeGameScene;
+  const completingHook = gameSession.day === "day01" && Boolean(scene.__dayOneHookActive);
+
+  if (completingHook) removeTutorialCases(scene);
   originalOpenStore.call(this);
 
-  if (gameSession.day !== "day01" || !scene.__dayOneHookActive) return;
+  if (!completingHook) return;
   scene.__dayOneHookActive = false;
-  unlockAllCases(scene);
   scene.showTransientHint("Great start! The store is open. Keep shelves filled as customers create new gaps.");
 };
 
@@ -95,7 +97,7 @@ function seedFiveShelfProducts(scene: RuntimeGameScene): void {
   firstTarget.missingTag
     .setVisible(true)
     .setTint(0xffd75a)
-    .setDepth(42);
+    .setDepth(45);
   const baseX = firstTarget.missingTag.scaleX;
   const baseY = firstTarget.missingTag.scaleY;
   scene.tweens.add({
@@ -126,16 +128,16 @@ function focusFirstColaCase(scene: RuntimeGameScene): void {
   }
 }
 
-function unlockAllCases(scene: RuntimeGameScene): void {
+function removeTutorialCases(scene: RuntimeGameScene): void {
+  const retained: RuntimeBox[] = [];
   for (const item of scene.boxes) {
-    item.image.setData("dayOneLocked", false);
-    if (item.loaded || !item.image.active) continue;
-    item.image
-      .setVisible(true)
-      .clearTint()
-      .setAlpha(1)
-      .setInteractive({ useHandCursor: true });
-    item.shadow.setVisible(true);
-    scene.input.setDraggable(item.image);
+    if (!item.image.getData("dayOneLocked")) {
+      retained.push(item);
+      continue;
+    }
+
+    item.image.destroy();
+    if (item.shadow.active) item.shadow.destroy();
   }
+  scene.boxes = retained;
 }
