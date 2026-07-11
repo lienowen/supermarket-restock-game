@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { AssetPaths, Assets } from "../assets";
 import { PRODUCTS, type ProductId } from "../gameConfig";
 import type { ShiftPhase } from "../domain/gameTypes";
+import { customerDemand } from "../systems/CustomerDemand";
 import { gameSession } from "../systems/GameSession";
 
 type RuntimeSlot = {
@@ -19,6 +20,10 @@ type RuntimeGameScene = Phaser.Scene & {
   shiftEnded: boolean;
   stocked: number;
   restockBusy: boolean;
+  movingCart: boolean;
+  cartAtShelf: boolean;
+  loadedProducts: ProductId[];
+  updateCartCount: () => void;
   updateHud: () => void;
   updateStars: () => void;
   showTransientHint: (message: string) => void;
@@ -38,6 +43,8 @@ const INITIAL_BACK_STOCK: Record<ProductId, number> = {
   milk: 2
 };
 
+const MAX_BACK_STOCK = 4;
+
 const STOCK_CARD_KEYS: Record<ProductId, string> = {
   cola: Assets.day02.backStockCola,
   water: Assets.day02.backStockWater,
@@ -50,6 +57,9 @@ export class BackStockScene extends Phaser.Scene {
   private inventory: Record<ProductId, number> = { ...INITIAL_BACK_STOCK };
   private buttons = new Map<ProductId, StockButton>();
   private panel?: Phaser.GameObjects.Container;
+  private refillBg?: Phaser.GameObjects.Rectangle;
+  private refillText?: Phaser.GameObjects.Text;
+  private priorityText?: Phaser.GameObjects.Text;
   private attachEvent?: Phaser.Time.TimerEvent;
   private lastPhase?: ShiftPhase;
 
@@ -108,6 +118,9 @@ export class BackStockScene extends Phaser.Scene {
     this.panel?.destroy(true);
     this.panel = undefined;
     this.buttons.clear();
+    this.refillBg = undefined;
+    this.refillText = undefined;
+    this.priorityText = undefined;
     this.gameScene = undefined;
     this.attached = false;
     this.lastPhase = undefined;
@@ -154,12 +167,40 @@ export class BackStockScene extends Phaser.Scene {
       padding: { x: 12, y: 6 }
     }).setOrigin(0.5);
 
-    const children: Phaser.GameObjects.GameObject[] = [rack, subtitle];
+    this.priorityText = this.add.text(1070, 832, "", {
+      fontFamily: "Arial",
+      fontSize: "16px",
+      color: "#ffd75a",
+      fontStyle: "bold",
+      backgroundColor: "#152421",
+      padding: { x: 12, y: 6 }
+    }).setOrigin(0.5).setVisible(false);
+
+    this.refillBg = this.add.rectangle(1070, 875, 360, 42, 0x263c37, 0.97)
+      .setStrokeStyle(2, 0x719b86, 0.9)
+      .setInteractive({ useHandCursor: true });
+    this.refillText = this.add.text(1070, 875, "BRING A LOADED CART HERE", {
+      fontFamily: "Arial",
+      fontSize: "16px",
+      color: "#dbe9e4",
+      fontStyle: "bold"
+    }).setOrigin(0.5);
+
+    this.refillBg.on("pointerdown", () => this.refillFromCart());
+    this.refillText.setInteractive({ useHandCursor: true }).on("pointerdown", () => this.refillFromCart());
+
+    const children: Phaser.GameObjects.GameObject[] = [
+      rack,
+      subtitle,
+      this.priorityText,
+      this.refillBg,
+      this.refillText
+    ];
     const products: ProductId[] = ["cola", "water", "milk"];
 
     products.forEach((productId, index) => {
       const x = 900 + index * 170;
-      const y = 985;
+      const y = 995;
       const glow = this.add.rectangle(x, y, 130, 130, 0xffd75a, 0.14)
         .setStrokeStyle(4, 0xffd75a, 1)
         .setVisible(false);
@@ -195,27 +236,112 @@ export class BackStockScene extends Phaser.Scene {
     const scene = this.gameScene;
     if (!scene || !this.panel?.visible) return;
 
+    const demand = customerDemand.snapshot;
+    const priorityLabel = demand.productId
+      ? `CUSTOMER WAITING · ${PRODUCTS[demand.productId].label.toUpperCase()}`
+      : "";
+    this.priorityText?.setText(priorityLabel).setVisible(Boolean(priorityLabel));
+    if (this.priorityText) {
+      this.priorityText.setColor(demand.patienceRatio <= 0.3 ? "#ff8179" : "#ffd75a");
+    }
+
     for (const button of this.buttons.values()) {
       const missing = scene.shelfSlots.some(
         (slot) => slot.productId === button.productId && !slot.product && !slot.reservedForCustomer
       );
       const amount = this.inventory[button.productId];
+      const customerPriority = demand.productId === button.productId;
       const ready = amount > 0 && missing;
 
       button.count.setText(`x${amount}`);
-      button.glow.setVisible(ready);
+      button.glow.setVisible(ready || customerPriority);
+      button.glow.setFillStyle(customerPriority ? 0xff655e : 0xffd75a, customerPriority ? 0.22 : 0.14);
+      button.glow.setStrokeStyle(
+        customerPriority ? 5 : 4,
+        customerPriority ? 0xff655e : 0xffd75a,
+        1
+      );
       button.card.setAlpha(amount > 0 ? 1 : 0.35);
       button.countBadge.setAlpha(amount > 0 ? 1 : 0.45);
       button.count.setAlpha(amount > 0 ? 1 : 0.45);
 
-      if (ready) {
-        button.card.setTint(0xffffff);
+      if (customerPriority && amount > 0) {
+        button.card.setTint(0xfff0d0);
       } else if (amount <= 0) {
         button.card.setTint(0x8b9490);
       } else {
         button.card.clearTint();
       }
     }
+
+    const loadedCount = scene.loadedProducts.length;
+    const canUnload = scene.cartAtShelf && loadedCount > 0 && !scene.movingCart && !scene.restockBusy;
+    this.refillBg?.setFillStyle(canUnload ? 0x376f4c : 0x263c37, 0.97);
+    this.refillBg?.setStrokeStyle(2, canUnload ? 0xffd75a : 0x719b86, canUnload ? 1 : 0.8);
+    this.refillText?.setText(
+      canUnload
+        ? `UNLOAD CART TO BACK STOCK · ${loadedCount}`
+        : scene.cartAtShelf
+          ? "LOAD THE CART BEFORE REFILLING"
+          : "BRING A LOADED CART HERE"
+    );
+  }
+
+  private refillFromCart(): void {
+    const scene = this.gameScene;
+    if (!scene || gameSession.isPaused || scene.shiftEnded || scene.movingCart || scene.restockBusy) return;
+
+    if (!scene.cartAtShelf) {
+      scene.showTransientHint("Bring the loaded cart to the sales floor first.");
+      return;
+    }
+
+    if (scene.loadedProducts.length === 0) {
+      scene.showTransientHint("The cart is empty. Load cases in the backroom first.");
+      return;
+    }
+
+    const remaining: ProductId[] = [];
+    const transferred: Record<ProductId, number> = { cola: 0, water: 0, milk: 0 };
+
+    for (const productId of scene.loadedProducts) {
+      if (this.inventory[productId] >= MAX_BACK_STOCK) {
+        remaining.push(productId);
+        continue;
+      }
+
+      this.inventory[productId] += 1;
+      transferred[productId] += 1;
+    }
+
+    const total = transferred.cola + transferred.water + transferred.milk;
+    if (total === 0) {
+      scene.showTransientHint("Back Stock is full. Use the cart to fill shelf gaps first.");
+      return;
+    }
+
+    scene.loadedProducts.splice(0, scene.loadedProducts.length, ...remaining);
+    scene.updateCartCount();
+    scene.updateHud();
+    this.refreshButtons();
+
+    for (const [productId, amount] of Object.entries(transferred) as [ProductId, number][]) {
+      if (amount <= 0) continue;
+      const button = this.buttons.get(productId);
+      if (!button) continue;
+
+      this.tweens.killTweensOf(button.card);
+      this.tweens.add({
+        targets: button.card,
+        scaleX: button.card.scaleX * 1.08,
+        scaleY: button.card.scaleY * 1.08,
+        duration: 90,
+        yoyo: true,
+        ease: "Sine.Out"
+      });
+    }
+
+    this.showFloatingText(1070, 824, `BACK STOCK REFILLED +${total}`, 0x8ff08a);
   }
 
   private quickRestock(productId: ProductId): void {
