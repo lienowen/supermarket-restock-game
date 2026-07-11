@@ -13,6 +13,7 @@ export type CustomerState =
 export type ZoneId =
   | "backroom"
   | "drinks"
+  | "promotion"
   | "dairy"
   | "snacks"
   | "produce"
