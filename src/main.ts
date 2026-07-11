@@ -7,6 +7,8 @@ import { ProgressionCustomerScene } from "./scenes/ProgressionCustomerScene";
 import { BackStockScene } from "./scenes/BackStockScene";
 import "./gameSessionIntegration";
 import "./performanceEconomyIntegration";
+import "./customerDemandIntegration";
+import "./shiftResultIntegration";
 import "./layoutCalibration";
 import "./interactions/immediateCartDrag";
 import "./guidancePolicy";
