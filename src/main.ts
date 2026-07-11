@@ -33,6 +33,7 @@ import "./levelPacingIntegration";
 import "./serviceEventPacingIntegration";
 import "./closingFlowIntegration";
 import "./closingGuideFixIntegration";
+import "./closingCompletionFixIntegration";
 import "./phaseAtmosphereIntegration";
 import "./uiPolishIntegration";
 import "./mobileTouchIntegration";
