@@ -18,6 +18,7 @@ import "./interactions/immediateCartDrag";
 import "./guidancePolicy";
 import "./cartVisualIntegration";
 import "./cartWorkerSyncIntegration";
+import "./customerLaneIntegration";
 import "./restockFeedbackIntegration";
 
 new Phaser.Game({
