@@ -20,6 +20,7 @@ type RuntimeSlot = {
 type RuntimeGameScene = Phaser.Scene & {
   phase: "PREPARE" | "OPEN" | "RUSH" | "CLOSING" | "RESULT";
   shiftEnded: boolean;
+  restockBusy: boolean;
   money: number;
   shelfSlots: RuntimeSlot[];
   __rushPreparing?: boolean;
@@ -553,6 +554,8 @@ function cleanupDayTwo(scene: RuntimeGameScene, monitor: () => void): void {
   scene.__day2PlanningOverlay = undefined;
   scene.__day2PromoPanel = undefined;
   scene.__day2DealBoard = undefined;
+  scene.__day2DealTitle = undefined;
+  scene.__day2DealStatus = undefined;
   scene.__day2Monitor = undefined;
 }
 
