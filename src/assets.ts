@@ -35,6 +35,17 @@ export const Assets = {
     backStockWater: "day02-back-stock-water",
     backStockMilk: "day02-back-stock-milk"
   },
+  storefront: {
+    day: "storefront-day",
+    night: "storefront-night",
+    startShift: "storefront-start-shift",
+    days: "storefront-days",
+    upgrades: "storefront-upgrades",
+    store: "storefront-store",
+    collection: "storefront-collection",
+    settings: "storefront-settings",
+    shiftResultPanel: "storefront-shift-result-panel"
+  },
   ui: {
     workerAvatar: "ui-worker-avatar",
     coin: "ui-icon-coin",
@@ -78,6 +89,15 @@ export const AssetPaths = {
   [Assets.day02.backStockCola]: "./assets/day02/back_stock_cola.png",
   [Assets.day02.backStockWater]: "./assets/day02/back_stock_water.png",
   [Assets.day02.backStockMilk]: "./assets/day02/back_stock_milk.png",
+  [Assets.storefront.day]: "./assets/storefront/storefront_day.png",
+  [Assets.storefront.night]: "./assets/storefront/storefront_night.png",
+  [Assets.storefront.startShift]: "./assets/storefront/button_start_shift.png",
+  [Assets.storefront.days]: "./assets/storefront/button_days.png",
+  [Assets.storefront.upgrades]: "./assets/storefront/button_upgrades.png",
+  [Assets.storefront.store]: "./assets/storefront/button_store.png",
+  [Assets.storefront.collection]: "./assets/storefront/button_collection.png",
+  [Assets.storefront.settings]: "./assets/storefront/button_settings.png",
+  [Assets.storefront.shiftResultPanel]: "./assets/storefront/shift_result_panel.png",
   [Assets.ui.workerAvatar]: "./assets/ui/ui_worker_avatar.png",
   [Assets.ui.coin]: "./assets/ui/ui_icon_coin.png",
   [Assets.ui.star]: "./assets/ui/ui_icon_star.png",
