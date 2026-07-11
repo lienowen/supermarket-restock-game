@@ -9,12 +9,18 @@ type WingSlot = {
   missing: Phaser.GameObjects.Text;
 };
 
+declare module "./scenes/PromotionWingScene" {
+  interface PromotionWingScene {
+    placeProduct(slot: WingSlot, animate: boolean): void;
+  }
+}
+
 type RuntimePromotionWingScene = Phaser.Scene & {
   featuredProduct: ProductId;
 };
 
 type PromotionWingPrototype = {
-  placeProduct?: (slot: WingSlot, animate: boolean) => void;
+  placeProduct: (slot: WingSlot, animate: boolean) => void;
 };
 
 const prototype = PromotionWingScene.prototype as unknown as PromotionWingPrototype;
