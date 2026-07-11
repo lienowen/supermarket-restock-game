@@ -3,6 +3,7 @@ import { Assets } from "./assets";
 import { PRODUCTS, type ProductId } from "./gameConfig";
 import type { ShiftPhase } from "./domain/gameTypes";
 import { GameScene } from "./scenes/GameScene";
+import { gameSession } from "./systems/GameSession";
 
 type RuntimeSlot = {
   productId: ProductId;
@@ -18,6 +19,9 @@ type RuntimeGameScene = Phaser.Scene & {
   shiftEnded: boolean;
   restockBusy: boolean;
   __finalServiceActive?: boolean;
+  __promotionWingActive?: boolean;
+  __activeMainCustomers?: number;
+  __lastMainCustomerAt?: number;
   customerSequence: number;
   stocked: number;
   money: number;
@@ -36,20 +40,35 @@ type GameScenePrototype = {
 
 const prototype = GameScene.prototype as unknown as GameScenePrototype;
 
-prototype.customerPurchase = function purchaseFromClearCustomerLane(): void {
+prototype.customerPurchase = function purchaseFromControlledCustomerLane(): void {
   const scene = this as unknown as RuntimeGameScene;
   const customersAllowed =
     scene.phase === "OPEN" ||
     scene.phase === "RUSH" ||
     Boolean(scene.__finalServiceActive);
 
-  if (scene.shiftEnded || scene.restockBusy || !customersAllowed) return;
+  if (
+    scene.shiftEnded ||
+    scene.restockBusy ||
+    scene.__promotionWingActive ||
+    !customersAllowed
+  ) return;
+
+  const activeLimit = gameSession.day === "day01" ? 1 : 2;
+  const activeCustomers = scene.__activeMainCustomers ?? 0;
+  if (activeCustomers >= activeLimit) return;
+
+  const minimumGap = scene.phase === "RUSH" ? 3600 : 5000;
+  const lastSpawn = scene.__lastMainCustomerAt ?? -Infinity;
+  if (scene.time.now - lastSpawn < minimumGap) return;
 
   const available = scene.shelfSlots.filter((slot) => slot.product && !slot.reservedForCustomer);
   if (available.length === 0) return;
 
   const slot = scene.pickWeightedSlot(available);
   slot.reservedForCustomer = true;
+  scene.__lastMainCustomerAt = scene.time.now;
+  scene.__activeMainCustomers = activeCustomers + 1;
 
   const customerKeys = scene.customerSequence % 2 === 0
     ? { idle: Assets.characters.customer01Idle, basket: Assets.characters.customer01Basket }
@@ -67,9 +86,15 @@ prototype.customerPurchase = function purchaseFromClearCustomerLane(): void {
     targets: customer,
     x: shoppingLaneX,
     y: shoppingLaneY,
-    duration: 620,
+    duration: 720,
     ease: "Sine.InOut",
-    onComplete: () => completePurchaseWhenLaneIsClear(scene, customer, customerKeys, slot)
+    onComplete: () => {
+      // A short browse pause makes customers readable instead of instantly
+      // deleting products the moment they enter the scene.
+      scene.time.delayedCall(650, () => {
+        completePurchaseWhenLaneIsClear(scene, customer, customerKeys, slot);
+      });
+    }
   });
 };
 
@@ -80,8 +105,14 @@ function completePurchaseWhenLaneIsClear(
   slot: RuntimeSlot
 ): void {
   if (!scene.scene.isActive() || scene.shiftEnded || !customer.active) {
-    slot.reservedForCustomer = false;
-    customer.destroy();
+    releaseCustomer(scene, slot, customer);
+    return;
+  }
+
+  if (scene.__promotionWingActive) {
+    // The player moved to Room 2. Let this shopper leave without consuming stock;
+    // only the currently visible room may generate sales.
+    releaseCustomer(scene, slot, customer, true);
     return;
   }
 
@@ -92,13 +123,12 @@ function completePurchaseWhenLaneIsClear(
       duration: 130,
       ease: "Sine.Out"
     });
-    scene.time.delayedCall(180, () => completePurchaseWhenLaneIsClear(scene, customer, customerKeys, slot));
+    scene.time.delayedCall(240, () => completePurchaseWhenLaneIsClear(scene, customer, customerKeys, slot));
     return;
   }
 
   if (!slot.product) {
-    slot.reservedForCustomer = false;
-    customer.destroy();
+    releaseCustomer(scene, slot, customer, true);
     return;
   }
 
@@ -125,7 +155,32 @@ function completePurchaseWhenLaneIsClear(
     x: 1345,
     y: 965,
     alpha: 0,
-    duration: 600,
+    duration: 720,
+    ease: "Sine.In",
+    onComplete: () => releaseCustomer(scene, slot, customer)
+  });
+}
+
+function releaseCustomer(
+  scene: RuntimeGameScene,
+  slot: RuntimeSlot,
+  customer: Phaser.GameObjects.Image,
+  animateOut = false
+): void {
+  slot.reservedForCustomer = false;
+  scene.__activeMainCustomers = Math.max(0, (scene.__activeMainCustomers ?? 1) - 1);
+
+  if (!customer.active) return;
+  if (!animateOut) {
+    customer.destroy();
+    return;
+  }
+
+  scene.tweens.add({
+    targets: customer,
+    x: 1360,
+    alpha: 0,
+    duration: 360,
     ease: "Sine.In",
     onComplete: () => customer.destroy()
   });
