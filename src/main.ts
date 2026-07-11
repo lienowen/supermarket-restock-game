@@ -41,6 +41,7 @@ import "./phaseAtmosphereIntegration";
 import "./uiPolishIntegration";
 import "./mobileTouchIntegration";
 import "./shiftMainlineIntegration";
+import "./dayTwoMainStoreCustomerGateIntegration";
 
 installResponsiveShell();
 
