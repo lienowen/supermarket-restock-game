@@ -27,6 +27,7 @@ export class DayTwoRoomNavigationScene extends Phaser.Scene {
   private unlockCard?: Phaser.GameObjects.Container;
   private lastWingActive = false;
   private lastVisible = false;
+  private lastTopRefreshAt = -Infinity;
 
   constructor() {
     super({ key: "day2-room-nav", active: true });
@@ -42,6 +43,7 @@ export class DayTwoRoomNavigationScene extends Phaser.Scene {
     const relevant =
       gameSession.day === "day02" &&
       Boolean(game?.scene?.isActive()) &&
+      game.phase !== "PREPARE" &&
       !gameSession.isPaused;
 
     if (!relevant) {
@@ -59,8 +61,13 @@ export class DayTwoRoomNavigationScene extends Phaser.Scene {
     this.setPanelVisible(true);
     this.refreshButtons(wingActive, open);
 
-    if (becameVisible || wingActive !== this.lastWingActive) {
+    if (
+      becameVisible ||
+      wingActive !== this.lastWingActive ||
+      this.time.now - this.lastTopRefreshAt >= 250
+    ) {
       this.scene.bringToTop("day2-room-nav");
+      this.lastTopRefreshAt = this.time.now;
     }
     this.lastWingActive = wingActive;
 
@@ -180,7 +187,6 @@ export class DayTwoRoomNavigationScene extends Phaser.Scene {
     const game = this.gameScene;
     if (!game || this.unlockCard?.active) return;
 
-    game.__promotionWingVisited = true;
     game.showPhaseBanner("STORE EXPANDED · ROOM 2 OPEN");
 
     const shade = this.add.rectangle(665, 591, 1330, 1182, 0x061012, 0.78)
