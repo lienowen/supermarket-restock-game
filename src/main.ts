@@ -11,6 +11,7 @@ import "./performanceEconomyIntegration";
 import "./customerDemandIntegration";
 import "./shiftResultIntegration";
 import "./layoutCalibration";
+import "./boxGroundingIntegration";
 import "./interactions/immediateCartDrag";
 import "./guidancePolicy";
 import "./cartVisualIntegration";
