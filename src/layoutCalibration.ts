@@ -499,7 +499,7 @@ overlayPrototype.updateTutorial = function updateResponsiveStaticTutorial(force 
     return;
   }
 
-  let signature = stage;
+  let signature: string = stage;
   let startX = scene.cart.x;
   let startY = scene.cart.y - 110;
   let endX = startX;
