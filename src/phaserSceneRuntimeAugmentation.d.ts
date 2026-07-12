@@ -2,6 +2,6 @@ import "phaser";
 
 declare module "phaser" {
   interface Scene {
-    openStore?: () => void;
+    openStore: () => void;
   }
 }
