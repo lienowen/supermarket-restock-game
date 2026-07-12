@@ -1,0 +1,26 @@
+{
+  "version": "supermarket_release_v1",
+  "root": "public/assets",
+  "modules": {
+    "common_ui": "public/assets/common/ui",
+    "storefront": "public/assets/storefront",
+    "day01": {
+      "backgrounds": "public/assets/day01/backgrounds",
+      "characters": "public/assets/day01/characters",
+      "products": "public/assets/day01/products",
+      "props": "public/assets/day01/props",
+      "delivery": "public/assets/day01/delivery"
+    },
+    "day02": {
+      "opening": "public/assets/day02/opening",
+      "promotion": "public/assets/day02/promotion"
+    },
+    "day03": "public/assets/day03"
+  },
+  "preloadExamples": {
+    "storefront_day": "/assets/storefront/storefront_day.png",
+    "day01_backroom_bg": "/assets/day01/backgrounds/backroom_bg.png",
+    "day01_delivery_truck_arrive": "/assets/day01/delivery/truck/truck_arrive.png",
+    "day02_promotion_bg": "/assets/day02/promotion/background/promotion_room_bg.png"
+  }
+}

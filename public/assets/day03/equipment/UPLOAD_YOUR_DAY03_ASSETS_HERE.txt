@@ -1,0 +1,1 @@
+This folder is reserved for Day 3 equipment assets. Upload final production assets here and keep the same code path.
