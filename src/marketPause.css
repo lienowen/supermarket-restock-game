@@ -1,0 +1,147 @@
+#market-pause-button,
+#market-pause-overlay {
+  position: fixed;
+}
+
+#market-pause-button {
+  z-index: 10060;
+  top: max(8px, env(safe-area-inset-top));
+  right: max(8px, env(safe-area-inset-right));
+  display: none;
+  min-width: 104px;
+  min-height: 42px;
+  padding: 8px 12px;
+  border: 2px solid rgb(255 215 90 / 82%);
+  border-radius: 10px;
+  background: rgb(18 44 47 / 95%);
+  color: #fff2bd;
+  font: 900 12px/1 Arial, sans-serif;
+  letter-spacing: 1px;
+  box-shadow: 0 7px 20px rgb(0 0 0 / 35%);
+  touch-action: manipulation;
+}
+
+body[data-game-scene="game"] #market-pause-button,
+body[data-game-scene="promotion"] #market-pause-button {
+  display: block;
+}
+
+body[data-viewport-mode="mobile-landscape"] #market-pause-button {
+  right: max(122px, calc(env(safe-area-inset-right) + 116px));
+  min-width: 82px;
+  min-height: 38px;
+  padding: 7px 9px;
+  font-size: 10px;
+}
+
+#market-pause-overlay {
+  z-index: 12000;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  padding:
+    max(22px, env(safe-area-inset-top))
+    max(22px, env(safe-area-inset-right))
+    max(22px, env(safe-area-inset-bottom))
+    max(22px, env(safe-area-inset-left));
+  background: rgb(5 15 17 / 88%);
+  backdrop-filter: blur(10px);
+}
+
+body[data-market-paused="true"] #market-pause-overlay {
+  display: flex;
+}
+
+.market-pause-card {
+  width: min(560px, 92vw);
+  padding: 34px;
+  box-sizing: border-box;
+  border: 5px solid #78a465;
+  border-radius: 24px;
+  background: #f2ead8;
+  box-shadow: 0 18px 70px rgb(0 0 0 / 55%);
+  color: #24372d;
+  text-align: center;
+}
+
+.market-pause-card small,
+.market-pause-card strong,
+.market-pause-card span {
+  display: block;
+}
+
+.market-pause-card small {
+  color: #6b7e72;
+  font: 900 13px/1 Arial, sans-serif;
+  letter-spacing: 2px;
+}
+
+.market-pause-card strong {
+  margin-top: 12px;
+  color: #24372d;
+  font: 900 42px/1 Arial, sans-serif;
+}
+
+.market-pause-card span {
+  margin: 18px auto 26px;
+  max-width: 420px;
+  color: #52665b;
+  font: 700 16px/1.45 Arial, sans-serif;
+}
+
+.market-pause-actions {
+  display: grid;
+  gap: 12px;
+}
+
+.market-pause-actions button {
+  min-height: 56px;
+  padding: 12px 18px;
+  border: 3px solid #50686e;
+  border-radius: 12px;
+  background: #173238;
+  color: #ffffff;
+  font: 900 16px/1 Arial, sans-serif;
+  letter-spacing: 0.5px;
+  touch-action: manipulation;
+}
+
+.market-pause-actions button.primary {
+  border-color: #2f6338;
+  background: #4f8b4c;
+}
+
+.market-pause-actions button.danger {
+  border-color: #9c5c50;
+  background: #743d35;
+}
+
+@media (max-height: 430px) and (orientation: landscape) {
+  .market-pause-card {
+    width: min(720px, 92vw);
+    padding: 19px 28px;
+  }
+
+  .market-pause-card strong {
+    margin-top: 7px;
+    font-size: 29px;
+  }
+
+  .market-pause-card span {
+    margin: 8px auto 13px;
+    font-size: 13px;
+  }
+
+  .market-pause-actions {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 9px;
+  }
+
+  .market-pause-actions button {
+    min-height: 47px;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+}
