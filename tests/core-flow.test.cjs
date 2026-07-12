@@ -14,27 +14,30 @@ const {
   canRestock
 } = require("../.test-dist/src/systems/interactionRules.js");
 
-test("ShiftManager owns PREPARE -> OPEN -> RUSH -> CLOSING transitions", () => {
+test("ShiftManager owns the mature Day 1 OPEN -> RUSH -> CLOSING targets", () => {
   const manager = new ShiftManager(LEVELS.day01);
 
   assert.equal(manager.currentPhase, "PREPARE");
   assert.equal(manager.openStore().to, "OPEN");
 
-  for (let i = 0; i < 3; i += 1) {
-    assert.equal(manager.recordSale(), undefined);
-  }
-
+  assert.equal(manager.recordSale(), undefined);
   const rush = manager.recordSale();
   assert.equal(rush.to, "RUSH");
-  assert.equal(manager.sales, 4);
+  assert.equal(manager.sales, 2);
 
-  for (let i = 0; i < 3; i += 1) {
-    assert.equal(manager.recordSale(), undefined);
-  }
-
+  assert.equal(manager.recordSale(), undefined);
   const closing = manager.recordSale();
   assert.equal(closing.to, "CLOSING");
-  assert.equal(manager.sales, 8);
+  assert.equal(manager.sales, 4);
+});
+
+test("The first three shifts add responsibility without excessive sales targets", () => {
+  assert.deepEqual(LEVELS.day01.salesTargets, { openToRush: 2, rushToClosing: 4 });
+  assert.deepEqual(LEVELS.day02.salesTargets, { openToRush: 3, rushToClosing: 6 });
+  assert.deepEqual(LEVELS.day03.salesTargets, { openToRush: 4, rushToClosing: 8 });
+  assert.equal(LEVELS.day01.title, "Opening Routine");
+  assert.equal(LEVELS.day02.title, "Promotion & Checkout");
+  assert.equal(LEVELS.day03.title, "Shift Supervisor");
 });
 
 test("GameSession rejects phase sales and wallet overwrite from legacy scene sync", () => {
@@ -52,7 +55,7 @@ test("GameSession rejects phase sales and wallet overwrite from legacy scene syn
     shiftEnded: false
   });
 
-  assert.equal(gameSession.phase, "OPEN");
+  assert.equal(gameSession.phase, "RUSH");
   assert.equal(gameSession.sales, 2);
   assert.equal(gameSession.snapshot.money, 7);
   assert.equal(gameSession.snapshot.stocked, 4);
@@ -103,20 +106,27 @@ test("Performance stars reward completion quality instead of raw sales only", ()
   }), 2);
 });
 
-test("Runtime rules follow the active day instead of staying on Day 1", () => {
+test("Runtime rules follow all three active campaign days", () => {
   gameSession.reset("day01");
-  assert.equal(GAME_RULES.shiftSeconds, 180);
-  assert.equal(GAME_RULES.normalSalesTarget, 4);
-  assert.equal(GAME_RULES.rushSalesTarget, 8);
-  assert.equal(GAME_RULES.customerIntervalOpenMs, 2600);
-  assert.equal(GAME_RULES.customerIntervalRushMs, 1450);
+  assert.equal(GAME_RULES.shiftSeconds, 240);
+  assert.equal(GAME_RULES.normalSalesTarget, 2);
+  assert.equal(GAME_RULES.rushSalesTarget, 4);
+  assert.equal(GAME_RULES.customerIntervalOpenMs, 6200);
+  assert.equal(GAME_RULES.customerIntervalRushMs, 4600);
 
   gameSession.reset("day02");
-  assert.equal(GAME_RULES.shiftSeconds, 210);
-  assert.equal(GAME_RULES.normalSalesTarget, 6);
-  assert.equal(GAME_RULES.rushSalesTarget, 12);
-  assert.equal(GAME_RULES.customerIntervalOpenMs, 2400);
-  assert.equal(GAME_RULES.customerIntervalRushMs, 1350);
+  assert.equal(GAME_RULES.shiftSeconds, 300);
+  assert.equal(GAME_RULES.normalSalesTarget, 3);
+  assert.equal(GAME_RULES.rushSalesTarget, 6);
+  assert.equal(GAME_RULES.customerIntervalOpenMs, 6800);
+  assert.equal(GAME_RULES.customerIntervalRushMs, 5000);
+
+  gameSession.reset("day03");
+  assert.equal(GAME_RULES.shiftSeconds, 330);
+  assert.equal(GAME_RULES.normalSalesTarget, 4);
+  assert.equal(GAME_RULES.rushSalesTarget, 8);
+  assert.equal(GAME_RULES.customerIntervalOpenMs, 6500);
+  assert.equal(GAME_RULES.customerIntervalRushMs, 4700);
 });
 
 test("Cart load states are visually distinct", () => {
