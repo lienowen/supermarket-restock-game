@@ -32,25 +32,16 @@ type GamePrototype = {
 };
 
 const prototype = GameScene.prototype as unknown as GamePrototype;
-const originalCreateInitialBoxes = prototype.createInitialBoxes;
 
 prototype.createInitialBoxes = function createOnlyDeliveredOpeningCases(): void {
   const scene = this as unknown as RuntimeGameScene;
-  if (gameSession.day === "day01") {
-    (["cola", "water", "milk"] as ProductId[]).forEach((productId, index) => {
-      scene.spawnBox(productId, index, false);
-    });
-    return;
-  }
+  const deliveryOrder: ProductId[] = gameSession.day === "day01"
+    ? ["cola", "water", "milk"]
+    : ["cola", "water", "milk", "cola"];
 
-  if (gameSession.day === "day02") {
-    (["cola", "water", "milk", "cola"] as ProductId[]).forEach((productId, index) => {
-      scene.spawnBox(productId, index, false);
-    });
-    return;
-  }
-
-  originalCreateInitialBoxes.call(this);
+  deliveryOrder.forEach((productId, index) => {
+    scene.spawnBox(productId, index, false);
+  });
 };
 
 prototype.loadSelectedBox = function loadCaseAsShelfUnits(): void {
