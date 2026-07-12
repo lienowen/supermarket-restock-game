@@ -1,3 +1,4 @@
+import Phaser from "phaser";
 import { OpeningScene } from "./scenes/OpeningScene";
 
 const DELIVERY_READY_KEY = "supermarket.deliveryReady";
@@ -18,7 +19,8 @@ prototype.create = function createWithFreshReceivingGate(...args: unknown[]): vo
 };
 
 prototype.finishOpening = function finishOnlyAfterStockIsInside(): void {
-  if (!deliveryIsReadyForCurrentDay()) return;
+  const scene = this as unknown as Phaser.Scene;
+  if (!deliveryIsReadyForCurrentDay() && !sceneShowsCompletedReceiving(scene)) return;
   clearDeliveryReady();
   originalFinish.call(this);
 };
@@ -31,11 +33,18 @@ function deliveryIsReadyForCurrentDay(): boolean {
   }
 }
 
+function sceneShowsCompletedReceiving(scene: Phaser.Scene): boolean {
+  return scene.children.list.some((child) =>
+    child instanceof Phaser.GameObjects.Text &&
+    child.text.includes("STOCK IS IN THE BACKROOM")
+  );
+}
+
 function clearDeliveryReady(): void {
   try {
     globalThis.localStorage?.removeItem(DELIVERY_READY_KEY);
   } catch {
-    // The receiving flow remains usable in browsers where storage is unavailable.
+    // The scene completion state still protects and releases the receiving flow.
   }
 }
 
