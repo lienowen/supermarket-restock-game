@@ -1,6 +1,7 @@
+import Phaser from "phaser";
 import { ProgressionCustomerScene } from "./scenes/ProgressionCustomerScene";
 
-type RuntimeProgressionScene = ProgressionCustomerScene & {
+type RuntimeProgressionScene = Phaser.Scene & {
   currentDay: "day01" | "day02" | "day03";
 };
 
