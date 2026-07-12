@@ -41,6 +41,7 @@ import "./mobileTouchIntegration";
 import "./shiftMainlineIntegration";
 import "./dayTwoMainStoreCustomerGateIntegration";
 import "./openingOperationsIntegration";
+import "./releaseDeliveryArtIntegration";
 import "./storefrontMenuIntegration";
 import "./deliveryInventoryIntegration";
 import "./storeOpeningActionIntegration";
