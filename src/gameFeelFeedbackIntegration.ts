@@ -119,7 +119,13 @@ function installContextualGameFeedback(): void {
 }
 
 function animatePressed(scene: Phaser.Scene, target: PressTarget): void {
-  const displayTarget = target.parentContainer?.active ? target.parentContainer : target;
+  const parent = target.parentContainer;
+  const useParent = Boolean(
+    parent?.active &&
+    parent.list.length <= 7 &&
+    (Math.abs(parent.x) > 1 || Math.abs(parent.y) > 1)
+  );
+  const displayTarget = useParent ? parent as Phaser.GameObjects.GameObject : target;
   const object = displayTarget as PressTarget;
   const originalX = Number(object.getData("feedbackScaleX") ?? object.scaleX ?? 1);
   const originalY = Number(object.getData("feedbackScaleY") ?? object.scaleY ?? 1);
