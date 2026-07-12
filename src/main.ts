@@ -55,6 +55,9 @@ import "./storefrontProgressionPolishIntegration";
 import "./marketPauseIntegration";
 import "./gameFeelFeedbackIntegration";
 import "./firstThreeDayCampaignIntegration";
+import "./dayThreeSupervisorContractIntegration";
+import "./mobileDayThreeStartIntegration";
+import "./campaignResultProgressionIntegration";
 
 installResponsiveShell();
 
