@@ -51,6 +51,9 @@ import "./currentDutyHighlightIntegration";
 import "./contractDefaultMigrationIntegration";
 import "./shiftContractIntegration";
 import "./replayShiftTwistIntegration";
+import "./storefrontProgressionPolishIntegration";
+import "./marketPauseIntegration";
+import "./gameFeelFeedbackIntegration";
 
 installResponsiveShell();
 
