@@ -54,6 +54,7 @@ import "./replayShiftTwistIntegration";
 import "./storefrontProgressionPolishIntegration";
 import "./marketPauseIntegration";
 import "./gameFeelFeedbackIntegration";
+import "./firstThreeDayCampaignIntegration";
 
 installResponsiveShell();
 
