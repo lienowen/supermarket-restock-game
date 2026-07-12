@@ -42,6 +42,7 @@ import "./shiftMainlineIntegration";
 import "./dayTwoMainStoreCustomerGateIntegration";
 import "./openingOperationsIntegration";
 import "./releaseDeliveryArtIntegration";
+import "./optimizedSceneAssetLoadingIntegration";
 import "./storefrontMenuIntegration";
 import "./deliveryInventoryIntegration";
 import "./storeOpeningActionIntegration";
