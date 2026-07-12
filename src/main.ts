@@ -55,6 +55,7 @@ import "./storefrontProgressionPolishIntegration";
 import "./marketPauseIntegration";
 import "./gameFeelFeedbackIntegration";
 import "./firstThreeDayCampaignIntegration";
+import "./openingDeliveryGateIntegration";
 import "./dayThreeSupervisorContractIntegration";
 import "./mobileDayThreeStartIntegration";
 import "./campaignResultProgressionIntegration";
