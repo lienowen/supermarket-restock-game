@@ -56,6 +56,7 @@ import "./marketPauseIntegration";
 import "./gameFeelFeedbackIntegration";
 import "./firstThreeDayCampaignIntegration";
 import "./openingDeliveryGateIntegration";
+import "./campaignBriefingCopyFixIntegration";
 import "./campaignCustomerFlowGateIntegration";
 import "./dayThreeSupervisorContractIntegration";
 import "./mobileDayThreeStartIntegration";
