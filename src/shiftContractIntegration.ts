@@ -8,12 +8,16 @@ import type { ShiftResult } from "./systems/StorefrontProgress";
 const CONTRACT_STORAGE_PREFIX = "supermarket.shiftContract.";
 const LAST_CONTRACT_RESULT_KEY = "supermarket.lastContractResult";
 
+type PlayableDay = Extract<LevelId, "day01" | "day02" | "day03">;
+
 type ContractId =
   | "zero-misses"
   | "restock-pro"
   | "early-close"
   | "service-star"
-  | "promo-rescue";
+  | "promo-rescue"
+  | "supervisor-service"
+  | "fault-response";
 
 type ContractDefinition = {
   id: ContractId;
@@ -47,6 +51,7 @@ type RuntimeGame = Phaser.Scene & {
   __day2ServiceResolved?: boolean;
   __day2DamageResolved?: boolean;
   __day2BackStockSaves?: number;
+  __day3EquipmentResolved?: boolean;
   __contractRestocks?: number;
   __contractRewarded?: boolean;
   __contractPanel?: Phaser.GameObjects.Container;
@@ -67,21 +72,21 @@ type GamePrototype = {
   endShift: () => void;
 };
 
-const DAY_CONTRACTS: Record<"day01" | "day02", ContractDefinition[]> = {
+const DAY_CONTRACTS: Record<PlayableDay, ContractDefinition[]> = {
   day01: [
-    {
-      id: "zero-misses",
-      title: "PERFECT AVAILABILITY",
-      description: "Finish the whole shift without losing a customer to an empty shelf.",
-      shortDescription: "Finish with 0 missed sales",
-      reward: 30
-    },
     {
       id: "restock-pro",
       title: "RESTOCK PROFESSIONAL",
       description: "Complete two real shelf refills after customers begin shopping.",
       shortDescription: "Complete 2 live restocks",
       reward: 25
+    },
+    {
+      id: "zero-misses",
+      title: "PERFECT AVAILABILITY",
+      description: "Finish the whole shift without losing a customer to an empty shelf.",
+      shortDescription: "Finish with 0 missed sales",
+      reward: 30
     },
     {
       id: "early-close",
@@ -112,6 +117,29 @@ const DAY_CONTRACTS: Record<"day01" | "day02", ContractDefinition[]> = {
       description: "Use Back Stock for two emergency saves while promotion demand is active.",
       shortDescription: "Complete 2 Back Stock saves",
       reward: 40
+    }
+  ],
+  day03: [
+    {
+      id: "supervisor-service",
+      title: "SERVICE LEAD",
+      description: "Finish the supervisor shift with at least two satisfied service customers.",
+      shortDescription: "Satisfy 2 service customers",
+      reward: 45
+    },
+    {
+      id: "fault-response",
+      title: "EQUIPMENT RECOVERY",
+      description: "Complete the full checkout recovery procedure before closing the store.",
+      shortDescription: "Restore failed checkout",
+      reward: 40
+    },
+    {
+      id: "zero-misses",
+      title: "CONTROLLED FLOOR",
+      description: "Manage the rush without losing any customer to unavailable stock.",
+      shortDescription: "Finish with 0 missed sales",
+      reward: 50
     }
   ]
 };
@@ -250,7 +278,11 @@ function createContractBoard(scene: RuntimeStorefront): void {
     fontStyle: "bold"
   }).setOrigin(0.5).setDepth(14);
   const unlock = scene.add.text(300, 910,
-    day === "day01" ? "Complete Day 1 to unlock promotion contracts" : "Contracts change how each replay is scored", {
+    day === "day01"
+      ? "Complete Day 1 to unlock promotion duties"
+      : day === "day02"
+        ? "Complete Day 2 to qualify as Shift Supervisor"
+        : "Supervisor contracts reward service and incident control", {
       fontFamily: "Arial",
       fontSize: "17px",
       color: "#9fb6b2",
@@ -494,6 +526,22 @@ function getContractProgress(
         failed: false
       };
     }
+    case "supervisor-service": {
+      const count = snapshot.satisfiedCustomers;
+      return {
+        text: `SATISFIED SERVICE  ${Math.min(2, count)}/2`,
+        complete: count >= 2,
+        failed: false
+      };
+    }
+    case "fault-response": {
+      const complete = Boolean(scene.__day3EquipmentResolved);
+      return {
+        text: complete ? "CHECKOUT RESTORED  ✓" : "CHECKOUT RECOVERY  ○",
+        complete,
+        failed: false
+      };
+    }
   }
 }
 
@@ -508,7 +556,7 @@ function canFinalizeShift(scene: RuntimeGame): boolean {
 }
 
 function getContracts(day: LevelId): ContractDefinition[] {
-  return DAY_CONTRACTS[day === "day02" ? "day02" : "day01"];
+  return DAY_CONTRACTS[normalizeDay(day)];
 }
 
 function getSelectedContract(day: LevelId): ContractDefinition {
@@ -521,12 +569,21 @@ function setSelectedContract(day: LevelId, id: ContractId): void {
   writeValue(`${CONTRACT_STORAGE_PREFIX}${day}`, id);
 }
 
-function resolvePlayableDay(): Extract<LevelId, "day01" | "day02"> {
+function resolvePlayableDay(): PlayableDay {
   try {
-    return globalThis.localStorage?.getItem("supermarket.activeDay") === "day02" ? "day02" : "day01";
+    const stored = globalThis.localStorage?.getItem("supermarket.activeDay");
+    if (stored === "day03") return "day03";
+    if (stored === "day02") return "day02";
+    return "day01";
   } catch {
-    return gameSession.day === "day02" ? "day02" : "day01";
+    return normalizeDay(gameSession.day);
   }
+}
+
+function normalizeDay(day: LevelId): PlayableDay {
+  if (day === "day03") return "day03";
+  if (day === "day02") return "day02";
+  return "day01";
 }
 
 function writeContractResult(result: ContractResult): void {
