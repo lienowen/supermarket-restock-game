@@ -1,9 +1,14 @@
-const DAY_ONE_CONTRACT_KEY = "supermarket.shiftContract.day01";
+const DEFAULT_CONTRACTS = {
+  "supermarket.shiftContract.day01": "restock-pro",
+  "supermarket.shiftContract.day03": "supervisor-service"
+} as const;
 
 try {
-  if (!globalThis.localStorage?.getItem(DAY_ONE_CONTRACT_KEY)) {
-    globalThis.localStorage?.setItem(DAY_ONE_CONTRACT_KEY, "restock-pro");
-  }
+  Object.entries(DEFAULT_CONTRACTS).forEach(([key, value]) => {
+    if (!globalThis.localStorage?.getItem(key)) {
+      globalThis.localStorage?.setItem(key, value);
+    }
+  });
 } catch {
-  // Storage is optional. The contract picker still works for the current session.
+  // Storage is optional. Contract pickers still work with their in-memory defaults.
 }
