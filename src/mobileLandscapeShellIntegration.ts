@@ -316,10 +316,14 @@ function formatTime(totalSeconds: number): string {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
-function resolveStoredDay(): Extract<LevelId, "day01" | "day02"> {
+function resolveStoredDay(): Extract<LevelId, "day01" | "day02" | "day03"> {
   try {
-    return globalThis.localStorage?.getItem("supermarket.activeDay") === "day02" ? "day02" : "day01";
+    const stored = globalThis.localStorage?.getItem("supermarket.activeDay");
+    if (stored === "day03") return "day03";
+    if (stored === "day02") return "day02";
+    return "day01";
   } catch {
+    if (gameSession.day === "day03") return "day03";
     return gameSession.day === "day02" ? "day02" : "day01";
   }
 }
