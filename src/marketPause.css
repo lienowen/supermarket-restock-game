@@ -26,7 +26,8 @@ body[data-game-scene="promotion"] #market-pause-button {
   display: block;
 }
 
-body[data-viewport-mode="mobile-landscape"] #market-pause-button {
+body[data-viewport-mode="mobile-landscape"] #market-pause-button,
+body[data-viewport-mode="compact"] #market-pause-button {
   right: max(122px, calc(env(safe-area-inset-right) + 116px));
   min-width: 82px;
   min-height: 38px;
