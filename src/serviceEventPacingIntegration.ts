@@ -29,9 +29,9 @@ type ProgressionPrototype = {
   spawnWaitingCustomer: (slot: RuntimeSlot) => void;
 };
 
-const MAX_DAY3_EVENTS = 5;
-const DAY3_EVENT_COOLDOWN_MS = 6500;
-const VIP_PATIENCE_BONUS_MS = 3000;
+const MAX_DAY3_EVENTS = 3;
+const DAY3_EVENT_COOLDOWN_MS = 9_000;
+const FINAL_REQUEST_PATIENCE_BONUS_MS = 3_000;
 
 const prototype = ProgressionCustomerScene.prototype as unknown as ProgressionPrototype;
 const originalCreate = prototype.create;
@@ -53,7 +53,11 @@ prototype.spawnWaitingCustomer = function spawnPacedServiceEvent(slot: RuntimeSl
 
   const spawned = scene.__serviceEventsSpawned ?? 0;
   const lastAt = scene.__lastServiceEventAt ?? -Infinity;
-  if (spawned >= MAX_DAY3_EVENTS || scene.time.now - lastAt < DAY3_EVENT_COOLDOWN_MS) return;
+  if (
+    spawned >= MAX_DAY3_EVENTS ||
+    scene.waitingCustomers.size >= 1 ||
+    scene.time.now - lastAt < DAY3_EVENT_COOLDOWN_MS
+  ) return;
 
   const previousIds = new Set([...scene.waitingCustomers].map((customer) => customer.id));
   originalSpawnWaitingCustomer.call(this, slot);
@@ -64,10 +68,10 @@ prototype.spawnWaitingCustomer = function spawnPacedServiceEvent(slot: RuntimeSl
   scene.__lastServiceEventAt = scene.time.now;
 
   if (scene.__serviceEventsSpawned === MAX_DAY3_EVENTS) {
-    customer.machine.extendPatience(VIP_PATIENCE_BONUS_MS);
-    customer.maxPatienceMs += VIP_PATIENCE_BONUS_MS;
-    customer.bubbleText.setText(`VIP NEEDS ${PRODUCTS[customer.slot.productId].label}`);
-    const badge = scene.add.text(0, -395, "VIP FINAL REQUEST", {
+    customer.machine.extendPatience(FINAL_REQUEST_PATIENCE_BONUS_MS);
+    customer.maxPatienceMs += FINAL_REQUEST_PATIENCE_BONUS_MS;
+    customer.bubbleText.setText(`FINAL REQUEST · ${PRODUCTS[customer.slot.productId].label}`);
+    const badge = scene.add.text(0, -395, "SUPERVISOR SERVICE", {
       fontFamily: "Arial",
       fontSize: "16px",
       color: "#fff0a8",
