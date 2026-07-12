@@ -73,11 +73,12 @@ function installGamePauseBridge(): void {
     originalCreate.apply(this, args);
     const scene = this as unknown as RuntimeGame;
     activeGame = scene;
-    document.body.dataset.marketPaused = "false";
+    clearPauseMarker();
 
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      if (activeGame === scene) activeGame = undefined;
       if (document.body.dataset.marketPaused === "true") resumeAllScenes();
+      clearPauseMarker();
+      if (activeGame === scene) activeGame = undefined;
     });
   };
 
@@ -127,8 +128,7 @@ function openPause(reason: string): void {
 function resumeShift(): void {
   if (document.body.dataset.marketPaused !== "true") return;
   resumeAllScenes();
-  document.body.dataset.marketPaused = "false";
-  gameSession.setPaused(false);
+  clearPauseMarker();
 }
 
 function resumeAllScenes(): void {
@@ -139,6 +139,12 @@ function resumeAllScenes(): void {
     scene.input.enabled = inputEnabled;
   });
   pausedStates = [];
+}
+
+function clearPauseMarker(): void {
+  document.body.dataset.marketPaused = "false";
+  gameSession.setPaused(false);
+  pausing = false;
 }
 
 function restartShift(): void {
