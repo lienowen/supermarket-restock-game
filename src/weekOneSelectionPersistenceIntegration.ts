@@ -27,10 +27,10 @@ prototype.create = function createWithPersistentWeekOneSelection(...args: unknow
 };
 
 prototype.resolveActiveDay = function resolvePersistentWeekOneSelection(): WeekOneDay {
-  const selected = readWeekOneDay(WEEK_ONE_DAY_KEY);
-  if (selected) return selected;
   const active = readWeekOneDay(ACTIVE_DAY_KEY);
   if (active) return active;
+  const selected = readWeekOneDay(WEEK_ONE_DAY_KEY);
+  if (selected) return selected;
   const resolved = originalResolve.call(this);
   return isWeekOneDay(resolved) ? resolved : "day01";
 };
@@ -54,7 +54,7 @@ prototype.startShift = function startPersistentWeekOneSelection(day: LevelId): v
 };
 
 function readPreferredDay(): WeekOneDay {
-  return readWeekOneDay(WEEK_ONE_DAY_KEY) ?? readWeekOneDay(ACTIVE_DAY_KEY) ?? "day01";
+  return readWeekOneDay(ACTIVE_DAY_KEY) ?? readWeekOneDay(WEEK_ONE_DAY_KEY) ?? "day01";
 }
 
 function readWeekOneDay(key: string): WeekOneDay | undefined {
