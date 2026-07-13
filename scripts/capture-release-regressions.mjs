@@ -35,13 +35,15 @@ const report = {
   pageErrors: [],
   failedRequests: [],
   badResponses: [],
+  sdkEvents: [],
   fatalError: null,
   regressions: {
     stockedLobby: false,
     milkCaseVisible: false,
     milkTextureTransparent: false,
     day3ReachedGame: false,
-    promotionWingRealistic: false
+    promotionWingRealistic: false,
+    crazyGamesSdkLifecycle: false
   }
 };
 
@@ -50,6 +52,30 @@ let thrownError;
 
 try {
   const context = await browser.newContext({ viewport: { width: 1330, height: 1182 }, deviceScaleFactor: 1 });
+  await context.addInitScript(() => {
+    const events = [];
+    window.__CRAZY_GAMES_TEST_EVENTS__ = events;
+    window.CrazyGames = {
+      SDK: {
+        init: async () => {
+          events.push("init");
+        },
+        game: {
+          settings: { muteAudio: false },
+          gameplayStart: () => events.push("gameplayStart"),
+          gameplayStop: () => events.push("gameplayStop"),
+          loadingStart: () => events.push("loadingStart"),
+          loadingStop: () => events.push("loadingStop"),
+          setGameContext: (contextValue) => events.push(`context:${contextValue.scene ?? "unknown"}`),
+          clearGameContext: () => events.push("context:clear"),
+          reportGameCompletedPercentage: (value) => events.push(`progress:${value}`),
+          addSettingsChangeListener: () => undefined,
+          removeSettingsChangeListener: () => undefined
+        }
+      }
+    };
+  });
+
   const page = await context.newPage();
 
   page.on("console", (message) => {
@@ -78,11 +104,22 @@ try {
   await page.reload({ waitUntil: "networkidle", timeout: 60000 });
   await waitForCanvas(page);
 
+  const lobbySdkState = await page.evaluate(() => ({
+    sdk: document.body.dataset.crazyGamesSdk,
+    loading: document.body.dataset.crazyGamesLoading,
+    gameplay: document.body.dataset.crazyGamesGameplay,
+    events: [...(window.__CRAZY_GAMES_TEST_EVENTS__ ?? [])]
+  }));
+  if (lobbySdkState.sdk !== "ready") throw new Error(`CrazyGames SDK did not initialize: ${lobbySdkState.sdk}`);
+  if (lobbySdkState.loading !== "stopped") throw new Error(`Initial loading did not stop: ${lobbySdkState.loading}`);
+  if (lobbySdkState.events.includes("gameplayStart")) throw new Error("Gameplay started while still in the storefront lobby");
+
   report.regressions.stockedLobby = await page.evaluate(() => document.body.dataset.stockedLobbyVisual === "ready");
   await capture(page, report, "01-stocked-lobby.png", "Stocked supermarket lobby");
 
   await clickGame(page, 965, 770);
   await waitForScene(page, "opening", 60000);
+  await page.waitForFunction(() => document.body.dataset.crazyGamesGameplay === "started", { timeout: 10000 });
   await capture(page, report, "02-day3-receiving.png", "Day 3 receiving area");
 
   await clickGame(page, 835, 1085);
@@ -100,6 +137,26 @@ try {
 
   report.regressions.day3ReachedGame = await page.evaluate(() => document.body.dataset.gameScene === "game");
   await capture(page, report, "04-day3-backroom.png", "Day 3 entered backroom without black screen");
+
+  await page.locator("#market-pause-button").click();
+  await page.waitForFunction(() => document.body.dataset.marketPaused === "true", { timeout: 5000 });
+  await page.waitForFunction(() => document.body.dataset.crazyGamesGameplay === "stopped", { timeout: 5000 });
+  await page.locator('#market-pause-overlay [data-action="resume"]').click();
+  await page.waitForFunction(() => document.body.dataset.marketPaused === "false", { timeout: 5000 });
+  await page.waitForFunction(() => document.body.dataset.crazyGamesGameplay === "started", { timeout: 5000 });
+
+  const sdkEvents = await page.evaluate(() => [...(window.__CRAZY_GAMES_TEST_EVENTS__ ?? [])]);
+  report.sdkEvents = sdkEvents;
+  report.regressions.crazyGamesSdkLifecycle = hasOrderedEvents(sdkEvents, [
+    "init",
+    "loadingStart",
+    "loadingStop",
+    "loadingStart",
+    "loadingStop",
+    "gameplayStart",
+    "gameplayStop",
+    "gameplayStart"
+  ]);
 
   await page.goto(`${BASE_URL}&promotionTest=1`, { waitUntil: "networkidle", timeout: 60000 });
   await waitForCanvas(page);
@@ -124,6 +181,15 @@ try {
 
 console.log(JSON.stringify({ regressions: report.regressions, fatalError: report.fatalError }, null, 2));
 if (thrownError) throw thrownError;
+
+function hasOrderedEvents(events, expected) {
+  let cursor = 0;
+  for (const event of events) {
+    if (event === expected[cursor]) cursor += 1;
+    if (cursor === expected.length) return true;
+  }
+  return false;
+}
 
 async function waitForCanvas(page) {
   await page.waitForSelector("canvas", { state: "visible", timeout: 30000 });
