@@ -27,6 +27,7 @@ import "./dayTwoHookIntegration";
 import "./dayTwoChallengeRewardIntegration";
 import "./dayTwoOpeningExpansionIntegration";
 import "./promotionWingProductionIntegration";
+import "./promotionWingRealisticVisualIntegration";
 import "./promotionWingMainlineIntegration";
 import "./levelPacingIntegration";
 import "./serviceEventPacingIntegration";
