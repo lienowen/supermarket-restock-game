@@ -1,7 +1,9 @@
 name: Deployed UI Audit
 
 on:
-  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -29,9 +31,9 @@ jobs:
           npm install --no-save playwright@1.54.1
           npx playwright install --with-deps chromium
 
-      - name: Audit deployed Vercel preview
+      - name: Audit production Vercel deployment
         env:
-          AUDIT_BASE_URL: https://supermarket-restock-git-0ecc70-ac4b99ce7a15d0a8-1429s-projects.vercel.app
+          AUDIT_BASE_URL: https://supermarket-restock-game.vercel.app
         run: node scripts/capture-deployed-ui.mjs
 
       - name: Upload deployed UI audit
