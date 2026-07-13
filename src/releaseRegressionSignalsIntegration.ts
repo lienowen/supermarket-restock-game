@@ -50,7 +50,7 @@ openingPrototype.create = function createOpeningWithRegressionSignals(...args: u
         try {
           globalThis.localStorage?.setItem(DELIVERY_READY_KEY, "day03");
         } catch {
-          // The visible completion marker below is the fallback gate signal.
+          // The hidden completion marker below is the fallback gate signal.
         }
 
         if (!scene.children.list.some((child) =>
@@ -59,7 +59,20 @@ openingPrototype.create = function createOpeningWithRegressionSignals(...args: u
         )) {
           scene.add.text(-2000, -2000, "STOCK IS IN THE BACKROOM").setVisible(false);
         }
-        scene.finishOpening();
+
+        // The regression hook skips the real unload animation. Hide the old
+        // receiving objects first so Canvas/WebGL never tries to render an
+        // object while the opening scene is being replaced.
+        scene.input.enabled = false;
+        scene.tweens.killAll();
+        scene.children.list.forEach((child) => {
+          const visibleChild = child as Phaser.GameObjects.GameObject & {
+            setVisible?: (visible: boolean) => unknown;
+          };
+          visibleChild.setVisible?.(false);
+        });
+
+        scene.time.delayedCall(0, () => scene.finishOpening());
       }
     };
   }
