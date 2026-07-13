@@ -40,7 +40,8 @@ const report = {
     stockedLobby: false,
     milkCaseVisible: false,
     milkTextureTransparent: false,
-    day3ReachedGame: false
+    day3ReachedGame: false,
+    promotionWingRealistic: false
   }
 };
 
@@ -99,6 +100,13 @@ try {
 
   report.regressions.day3ReachedGame = await page.evaluate(() => document.body.dataset.gameScene === "game");
   await capture(page, report, "04-day3-backroom.png", "Day 3 entered backroom without black screen");
+
+  await page.goto(`${BASE_URL}&promotionTest=1`, { waitUntil: "networkidle", timeout: 60000 });
+  await waitForCanvas(page);
+  await page.waitForFunction(() => document.body.dataset.promotionWingVisual === "ready", { timeout: 60000 });
+  await page.waitForTimeout(1200);
+  report.regressions.promotionWingRealistic = true;
+  await capture(page, report, "05-promotion-wing.png", "Realistic supermarket promotion wing");
 
   const issueCount = report.consoleErrors.length + report.pageErrors.length + report.failedRequests.length + report.badResponses.length;
   const failed = Object.entries(report.regressions).filter(([, value]) => !value).map(([key]) => key);
