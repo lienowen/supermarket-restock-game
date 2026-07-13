@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  statuses: write
 
 jobs:
   capture:
@@ -45,3 +46,23 @@ jobs:
           name: ui-audit
           path: ui-audit
           if-no-files-found: error
+
+      - name: Publish UI regression status
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const sha = context.eventName === "pull_request"
+              ? context.payload.pull_request.head.sha
+              : context.sha;
+            const passed = "${{ job.status }}" === "success";
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha,
+              state: passed ? "success" : "failure",
+              context: "UI Regression Audit",
+              description: passed
+                ? "Milk case, stocked lobby and Day 3 handoff passed"
+                : "UI regression audit failed; inspect the workflow artifact"
+            });
