@@ -43,6 +43,8 @@ const report = {
     milkTextureTransparent: false,
     day3ReachedGame: false,
     day3MultiFixture: false,
+    day4PromotionPressure: false,
+    day5WeekendRush: false,
     promotionWingRealistic: false,
     crazyGamesSdkLifecycle: false
   }
@@ -131,8 +133,8 @@ try {
   await page.waitForTimeout(350);
   await capture(page, report, "03-visible-milk-case.png", "Transparent milk delivery case");
 
-  await page.waitForFunction(() => typeof window.__GAME_TEST__?.finishDay3Receiving === "function", { timeout: 10000 });
-  await page.evaluate(() => window.__GAME_TEST__.finishDay3Receiving());
+  await page.waitForFunction(() => typeof window.__GAME_TEST__?.finishReceiving === "function", { timeout: 10000 });
+  await page.evaluate(() => window.__GAME_TEST__.finishReceiving());
   await waitForScene(page, "game", 20000);
   await page.waitForFunction(() => document.body.dataset.day3MultiFixture === "ready", { timeout: 10000 });
   await page.waitForTimeout(900);
@@ -161,12 +163,18 @@ try {
     "gameplayStart"
   ]);
 
+  await captureBatchDay(page, report, "day04", "05-day4-promotion-pressure.png", "Day 4 promotion pressure full floor");
+  report.regressions.day4PromotionPressure = true;
+
+  await captureBatchDay(page, report, "day05", "06-day5-weekend-rush.png", "Day 5 weekend rush whole store");
+  report.regressions.day5WeekendRush = true;
+
   await page.goto(`${BASE_URL}&promotionTest=1`, { waitUntil: "networkidle", timeout: 60000 });
   await waitForCanvas(page);
   await page.waitForFunction(() => document.body.dataset.promotionWingVisual === "ready", { timeout: 60000 });
   await page.waitForTimeout(1200);
   report.regressions.promotionWingRealistic = true;
-  await capture(page, report, "05-promotion-wing.png", "Realistic supermarket promotion wing");
+  await capture(page, report, "07-promotion-wing.png", "Realistic supermarket promotion wing");
 
   const issueCount = report.consoleErrors.length + report.pageErrors.length + report.failedRequests.length + report.badResponses.length;
   const failed = Object.entries(report.regressions).filter(([, value]) => !value).map(([key]) => key);
@@ -184,6 +192,27 @@ try {
 
 console.log(JSON.stringify({ regressions: report.regressions, fatalError: report.fatalError }, null, 2));
 if (thrownError) throw thrownError;
+
+async function captureBatchDay(page, auditReport, day, filename, label) {
+  const priorStars = day === "day04"
+    ? { day01: 3, day02: 3, day03: 3 }
+    : { day01: 3, day02: 3, day03: 3, day04: 3 };
+  await page.goto(BASE_URL, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await page.evaluate(({ selectedDay, stars }) => {
+    localStorage.setItem("supermarket.activeDay", selectedDay);
+    localStorage.setItem("supermarket.bestStars", JSON.stringify(stars));
+  }, { selectedDay: day, stars: priorStars });
+  await page.reload({ waitUntil: "networkidle", timeout: 60000 });
+  await waitForCanvas(page);
+  await clickGame(page, 965, 770);
+  await waitForScene(page, "opening", 60000);
+  await page.waitForFunction(() => typeof window.__GAME_TEST__?.finishReceiving === "function", { timeout: 15000 });
+  await page.evaluate(() => window.__GAME_TEST__.finishReceiving());
+  await waitForScene(page, "game", 30000);
+  await page.waitForFunction((expectedDay) => document.body.dataset.weekOneBatchFloor === expectedDay, day, { timeout: 30000 });
+  await page.waitForTimeout(1200);
+  await capture(page, auditReport, filename, label);
+}
 
 function hasOrderedEvents(events, expected) {
   let cursor = 0;
