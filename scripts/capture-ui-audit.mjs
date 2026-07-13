@@ -53,7 +53,9 @@ try {
   });
   page.on("pageerror", (error) => report.pageErrors.push(error.message));
   page.on("requestfailed", (request) => {
-    report.failedRequests.push({ url: request.url(), error: request.failure()?.errorText ?? "unknown" });
+    const error = request.failure()?.errorText ?? "unknown";
+    if (error.includes("ERR_ABORTED")) return;
+    report.failedRequests.push({ url: request.url(), error });
   });
   page.on("response", (response) => {
     if (response.status() >= 400) report.badResponses.push({ url: response.url(), status: response.status() });
@@ -64,24 +66,25 @@ try {
   await capture(page, report, "01-storefront-day1.png", "Day 1 storefront lobby", "desktop");
 
   await clickGame(page, 180, 1080);
-  await page.waitForTimeout(350);
+  await page.waitForTimeout(450);
   await capture(page, report, "02-shift-selector.png", "Shift selector", "desktop");
 
   await page.reload({ waitUntil: "networkidle" });
   await waitForCanvas(page);
   await clickGame(page, 1120, 1080);
-  await page.waitForTimeout(350);
+  await page.waitForTimeout(500);
   await capture(page, report, "03-settings.png", "Settings modal", "desktop");
 
   await page.reload({ waitUntil: "networkidle" });
   await waitForCanvas(page);
   await clickGame(page, 965, 770);
-  await page.waitForTimeout(650);
-  await capture(page, report, "04-opening-briefing.png", "Opening duty briefing", "desktop");
+  await waitForScene(page, "opening");
+  await page.waitForTimeout(450);
+  await capture(page, report, "04-opening-receiving.png", "Opening receiving flow", "desktop");
 
-  await clickGame(page, 665, 930);
-  await page.waitForTimeout(1200);
-  await capture(page, report, "05-delivery-opening.png", "Delivery opening flow", "desktop");
+  await clickGame(page, 835, 1085);
+  await page.waitForTimeout(1250);
+  await capture(page, report, "05-delivery-truck.png", "Delivery truck and draggable cases", "desktop");
 
   await setProgress(page, "day02", { day01: 3 });
   await page.reload({ waitUntil: "networkidle" });
@@ -155,6 +158,12 @@ async function waitForCanvas(page) {
     return Boolean(canvas && canvas.getBoundingClientRect().width > 100);
   });
   await page.waitForTimeout(650);
+}
+
+async function waitForScene(page, scene) {
+  await page.waitForFunction((expectedScene) => document.body.dataset.gameScene === expectedScene, scene, {
+    timeout: 10000
+  });
 }
 
 async function clickGame(page, gameX, gameY) {
