@@ -1,3 +1,4 @@
+import Phaser from "phaser";
 import type { LevelId } from "./domain/gameTypes";
 import { StorefrontScene } from "./scenes/StorefrontScene";
 
@@ -24,6 +25,20 @@ prototype.create = function createWithPersistentWeekOneSelection(...args: unknow
   persistSelection(selected);
   originalCreate.apply(this, args);
   persistSelection(selected);
+
+  if (selected === "day04" || selected === "day05") {
+    const scene = this as unknown as Phaser.Scene;
+    const hit = scene.add.rectangle(965, 770, 430, 112, 0xffffff, 0.001)
+      .setDepth(10000)
+      .setInteractive({ useHandCursor: true });
+    let used = false;
+    hit.on("pointerdown", () => {
+      if (used) return;
+      used = true;
+      hit.disableInteractive();
+      prototype.startShift.call(scene, selected);
+    });
+  }
 };
 
 prototype.resolveActiveDay = function resolvePersistentWeekOneSelection(): WeekOneDay {
