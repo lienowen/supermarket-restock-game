@@ -18,6 +18,7 @@ const report = {
   pageErrors: [],
   failedRequests: [],
   badResponses: [],
+  sceneTransitions: {},
   canvasState: null,
   resources: null
 };
@@ -56,9 +57,12 @@ try {
 
   await page.reload({ waitUntil: "networkidle", timeout: 60000 });
   await waitForCanvas(page);
+  const startAt = Date.now();
   await clickGame(page, 965, 770);
-  await page.waitForTimeout(1000);
-  await capture(page, "03-live-start-flow.png", "Live start and opening flow");
+  await waitForScene(page, "opening", 30000);
+  report.sceneTransitions.startToOpeningMs = Date.now() - startAt;
+  await page.waitForTimeout(800);
+  await capture(page, "03-live-opening.png", "Live opening receiving scene");
 
   await page.goto(BASE_URL, { waitUntil: "networkidle", timeout: 60000 });
   await page.evaluate(() => {
@@ -117,6 +121,7 @@ try {
   console.log(JSON.stringify({
     finalUrl: report.finalUrl,
     title: report.title,
+    sceneTransitions: report.sceneTransitions,
     canvasState: report.canvasState,
     resourceCount: report.resources?.count,
     transferBytes: report.resources?.transferBytes,
@@ -137,6 +142,14 @@ async function waitForCanvas(page) {
     return Boolean(canvas && canvas.getBoundingClientRect().width > 100);
   }, { timeout: 30000 });
   await page.waitForTimeout(800);
+}
+
+async function waitForScene(page, expectedScene, timeout) {
+  await page.waitForFunction(
+    (scene) => document.body.dataset.gameScene === scene,
+    expectedScene,
+    { timeout }
+  );
 }
 
 async function clickGame(page, gameX, gameY) {
