@@ -30,17 +30,12 @@ storefrontPrototype.createLobbyView = function createLobbyWithRegressionSignal()
   document.body.dataset.stockedLobbyVisual = "ready";
 
   if (new URLSearchParams(globalThis.location?.search ?? "").get("promotionTest") === "1") {
-    try {
-      globalThis.localStorage?.setItem(ACTIVE_DAY_KEY, "day02");
-      globalThis.localStorage?.setItem(WEEK_ONE_DAY_KEY, "day02");
-      globalThis.localStorage?.removeItem(PENDING_DAY_KEY);
-      globalThis.localStorage?.setItem("supermarket.bestStars", JSON.stringify({ day01: 3 }));
-    } catch {
-      // The in-memory session below is sufficient for the visual regression route.
-    }
-
-    gameSession.setActiveDay("day02");
+    forcePromotionRegressionDay();
     globalThis.setTimeout(() => {
+      // The five-day storefront wrapper can persist its selected day after this
+      // lobby method returns. Reassert Day 2 immediately before launching the
+      // isolated promotion route.
+      forcePromotionRegressionDay();
       scene.game.scene.start("game");
       launchPromotionWhenGameIsReady(scene, 0);
     }, 80);
@@ -112,6 +107,18 @@ openingPrototype.create = function createOpeningWithRegressionSignals(...args: u
     if (window.__GAME_TEST__) delete window.__GAME_TEST__;
   });
 };
+
+function forcePromotionRegressionDay(): void {
+  try {
+    globalThis.localStorage?.setItem(ACTIVE_DAY_KEY, "day02");
+    globalThis.localStorage?.setItem(WEEK_ONE_DAY_KEY, "day02");
+    globalThis.localStorage?.setItem(PENDING_DAY_KEY, "day02");
+    globalThis.localStorage?.setItem("supermarket.bestStars", JSON.stringify({ day01: 3 }));
+  } catch {
+    // The in-memory session below is sufficient for the visual regression route.
+  }
+  gameSession.setActiveDay("day02");
+}
 
 function launchPromotionWhenGameIsReady(scene: Phaser.Scene, attempt: number): void {
   const gameScene = scene.game.scene.getScene("game");
