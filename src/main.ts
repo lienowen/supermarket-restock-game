@@ -61,6 +61,7 @@ import "./dayThreeSupervisorContractIntegration";
 import "./mobileDayThreeStartIntegration";
 import "./uiRuntimePolishIntegration";
 import "./uiRuntimeLegacyCleanupIntegration";
+import "./releaseVisualFlowFixIntegration";
 
 installResponsiveShell();
 
