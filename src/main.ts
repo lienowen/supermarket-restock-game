@@ -68,6 +68,7 @@ import "./releaseRegressionSignalsIntegration";
 import "./phaserTextSafetyIntegration";
 import "./milkTextureTransparencyIntegration";
 import "./platform/crazyGamesLifecycleIntegration";
+import "./dayThreeMultiFixtureIntegration";
 
 void bootstrap();
 
