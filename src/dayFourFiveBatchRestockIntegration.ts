@@ -78,6 +78,7 @@ type RuntimeGame = Phaser.Scene & {
   __batchFlashSaleTriggered?: boolean;
   __batchSurgeWave?: number;
   clearGuide: () => void;
+  tryRestockSlot: (slot: RuntimeSlot) => void;
   updateCartCount: () => void;
   updateHud: () => void;
   recordRestockCombo: () => void;
