@@ -19,7 +19,9 @@ type RuntimeSlot = {
 };
 
 type RuntimeGame = Phaser.Scene & {
+  phase: "PREPARE" | "OPEN" | "RUSH" | "CLOSING" | "RESULT";
   shelfSlots: RuntimeSlot[];
+  hintText?: Phaser.GameObjects.Text;
   showTransientHint: (message: string) => void;
   tryRestockSlot: (slot: RuntimeSlot) => void;
 };
@@ -29,6 +31,7 @@ type GamePrototype = {
   create: () => void;
   createStage: () => void;
   createShelfSlots: () => void;
+  updateHud: () => void;
 };
 
 type Day3SlotDefinition = {
@@ -65,6 +68,7 @@ const originalPreload = prototype.preload;
 const originalCreate = prototype.create;
 const originalCreateStage = prototype.createStage;
 const originalCreateShelfSlots = prototype.createShelfSlots;
+const originalUpdateHud = prototype.updateHud;
 
 prototype.preload = function preloadDayThreeFixtures(): void {
   originalPreload.call(this);
@@ -138,6 +142,16 @@ prototype.createShelfSlots = function createDayThreeFixtureSlots(): void {
   });
 };
 
+prototype.updateHud = function updateDayThreeFixtureDuty(): void {
+  originalUpdateHud.call(this);
+  if (gameSession.day !== "day03") return;
+
+  const scene = this as unknown as RuntimeGame;
+  if (scene.phase === "PREPARE" && scene.hintText?.active) {
+    scene.hintText.setText("RESTOCK DRINKS, GROCERY AND COLD CASE · MATCH EACH PRODUCT TO ITS DEPARTMENT");
+  }
+};
+
 prototype.create = function createWithDayThreeFixtureGuidance(): void {
   originalCreate.call(this);
   if (gameSession.day !== "day03") return;
@@ -147,6 +161,9 @@ prototype.create = function createWithDayThreeFixtureGuidance(): void {
   scene.time.delayedCall(500, () => {
     if (!scene.scene.isActive()) return;
     scene.showTransientHint("Day 3 upgrade: COLA goes to Drinks, WATER to Grocery, and MILK to the Cold Case.");
+    if (scene.phase === "PREPARE" && scene.hintText?.active) {
+      scene.hintText.setText("RESTOCK DRINKS, GROCERY AND COLD CASE · MATCH EACH PRODUCT TO ITS DEPARTMENT");
+    }
   });
   scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
     delete document.body.dataset.day3MultiFixture;
@@ -163,9 +180,11 @@ function createFixture(
     .setStrokeStyle(3, FIXTURE_COLORS[fixtureType], 0.9)
     .setDepth(2);
 
-  const fixture = scene.add.image(x, 585, texture)
-    .setDisplaySize(184, 590)
-    .setDepth(3);
+  const fixture = scene.add.image(x, 585, texture).setDepth(3);
+  if (texture === DAY3_AISLE_SHELF) {
+    fixture.setCrop(0, 250, 907, 1013);
+  }
+  fixture.setDisplaySize(184, 590);
 
   if (fixtureType === "drinks_shelf") fixture.setTint(0xc7e8ff);
   if (fixtureType === "grocery_shelf") fixture.setTint(0xffe0b5);
