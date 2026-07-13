@@ -12,6 +12,8 @@ const prototype = GameScene.prototype as unknown as GamePrototype;
 const originalCreate = prototype.create;
 
 prototype.create = function createWithWeekOneDayGuard(): void {
+  const pendingBefore = readRaw(PENDING_DAY_KEY);
+  const activeBefore = readRaw("supermarket.activeDay");
   const requestedDay = readRequestedDay();
   document.body.dataset.requestedGameDay = requestedDay;
 
@@ -27,6 +29,18 @@ prototype.create = function createWithWeekOneDayGuard(): void {
   document.body.dataset.runtimeGameDay = gameSession.day;
   document.body.dataset.weekOneDayMatch = gameSession.day === requestedDay ? "ready" : "mismatch";
 
+  if (new URLSearchParams(globalThis.location?.search ?? "").get("test") === "1") {
+    console.error([
+      "[week-one-runtime]",
+      `pendingBefore=${pendingBefore ?? "none"}`,
+      `activeBefore=${activeBefore ?? "none"}`,
+      `requested=${requestedDay}`,
+      `runtime=${gameSession.day}`,
+      `batch=${document.body.dataset.weekOneBatchFloor ?? "none"}`,
+      `scene=${document.body.dataset.gameScene ?? "none"}`
+    ].join(" "));
+  }
+
   try {
     globalThis.localStorage?.removeItem(PENDING_DAY_KEY);
   } catch {
@@ -35,13 +49,17 @@ prototype.create = function createWithWeekOneDayGuard(): void {
 };
 
 function readRequestedDay(): WeekOneDay {
+  const pending = readRaw(PENDING_DAY_KEY);
+  if (isWeekOneDay(pending)) return pending;
+  const active = readRaw("supermarket.activeDay");
+  return isWeekOneDay(active) ? active : "day01";
+}
+
+function readRaw(key: string): string | null {
   try {
-    const pending = globalThis.localStorage?.getItem(PENDING_DAY_KEY);
-    if (isWeekOneDay(pending)) return pending;
-    const active = globalThis.localStorage?.getItem("supermarket.activeDay");
-    return isWeekOneDay(active) ? active : "day01";
+    return globalThis.localStorage?.getItem(key) ?? null;
   } catch {
-    return "day01";
+    return null;
   }
 }
 
