@@ -73,6 +73,7 @@ import "./weekOneReleaseIntegration";
 import "./dayFourFiveBatchRestockIntegration";
 import "./weekOneRuntimeDayGuardIntegration";
 import "./weekOnePendingDayIntegration";
+import "./weekOneSelectionPersistenceIntegration";
 
 void bootstrap();
 
