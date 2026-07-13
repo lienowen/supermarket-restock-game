@@ -95,5 +95,6 @@ jobs:
               sha,
               state: passed ? "success" : "failure",
               context: passed ? "UI Regression Audit" : `UI Regression Audit (${failureKey})`,
-              description: description.slice(0, 140)
+              description: description.slice(0, 140),
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
             });
