@@ -1,0 +1,13 @@
+{
+  "recommended": [
+    "public/assets/storefront/storefront_day.png",
+    "public/assets/day01/delivery/boxes/box_milk.png",
+    "public/assets/storefront/modules/promo_endcap.png",
+    "public/assets/storefront/modules/shelf_snacks_pantry.png",
+    "public/assets/storefront/modules/fridge_dairy.png",
+    "public/assets/storefront/modules/checkout_counter.png",
+    "public/assets/storefront/modules/produce_island.png",
+    "public/assets/storefront/modules/shelf_drinks.png"
+  ],
+  "legacy_folder": "legacy_not_recommended"
+}
