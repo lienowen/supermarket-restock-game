@@ -69,6 +69,8 @@ import "./phaserTextSafetyIntegration";
 import "./milkTextureTransparencyIntegration";
 import "./platform/crazyGamesLifecycleIntegration";
 import "./dayThreeMultiFixtureIntegration";
+import "./weekOneReleaseIntegration";
+import "./dayFourFiveBatchRestockIntegration";
 
 void bootstrap();
 
