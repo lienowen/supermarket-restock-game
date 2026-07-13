@@ -26,7 +26,7 @@ for (const file of files) {
     failures.push(`${name}: contains a root-relative /assets/ reference`);
   }
 
-  if (extension === ".js" && /(?:webkit)?requestFullscreen/.test(content)) {
+  if (extension === ".js" && /(?:requestFullscreen|webkitRequestFullscreen)/.test(content)) {
     failures.push(`${name}: contains a custom fullscreen API call`);
   }
 }
