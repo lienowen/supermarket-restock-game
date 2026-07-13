@@ -7,6 +7,8 @@ import { gameSession } from "./systems/GameSession";
 
 const DELIVERY_READY_KEY = "supermarket.deliveryReady";
 const ACTIVE_DAY_KEY = "supermarket.activeDay";
+const WEEK_ONE_DAY_KEY = "supermarket.weekOneSelectedDay";
+const PENDING_DAY_KEY = "supermarket.pendingDay";
 
 declare global {
   interface Window {
@@ -30,6 +32,8 @@ storefrontPrototype.createLobbyView = function createLobbyWithRegressionSignal()
   if (new URLSearchParams(globalThis.location?.search ?? "").get("promotionTest") === "1") {
     try {
       globalThis.localStorage?.setItem(ACTIVE_DAY_KEY, "day02");
+      globalThis.localStorage?.setItem(WEEK_ONE_DAY_KEY, "day02");
+      globalThis.localStorage?.removeItem(PENDING_DAY_KEY);
       globalThis.localStorage?.setItem("supermarket.bestStars", JSON.stringify({ day01: 3 }));
     } catch {
       // The in-memory session below is sufficient for the visual regression route.
