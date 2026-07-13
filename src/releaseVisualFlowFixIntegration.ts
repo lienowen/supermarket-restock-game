@@ -2,9 +2,10 @@ import Phaser from "phaser";
 import { AssetPaths, Assets, type AssetKey } from "./assets";
 import type { LevelId } from "./domain/gameTypes";
 import { OpeningScene } from "./scenes/OpeningScene";
-import { StorefrontScene } from "./scenes/StorefrontScene";
 
 const ACTIVE_DAY_KEY = "supermarket.activeDay";
+const DELIVERY_READY_KEY = "supermarket.deliveryReady";
+const AUXILIARY_SCENES = ["polish-overlay", "progression-customer", "back-stock"] as const;
 
 const CORE_GAME_ASSETS = [
   Assets.backgrounds.backroom,
@@ -41,59 +42,22 @@ const CORE_GAME_ASSETS = [
   Assets.ui.missingTag
 ] as const satisfies readonly AssetKey[];
 
-const LOBBY_DISPLAY_ASSETS = [
-  Assets.props.shelf,
-  Assets.products.cola,
-  Assets.products.water,
-  Assets.products.milk
-] as const satisfies readonly AssetKey[];
-
 type RuntimeOpening = Phaser.Scene & {
-  __milkBadgeSync?: () => void;
+  finished: boolean;
   __day3TransitionPending?: boolean;
   __day3TransitionOverlay?: Phaser.GameObjects.Container;
 };
 
 type OpeningPrototype = {
   preload: () => void;
-  create: (...args: unknown[]) => void;
   finishOpening: () => void;
 };
 
-type StorefrontPrototype = {
-  preload: () => void;
-  createLobbyView: () => void;
-};
-
-type MilkImage = Phaser.GameObjects.Image & {
-  __milkCaseBadge?: Phaser.GameObjects.Container;
-};
-
-installStorefrontDisplay();
 installOpeningReliability();
-
-function installStorefrontDisplay(): void {
-  const prototype = StorefrontScene.prototype as unknown as StorefrontPrototype;
-  const originalPreload = prototype.preload;
-  const originalLobby = prototype.createLobbyView;
-
-  prototype.preload = function preloadStockedLobbyAndDay3Core(): void {
-    originalPreload.call(this);
-    const scene = this as unknown as Phaser.Scene;
-    loadMissing(scene, LOBBY_DISPLAY_ASSETS);
-    if (readActiveDay() === "day03") loadMissing(scene, CORE_GAME_ASSETS);
-  };
-
-  prototype.createLobbyView = function createStockedSupermarketLobby(): void {
-    originalLobby.call(this);
-    createStockedMarketBackdrop(this as unknown as Phaser.Scene);
-  };
-}
 
 function installOpeningReliability(): void {
   const prototype = OpeningScene.prototype as unknown as OpeningPrototype;
   const originalPreload = prototype.preload;
-  const originalCreate = prototype.create;
   const originalFinish = prototype.finishOpening;
 
   prototype.preload = function preloadDay3GameBeforeReceiving(): void {
@@ -103,34 +67,38 @@ function installOpeningReliability(): void {
     }
   };
 
-  prototype.create = function createWithVisibleMilkCases(...args: unknown[]): void {
-    originalCreate.apply(this, args);
-    installMilkCaseFallback(this as unknown as RuntimeOpening);
-  };
-
   prototype.finishOpening = function finishDay3WithoutBlackScreen(): void {
     const scene = this as unknown as RuntimeOpening;
-    if (readActiveDay() !== "day03" || coreGameAssetsReady(scene)) {
+
+    if (readActiveDay() !== "day03") {
       originalFinish.call(this);
       return;
     }
-    if (scene.__day3TransitionPending) return;
 
+    // Do not bypass the receiving gate. This method is also called by older
+    // integrations before the player has actually moved the stock inside.
+    if (!day3DeliveryReady(scene)) {
+      originalFinish.call(this);
+      return;
+    }
+
+    if (scene.__day3TransitionPending || scene.finished) return;
     scene.__day3TransitionPending = true;
+    scene.input.enabled = false;
     showDay3TransitionOverlay(scene);
+
+    if (coreGameAssetsReady(scene)) {
+      enterDay3Game(scene);
+      return;
+    }
+
     const missing = CORE_GAME_ASSETS.filter((key) => !scene.textures.exists(key));
     loadMissing(scene, missing);
 
     const onProgress = (progress: number): void => updateDay3TransitionOverlay(scene, progress);
     const onComplete = (): void => {
       scene.load.off("progress", onProgress);
-      scene.__day3TransitionPending = false;
-      updateDay3TransitionOverlay(scene, 1);
-      scene.time.delayedCall(100, () => {
-        scene.__day3TransitionOverlay?.destroy(true);
-        scene.__day3TransitionOverlay = undefined;
-        originalFinish.call(this);
-      });
+      enterDay3Game(scene);
     };
 
     scene.load.on("progress", onProgress);
@@ -139,110 +107,45 @@ function installOpeningReliability(): void {
   };
 }
 
-function createStockedMarketBackdrop(scene: Phaser.Scene): void {
-  const depth = 4;
-  scene.add.rectangle(965, 390, 670, 470, 0x102b2e, 0.94)
-    .setStrokeStyle(5, 0x7fac7b, 0.95)
-    .setDepth(depth);
+function enterDay3Game(scene: RuntimeOpening): void {
+  if (!scene.scene.isActive()) return;
+  scene.finished = true;
+  updateDay3TransitionOverlay(scene, 1);
 
-  scene.add.text(965, 178, "FRESH DRINKS  ·  DAIRY  ·  COLD WATER", {
-    fontFamily: "Arial",
-    fontSize: "20px",
-    color: "#fff0ac",
-    fontStyle: "bold",
-    letterSpacing: 2,
-    backgroundColor: "#315f4b",
-    padding: { x: 20, y: 10 }
-  }).setOrigin(0.5).setDepth(depth + 3);
+  try {
+    globalThis.localStorage?.removeItem(DELIVERY_READY_KEY);
+  } catch {
+    // The active GameSession still contains the current day.
+  }
 
-  const shelfXs = [740, 965, 1190];
-  shelfXs.forEach((x, shelfIndex) => {
-    scene.add.image(x, 415, Assets.props.shelf)
-      .setDisplaySize(205, 355)
-      .setDepth(depth + 1);
-
-    const products = shelfIndex === 0
-      ? [Assets.products.cola, Assets.products.water, Assets.products.milk]
-      : shelfIndex === 1
-        ? [Assets.products.milk, Assets.products.cola, Assets.products.water]
-        : [Assets.products.water, Assets.products.milk, Assets.products.cola];
-
-    [295, 405, 515].forEach((y, row) => {
-      [-55, 0, 55].forEach((offset, column) => {
-        const key = products[(row + column) % products.length];
-        scene.add.image(x + offset, y, key)
-          .setDisplaySize(key === Assets.products.milk ? 42 : 46, 72)
-          .setDepth(depth + 2);
-      });
+  scene.time.delayedCall(140, () => {
+    if (!scene.scene.isActive()) return;
+    AUXILIARY_SCENES.forEach((key) => {
+      if (!scene.scene.isActive(key)) scene.scene.launch(key);
     });
-  });
-
-  scene.add.text(965, 585, "FULLY STOCKED · READY FOR TODAY'S SHIFT", {
-    fontFamily: "Arial",
-    fontSize: "18px",
-    color: "#dff0d8",
-    fontStyle: "bold",
-    backgroundColor: "#173238",
-    padding: { x: 18, y: 9 }
-  }).setOrigin(0.5).setDepth(depth + 3);
-}
-
-function installMilkCaseFallback(scene: RuntimeOpening): void {
-  const sync = (): void => {
-    scene.children.list.forEach((child) => {
-      if (!(child instanceof Phaser.GameObjects.Image)) return;
-      const image = child as MilkImage;
-      if (image.texture.key !== Assets.delivery.boxMilk) return;
-
-      if (!image.__milkCaseBadge) image.__milkCaseBadge = createMilkCaseBadge(scene);
-      const badge = image.__milkCaseBadge;
-      if (!image.active) {
-        badge.destroy(true);
-        image.__milkCaseBadge = undefined;
-        return;
-      }
-
-      const scale = Phaser.Math.Clamp(
-        Math.min(Math.max(1, image.displayWidth) / 88, Math.max(1, image.displayHeight) / 74),
-        0.72,
-        1.35
-      );
-      badge
-        .setPosition(image.x, image.y - image.displayHeight * 0.5)
-        .setScale(scale)
-        .setDepth(image.depth + 0.25)
-        .setAlpha(image.alpha)
-        .setVisible(image.visible);
-    });
-  };
-
-  scene.__milkBadgeSync = sync;
-  scene.events.on(Phaser.Scenes.Events.POST_UPDATE, sync);
-  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-    scene.events.off(Phaser.Scenes.Events.POST_UPDATE, sync);
-    scene.children.list.forEach((child) => {
-      if (child instanceof Phaser.GameObjects.Image) {
-        (child as MilkImage).__milkCaseBadge?.destroy(true);
-      }
-    });
+    scene.scene.start("game");
   });
 }
 
-function createMilkCaseBadge(scene: Phaser.Scene): Phaser.GameObjects.Container {
-  const box = scene.add.rectangle(0, 0, 78, 52, 0xf8fbff, 1)
-    .setStrokeStyle(4, 0x4d91c6, 1);
-  const stripe = scene.add.rectangle(0, -17, 70, 10, 0x4d91c6, 1);
-  const text = scene.add.text(0, 5, "MILK", {
-    fontFamily: "Arial",
-    fontSize: "16px",
-    color: "#244d6c",
-    fontStyle: "bold"
-  }).setOrigin(0.5);
-  return scene.add.container(0, 0, [box, stripe, text]);
+function day3DeliveryReady(scene: Phaser.Scene): boolean {
+  try {
+    if (globalThis.localStorage?.getItem(DELIVERY_READY_KEY) === "day03") return true;
+  } catch {
+    // Fall back to the visible completion message.
+  }
+
+  return scene.children.list.some((child) =>
+    child instanceof Phaser.GameObjects.Text &&
+    child.text.includes("STOCK IS IN THE BACKROOM")
+  );
 }
 
 function showDay3TransitionOverlay(scene: RuntimeOpening): void {
-  const shade = scene.add.rectangle(665, 591, 1330, 1182, 0x071012, 0.74).setDepth(9000);
+  scene.__day3TransitionOverlay?.destroy(true);
+
+  const shade = scene.add.rectangle(665, 591, 1330, 1182, 0x071012, 0.88)
+    .setDepth(9000)
+    .setInteractive();
   const panel = scene.add.rectangle(665, 590, 760, 300, 0x10252a, 0.995)
     .setStrokeStyle(7, 0x78a465)
     .setDepth(9001);
@@ -270,6 +173,7 @@ function showDay3TransitionOverlay(scene: RuntimeOpening): void {
     color: "#ffffff",
     fontStyle: "bold"
   }).setName("day3-transition-progress").setOrigin(0.5).setDepth(9002);
+
   scene.__day3TransitionOverlay = scene.add.container(0, 0, [shade, panel, title, detail, track, bar, progress])
     .setDepth(9000);
 }
