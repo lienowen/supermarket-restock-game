@@ -68,7 +68,6 @@ prototype.createExpandedRoom = function createRealisticPromotionRoom(): void {
 
   replaceRoomBackground(scene);
   replaceRoomFixtures(scene);
-  addSupermarketDepth(scene);
 
   document.body.dataset.promotionWingVisual = "ready";
 };
@@ -149,14 +148,17 @@ prototype.placeProduct = function placeRealisticPromotionProducts(slot: WingSlot
 
   if (!animate) return;
 
+  const finalScales = products.map((image) => ({ x: image.scaleX, y: image.scaleY }));
   products.forEach((image) => image.setAlpha(0).setScale(image.scaleX * 0.78, image.scaleY * 0.78));
-  scene.tweens.add({
-    targets: products,
-    alpha: 1,
-    scaleX: products[0].scaleX / 0.78,
-    scaleY: products[0].scaleY / 0.78,
-    duration: 190,
-    ease: "Back.Out"
+  products.forEach((image, index) => {
+    scene.tweens.add({
+      targets: image,
+      alpha: 1,
+      scaleX: finalScales[index].x,
+      scaleY: finalScales[index].y,
+      duration: 190,
+      ease: "Back.Out"
+    });
   });
 };
 
@@ -177,6 +179,15 @@ function replaceRoomBackground(scene: RuntimePromotionWing): void {
     child instanceof Phaser.GameObjects.Image && child.texture.key === Assets.promotion.dayBanner
   );
   banner?.destroy();
+
+  const emptyTopShade = scene.children.list.find((child) =>
+    child instanceof Phaser.GameObjects.Rectangle &&
+    Math.abs(child.x - 665) < 2 &&
+    Math.abs(child.y - 116) < 2 &&
+    child.width >= 1300 &&
+    child.height >= 220
+  );
+  emptyTopShade?.destroy();
 }
 
 function replaceRoomFixtures(scene: RuntimePromotionWing): void {
@@ -214,19 +225,4 @@ function replaceRoomFixtures(scene: RuntimePromotionWing): void {
     backgroundColor: "#254a3f",
     padding: { x: 12, y: 6 }
   }).setOrigin(0.5).setDepth(11);
-}
-
-function addSupermarketDepth(scene: RuntimePromotionWing): void {
-  scene.add.image(105, 595, RealPromotionAssets.stockEntryDoor)
-    .setDisplaySize(155, 420)
-    .setDepth(3);
-
-  scene.add.image(1215, 555, RealPromotionAssets.groceryShelf)
-    .setDisplaySize(195, 390)
-    .setDepth(3);
-
-  scene.add.image(330, 545, RealPromotionAssets.displayStocked)
-    .setDisplaySize(155, 285)
-    .setAlpha(0.96)
-    .setDepth(3);
 }
