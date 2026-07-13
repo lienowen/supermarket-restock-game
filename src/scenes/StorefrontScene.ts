@@ -37,7 +37,7 @@ export class StorefrontScene extends Phaser.Scene {
       Assets.storefront.store,
       Assets.storefront.collection,
       Assets.storefront.settings,
-      Assets.storefront.shiftResultPanel,
+      Assets.ui.workerAvatar,
       Assets.ui.star,
       Assets.ui.coin
     ] as const;
@@ -78,8 +78,8 @@ export class StorefrontScene extends Phaser.Scene {
     const sourceHeight = Math.max(1, background.height);
     background.setScale(Math.max(1330 / sourceWidth, 1182 / sourceHeight));
 
-    this.add.rectangle(665, 591, 1330, 1182, 0x061012, 0.14).setDepth(1);
-    this.add.rectangle(1045, 615, 570, 1030, 0x071215, 0.18).setDepth(2);
+    this.add.rectangle(665, 591, 1330, 1182, 0x061012, 0.08).setDepth(1);
+    this.add.rectangle(665, 1125, 1330, 115, 0x071215, 0.45).setDepth(2);
   }
 
   private createTopHud(): void {
@@ -92,14 +92,14 @@ export class StorefrontScene extends Phaser.Scene {
       .setStrokeStyle(2, 0x384b4e)
       .setDepth(20);
 
-    this.add.text(42, 28, "FRESH MART", {
+    this.add.text(42, 24, "FRESH MART", {
       fontFamily: "Arial",
       fontSize: "34px",
       color: "#ffffff",
       fontStyle: "bold"
     }).setDepth(21);
 
-    this.add.text(42, 72, `STORE LEVEL ${storeLevel}`, {
+    this.add.text(42, 72, `STORE LEVEL ${storeLevel} · OPENING TEAM`, {
       fontFamily: "Arial",
       fontSize: "18px",
       color: "#bfe88a",
@@ -137,257 +137,259 @@ export class StorefrontScene extends Phaser.Scene {
     const level = LEVELS[day];
     const dayNumber = Number(day.slice(-2));
     const bestStars = bestStarsFor(day);
+    const completed = bestStars > 0;
 
-    const card = this.add.rectangle(1010, 330, 520, 380, 0x102025, 0.91)
-      .setStrokeStyle(5, 0x78a465)
-      .setDepth(10);
-
-    this.add.text(1010, 190, `DAY ${dayNumber} · ${level.title.toUpperCase()}`, {
+    this.add.text(70, 160, "STORE ENTRANCE", {
       fontFamily: "Arial",
-      fontSize: "27px",
+      fontSize: "20px",
+      color: "#d9efdf",
+      fontStyle: "bold",
+      letterSpacing: 3,
+      backgroundColor: "#173238",
+      padding: { x: 16, y: 9 }
+    }).setDepth(10);
+
+    this.add.rectangle(310, 390, 510, 410, 0x0b1719, 0.88)
+      .setStrokeStyle(4, 0x73906f, 0.95)
+      .setDepth(9);
+
+    this.add.text(310, 220, `DAY ${dayNumber} · ${level.title.toUpperCase()}`, {
+      fontFamily: "Arial",
+      fontSize: "28px",
       color: "#f7e8a9",
       fontStyle: "bold",
       align: "center",
-      wordWrap: { width: 460 }
+      wordWrap: { width: 455 }
     }).setOrigin(0.5).setDepth(11);
 
-    this.add.text(1010, 258, "TODAY'S SHIFT", {
+    const avatar = this.add.image(155, 425, Assets.ui.workerAvatar)
+      .setOrigin(0.5)
+      .setDepth(11);
+    const avatarScale = Math.min(145 / Math.max(1, avatar.width), 190 / Math.max(1, avatar.height));
+    avatar.setScale(avatarScale);
+
+    this.add.text(255, 295, "TODAY'S OPERATIONS", {
       fontFamily: "Arial",
-      fontSize: "20px",
+      fontSize: "18px",
       color: "#9fd0bd",
       fontStyle: "bold",
-      letterSpacing: 3
+      letterSpacing: 2
+    }).setDepth(11);
+
+    this.add.text(255, 335, level.objective, {
+      fontFamily: "Arial",
+      fontSize: "22px",
+      color: "#ffffff",
+      lineSpacing: 8,
+      wordWrap: { width: 285 }
+    }).setDepth(11);
+
+    this.add.text(255, 455, [
+      `Sales target   ${level.salesTargets.rushToClosing}`,
+      `Shift time     ${Math.floor(level.shiftSeconds / 60)}:${String(level.shiftSeconds % 60).padStart(2, "0")}`,
+      `Best result    ${"★".repeat(bestStars)}${"☆".repeat(3 - bestStars)}`
+    ].join("\n"), {
+      fontFamily: "Arial",
+      fontSize: "19px",
+      color: "#d8e7df",
+      lineSpacing: 12
+    }).setDepth(11);
+
+    this.add.text(310, 565, completed
+      ? "REPLAY SHIFT · CONTRACTS AND SURPRISE DUTIES ACTIVE"
+      : day === "day01"
+        ? "NEW EMPLOYEE SHIFT · COMPLETE THE FULL OPENING ROUTINE"
+        : "NEW DEPARTMENT SHIFT · KEEP BOTH STORE AREAS SUPPLIED", {
+      fontFamily: "Arial",
+      fontSize: "16px",
+      color: completed ? "#bfe88a" : "#ffd98a",
+      fontStyle: "bold",
+      align: "center",
+      wordWrap: { width: 455 }
     }).setOrigin(0.5).setDepth(11);
 
-    this.add.text(1010, 330, level.objective, {
+    this.add.rectangle(965, 700, 470, 280, 0x0b1719, 0.76)
+      .setStrokeStyle(3, 0x8eb48d, 0.75)
+      .setDepth(9);
+    this.add.text(965, 620, "STAFF ENTRANCE", {
       fontFamily: "Arial",
       fontSize: "24px",
       color: "#ffffff",
+      fontStyle: "bold",
+      letterSpacing: 2
+    }).setOrigin(0.5).setDepth(11);
+    this.add.text(965, 668, "Clock in, receive stock and prepare the sales floor.", {
+      fontFamily: "Arial",
+      fontSize: "18px",
+      color: "#d6e7df",
       align: "center",
-      lineSpacing: 8,
-      wordWrap: { width: 445 }
+      wordWrap: { width: 410 }
     }).setOrigin(0.5).setDepth(11);
 
-    this.add.text(1010, 418, [
-      `Sales target  ${level.salesTargets.rushToClosing}`,
-      `Shift time    ${Math.floor(level.shiftSeconds / 60)}:${String(level.shiftSeconds % 60).padStart(2, "0")}`,
-      `Best result   ${"★".repeat(bestStars)}${"☆".repeat(3 - bestStars)}`
-    ].join("\n"), {
-      fontFamily: "Arial",
-      fontSize: "21px",
-      color: "#d8e7df",
-      align: "left",
-      lineSpacing: 10
-    }).setOrigin(0.5, 0).setDepth(11);
+    this.createTextButton(965, 770, 400, 96, `START DAY ${dayNumber}`, 0x4f8b4c, () => this.startShift(day));
 
-    void card;
-
-    this.createImageButton(
-      Assets.storefront.startShift,
-      1010,
-      690,
-      500,
-      180,
-      () => this.startShift(day)
-    );
-
-    this.createImageButton(Assets.storefront.days, 855, 865, 280, 105, () => this.openDaySelector());
-    this.createImageButton(
-      Assets.storefront.upgrades,
-      1165,
-      865,
-      280,
-      105,
-      () => this.showToast("UPGRADES unlock after the first full progression pass.")
-    );
-    this.createImageButton(
-      Assets.storefront.store,
-      855,
-      995,
-      280,
-      105,
-      () => this.showToast("STORE expansion arrives with the next department update.")
-    );
-    this.createImageButton(
-      Assets.storefront.collection,
-      1165,
-      995,
-      280,
-      105,
-      () => this.showToast("COLLECTION will track products, customers and achievements.")
-    );
-    this.createImageButton(
-      Assets.storefront.settings,
-      1010,
-      1110,
-      260,
-      92,
-      () => this.showToast("SETTINGS: sound, language and save controls are coming next.")
-    );
+    const menuY = 1080;
+    this.createUtilityButton(180, menuY, "SHIFTS", () => this.openDaySelector());
+    this.createUtilityButton(415, menuY, "UPGRADES", () => this.showToast("Upgrade delivery handling and store operations after completing shifts."));
+    this.createUtilityButton(650, menuY, "STORE", () => this.showToast("Store expansion is earned through department progression."));
+    this.createUtilityButton(885, menuY, "COLLECTION", () => this.showToast("Collection tracks products, customers and achievements."));
+    this.createUtilityButton(1120, menuY, "SETTINGS", () => this.showToast("Settings contains sound, language and save controls."));
   }
 
   private createResultView(result: ShiftResult): void {
     const stars = Math.max(0, Math.min(3, result.stars));
     const dayNumber = Number(result.day.slice(-2));
+    const nextDay: LevelId = result.day === "day01" ? "day02" : result.day === "day02" ? "day03" : "day03";
+    const continueLabel = result.day === "day03" ? "BACK TO STORE" : `CONTINUE TO DAY ${Number(nextDay.slice(-2))}`;
+    const progressionTitle = result.day === "day01"
+      ? "PROMOTION WING UNLOCKED"
+      : result.day === "day02"
+        ? "SHIFT SUPERVISOR UNLOCKED"
+        : "CORE TRAINING COMPLETE";
+    const progressionDetail = result.day === "day01"
+      ? "Day 2 adds shared reserve stock, a second room, checkout and customer service."
+      : result.day === "day02"
+        ? "Day 3 adds inspections, service decisions, rush control and equipment recovery."
+        : "Replay contracts, improve stars and build a stronger store record.";
 
-    this.add.text(100, 210, "STORE CLOSED", {
+    this.add.rectangle(665, 620, 980, 850, 0x0b1719, 0.96)
+      .setStrokeStyle(5, 0x6f916f, 0.95)
+      .setDepth(10);
+
+    this.add.text(665, 215, "SHIFT COMPLETE", {
       fontFamily: "Arial",
-      fontSize: "48px",
+      fontSize: "46px",
       color: "#ffffff",
       fontStyle: "bold",
       stroke: "#14222a",
-      strokeThickness: 8
-    }).setDepth(12);
-
-    this.add.text(104, 278, `DAY ${dayNumber} COMPLETE`, {
-      fontFamily: "Arial",
-      fontSize: "24px",
-      color: "#ffd98a",
-      fontStyle: "bold",
-      backgroundColor: "#193144",
-      padding: { x: 15, y: 9 }
-    }).setDepth(12);
-
-    this.add.text(104, 345, "The doors are closed.\nReview the shift, then prepare the next day.", {
-      fontFamily: "Arial",
-      fontSize: "25px",
-      color: "#e5eef2",
-      lineSpacing: 8,
-      wordWrap: { width: 460 }
-    }).setDepth(12);
-
-    this.add.image(1005, 625, Assets.storefront.shiftResultPanel)
-      .setDisplaySize(610, 650)
-      .setDepth(10);
-
-    // The artwork contains decorative sample values. Cover the data area and render
-    // the real shift result above it so stars and statistics always stay truthful.
-    this.add.rectangle(1005, 570, 500, 390, 0x102536, 0.94)
-      .setStrokeStyle(2, 0x496b7f)
-      .setDepth(11);
-
-    this.add.text(1005, 405, result.title.toUpperCase(), {
-      fontFamily: "Arial",
-      fontSize: "24px",
-      color: "#d7e8f3",
-      fontStyle: "bold",
-      align: "center"
+      strokeThickness: 6
     }).setOrigin(0.5).setDepth(12);
 
-    this.add.text(1005, 462, `${"★".repeat(stars)}${"☆".repeat(3 - stars)}`, {
+    this.add.text(665, 275, `DAY ${dayNumber} · ${result.title.toUpperCase()}`, {
       fontFamily: "Arial",
-      fontSize: "56px",
+      fontSize: "23px",
+      color: "#f7e8a9",
+      fontStyle: "bold",
+      backgroundColor: "#193144",
+      padding: { x: 18, y: 9 }
+    }).setOrigin(0.5).setDepth(12);
+
+    this.add.text(665, 350, `${"★".repeat(stars)}${"☆".repeat(3 - stars)}`, {
+      fontFamily: "Arial",
+      fontSize: "62px",
       color: "#ffcc3f",
       fontStyle: "bold",
       stroke: "#6d4a09",
       strokeThickness: 3
     }).setOrigin(0.5).setDepth(12);
 
-    const labels = this.add.text(820, 535, [
-      "SALES",
-      "MISSED SALES",
-      "WRONG STOCK",
-      "BEST COMBO",
-      "WALLET COINS"
-    ].join("\n"), {
+    this.add.rectangle(665, 580, 760, 330, 0x102536, 0.94)
+      .setStrokeStyle(2, 0x496b7f)
+      .setDepth(11);
+
+    const rows = [
+      ["SALES", `${result.soldCount}/${result.salesTarget}`],
+      ["SATISFIED", String(result.satisfiedCustomers ?? 0)],
+      ["MISSED SALES", String(result.missedSales)],
+      ["WRONG STOCK", String(result.wrongStock)],
+      ["BEST COMBO", `x${result.bestCombo}`],
+      ["WALLET COINS", String(result.walletCoins)]
+    ];
+
+    rows.forEach(([label, value], index) => {
+      const y = 455 + index * 47;
+      this.add.text(360, y, label, {
+        fontFamily: "Arial",
+        fontSize: "20px",
+        color: "#b8cad4",
+        fontStyle: "bold"
+      }).setDepth(12);
+      this.add.text(970, y, value, {
+        fontFamily: "Arial",
+        fontSize: "21px",
+        color: "#ffffff",
+        fontStyle: "bold"
+      }).setOrigin(1, 0).setDepth(12);
+    });
+
+    this.add.rectangle(665, 810, 760, 125, 0x17382b, 0.96)
+      .setStrokeStyle(3, 0x9bd58f)
+      .setDepth(11);
+    this.add.text(665, 782, progressionTitle, {
       fontFamily: "Arial",
-      fontSize: "21px",
-      color: "#b8cad4",
-      fontStyle: "bold",
-      lineSpacing: 15
-    }).setOrigin(0, 0).setDepth(12);
-
-    const values = this.add.text(1190, 535, [
-      `${result.soldCount}/${result.salesTarget}`,
-      String(result.missedSales),
-      String(result.wrongStock),
-      `x${result.bestCombo}`,
-      String(result.walletCoins)
-    ].join("\n"), {
+      fontSize: "23px",
+      color: "#d9f4ad",
+      fontStyle: "bold"
+    }).setOrigin(0.5).setDepth(12);
+    this.add.text(665, 830, progressionDetail, {
       fontFamily: "Arial",
-      fontSize: "21px",
-      color: "#ffffff",
-      fontStyle: "bold",
-      align: "right",
-      lineSpacing: 15
-    }).setOrigin(1, 0).setDepth(12);
+      fontSize: "17px",
+      color: "#d7e6df",
+      align: "center",
+      wordWrap: { width: 700 }
+    }).setOrigin(0.5).setDepth(12);
 
-    void labels;
-    void values;
-
-    const replay = this.createInvisibleAction(880, 864, 220, 94, () => {
+    this.createTextButton(485, 980, 300, 84, "REPLAY SHIFT", 0x315f7d, () => {
       clearLastShiftResult();
       this.startShift(result.day);
     });
-    const continueButton = this.createInvisibleAction(1110, 864, 260, 94, () => {
-      const nextDay: LevelId = result.day === "day01" ? "day02" : result.day;
+
+    this.createTextButton(845, 980, 380, 84, continueLabel, 0x4f8b4c, () => {
       this.setActiveDay(nextDay);
       clearLastShiftResult();
       this.scene.restart({ showResult: false });
     });
-
-    this.add.text(880, 864, "REPLAY", {
-      fontFamily: "Arial",
-      fontSize: "24px",
-      color: "#ffffff",
-      fontStyle: "bold",
-      stroke: "#173752",
-      strokeThickness: 5
-    }).setOrigin(0.5).setDepth(14);
-
-    this.add.text(1110, 864, result.day === "day01" ? "CONTINUE" : "BACK TO STORE", {
-      fontFamily: "Arial",
-      fontSize: "22px",
-      color: "#ffffff",
-      fontStyle: "bold",
-      stroke: "#2a5b19",
-      strokeThickness: 5
-    }).setOrigin(0.5).setDepth(14);
-
-    void replay;
-    void continueButton;
   }
 
-  private createImageButton(
-    texture: string,
+  private createTextButton(
     x: number,
     y: number,
     width: number,
     height: number,
+    label: string,
+    color: number,
     action: () => void
   ): Phaser.GameObjects.Container {
-    const image = this.add.image(0, 0, texture).setDisplaySize(width, height);
-    const hitPlate = this.add.rectangle(0, 0, width + 30, height + 24, 0xffffff, 0.001)
+    const background = this.add.rectangle(0, 0, width, height, color, 1)
+      .setStrokeStyle(4, 0xd7ecdf);
+    const text = this.add.text(0, 0, label, {
+      fontFamily: "Arial",
+      fontSize: "23px",
+      color: "#ffffff",
+      fontStyle: "bold"
+    }).setOrigin(0.5);
+    const hit = this.add.rectangle(0, 0, width + 22, height + 18, 0xffffff, 0.001)
       .setInteractive({ useHandCursor: true });
-    const container = this.add.container(x, y, [image, hitPlate]).setDepth(15);
-
-    hitPlate.on("pointerover", () => container.setScale(1.025));
-    hitPlate.on("pointerout", () => container.setScale(1));
-    hitPlate.on("pointerdown", () => {
-      container.setScale(0.985);
-      action();
-    });
-
-    return container;
-  }
-
-  private createInvisibleAction(
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    action: () => void
-  ): Phaser.GameObjects.Rectangle {
-    const hitPlate = this.add.rectangle(x, y, width, height, 0xffffff, 0.001)
-      .setDepth(13)
-      .setInteractive({ useHandCursor: true });
+    const button = this.add.container(x, y, [background, text, hit]).setDepth(15);
     let used = false;
-    hitPlate.on("pointerdown", () => {
+
+    hit.on("pointerover", () => button.setScale(1.025));
+    hit.on("pointerout", () => button.setScale(1));
+    hit.on("pointerdown", () => {
       if (used) return;
       used = true;
+      button.setScale(0.985);
       action();
     });
-    return hitPlate;
+    return button;
+  }
+
+  private createUtilityButton(x: number, y: number, label: string, action: () => void): void {
+    const background = this.add.rectangle(0, 0, 205, 68, 0x173238, 0.96)
+      .setStrokeStyle(2, 0x769091);
+    const text = this.add.text(0, 0, label, {
+      fontFamily: "Arial",
+      fontSize: "17px",
+      color: "#ffffff",
+      fontStyle: "bold",
+      letterSpacing: 1
+    }).setOrigin(0.5);
+    const hit = this.add.rectangle(0, 0, 220, 82, 0xffffff, 0.001)
+      .setInteractive({ useHandCursor: true });
+    const button = this.add.container(x, y, [background, text, hit]).setDepth(15);
+    hit.on("pointerover", () => button.setScale(1.035));
+    hit.on("pointerout", () => button.setScale(1));
+    hit.on("pointerdown", action);
   }
 
   private openDaySelector(): void {
