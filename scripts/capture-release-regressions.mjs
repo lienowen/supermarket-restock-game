@@ -42,6 +42,7 @@ const report = {
     milkCaseVisible: false,
     milkTextureTransparent: false,
     day3ReachedGame: false,
+    day3MultiFixture: false,
     promotionWingRealistic: false,
     crazyGamesSdkLifecycle: false
   }
@@ -133,10 +134,12 @@ try {
   await page.waitForFunction(() => typeof window.__GAME_TEST__?.finishDay3Receiving === "function", { timeout: 10000 });
   await page.evaluate(() => window.__GAME_TEST__.finishDay3Receiving());
   await waitForScene(page, "game", 20000);
+  await page.waitForFunction(() => document.body.dataset.day3MultiFixture === "ready", { timeout: 10000 });
   await page.waitForTimeout(900);
 
   report.regressions.day3ReachedGame = await page.evaluate(() => document.body.dataset.gameScene === "game");
-  await capture(page, report, "04-day3-backroom.png", "Day 3 entered backroom without black screen");
+  report.regressions.day3MultiFixture = true;
+  await capture(page, report, "04-day3-multi-fixture-floor.png", "Day 3 drinks, grocery and cold-case fixtures");
 
   await page.locator("#market-pause-button").click();
   await page.waitForFunction(() => document.body.dataset.marketPaused === "true", { timeout: 5000 });
