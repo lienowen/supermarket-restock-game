@@ -1,4 +1,4 @@
-@media (max-width: 760px) and (orientation: landscape) {
+@media (max-height: 760px) and (orientation: landscape) {
   body[data-viewport-mode="mobile-landscape"][data-game-scene="storefront"] #app {
     align-items: flex-start;
     justify-content: center;
