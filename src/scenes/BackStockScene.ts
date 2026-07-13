@@ -94,6 +94,17 @@ export class BackStockScene extends Phaser.Scene {
     this.refreshButtons();
   }
 
+  getInventoryAmount(productId: ProductId): number {
+    return this.inventory[productId];
+  }
+
+  takeForPromotion(productId: ProductId): boolean {
+    if (this.inventory[productId] <= 0) return false;
+    this.inventory[productId] -= 1;
+    this.refreshButtons();
+    return true;
+  }
+
   private tryAttach(): void {
     if (this.attached || gameSession.day !== "day02") return;
 
@@ -104,8 +115,8 @@ export class BackStockScene extends Phaser.Scene {
     this.attached = true;
     this.inventory = { ...INITIAL_BACK_STOCK };
 
-    // Day 2 starts with one of each drink still on the shelf, so opening needs only
-    // one three-case trip instead of repeating the complete Day 1 setup.
+    // Day 2 starts with one of each drink already on the shelf. The player then
+    // learns how the shared reserve supports both the main store and Room 2.
     this.seedOpeningShelfStock(scene);
     this.createPanel();
     this.updateVisibility();
@@ -158,7 +169,15 @@ export class BackStockScene extends Phaser.Scene {
 
     const rack = this.add.image(1070, 925, Assets.day02.backStockRack)
       .setDisplaySize(510, 330);
-    const subtitle = this.add.text(1070, 794, "QUICK REFILL · USE BEFORE A WAREHOUSE TRIP", {
+    const title = this.add.text(1070, 770, "MAIN STORE · SHARED RESERVE", {
+      fontFamily: "Arial",
+      fontSize: "17px",
+      color: "#ffffff",
+      fontStyle: "bold",
+      backgroundColor: "#173238",
+      padding: { x: 14, y: 7 }
+    }).setOrigin(0.5);
+    const subtitle = this.add.text(1070, 808, "TAP A PRODUCT TO FILL A MAIN STORE GAP", {
       fontFamily: "Arial",
       fontSize: "14px",
       color: "#dbe9e4",
@@ -167,7 +186,7 @@ export class BackStockScene extends Phaser.Scene {
       padding: { x: 12, y: 6 }
     }).setOrigin(0.5);
 
-    this.priorityText = this.add.text(1070, 832, "", {
+    this.priorityText = this.add.text(1070, 845, "", {
       fontFamily: "Arial",
       fontSize: "16px",
       color: "#ffd75a",
@@ -176,12 +195,12 @@ export class BackStockScene extends Phaser.Scene {
       padding: { x: 12, y: 6 }
     }).setOrigin(0.5).setVisible(false);
 
-    this.refillBg = this.add.rectangle(1070, 875, 360, 42, 0x263c37, 0.97)
+    this.refillBg = this.add.rectangle(1070, 887, 390, 42, 0x263c37, 0.97)
       .setStrokeStyle(2, 0x719b86, 0.9)
       .setInteractive({ useHandCursor: true });
-    this.refillText = this.add.text(1070, 875, "BRING A LOADED CART HERE", {
+    this.refillText = this.add.text(1070, 887, "BRING A LOADED CART TO THE RESERVE", {
       fontFamily: "Arial",
-      fontSize: "16px",
+      fontSize: "15px",
       color: "#dbe9e4",
       fontStyle: "bold"
     }).setOrigin(0.5);
@@ -189,12 +208,23 @@ export class BackStockScene extends Phaser.Scene {
     this.refillBg.on("pointerdown", () => this.refillFromCart());
     this.refillText.setInteractive({ useHandCursor: true }).on("pointerdown", () => this.refillFromCart());
 
+    const roomTwoNote = this.add.text(1070, 1090, "ROOM 2 uses this same reserve through STOCK ENTRY", {
+      fontFamily: "Arial",
+      fontSize: "13px",
+      color: "#bfe5d7",
+      fontStyle: "bold",
+      backgroundColor: "#102522",
+      padding: { x: 10, y: 5 }
+    }).setOrigin(0.5);
+
     const children: Phaser.GameObjects.GameObject[] = [
       rack,
+      title,
       subtitle,
       this.priorityText,
       this.refillBg,
-      this.refillText
+      this.refillText,
+      roomTwoNote
     ];
     const products: ProductId[] = ["cola", "water", "milk"];
 
@@ -280,10 +310,10 @@ export class BackStockScene extends Phaser.Scene {
     this.refillBg?.setStrokeStyle(2, canUnload ? 0xffd75a : 0x719b86, canUnload ? 1 : 0.8);
     this.refillText?.setText(
       canUnload
-        ? `UNLOAD CART TO BACK STOCK · ${loadedCount}`
+        ? `UNLOAD CART INTO SHARED RESERVE · ${loadedCount}`
         : scene.cartAtShelf
-          ? "LOAD THE CART BEFORE REFILLING"
-          : "BRING A LOADED CART HERE"
+          ? "LOAD THE CART BEFORE REFILLING RESERVE"
+          : "BRING A LOADED CART TO THE RESERVE"
     );
   }
 
@@ -292,7 +322,7 @@ export class BackStockScene extends Phaser.Scene {
     if (!scene || gameSession.isPaused || scene.shiftEnded || scene.movingCart || scene.restockBusy) return;
 
     if (!scene.cartAtShelf) {
-      scene.showTransientHint("Bring the loaded cart to the sales floor first.");
+      scene.showTransientHint("Bring the loaded cart to the sales floor reserve first.");
       return;
     }
 
@@ -316,7 +346,7 @@ export class BackStockScene extends Phaser.Scene {
 
     const total = transferred.cola + transferred.water + transferred.milk;
     if (total === 0) {
-      scene.showTransientHint("Back Stock is full. Use the cart to fill shelf gaps first.");
+      scene.showTransientHint("Shared reserve is full. Use the cart to fill shelf gaps first.");
       return;
     }
 
@@ -341,7 +371,7 @@ export class BackStockScene extends Phaser.Scene {
       });
     }
 
-    this.showFloatingText(1070, 824, `BACK STOCK REFILLED +${total}`, 0x8ff08a);
+    this.showFloatingText(1070, 824, `SHARED RESERVE REFILLED +${total}`, 0x8ff08a);
   }
 
   private quickRestock(productId: ProductId): void {
@@ -361,7 +391,7 @@ export class BackStockScene extends Phaser.Scene {
     );
 
     if (!slot) {
-      this.showFloatingText(button.card.x, button.card.y - 92, `NO ${PRODUCTS[productId].label} GAP`, 0xb8d1c6);
+      this.showFloatingText(button.card.x, button.card.y - 92, `NO MAIN STORE ${PRODUCTS[productId].label} GAP`, 0xb8d1c6);
       return;
     }
 
@@ -400,7 +430,7 @@ export class BackStockScene extends Phaser.Scene {
         scene.restockBusy = false;
         scene.updateStars();
         scene.updateHud();
-        this.showFloatingText(slot.hitArea.x, slot.hitArea.y - 72, "BACK STOCK +1", 0x8ff08a);
+        this.showFloatingText(slot.hitArea.x, slot.hitArea.y - 72, "MAIN STORE SHELF +1", 0x8ff08a);
       }
     });
   }
@@ -430,8 +460,8 @@ export class BackStockScene extends Phaser.Scene {
   }
 
   private fitImage(image: Phaser.GameObjects.Image, maxWidth: number, maxHeight: number): void {
-    const sourceWidth = Math.max(1, image.width);
-    const sourceHeight = Math.max(1, image.height);
+    const sourceWidth = Math.max(1, image.frame.realWidth || image.width);
+    const sourceHeight = Math.max(1, image.frame.realHeight || image.height);
     image.setScale(Math.min(maxWidth / sourceWidth, maxHeight / sourceHeight));
   }
 }
