@@ -62,6 +62,7 @@ jobs:
               : context.sha;
             const passed = "${{ job.status }}" === "success";
             let description = "Milk case, stocked lobby and Day 3 handoff passed";
+            let failureKey = "runtime";
 
             if (!passed) {
               description = "UI regression audit failed";
@@ -70,15 +71,18 @@ jobs:
                 const failed = Object.entries(report.regressions ?? {})
                   .filter(([, value]) => !value)
                   .map(([key]) => key);
+                failureKey = failed.join("+") || "runtime";
                 const browserIssues = (report.consoleErrors?.length ?? 0)
                   + (report.pageErrors?.length ?? 0)
                   + (report.failedRequests?.length ?? 0)
                   + (report.badResponses?.length ?? 0);
-                description = `Failed: ${failed.join(", ") || "runtime"}; browser issues ${browserIssues}`;
+                description = `Failed: ${failureKey}; browser issues ${browserIssues}`;
               } catch {
                 try {
                   const lines = fs.readFileSync("ui-audit-run.log", "utf8").trim().split(/\r?\n/);
-                  description = `Failed: ${lines.at(-1) || "inspect audit log"}`;
+                  const last = lines.at(-1) || "inspect audit log";
+                  failureKey = last.toLowerCase().includes("timeout") ? "timeout" : "runtime";
+                  description = `Failed: ${last}`;
                 } catch {
                   description = "UI regression audit failed; inspect workflow log";
                 }
@@ -90,6 +94,6 @@ jobs:
               repo: context.repo.repo,
               sha,
               state: passed ? "success" : "failure",
-              context: "UI Regression Audit",
+              context: passed ? "UI Regression Audit" : `UI Regression Audit (${failureKey})`,
               description: description.slice(0, 140)
             });
