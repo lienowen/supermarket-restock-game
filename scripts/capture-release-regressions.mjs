@@ -39,6 +39,7 @@ const report = {
   regressions: {
     stockedLobby: false,
     milkCaseVisible: false,
+    milkTextureTransparent: false,
     day3ReachedGame: false
   }
 };
@@ -51,9 +52,14 @@ try {
   const page = await context.newPage();
 
   page.on("console", (message) => {
-    if (message.type() === "error") report.consoleErrors.push(message.text());
+    if (message.type() === "error") {
+      report.consoleErrors.push({
+        text: message.text(),
+        location: message.location()
+      });
+    }
   });
-  page.on("pageerror", (error) => report.pageErrors.push(error.stack ?? error.message));
+  page.on("pageerror", (error) => report.pageErrors.push({ message: error.message, stack: error.stack ?? null }));
   page.on("requestfailed", (request) => {
     const error = request.failure()?.errorText ?? "unknown";
     if (!error.includes("ERR_ABORTED")) report.failedRequests.push({ url: request.url(), error });
@@ -80,9 +86,11 @@ try {
 
   await clickGame(page, 835, 1085);
   await page.waitForFunction(() => document.body.dataset.milkCaseVisual === "ready", { timeout: 30000 });
+  await page.waitForFunction(() => document.body.dataset.milkTextureTransparent === "ready", { timeout: 30000 });
   report.regressions.milkCaseVisible = true;
+  report.regressions.milkTextureTransparent = true;
   await page.waitForTimeout(350);
-  await capture(page, report, "03-visible-milk-case.png", "Visible milk delivery case");
+  await capture(page, report, "03-visible-milk-case.png", "Transparent milk delivery case");
 
   await page.waitForFunction(() => typeof window.__GAME_TEST__?.finishDay3Receiving === "function", { timeout: 10000 });
   await page.evaluate(() => window.__GAME_TEST__.finishDay3Receiving());
