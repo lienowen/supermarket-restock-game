@@ -71,6 +71,7 @@ import "./platform/crazyGamesLifecycleIntegration";
 import "./dayThreeMultiFixtureIntegration";
 import "./weekOneReleaseIntegration";
 import "./dayFourFiveBatchRestockIntegration";
+import "./weekOneRuntimeDayGuardIntegration";
 
 void bootstrap();
 
