@@ -146,7 +146,8 @@ function cleanLegacyBatchLayers(scene: RuntimeGame): void {
   scene.guideMode = "NONE";
 
   for (const child of [...scene.children.list]) {
-    if (!child.active || child.depth >= 8000) continue;
+    const displayChild = child as Phaser.GameObjects.GameObject & { depth: number };
+    if (!child.active || displayChild.depth >= 8000) continue;
 
     if (child instanceof Phaser.GameObjects.Image && LEGACY_IMAGE_KEYS.has(child.texture.key)) {
       child.setVisible(false).disableInteractive();
