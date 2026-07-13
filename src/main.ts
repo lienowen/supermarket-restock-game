@@ -63,6 +63,7 @@ import "./uiRuntimePolishIntegration";
 import "./uiRuntimeLegacyCleanupIntegration";
 import "./releaseVisualFlowFixIntegration";
 import "./releaseRegressionSignalsIntegration";
+import "./phaserTextSafetyIntegration";
 
 installResponsiveShell();
 
