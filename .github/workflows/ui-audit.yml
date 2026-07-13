@@ -36,10 +36,10 @@ jobs:
       - name: Build production bundle
         run: npm run build
 
-      - name: Capture UI states and browser errors
+      - name: Capture release regressions
         run: |
           set -o pipefail
-          node scripts/capture-ui-audit.mjs 2>&1 | tee ui-audit-run.log
+          node scripts/capture-release-regressions.mjs 2>&1 | tee ui-audit-run.log
 
       - name: Upload UI audit
         if: always()
