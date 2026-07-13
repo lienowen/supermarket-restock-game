@@ -12,8 +12,6 @@ const prototype = GameScene.prototype as unknown as GamePrototype;
 const originalCreate = prototype.create;
 
 prototype.create = function createWithWeekOneDayGuard(): void {
-  const pendingBefore = readRaw(PENDING_DAY_KEY);
-  const activeBefore = readRaw("supermarket.activeDay");
   const requestedDay = readRequestedDay();
   document.body.dataset.requestedGameDay = requestedDay;
 
@@ -28,18 +26,6 @@ prototype.create = function createWithWeekOneDayGuard(): void {
 
   document.body.dataset.runtimeGameDay = gameSession.day;
   document.body.dataset.weekOneDayMatch = gameSession.day === requestedDay ? "ready" : "mismatch";
-
-  if (new URLSearchParams(globalThis.location?.search ?? "").get("test") === "1") {
-    console.error([
-      "[week-one-runtime]",
-      `pendingBefore=${pendingBefore ?? "none"}`,
-      `activeBefore=${activeBefore ?? "none"}`,
-      `requested=${requestedDay}`,
-      `runtime=${gameSession.day}`,
-      `batch=${document.body.dataset.weekOneBatchFloor ?? "none"}`,
-      `scene=${document.body.dataset.gameScene ?? "none"}`
-    ].join(" "));
-  }
 
   try {
     globalThis.localStorage?.removeItem(PENDING_DAY_KEY);
