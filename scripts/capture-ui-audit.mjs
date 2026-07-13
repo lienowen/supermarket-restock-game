@@ -38,7 +38,12 @@ const report = {
   consoleErrors: [],
   pageErrors: [],
   failedRequests: [],
-  badResponses: []
+  badResponses: [],
+  regressions: {
+    stockedLobby: false,
+    milkCaseVisible: false,
+    day3ReachedGame: false
+  }
 };
 
 try {
@@ -63,7 +68,8 @@ try {
 
   await clearProgress(page);
   await openGame(page);
-  await capture(page, report, "01-storefront-day1.png", "Day 1 storefront lobby", "desktop");
+  report.regressions.stockedLobby = await page.evaluate(() => document.body.dataset.stockedLobbyVisual === "ready");
+  await capture(page, report, "01-storefront-day1.png", "Day 1 stocked supermarket lobby", "desktop");
 
   await clickGame(page, 180, 1080);
   await page.waitForTimeout(450);
@@ -83,24 +89,32 @@ try {
   await capture(page, report, "04-opening-receiving.png", "Opening receiving flow", "desktop");
 
   await clickGame(page, 835, 1085);
-  await page.waitForTimeout(1250);
-  await capture(page, report, "05-delivery-truck.png", "Delivery truck and draggable cases", "desktop");
+  await page.waitForFunction(() => document.body.dataset.milkCaseVisual === "ready", { timeout: 10000 });
+  report.regressions.milkCaseVisible = true;
+  await page.waitForTimeout(350);
+  await capture(page, report, "05-delivery-truck.png", "Delivery truck with visible milk case", "desktop");
 
   await setProgress(page, "day02", { day01: 3 });
   await page.reload({ waitUntil: "networkidle" });
   await waitForCanvas(page);
-  await capture(page, report, "06-storefront-day2.png", "Day 2 storefront lobby", "desktop");
+  await capture(page, report, "06-storefront-day2.png", "Day 2 stocked storefront lobby", "desktop");
 
   await setProgress(page, "day03", { day01: 3, day02: 3 });
   await page.reload({ waitUntil: "networkidle" });
   await waitForCanvas(page);
-  await capture(page, report, "07-storefront-day3.png", "Day 3 storefront lobby", "desktop");
+  await capture(page, report, "07-storefront-day3.png", "Day 3 stocked storefront lobby", "desktop");
 
+  await completeDay3Receiving(page);
+  report.regressions.day3ReachedGame = await page.evaluate(() => document.body.dataset.gameScene === "game");
+  await capture(page, report, "08-day3-after-receiving.png", "Day 3 after moving stock into the backroom", "desktop");
+
+  await page.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: "networkidle" });
+  await setProgress(page, "day03", { day01: 3, day02: 3 });
   await page.setViewportSize({ width: 907, height: 510 });
   await page.reload({ waitUntil: "networkidle" });
   await waitForCanvas(page);
   await page.waitForTimeout(450);
-  await capture(page, report, "08-mobile-landscape-storefront.png", "Mobile landscape storefront", "907x510");
+  await capture(page, report, "09-mobile-landscape-storefront.png", "Mobile landscape stocked storefront", "907x510");
 
   report.canvasState = await page.evaluate(() => {
     const canvas = document.querySelector("canvas");
@@ -118,19 +132,57 @@ try {
 
   writeFileSync(join(OUTPUT_DIR, "ui-audit-report.json"), JSON.stringify(report, null, 2));
 
-  const issueCount = report.consoleErrors.length + report.pageErrors.length + report.failedRequests.length + report.badResponses.length;
-  console.log(`Captured ${report.screenshots.length} UI states with ${issueCount} browser issue(s).`);
-  if (issueCount > 0) {
+  const browserIssueCount = report.consoleErrors.length + report.pageErrors.length + report.failedRequests.length + report.badResponses.length;
+  const failedRegressions = Object.entries(report.regressions)
+    .filter(([, passed]) => !passed)
+    .map(([name]) => name);
+
+  console.log(`Captured ${report.screenshots.length} UI states with ${browserIssueCount} browser issue(s).`);
+  console.log(JSON.stringify({ regressions: report.regressions }, null, 2));
+
+  if (browserIssueCount > 0 || failedRegressions.length > 0) {
     console.log(JSON.stringify({
       consoleErrors: report.consoleErrors,
       pageErrors: report.pageErrors,
       failedRequests: report.failedRequests,
-      badResponses: report.badResponses
+      badResponses: report.badResponses,
+      failedRegressions
     }, null, 2));
+    throw new Error(`UI audit failed: ${browserIssueCount} browser issue(s), regression failures: ${failedRegressions.join(", ") || "none"}`);
   }
 } finally {
   await browser.close();
   await new Promise((resolveServer) => server.close(resolveServer));
+}
+
+async function completeDay3Receiving(page) {
+  await clickGame(page, 965, 770);
+  await waitForScene(page, "opening", 20000);
+  await page.waitForTimeout(350);
+  await clickGame(page, 835, 1085);
+  await page.waitForFunction(() => document.body.dataset.milkCaseVisual === "ready", { timeout: 12000 });
+
+  const cases = [
+    { from: [380, 807], to: [865, 840] },
+    { from: [500, 807], to: [985, 875] },
+    { from: [385, 882], to: [1105, 840] },
+    { from: [505, 882], to: [955, 955] }
+  ];
+
+  for (const deliveryCase of cases) {
+    await dragGame(page, deliveryCase.from[0], deliveryCase.from[1], deliveryCase.to[0], deliveryCase.to[1]);
+    await page.waitForTimeout(850);
+  }
+
+  await clickGame(page, 835, 1085);
+  await page.waitForTimeout(350);
+  await clickGame(page, 665, 830);
+  await page.waitForTimeout(350);
+  await clickGame(page, 835, 1085);
+  await page.waitForTimeout(1050);
+  await clickGame(page, 835, 1085);
+  await waitForScene(page, "game", 20000);
+  await page.waitForTimeout(650);
 }
 
 async function clearProgress(page) {
@@ -160,19 +212,32 @@ async function waitForCanvas(page) {
   await page.waitForTimeout(650);
 }
 
-async function waitForScene(page, scene) {
-  await page.waitForFunction((expectedScene) => document.body.dataset.gameScene === expectedScene, scene, {
-    timeout: 10000
-  });
+async function waitForScene(page, scene, timeout = 10000) {
+  await page.waitForFunction((expectedScene) => document.body.dataset.gameScene === expectedScene, scene, { timeout });
 }
 
-async function clickGame(page, gameX, gameY) {
+async function gamePoint(page, gameX, gameY) {
   const canvas = page.locator("canvas");
   const box = await canvas.boundingBox();
   if (!box) throw new Error("Game canvas has no bounding box.");
-  const x = box.x + (gameX / 1330) * box.width;
-  const y = box.y + (gameY / 1182) * box.height;
-  await page.mouse.click(x, y);
+  return {
+    x: box.x + (gameX / 1330) * box.width,
+    y: box.y + (gameY / 1182) * box.height
+  };
+}
+
+async function clickGame(page, gameX, gameY) {
+  const point = await gamePoint(page, gameX, gameY);
+  await page.mouse.click(point.x, point.y);
+}
+
+async function dragGame(page, fromX, fromY, toX, toY) {
+  const from = await gamePoint(page, fromX, fromY);
+  const to = await gamePoint(page, toX, toY);
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(to.x, to.y, { steps: 18 });
+  await page.mouse.up();
 }
 
 async function capture(page, auditReport, filename, label, viewport) {
