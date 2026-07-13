@@ -1,0 +1,31 @@
+@media (max-height: 760px) and (orientation: landscape) {
+  body[data-viewport-mode="mobile-landscape"][data-game-scene="storefront"] #app {
+    align-items: flex-start;
+    justify-content: center;
+    padding: 0;
+    background: #0b1517;
+  }
+
+  body[data-viewport-mode="mobile-landscape"][data-game-scene="storefront"] canvas {
+    position: absolute;
+    top: 0 !important;
+    left: 50% !important;
+    width: auto !important;
+    height: calc(100dvh + 120px) !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 !important;
+    transform: translateX(-50%) !important;
+  }
+
+  body[data-viewport-mode="mobile-landscape"][data-game-scene="storefront"] #mobile-storefront-actions {
+    min-height: 58px;
+    align-items: center;
+    padding-bottom: max(7px, env(safe-area-inset-bottom));
+  }
+
+  body[data-viewport-mode="mobile-landscape"][data-game-scene="storefront"] #mobile-storefront-actions button {
+    min-height: 42px;
+    padding: 8px 12px;
+  }
+}
