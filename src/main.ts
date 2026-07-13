@@ -60,6 +60,7 @@ import "./campaignCustomerFlowGateIntegration";
 import "./dayThreeSupervisorContractIntegration";
 import "./mobileDayThreeStartIntegration";
 import "./uiRuntimePolishIntegration";
+import "./uiRuntimeLegacyCleanupIntegration";
 
 installResponsiveShell();
 
