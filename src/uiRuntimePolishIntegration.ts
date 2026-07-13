@@ -1,21 +1,32 @@
 import Phaser from "phaser";
 import "./uiRuntimePolish.css";
+import { AssetPaths, Assets } from "./assets";
 import type { LevelId } from "./domain/gameTypes";
 import { OpeningScene } from "./scenes/OpeningScene";
 import { StorefrontScene } from "./scenes/StorefrontScene";
 
 
 type PlayableDay = Extract<LevelId, "day01" | "day02" | "day03">;
+type AssetKey = keyof typeof AssetPaths;
 
 type RuntimeStorefront = Phaser.Scene & {
   modal?: Phaser.GameObjects.Container;
   openDaySelector: () => void;
   showToast: (message: string) => void;
   startShift: (day: LevelId) => void;
+  __openingAssetsReady?: boolean;
+  __openingAssetsLoading?: boolean;
+  __openingStartPending?: boolean;
+  __openingReadyCallbacks?: Array<() => void>;
+  __openingLoadOverlay?: Phaser.GameObjects.Container;
+  __openingLoadProgress?: Phaser.GameObjects.Text;
+  __openingLoadBar?: Phaser.GameObjects.Rectangle;
 };
 
 type StorefrontPrototype = {
+  create: (...args: unknown[]) => void;
   createLobbyView: () => void;
+  startShift: (day: LevelId) => void;
 };
 
 type RuntimeOpening = Phaser.Scene & {
@@ -118,7 +129,30 @@ removeDuplicateOpeningBriefing();
 
 function installStorefrontPolish(): void {
   const prototype = StorefrontScene.prototype as unknown as StorefrontPrototype;
+  const originalCreate = prototype.create;
   const originalLobby = prototype.createLobbyView;
+  const originalStartShift = prototype.startShift;
+
+  prototype.create = function createWithOpeningAssetPreload(...args: unknown[]): void {
+    originalCreate.apply(this, args);
+    const scene = this as unknown as RuntimeStorefront;
+    scene.__openingAssetsReady = openingAssetKeys().every((key) => scene.textures.exists(key));
+    scene.__openingAssetsLoading = false;
+    scene.__openingStartPending = false;
+    scene.__openingReadyCallbacks = [];
+    scene.__openingLoadOverlay = undefined;
+    scene.__openingLoadProgress = undefined;
+    scene.__openingLoadBar = undefined;
+
+    scene.time.delayedCall(350, () => prepareOpeningAssets(scene));
+    scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      scene.__openingReadyCallbacks = [];
+      scene.__openingLoadOverlay?.destroy(true);
+      scene.__openingLoadOverlay = undefined;
+      scene.__openingLoadProgress = undefined;
+      scene.__openingLoadBar = undefined;
+    });
+  };
 
   prototype.createLobbyView = function createCleanReleaseLobby(): void {
     originalLobby.call(this);
@@ -127,6 +161,140 @@ function installStorefrontPolish(): void {
     createCleanRoleAndContractCard(scene, day);
     createReliableLobbyHitAreas(scene, day);
   };
+
+  prototype.startShift = function startShiftAfterOpeningAssets(day: LevelId): void {
+    const scene = this as unknown as RuntimeStorefront;
+    if (scene.__openingStartPending) return;
+
+    if (openingAssetsReady(scene)) {
+      originalStartShift.call(this, day);
+      return;
+    }
+
+    scene.__openingStartPending = true;
+    showOpeningLoadOverlay(scene, day);
+    prepareOpeningAssets(scene, () => {
+      if (!scene.scene.isActive()) return;
+      scene.__openingStartPending = false;
+      scene.__openingLoadOverlay?.destroy(true);
+      scene.__openingLoadOverlay = undefined;
+      scene.__openingLoadProgress = undefined;
+      scene.__openingLoadBar = undefined;
+      originalStartShift.call(this, day);
+    });
+  };
+}
+
+function openingAssetKeys(): AssetKey[] {
+  return [...new Set([
+    Assets.ui.openingStorefront,
+    Assets.ui.openingShiftBadge,
+    Assets.backgrounds.salesfloor,
+    ...Object.values(Assets.delivery)
+  ])] as AssetKey[];
+}
+
+function openingAssetsReady(scene: RuntimeStorefront): boolean {
+  const ready = openingAssetKeys().every((key) => scene.textures.exists(key));
+  scene.__openingAssetsReady = ready;
+  return ready;
+}
+
+function prepareOpeningAssets(scene: RuntimeStorefront, onReady?: () => void): void {
+  if (onReady) {
+    scene.__openingReadyCallbacks ??= [];
+    scene.__openingReadyCallbacks.push(onReady);
+  }
+
+  if (openingAssetsReady(scene)) {
+    flushOpeningReadyCallbacks(scene);
+    return;
+  }
+  if (scene.__openingAssetsLoading) return;
+
+  const missing = openingAssetKeys().filter((key) => !scene.textures.exists(key));
+  if (missing.length === 0) {
+    scene.__openingAssetsReady = true;
+    flushOpeningReadyCallbacks(scene);
+    return;
+  }
+
+  scene.__openingAssetsLoading = true;
+  missing.forEach((key) => scene.load.image(key, AssetPaths[key]));
+
+  const onProgress = (progress: number): void => updateOpeningLoadOverlay(scene, progress);
+  const onComplete = (): void => {
+    scene.load.off("progress", onProgress);
+    scene.__openingAssetsLoading = false;
+    scene.__openingAssetsReady = openingAssetsReady(scene);
+    updateOpeningLoadOverlay(scene, 1);
+    flushOpeningReadyCallbacks(scene);
+  };
+
+  scene.load.on("progress", onProgress);
+  scene.load.once("complete", onComplete);
+  scene.load.start();
+}
+
+function flushOpeningReadyCallbacks(scene: RuntimeStorefront): void {
+  const callbacks = scene.__openingReadyCallbacks ?? [];
+  scene.__openingReadyCallbacks = [];
+  callbacks.forEach((callback) => callback());
+}
+
+function showOpeningLoadOverlay(scene: RuntimeStorefront, day: LevelId): void {
+  scene.__openingLoadOverlay?.destroy(true);
+  const dayNumber = Number(day.slice(-2));
+  const shade = scene.add.rectangle(665, 591, 1330, 1182, 0x061012, 0.88)
+    .setDepth(5000)
+    .setInteractive();
+  const panel = scene.add.rectangle(665, 590, 760, 340, 0x10252a, 0.995)
+    .setStrokeStyle(7, 0x78a465)
+    .setDepth(5001);
+  const eyebrow = scene.add.text(665, 485, `DAY ${dayNumber} · SHIFT PREPARATION`, {
+    fontFamily: "Arial",
+    fontSize: "19px",
+    color: "#ffd75a",
+    fontStyle: "bold",
+    letterSpacing: 2
+  }).setOrigin(0.5).setDepth(5002);
+  const title = scene.add.text(665, 545, "PREPARING YOUR SHIFT", {
+    fontFamily: "Arial",
+    fontSize: "38px",
+    color: "#ffffff",
+    fontStyle: "bold"
+  }).setOrigin(0.5).setDepth(5002);
+  const detail = scene.add.text(665, 600, "Loading the delivery bay, staff and receiving equipment.", {
+    fontFamily: "Arial",
+    fontSize: "20px",
+    color: "#cfe0da",
+    align: "center"
+  }).setOrigin(0.5).setDepth(5002);
+  const track = scene.add.rectangle(405, 675, 520, 24, 0x263a3d, 1)
+    .setOrigin(0, 0.5)
+    .setStrokeStyle(2, 0x557175)
+    .setDepth(5002);
+  const bar = scene.add.rectangle(405, 675, 8, 20, 0x8ecf7f, 1)
+    .setOrigin(0, 0.5)
+    .setDepth(5003);
+  const progress = scene.add.text(665, 730, "LOADING 0%", {
+    fontFamily: "Arial",
+    fontSize: "22px",
+    color: "#ffffff",
+    fontStyle: "bold"
+  }).setOrigin(0.5).setDepth(5002);
+
+  scene.__openingLoadProgress = progress;
+  scene.__openingLoadBar = bar;
+  scene.__openingLoadOverlay = scene.add.container(0, 0, [shade, panel, eyebrow, title, detail, track, bar, progress])
+    .setDepth(5000);
+  updateOpeningLoadOverlay(scene, 0);
+}
+
+function updateOpeningLoadOverlay(scene: RuntimeStorefront, progress: number): void {
+  const normalized = Phaser.Math.Clamp(progress, 0, 1);
+  scene.__openingLoadProgress?.setText(`LOADING ${Math.round(normalized * 100)}%`);
+  scene.__openingLoadBar?.setDisplaySize(Math.max(8, 520 * normalized), 20);
 }
 
 function createCleanRoleAndContractCard(scene: RuntimeStorefront, day: PlayableDay): void {
