@@ -19,6 +19,21 @@ prototype.create = function createWithWeekOneDayGuard(): void {
 
   document.body.dataset.runtimeGameDay = gameSession.day;
   document.body.dataset.weekOneDayMatch = gameSession.day === requestedDay ? "ready" : "mismatch";
+
+  if (
+    new URLSearchParams(globalThis.location?.search ?? "").get("test") === "1" &&
+    (requestedDay === "day04" || requestedDay === "day05") &&
+    document.body.dataset.weekOneBatchFloor !== requestedDay
+  ) {
+    console.error([
+      "[week-one-runtime]",
+      `stored=${globalThis.localStorage?.getItem("supermarket.activeDay") ?? "none"}`,
+      `requested=${requestedDay}`,
+      `runtime=${gameSession.day}`,
+      `batch=${document.body.dataset.weekOneBatchFloor ?? "none"}`,
+      `scene=${document.body.dataset.gameScene ?? "none"}`
+    ].join(" "));
+  }
 };
 
 function readStoredDay(): WeekOneDay {
