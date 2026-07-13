@@ -64,6 +64,7 @@ import "./uiRuntimeLegacyCleanupIntegration";
 import "./releaseVisualFlowFixIntegration";
 import "./releaseRegressionSignalsIntegration";
 import "./phaserTextSafetyIntegration";
+import "./milkTextureTransparencyIntegration";
 
 installResponsiveShell();
 
