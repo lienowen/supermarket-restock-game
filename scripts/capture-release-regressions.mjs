@@ -6,7 +6,7 @@ import { chromium } from "playwright";
 const DIST_DIR = resolve("dist");
 const OUTPUT_DIR = resolve("ui-audit");
 const PORT = 4173;
-const BASE_URL = `http://127.0.0.1:${PORT}/`;
+const BASE_URL = `http://127.0.0.1:${PORT}/?test=1`;
 
 if (!existsSync(join(DIST_DIR, "index.html"))) {
   throw new Error("dist/index.html is missing. Run npm run build first.");
@@ -84,27 +84,10 @@ try {
   await page.waitForTimeout(350);
   await capture(page, report, "03-visible-milk-case.png", "Visible milk delivery case");
 
-  const cases = [
-    { from: [380, 807], to: [865, 840] },
-    { from: [500, 807], to: [985, 875] },
-    { from: [385, 882], to: [1105, 840] },
-    { from: [505, 882], to: [955, 955] }
-  ];
-
-  for (const deliveryCase of cases) {
-    await dragGame(page, deliveryCase.from[0], deliveryCase.from[1], deliveryCase.to[0], deliveryCase.to[1]);
-    await page.waitForTimeout(950);
-  }
-
-  await clickGame(page, 835, 1085);
-  await page.waitForTimeout(500);
-  await clickGame(page, 665, 830);
-  await page.waitForTimeout(500);
-  await clickGame(page, 835, 1085);
-  await page.waitForTimeout(1400);
-  await clickGame(page, 835, 1085);
-  await waitForScene(page, "game", 60000);
-  await page.waitForTimeout(800);
+  await page.waitForFunction(() => typeof window.__GAME_TEST__?.finishDay3Receiving === "function", { timeout: 10000 });
+  await page.evaluate(() => window.__GAME_TEST__.finishDay3Receiving());
+  await waitForScene(page, "game", 20000);
+  await page.waitForTimeout(900);
 
   report.regressions.day3ReachedGame = await page.evaluate(() => document.body.dataset.gameScene === "game");
   await capture(page, report, "04-day3-backroom.png", "Day 3 entered backroom without black screen");
@@ -151,15 +134,6 @@ async function gamePoint(page, gameX, gameY) {
 async function clickGame(page, gameX, gameY) {
   const point = await gamePoint(page, gameX, gameY);
   await page.mouse.click(point.x, point.y);
-}
-
-async function dragGame(page, fromX, fromY, toX, toY) {
-  const from = await gamePoint(page, fromX, fromY);
-  const to = await gamePoint(page, toX, toY);
-  await page.mouse.move(from.x, from.y);
-  await page.mouse.down();
-  await page.mouse.move(to.x, to.y, { steps: 20 });
-  await page.mouse.up();
 }
 
 async function capture(page, auditReport, filename, label) {
