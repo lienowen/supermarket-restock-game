@@ -9,6 +9,7 @@ import { BackStockScene } from "./scenes/BackStockScene";
 import { PromotionWingScene } from "./scenes/PromotionWingScene";
 import { DayTwoRoomNavigationScene } from "./scenes/DayTwoRoomNavigationScene";
 import { installResponsiveShell } from "./responsiveShell";
+import { crazyGamesPlatform } from "./platform/crazyGamesPlatform";
 import "./gameSessionIntegration";
 import "./performanceEconomyIntegration";
 import "./customerDemandIntegration";
@@ -66,32 +67,41 @@ import "./releaseVisualFlowFixIntegration";
 import "./releaseRegressionSignalsIntegration";
 import "./phaserTextSafetyIntegration";
 import "./milkTextureTransparencyIntegration";
+import "./platform/crazyGamesLifecycleIntegration";
 
-installResponsiveShell();
+void bootstrap();
 
-new Phaser.Game({
-  type: Phaser.AUTO,
-  parent: "app",
-  width: 1330,
-  height: 1182,
-  backgroundColor: "#151b1b",
-  scale: {
-    mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
-    expandParent: true
-  },
-  render: {
-    antialias: true,
-    roundPixels: true
-  },
-  scene: [
-    StorefrontScene,
-    OpeningScene,
-    GameScene,
-    PolishOverlayScene,
-    ProgressionCustomerScene,
-    BackStockScene,
-    PromotionWingScene,
-    DayTwoRoomNavigationScene
-  ]
-});
+async function bootstrap(): Promise<void> {
+  await crazyGamesPlatform.initialize();
+  crazyGamesPlatform.loadingStart();
+  installResponsiveShell();
+
+  const game = new Phaser.Game({
+    type: Phaser.AUTO,
+    parent: "app",
+    width: 1330,
+    height: 1182,
+    backgroundColor: "#151b1b",
+    scale: {
+      mode: Phaser.Scale.FIT,
+      autoCenter: Phaser.Scale.CENTER_BOTH,
+      expandParent: true
+    },
+    render: {
+      antialias: true,
+      roundPixels: true
+    },
+    scene: [
+      StorefrontScene,
+      OpeningScene,
+      GameScene,
+      PolishOverlayScene,
+      ProgressionCustomerScene,
+      BackStockScene,
+      PromotionWingScene,
+      DayTwoRoomNavigationScene
+    ]
+  });
+
+  crazyGamesPlatform.bindGame(game);
+}
