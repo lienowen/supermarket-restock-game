@@ -44,4 +44,14 @@ jobs:
         run: npm test
 
       - name: Verify release bundle
-        run: npm run verify:release
+        run: |
+          set -o pipefail
+          npm run verify:release 2>&1 | tee release-check.log
+
+      - name: Upload release check log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-check-log
+          path: release-check.log
+          if-no-files-found: ignore
