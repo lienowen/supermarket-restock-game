@@ -6,6 +6,7 @@ import { gameSession } from "./systems/GameSession";
 
 const DAY3_AISLE_SHELF = "day3-aisle-shelf";
 const DAY3_AISLE_SHELF_PATH = "assets/day02/promotion/promo_display_empty.png";
+const DAY3_PREPARE_HINT = "RESTOCK DRINKS, GROCERY AND COLD CASE · MATCH EACH PRODUCT TO ITS DEPARTMENT";
 
 type RuntimeSlot = {
   index: number;
@@ -148,8 +149,9 @@ prototype.updateHud = function updateDayThreeFixtureDuty(): void {
 
   const scene = this as unknown as RuntimeGame;
   if (scene.phase === "PREPARE" && scene.hintText?.active) {
-    scene.hintText.setText("RESTOCK DRINKS, GROCERY AND COLD CASE · MATCH EACH PRODUCT TO ITS DEPARTMENT");
+    scene.hintText.setText(DAY3_PREPARE_HINT);
   }
+  rewriteLegacyDayThreeCopy(scene);
 };
 
 prototype.create = function createWithDayThreeFixtureGuidance(): void {
@@ -158,14 +160,26 @@ prototype.create = function createWithDayThreeFixtureGuidance(): void {
 
   const scene = this as unknown as RuntimeGame;
   document.body.dataset.day3MultiFixture = "ready";
+
+  let lastCopySweep = -Infinity;
+  const keepCopyCurrent = (): void => {
+    if (scene.time.now - lastCopySweep < 180) return;
+    lastCopySweep = scene.time.now;
+    rewriteLegacyDayThreeCopy(scene);
+  };
+  scene.events.on(Phaser.Scenes.Events.POST_UPDATE, keepCopyCurrent);
+
   scene.time.delayedCall(500, () => {
     if (!scene.scene.isActive()) return;
     scene.showTransientHint("Day 3 upgrade: COLA goes to Drinks, WATER to Grocery, and MILK to the Cold Case.");
     if (scene.phase === "PREPARE" && scene.hintText?.active) {
-      scene.hintText.setText("RESTOCK DRINKS, GROCERY AND COLD CASE · MATCH EACH PRODUCT TO ITS DEPARTMENT");
+      scene.hintText.setText(DAY3_PREPARE_HINT);
     }
+    rewriteLegacyDayThreeCopy(scene);
   });
+
   scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+    scene.events.off(Phaser.Scenes.Events.POST_UPDATE, keepCopyCurrent);
     delete document.body.dataset.day3MultiFixture;
   });
 };
@@ -215,6 +229,17 @@ function removeLegacyColdCase(scene: RuntimeGame): void {
       return normalized === "COLD DRINKS" || normalized === "SHELF +3";
     })
     .forEach((text) => text.destroy());
+}
+
+function rewriteLegacyDayThreeCopy(scene: RuntimeGame): void {
+  scene.children.list
+    .filter((child): child is Phaser.GameObjects.Text => child instanceof Phaser.GameObjects.Text && child.active)
+    .forEach((text) => {
+      const normalized = text.text.toUpperCase();
+      if (normalized.includes("PROMOTION ROOM") || normalized.includes("OPENING SHELF")) {
+        text.setText(DAY3_PREPARE_HINT);
+      }
+    });
 }
 
 function colorToCss(color: number): string {
