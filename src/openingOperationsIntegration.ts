@@ -21,12 +21,21 @@ type OpeningPrototype = {
   create: () => void;
 };
 
+type TruckHome = {
+  x: number;
+  y: number;
+  maxWidth: number;
+  maxHeight: number;
+  depth: number;
+  shadowWidth: number;
+  shadowHeight: number;
+};
+
 type DeliveryCase = {
   productId: ProductId;
   image: Phaser.GameObjects.Image;
   shadow: Phaser.GameObjects.Ellipse;
-  homeX: number;
-  homeY: number;
+  home: TruckHome;
   targetX: number;
   targetY: number;
   unloaded: boolean;
@@ -38,10 +47,13 @@ const DEPTH = {
   floor: 3,
   truckShadow: 6,
   truck: 7,
-  caseShadow: 9,
-  case: 10,
+  caseRear: 8,
+  caseFront: 9,
+  truckThreshold: 10,
   workerShadow: 11,
   worker: 12,
+  dragCue: 14,
+  draggedCase: 18,
   hud: 30,
   button: 40,
   modal: 100
@@ -79,6 +91,8 @@ prototype.create = function createUnifiedOpeningOperations(): void {
   let draggingCase: DeliveryCase | undefined;
   let actionButton: Phaser.GameObjects.Container | undefined;
   let invoicePanel: Phaser.GameObjects.Container | undefined;
+  let dragCue: Phaser.GameObjects.Text | undefined;
+  let truckDoorOpen = false;
 
   scene.cameras.main.setBackgroundColor("#0b1517");
 
@@ -196,9 +210,19 @@ prototype.create = function createUnifiedOpeningOperations(): void {
     .setDepth(DEPTH.truck);
   fitImage(truck, 525, 320);
 
-  const workerShadow = scene.add.ellipse(690, 1013, 94, 26, 0x000000, 0.25)
+  const truckThreshold = scene.add.polygon(-350, 921, [
+    -132, -8,
+    128, -8,
+    108, 12,
+    -112, 12
+  ], 0x697170, 0.96)
+    .setStrokeStyle(2, 0x2a3030, 0.95)
+    .setDepth(DEPTH.truckThreshold)
+    .setVisible(false);
+
+  const workerShadow = scene.add.ellipse(650, 1013, 94, 26, 0x000000, 0.25)
     .setDepth(DEPTH.workerShadow);
-  const worker = scene.add.image(690, 1015, Assets.delivery.workerIdle)
+  const worker = scene.add.image(650, 1015, Assets.delivery.workerIdle)
     .setOrigin(0.5, 1)
     .setDepth(DEPTH.worker);
   fitImage(worker, 135, 255);
@@ -228,6 +252,34 @@ prototype.create = function createUnifiedOpeningOperations(): void {
     backgroundButton.on("pointerdown", action);
   };
 
+  const hideDragCue = (): void => {
+    if (!dragCue) return;
+    scene.tweens.killTweensOf(dragCue);
+    dragCue.destroy();
+    dragCue = undefined;
+  };
+
+  const showDragCue = (): void => {
+    hideDragCue();
+    const cue = scene.add.text(445, 755, "↓  DRAG CASES", {
+      fontFamily: "Arial",
+      fontSize: "18px",
+      color: "#fff0a6",
+      fontStyle: "bold",
+      backgroundColor: "#0b1718",
+      padding: { x: 12, y: 7 }
+    }).setOrigin(0.5).setDepth(DEPTH.dragCue);
+    dragCue = cue;
+    scene.tweens.add({
+      targets: cue,
+      y: 765,
+      duration: 520,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.InOut"
+    });
+  };
+
   const updateInstruction = (): void => {
     const remaining = deliveryOrder.length - unloadedCount;
     if (remaining <= 0) {
@@ -239,11 +291,22 @@ prototype.create = function createUnifiedOpeningOperations(): void {
     );
   };
 
+  const applyHomeAppearance = (deliveryCase: DeliveryCase): void => {
+    deliveryCase.image
+      .setDepth(deliveryCase.home.depth)
+      .setOrigin(0.5, 1);
+    fitImage(deliveryCase.image, deliveryCase.home.maxWidth, deliveryCase.home.maxHeight);
+    deliveryCase.shadow
+      .setDepth(deliveryCase.home.depth - 0.5)
+      .setDisplaySize(deliveryCase.home.shadowWidth, deliveryCase.home.shadowHeight);
+  };
+
   const returnCaseHome = (deliveryCase: DeliveryCase): void => {
+    applyHomeAppearance(deliveryCase);
     scene.tweens.add({
       targets: deliveryCase.image,
-      x: deliveryCase.homeX,
-      y: deliveryCase.homeY,
+      x: deliveryCase.home.x,
+      y: deliveryCase.home.y,
       duration: 180,
       ease: "Sine.Out"
     });
@@ -252,6 +315,10 @@ prototype.create = function createUnifiedOpeningOperations(): void {
   const completeCaseDrop = (deliveryCase: DeliveryCase): void => {
     deliveryCase.unloaded = true;
     deliveryCase.image.disableInteractive();
+    deliveryCase.image.setDepth(DEPTH.caseFront);
+    deliveryCase.shadow.setDepth(DEPTH.caseFront - 0.5).setDisplaySize(76, 19);
+    fitImage(deliveryCase.image, 96, 86);
+
     scene.tweens.add({
       targets: deliveryCase.image,
       x: deliveryCase.targetX,
@@ -263,10 +330,11 @@ prototype.create = function createUnifiedOpeningOperations(): void {
         receivingLabel.setText(`CASES RECEIVED ${unloadedCount}/${deliveryOrder.length}`);
         worker.setTexture(Assets.delivery.workerIdle);
         fitImage(worker, 135, 255);
-        worker.setPosition(720, 1015);
+        worker.setPosition(650, 1015);
         updateInstruction();
 
         if (unloadedCount >= deliveryOrder.length) {
+          hideDragCue();
           completedSteps = 2;
           refreshChecklist();
           title.setText("DELIVERY UNLOADED");
@@ -279,11 +347,43 @@ prototype.create = function createUnifiedOpeningOperations(): void {
   };
 
   const createDeliveryCases = (): void => {
-    const truckHomes = [
-      { x: 335, y: 810 },
-      { x: 430, y: 810 },
-      { x: 345, y: 895 },
-      { x: 440, y: 895 }
+    const truckHomes: TruckHome[] = [
+      {
+        x: 380,
+        y: 845,
+        maxWidth: 86,
+        maxHeight: 76,
+        depth: DEPTH.caseRear,
+        shadowWidth: 60,
+        shadowHeight: 14
+      },
+      {
+        x: 500,
+        y: 845,
+        maxWidth: 86,
+        maxHeight: 76,
+        depth: DEPTH.caseRear,
+        shadowWidth: 60,
+        shadowHeight: 14
+      },
+      {
+        x: 385,
+        y: 925,
+        maxWidth: 96,
+        maxHeight: 86,
+        depth: DEPTH.caseFront,
+        shadowWidth: 72,
+        shadowHeight: 18
+      },
+      {
+        x: 505,
+        y: 925,
+        maxWidth: 96,
+        maxHeight: 86,
+        depth: DEPTH.caseFront,
+        shadowWidth: 72,
+        shadowHeight: 18
+      }
     ];
     const receivingTargets = [
       { x: 865, y: 840 },
@@ -300,21 +400,26 @@ prototype.create = function createUnifiedOpeningOperations(): void {
           : Assets.delivery.boxMilk;
       const home = truckHomes[index];
       const target = receivingTargets[index];
-      const shadow = scene.add.ellipse(home.x, home.y - 2, 72, 18, 0x000000, 0.24)
-        .setDepth(DEPTH.caseShadow);
+      const shadow = scene.add.ellipse(
+        home.x,
+        home.y - 2,
+        home.shadowWidth,
+        home.shadowHeight,
+        0x000000,
+        index < 2 ? 0.18 : 0.24
+      ).setDepth(home.depth - 0.5);
       const image = scene.add.image(home.x, home.y, texture)
         .setOrigin(0.5, 1)
-        .setDepth(DEPTH.case)
+        .setDepth(home.depth)
         .setInteractive({ useHandCursor: true });
-      fitImage(image, 96, 86);
+      fitImage(image, home.maxWidth, home.maxHeight);
       scene.input.setDraggable(image);
 
       const deliveryCase: DeliveryCase = {
         productId,
         image,
         shadow,
-        homeX: home.x,
-        homeY: home.y,
+        home,
         targetX: target.x,
         targetY: target.y,
         unloaded: false
@@ -324,12 +429,15 @@ prototype.create = function createUnifiedOpeningOperations(): void {
       image.on("dragstart", () => {
         if (deliveryCase.unloaded || draggingCase) return;
         draggingCase = deliveryCase;
-        image.setDepth(DEPTH.case + 3).setTint(0xfff0b8);
+        hideDragCue();
+        image.setDepth(DEPTH.draggedCase).setTint(0xfff0b8);
+        deliveryCase.shadow.setDepth(DEPTH.draggedCase - 1).setDisplaySize(78, 20);
+        fitImage(image, 100, 90);
         worker.setTexture(Assets.delivery.workerCarry);
         fitImage(worker, 140, 260);
         scene.tweens.add({
           targets: worker,
-          x: 680,
+          x: 655,
           y: 1015,
           duration: 130,
           ease: "Sine.Out"
@@ -344,23 +452,33 @@ prototype.create = function createUnifiedOpeningOperations(): void {
       image.on("dragend", () => {
         if (draggingCase !== deliveryCase || deliveryCase.unloaded) return;
         draggingCase = undefined;
-        image.clearTint().setDepth(DEPTH.case);
+        image.clearTint();
 
         if (Phaser.Geom.Rectangle.Contains(receivingBounds, image.x, image.y)) {
           completeCaseDrop(deliveryCase);
         } else {
           worker.setTexture(Assets.delivery.workerIdle);
           fitImage(worker, 135, 255);
+          worker.setPosition(650, 1015);
           returnCaseHome(deliveryCase);
           instruction.setText("Drop the case inside the green receiving zone.");
+          showDragCue();
         }
       });
     });
+
+    truckThreshold.setVisible(true);
+    showDragCue();
   };
 
   const syncShadows = (): void => {
     truckShadow.setPosition(truck.x, truck.y - 7).setAlpha(truck.alpha * 0.26);
+    truckThreshold
+      .setPosition(truck.x + 80, truck.y - 79)
+      .setAlpha(truck.alpha)
+      .setVisible(truckDoorOpen && truck.active);
     workerShadow.setPosition(worker.x, worker.y - 5).setAlpha(worker.alpha * 0.25);
+
     deliveryCases.forEach((deliveryCase) => {
       if (!deliveryCase.image.active) {
         deliveryCase.shadow.setVisible(false);
@@ -369,12 +487,23 @@ prototype.create = function createUnifiedOpeningOperations(): void {
       deliveryCase.shadow
         .setVisible(true)
         .setPosition(deliveryCase.image.x, deliveryCase.image.y - 2)
-        .setAlpha(deliveryCase.image.alpha * 0.24);
+        .setAlpha(
+          deliveryCase.image.alpha * (
+            deliveryCase.unloaded
+              ? 0.24
+              : deliveryCase.home.depth === DEPTH.caseRear
+                ? 0.18
+                : 0.24
+          )
+        );
     });
   };
 
   const shadowTimer = scene.time.addEvent({ delay: 50, loop: true, callback: syncShadows });
-  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => shadowTimer.remove(false));
+  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+    shadowTimer.remove(false);
+    hideDragCue();
+  });
 
   function showInvoice(): void {
     if (invoicePanel?.active) return;
@@ -499,6 +628,7 @@ prototype.create = function createUnifiedOpeningOperations(): void {
       duration: 950,
       ease: "Cubic.Out",
       onComplete: () => {
+        truckDoorOpen = true;
         truck.setTexture(Assets.delivery.truckDoorOpen);
         fitImage(truck, 525, 320);
         title.setText("UNLOAD THE DELIVERY");
