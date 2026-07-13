@@ -32,3 +32,6 @@ jobs:
 
       - name: Run core campaign tests
         run: npm test
+
+      - name: Verify release bundle
+        run: npm run verify:release
