@@ -4,6 +4,38 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Supermarket Restock Game</title>
+    <script>
+      (() => {
+        const params = new URLSearchParams(window.location.search);
+        const host = window.location.hostname;
+        const isCrazyGamesHost = host === "crazygames.com" || host.endsWith(".crazygames.com");
+        const isLocalHost = host === "localhost" || host === "127.0.0.1";
+        const shouldLoadSdk = params.get("test") !== "1" && (
+          isCrazyGamesHost ||
+          isLocalHost ||
+          params.get("crazygames") === "1"
+        );
+
+        if (window.CrazyGames?.SDK) {
+          window.__crazyGamesSdkScriptReady = Promise.resolve(true);
+          return;
+        }
+
+        if (!shouldLoadSdk) {
+          window.__crazyGamesSdkScriptReady = Promise.resolve(false);
+          return;
+        }
+
+        window.__crazyGamesSdkScriptReady = new Promise((resolve) => {
+          const script = document.createElement("script");
+          script.src = "https://sdk.crazygames.com/crazygames-sdk-v3.js";
+          script.async = true;
+          script.onload = () => resolve(Boolean(window.CrazyGames?.SDK));
+          script.onerror = () => resolve(false);
+          document.head.appendChild(script);
+        });
+      })();
+    </script>
   </head>
   <body>
     <div id="app"></div>
