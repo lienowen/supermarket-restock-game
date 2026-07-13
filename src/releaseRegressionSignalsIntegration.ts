@@ -2,8 +2,11 @@ import Phaser from "phaser";
 import { Assets } from "./assets";
 import { OpeningScene } from "./scenes/OpeningScene";
 import { StorefrontScene } from "./scenes/StorefrontScene";
+import { gameSession } from "./systems/GameSession";
 
 const DELIVERY_READY_KEY = "supermarket.deliveryReady";
+const ACTIVE_DAY_KEY = "supermarket.activeDay";
+
 
 declare global {
   interface Window {
@@ -20,7 +23,23 @@ const originalLobby = storefrontPrototype.createLobbyView;
 
 storefrontPrototype.createLobbyView = function createLobbyWithRegressionSignal(): void {
   originalLobby.call(this);
+  const scene = this as unknown as Phaser.Scene;
   document.body.dataset.stockedLobbyVisual = "ready";
+
+  if (new URLSearchParams(globalThis.location?.search ?? "").get("promotionTest") === "1") {
+    try {
+      globalThis.localStorage?.setItem(ACTIVE_DAY_KEY, "day02");
+      globalThis.localStorage?.setItem("supermarket.bestStars", JSON.stringify({ day01: 3 }));
+    } catch {
+      // The in-memory session below is sufficient for the visual regression route.
+    }
+
+    gameSession.setActiveDay("day02");
+    globalThis.setTimeout(() => {
+      scene.game.scene.start("game");
+      launchPromotionWhenGameIsReady(scene, 0);
+    }, 80);
+  }
 };
 
 const openingPrototype = OpeningScene.prototype as unknown as {
@@ -60,9 +79,6 @@ openingPrototype.create = function createOpeningWithRegressionSignals(...args: u
           scene.add.text(-2000, -2000, "STOCK IS IN THE BACKROOM").setVisible(false);
         }
 
-        // The regression hook skips the real unload animation. Hide the old
-        // receiving objects first so Canvas/WebGL never tries to render an
-        // object while the opening scene is being replaced.
         scene.input.enabled = false;
         scene.tweens.killAll();
         scene.children.list.forEach((child) => {
@@ -83,3 +99,14 @@ openingPrototype.create = function createOpeningWithRegressionSignals(...args: u
     if (window.__GAME_TEST__) delete window.__GAME_TEST__;
   });
 };
+
+function launchPromotionWhenGameIsReady(scene: Phaser.Scene, attempt: number): void {
+  const gameScene = scene.game.scene.getScene("game");
+  if (gameScene?.scene?.isActive()) {
+    gameScene.scene.launch("promotion-wing");
+    return;
+  }
+
+  if (attempt >= 60) return;
+  globalThis.setTimeout(() => launchPromotionWhenGameIsReady(scene, attempt + 1), 100);
+}
