@@ -1,6 +1,7 @@
 import { GameScene } from "./scenes/GameScene";
 import { gameSession } from "./systems/GameSession";
 
+const PENDING_DAY_KEY = "supermarket.pendingDay";
 type WeekOneDay = "day01" | "day02" | "day03" | "day04" | "day05";
 
 type GamePrototype = {
@@ -11,8 +12,14 @@ const prototype = GameScene.prototype as unknown as GamePrototype;
 const originalCreate = prototype.create;
 
 prototype.create = function createWithWeekOneDayGuard(): void {
-  const requestedDay = readStoredDay();
+  const requestedDay = readRequestedDay();
   document.body.dataset.requestedGameDay = requestedDay;
+
+  try {
+    globalThis.localStorage?.setItem("supermarket.activeDay", requestedDay);
+  } catch {
+    // The canonical in-memory session below is enough for the current run.
+  }
 
   if (gameSession.day !== requestedDay) gameSession.reset(requestedDay);
   originalCreate.call(this);
@@ -20,26 +27,19 @@ prototype.create = function createWithWeekOneDayGuard(): void {
   document.body.dataset.runtimeGameDay = gameSession.day;
   document.body.dataset.weekOneDayMatch = gameSession.day === requestedDay ? "ready" : "mismatch";
 
-  if (
-    new URLSearchParams(globalThis.location?.search ?? "").get("test") === "1" &&
-    (requestedDay === "day04" || requestedDay === "day05") &&
-    document.body.dataset.weekOneBatchFloor !== requestedDay
-  ) {
-    console.error([
-      "[week-one-runtime]",
-      `stored=${globalThis.localStorage?.getItem("supermarket.activeDay") ?? "none"}`,
-      `requested=${requestedDay}`,
-      `runtime=${gameSession.day}`,
-      `batch=${document.body.dataset.weekOneBatchFloor ?? "none"}`,
-      `scene=${document.body.dataset.gameScene ?? "none"}`
-    ].join(" "));
+  try {
+    globalThis.localStorage?.removeItem(PENDING_DAY_KEY);
+  } catch {
+    // A stale pending value is harmless because activeDay now matches the running scene.
   }
 };
 
-function readStoredDay(): WeekOneDay {
+function readRequestedDay(): WeekOneDay {
   try {
-    const stored = globalThis.localStorage?.getItem("supermarket.activeDay");
-    return isWeekOneDay(stored) ? stored : "day01";
+    const pending = globalThis.localStorage?.getItem(PENDING_DAY_KEY);
+    if (isWeekOneDay(pending)) return pending;
+    const active = globalThis.localStorage?.getItem("supermarket.activeDay");
+    return isWeekOneDay(active) ? active : "day01";
   } catch {
     return "day01";
   }
