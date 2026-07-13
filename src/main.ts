@@ -74,6 +74,7 @@ import "./dayFourFiveBatchRestockIntegration";
 import "./weekOneRuntimeDayGuardIntegration";
 import "./weekOnePendingDayIntegration";
 import "./weekOneSelectionPersistenceIntegration";
+import "./dayFourFiveLegacyCleanupIntegration";
 
 void bootstrap();
 
