@@ -154,7 +154,7 @@ function cleanLegacyBatchLayers(scene: RuntimeGame): void {
     }
 
     if (child instanceof Phaser.GameObjects.Text && isLegacyBatchText(child.text)) {
-      const parent = child.parentContainer;
+      const parent = child.parentContainer as Phaser.GameObjects.Container | null;
       if (parent?.active && parent.depth < 8000) {
         parent.destroy(true);
       } else {
