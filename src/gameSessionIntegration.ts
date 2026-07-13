@@ -53,6 +53,7 @@ type GameScenePrototype = {
   updateStars: () => void;
 };
 
+const PLAYABLE_DAYS: LevelId[] = ["day01", "day02", "day03", "day04", "day05"];
 const prototype = GameScene.prototype as unknown as GameScenePrototype;
 const originalCreate = prototype.create;
 
@@ -286,18 +287,25 @@ function installCanonicalSessionAccessors(scene: RuntimeGameScene): void {
 }
 
 function resolveActiveDay(): LevelId {
-  const queryDay = new URLSearchParams(window.location.search).get("day");
-  if (queryDay === "3" || queryDay === "day03") return "day03";
-  if (queryDay === "2" || queryDay === "day02") return "day02";
+  const queryDay = normalizeQueryDay(new URLSearchParams(window.location.search).get("day"));
+  if (queryDay) return queryDay;
 
   try {
     const stored = localStorage.getItem("supermarket.activeDay");
-    if (stored === "day03") return "day03";
-    if (stored === "day02") return "day02";
-    return "day01";
+    return isLevelId(stored) ? stored : "day01";
   } catch {
     return "day01";
   }
+}
+
+function normalizeQueryDay(value: string | null): LevelId | undefined {
+  if (!value) return undefined;
+  const normalized = value.startsWith("day") ? value : `day${value.padStart(2, "0")}`;
+  return isLevelId(normalized) ? normalized : undefined;
+}
+
+function isLevelId(value: unknown): value is LevelId {
+  return typeof value === "string" && PLAYABLE_DAYS.includes(value as LevelId);
 }
 
 void Assets.characters.workerIdle;
