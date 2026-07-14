@@ -36,6 +36,7 @@ const report = {
   failedRequests: [],
   badResponses: [],
   sdkEvents: [],
+  batchDisplayAudits: [],
   fatalError: null,
   regressions: {
     stockedLobby: false,
@@ -210,7 +211,20 @@ async function captureBatchDay(page, auditReport, day, filename, label) {
   await page.evaluate(() => window.__GAME_TEST__.finishReceiving());
   await waitForScene(page, "game", 30000);
   await page.waitForFunction((expectedDay) => document.body.dataset.weekOneBatchFloor === expectedDay, day, { timeout: 30000 });
+  await page.waitForFunction(() => Boolean(document.body.dataset.batchDisplayAudit), { timeout: 10000 });
   await page.waitForTimeout(1200);
+
+  const displayAudit = await page.evaluate(() => {
+    const raw = document.body.dataset.batchDisplayAudit;
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw);
+    } catch {
+      return { parseError: true, raw: raw.slice(0, 500) };
+    }
+  });
+  auditReport.batchDisplayAudits.push({ day, audit: displayAudit });
+
   await capture(page, auditReport, filename, label);
 }
 
