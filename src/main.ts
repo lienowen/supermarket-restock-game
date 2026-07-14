@@ -82,6 +82,7 @@ import "./dayThreeSceneIsolationIntegration";
 import "./uiSimplificationIntegration";
 import "./weekOneSpaceExpansionIntegration";
 import "./spaceExpansionBannerCoordinationIntegration";
+import "./finalUiLayoutIntegration";
 
 void bootstrap();
 
