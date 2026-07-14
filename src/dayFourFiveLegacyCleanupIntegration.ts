@@ -38,37 +38,6 @@ type GamePrototype = {
   create: (...args: unknown[]) => void;
 };
 
-type DisplayObjectSnapshot = {
-  index: number;
-  type: string;
-  name: string;
-  depth: number;
-  visible: boolean;
-  alpha: number;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  displayWidth: number;
-  displayHeight: number;
-  scaleX: number;
-  scaleY: number;
-  angle: number;
-  blendMode: number | string;
-  parentType?: string;
-  parentDepth?: number;
-  texture?: string;
-  frameWidth?: number;
-  frameHeight?: number;
-  fillColor?: number;
-  fillAlpha?: number;
-  strokeColor?: number;
-  strokeAlpha?: number;
-  lineWidth?: number;
-  commandCount?: number;
-  text?: string;
-};
-
 const AUXILIARY_SCENES = ["polish-overlay", "progression-customer"] as const;
 const DUPLICATE_FLOOR_KEY = "week-one-full-sales-floor";
 const VERIFIED_FLOOR_KEY = Assets.storefront.day;
@@ -107,15 +76,14 @@ prototype.create = function createWithBatchReleaseCleanup(...args: unknown[]): v
   preserveBatchDay(day);
   cleanLegacyBatchLayers(scene);
 
-  // Some old integrations build their visual helpers on the next frame or from
-  // short timers. Repeat cleanup after those callbacks have had a chance to run.
+  // Some older integrations create their helper objects on the next frame or
+  // from short timers. Repeat cleanup after those callbacks have run.
   [0, 180, 650].forEach((delay) => {
     scene.time.delayedCall(delay, () => {
       if (!scene.scene.isActive()) return;
       preserveBatchDay(day);
       setAuxiliaryScenesEnabled(scene, false);
       cleanLegacyBatchLayers(scene);
-      if (delay === 650) publishDisplayAudit(scene, day);
     });
   });
 };
@@ -216,7 +184,11 @@ function replaceBatchFloorTexture(scene: RuntimeGame): void {
   if (!scene.textures.exists(VERIFIED_FLOOR_KEY)) return;
   const background = scene.children.list.find((child): child is Phaser.GameObjects.Image =>
     child instanceof Phaser.GameObjects.Image &&
-    (child.texture.key === DUPLICATE_FLOOR_KEY || child.texture.key === VERIFIED_FLOOR_KEY || child.texture.key === "__MISSING") &&
+    (
+      child.texture.key === DUPLICATE_FLOOR_KEY ||
+      child.texture.key === VERIFIED_FLOOR_KEY ||
+      child.texture.key === "__MISSING"
+    ) &&
     Math.abs(child.x - 665) < 4 &&
     Math.abs(child.y - 591) < 4
   );
@@ -229,90 +201,6 @@ function replaceBatchFloorTexture(scene: RuntimeGame): void {
     .setDepth(0)
     .clearTint();
   coverImage(background, 1330, 1182);
-}
-
-function publishDisplayAudit(scene: RuntimeGame, day: BatchDay): void {
-  if (new URLSearchParams(globalThis.location?.search ?? "").get("test") !== "1") return;
-
-  const objects = scene.children.list
-    .map((child, index) => snapshotDisplayObject(child, index))
-    .filter((entry) => entry.visible || entry.type === "Graphics")
-    .sort((left, right) => left.depth - right.depth || left.index - right.index);
-
-  document.body.dataset.batchDisplayAudit = JSON.stringify({
-    day,
-    scene: scene.scene.key,
-    objectCount: objects.length,
-    objects
-  });
-}
-
-function snapshotDisplayObject(child: Phaser.GameObjects.GameObject, index: number): DisplayObjectSnapshot {
-  const display = child as Phaser.GameObjects.GameObject & {
-    name?: string;
-    type?: string;
-    depth?: number;
-    visible?: boolean;
-    alpha?: number;
-    x?: number;
-    y?: number;
-    width?: number;
-    height?: number;
-    displayWidth?: number;
-    displayHeight?: number;
-    scaleX?: number;
-    scaleY?: number;
-    angle?: number;
-    blendMode?: number | string;
-    parentContainer?: Phaser.GameObjects.Container | null;
-  };
-
-  const entry: DisplayObjectSnapshot = {
-    index,
-    type: display.type ?? child.constructor.name,
-    name: display.name ?? "",
-    depth: finite(display.depth),
-    visible: display.visible !== false,
-    alpha: finite(display.alpha, 1),
-    x: finite(display.x),
-    y: finite(display.y),
-    width: finite(display.width),
-    height: finite(display.height),
-    displayWidth: finite(display.displayWidth),
-    displayHeight: finite(display.displayHeight),
-    scaleX: finite(display.scaleX, 1),
-    scaleY: finite(display.scaleY, 1),
-    angle: finite(display.angle),
-    blendMode: display.blendMode ?? 0
-  };
-
-  if (display.parentContainer) {
-    entry.parentType = display.parentContainer.type;
-    entry.parentDepth = display.parentContainer.depth;
-  }
-
-  if (child instanceof Phaser.GameObjects.Image) {
-    entry.texture = child.texture.key;
-    entry.frameWidth = child.frame.realWidth;
-    entry.frameHeight = child.frame.realHeight;
-  } else if (child instanceof Phaser.GameObjects.Rectangle) {
-    entry.fillColor = child.fillColor;
-    entry.fillAlpha = child.fillAlpha;
-    entry.strokeColor = child.strokeColor;
-    entry.strokeAlpha = child.strokeAlpha;
-    entry.lineWidth = child.lineWidth;
-  } else if (child instanceof Phaser.GameObjects.Graphics) {
-    const graphics = child as Phaser.GameObjects.Graphics & { commandBuffer?: unknown[] };
-    entry.commandCount = graphics.commandBuffer?.length ?? 0;
-  } else if (child instanceof Phaser.GameObjects.Text) {
-    entry.text = child.text.slice(0, 180);
-  }
-
-  return entry;
-}
-
-function finite(value: unknown, fallback = 0): number {
-  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
 function coverImage(image: Phaser.GameObjects.Image, width: number, height: number): void {
