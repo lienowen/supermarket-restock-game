@@ -80,19 +80,27 @@ function installCartTapFallback(scene: RuntimeGame): void {
   cart.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
     cart.setData("day3TapStartX", pointer.x);
     cart.setData("day3TapStartY", pointer.y);
-    cart.setData("day3TapStartedAt", scene.time.now);
-    cart.setData("day3TapDragged", false);
   });
-  cart.on("dragstart", () => cart.setData("day3TapDragged", true));
+
   cart.on("pointerup", (pointer: Phaser.Input.Pointer) => {
     const startX = Number(cart.getData("day3TapStartX") ?? pointer.x);
     const startY = Number(cart.getData("day3TapStartY") ?? pointer.y);
-    const dragged = Boolean(cart.getData("day3TapDragged"));
     const distance = Phaser.Math.Distance.Between(startX, startY, pointer.x, pointer.y);
-    cart.setData("day3TapDragged", false);
+    if (distance > 18) return;
 
-    if (dragged || distance > 18) return;
-    moveReadyCartToSales(scene);
+    // immediateCartDrag uses a zero movement threshold, so a plain click can fire
+    // dragstart/dragend and schedule a snap back to the warehouse. Run after those
+    // listeners, cancel their tween, reset movement state and treat the gesture as
+    // the intended full-cart click.
+    scene.time.delayedCall(0, () => {
+      if (!scene.scene.isActive()) return;
+      scene.tweens.killTweensOf(scene.cart);
+      scene.tweens.killTweensOf(scene.worker);
+      scene.movingCart = false;
+      scene.cart.setData("immediateDragBlocked", false);
+      scene.cart.setData("dragBlocked", false);
+      moveReadyCartToSales(scene);
+    });
   });
 }
 
