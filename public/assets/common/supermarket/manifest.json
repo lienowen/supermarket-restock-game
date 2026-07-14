@@ -1,0 +1,28 @@
+{
+  "install": "Extract the ZIP into the repository root.",
+  "asset_root": "public/assets/common/supermarket",
+  "runtime_url_root": "assets/common/supermarket",
+  "file_count": 20,
+  "files": [
+    "public/assets/common/supermarket/backgrounds/main_floor_bg.png",
+    "public/assets/common/supermarket/backgrounds/promotion_wing_bg.png",
+    "public/assets/common/supermarket/backgrounds/backroom_bg.png",
+    "public/assets/common/supermarket/backgrounds/cold_case_bg.png",
+    "public/assets/common/supermarket/fixtures/shelf_beverages_full.png",
+    "public/assets/common/supermarket/fixtures/shelf_pantry_full.png",
+    "public/assets/common/supermarket/fixtures/shelf_household_full.png",
+    "public/assets/common/supermarket/fixtures/promo_endcap_full.png",
+    "public/assets/common/supermarket/fixtures/shelf_beverages_low.png",
+    "public/assets/common/supermarket/fixtures/shelf_beverages_empty.png",
+    "public/assets/common/supermarket/fixtures/shelf_pantry_low.png",
+    "public/assets/common/supermarket/fixtures/shelf_pantry_empty.png",
+    "public/assets/common/supermarket/fixtures/shelf_household_low.png",
+    "public/assets/common/supermarket/fixtures/shelf_household_empty.png",
+    "public/assets/common/supermarket/fixtures/promo_endcap_low.png",
+    "public/assets/common/supermarket/fixtures/promo_endcap_empty.png",
+    "public/assets/common/supermarket/fixtures/shelf_dairy_full.png",
+    "public/assets/common/supermarket/fixtures/shelf_snacks_full.png",
+    "public/assets/common/supermarket/foreground/foreground_aisle_left.png",
+    "public/assets/common/supermarket/foreground/foreground_aisle_right.png"
+  ]
+}
