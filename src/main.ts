@@ -26,7 +26,6 @@ import "./customerLaneIntegration";
 import "./restockFeedbackIntegration";
 import "./dayTwoHookIntegration";
 import "./dayTwoChallengeRewardIntegration";
-import "./dayTwoOpeningExpansionIntegration";
 import "./promotionWingProductionIntegration";
 import "./promotionWingRealisticVisualIntegration";
 import "./promotionWingMainlineIntegration";
@@ -80,6 +79,7 @@ import "./dayFourFiveLayoutPolishIntegration";
 import "./storefrontPayloadOptimizationIntegration";
 import "./dayThreeDeadlockRecoveryIntegration";
 import "./dayThreeSceneIsolationIntegration";
+import "./uiSimplificationIntegration";
 
 void bootstrap();
 
