@@ -3,7 +3,7 @@ import { BackStockScene } from "./scenes/BackStockScene";
 import { GameScene } from "./scenes/GameScene";
 import { gameSession } from "./systems/GameSession";
 
-type RuntimeBackStockScene = BackStockScene & {
+type RuntimeBackStockScene = Phaser.Scene & {
   attached: boolean;
   panel?: Phaser.GameObjects.Container;
   detach: () => void;
