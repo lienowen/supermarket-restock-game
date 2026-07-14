@@ -70,6 +70,14 @@ jobs:
           set -o pipefail
           node scripts/capture-release-regressions.mjs 2>&1 | tee ui-audit-run.log
 
+      - name: Upload CrazyGames release package
+        uses: actions/upload-artifact@v4
+        with:
+          name: crazygames-release
+          path: dist
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Upload UI audit
         if: always()
         uses: actions/upload-artifact@v4
