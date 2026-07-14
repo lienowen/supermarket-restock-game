@@ -1,5 +1,5 @@
 import Phaser from "phaser";
-import { Assets } from "./assets";
+import { AssetPaths, Assets } from "./assets";
 import { GameScene } from "./scenes/GameScene";
 import { gameSession } from "./systems/GameSession";
 
@@ -34,10 +34,14 @@ type RuntimeGame = Phaser.Scene & {
 };
 
 type GamePrototype = {
+  preload: (...args: unknown[]) => void;
   create: (...args: unknown[]) => void;
 };
 
 const AUXILIARY_SCENES = ["polish-overlay", "progression-customer"] as const;
+const DUPLICATE_FLOOR_KEY = "week-one-full-sales-floor";
+const VERIFIED_FLOOR_KEY = Assets.storefront.day;
+const VERIFIED_FLOOR_PATH = AssetPaths[VERIFIED_FLOOR_KEY as keyof typeof AssetPaths];
 const LEGACY_IMAGE_KEYS = new Set<string>([
   Assets.ui.taskPanel,
   Assets.ui.taskButton,
@@ -50,7 +54,17 @@ const LEGACY_IMAGE_KEYS = new Set<string>([
 ]);
 
 const prototype = GameScene.prototype as unknown as GamePrototype;
+const originalPreload = prototype.preload;
 const originalCreate = prototype.create;
+
+prototype.preload = function preloadVerifiedBatchFloor(...args: unknown[]): void {
+  originalPreload.apply(this, args);
+  if (!resolveBatchDay()) return;
+  const scene = this as unknown as Phaser.Scene;
+  if (!scene.textures.exists(VERIFIED_FLOOR_KEY)) {
+    scene.load.image(VERIFIED_FLOOR_KEY, VERIFIED_FLOOR_PATH);
+  }
+};
 
 prototype.create = function createWithBatchReleaseCleanup(...args: unknown[]): void {
   originalCreate.apply(this, args);
@@ -120,6 +134,8 @@ function setAuxiliaryScenesEnabled(scene: Phaser.Scene, enabled: boolean): void 
 }
 
 function cleanLegacyBatchLayers(scene: RuntimeGame): void {
+  replaceBatchFloorTexture(scene);
+
   destroyRuntimeObject(scene, "__compactHud");
   destroyRuntimeObject(scene, "__contractPanel");
   destroyRuntimeObject(scene, "__supervisorContractPanel");
@@ -163,6 +179,31 @@ function cleanLegacyBatchLayers(scene: RuntimeGame): void {
       }
     }
   }
+}
+
+function replaceBatchFloorTexture(scene: RuntimeGame): void {
+  if (!scene.textures.exists(VERIFIED_FLOOR_KEY)) return;
+  const background = scene.children.list.find((child): child is Phaser.GameObjects.Image =>
+    child instanceof Phaser.GameObjects.Image &&
+    (child.texture.key === DUPLICATE_FLOOR_KEY || child.texture.key === VERIFIED_FLOOR_KEY) &&
+    Math.abs(child.x - 665) < 4 &&
+    Math.abs(child.y - 591) < 4
+  );
+  if (!background) return;
+
+  background
+    .setTexture(VERIFIED_FLOOR_KEY)
+    .setPosition(665, 591)
+    .setAlpha(1)
+    .setDepth(0)
+    .clearTint();
+  coverImage(background, 1330, 1182);
+}
+
+function coverImage(image: Phaser.GameObjects.Image, width: number, height: number): void {
+  const sourceWidth = Math.max(1, image.frame.realWidth || image.width);
+  const sourceHeight = Math.max(1, image.frame.realHeight || image.height);
+  image.setScale(Math.max(width / sourceWidth, height / sourceHeight));
 }
 
 function destroyRuntimeObject(scene: RuntimeGame, key: keyof RuntimeGame): void {
