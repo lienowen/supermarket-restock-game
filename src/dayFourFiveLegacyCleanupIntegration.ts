@@ -90,7 +90,6 @@ const originalCreate = prototype.create;
 
 prototype.preload = function preloadVerifiedBatchFloor(...args: unknown[]): void {
   originalPreload.apply(this, args);
-  if (!resolveBatchDay()) return;
   const scene = this as unknown as Phaser.Scene;
   if (!scene.textures.exists(VERIFIED_FLOOR_KEY)) {
     scene.load.image(VERIFIED_FLOOR_KEY, VERIFIED_FLOOR_PATH);
@@ -217,7 +216,7 @@ function replaceBatchFloorTexture(scene: RuntimeGame): void {
   if (!scene.textures.exists(VERIFIED_FLOOR_KEY)) return;
   const background = scene.children.list.find((child): child is Phaser.GameObjects.Image =>
     child instanceof Phaser.GameObjects.Image &&
-    (child.texture.key === DUPLICATE_FLOOR_KEY || child.texture.key === VERIFIED_FLOOR_KEY) &&
+    (child.texture.key === DUPLICATE_FLOOR_KEY || child.texture.key === VERIFIED_FLOOR_KEY || child.texture.key === "__MISSING") &&
     Math.abs(child.x - 665) < 4 &&
     Math.abs(child.y - 591) < 4
   );
