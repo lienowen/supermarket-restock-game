@@ -2,8 +2,6 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { extname, join, relative } from "node:path";
 
 const DIST_DIR = "dist";
-const MOBILE_HOMEPAGE_TARGET_BYTES = 20 * 1024 * 1024;
-const BASIC_LAUNCH_WARNING_BYTES = 50 * 1024 * 1024;
 const ABSOLUTE_MAX_BYTES = 250 * 1024 * 1024;
 const ABSOLUTE_MAX_FILES = 1500;
 const LARGE_FILE_WARNING_BYTES = 10 * 1024 * 1024;
@@ -57,14 +55,6 @@ if (fileStats.length > ABSOLUTE_MAX_FILES) {
 
 if (totalBytes > ABSOLUTE_MAX_BYTES) {
   failures.push(`bundle size ${formatBytes(totalBytes)} exceeds 250 MiB`);
-} else if (totalBytes > BASIC_LAUNCH_WARNING_BYTES) {
-  warnings.push(
-    `bundle size ${formatBytes(totalBytes)} exceeds the 50 MiB Basic Launch target; verify SDK-driven progressive loading`
-  );
-} else if (totalBytes > MOBILE_HOMEPAGE_TARGET_BYTES) {
-  warnings.push(
-    `bundle size ${formatBytes(totalBytes)} exceeds the 20 MiB mobile homepage target; keep initial scene loading selective`
-  );
 }
 
 const unreferencedAssets = fileStats.filter((entry) => {
@@ -95,7 +85,10 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log(`Release bundle verified: ${fileStats.length} files, ${formatBytes(totalBytes)}.`);
+console.log(
+  `Release bundle verified: ${fileStats.length} files, ${formatBytes(totalBytes)}. ` +
+  "Initial-download budgets are enforced by measure-release-payload.mjs."
+);
 
 function walk(directory) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
