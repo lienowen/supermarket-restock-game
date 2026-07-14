@@ -59,13 +59,14 @@ function installCompactGameLayout(): void {
     scene.__compactHintRestore?.remove(false);
     scene.hintText
       .setText(message)
-      .setColor("#fff2bd")
+      .setColor("#172020")
       .setFontStyle("bold")
       .setAlpha(1);
 
     scene.__compactHintRestore = scene.time.delayedCall(1_900, () => {
       if (!scene.scene.isActive()) return;
       scene.__compactHintRestore = undefined;
+      scene.hintText?.setColor("#172020");
       scene.updateHud();
     });
   };
@@ -133,6 +134,7 @@ function compactBaseHintBar(scene: RuntimeGameScene): void {
   scene.hintText
     ?.setPosition(665, 1_143)
     .setFontSize(18)
+    .setColor("#172020")
     .setWordWrapWidth(680)
     .setLineSpacing(0);
 }
