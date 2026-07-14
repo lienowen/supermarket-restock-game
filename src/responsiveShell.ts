@@ -22,7 +22,7 @@ function ensureOrientationHint(): void {
   if (document.getElementById(ORIENTATION_HINT_ID)) return;
   const hint = document.createElement("div");
   hint.id = ORIENTATION_HINT_ID;
-  hint.innerHTML = "<strong>ROTATE DEVICE</strong><span>请横屏游玩 · 横屏后可使用完整门店和更大的操作区域</span>";
+  hint.innerHTML = "<strong>ROTATE DEVICE</strong><span>PLAY IN LANDSCAPE FOR THE FULL STORE AND LARGER CONTROLS</span>";
   hint.setAttribute("role", "status");
   hint.setAttribute("aria-live", "polite");
   document.body.appendChild(hint);
