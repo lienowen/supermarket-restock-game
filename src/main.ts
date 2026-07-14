@@ -80,6 +80,7 @@ import "./storefrontPayloadOptimizationIntegration";
 import "./dayThreeDeadlockRecoveryIntegration";
 import "./dayThreeSceneIsolationIntegration";
 import "./uiSimplificationIntegration";
+import "./weekOneSpaceExpansionIntegration";
 
 void bootstrap();
 
