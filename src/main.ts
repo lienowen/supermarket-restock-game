@@ -83,6 +83,7 @@ import "./uiSimplificationIntegration";
 import "./weekOneSpaceExpansionIntegration";
 import "./spaceExpansionBannerCoordinationIntegration";
 import "./finalUiLayoutIntegration";
+import "./sharedSupermarketRoomIntegration";
 
 void bootstrap();
 
