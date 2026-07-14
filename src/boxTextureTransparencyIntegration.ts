@@ -4,8 +4,8 @@ import { GameScene } from "./scenes/GameScene";
 import { gameSession } from "./systems/GameSession";
 
 const BOX_TEXTURES = [Assets.props.boxCola, Assets.props.boxWater, Assets.props.boxMilk] as const;
-const BACKGROUND_MIN_CHANNEL = 96;
-const BACKGROUND_MAX_SPREAD = 52;
+const BACKGROUND_MIN_CHANNEL = 72;
+const BACKGROUND_MAX_SPREAD = 72;
 const MAX_TEXTURE_EDGE = 1024;
 
 type BatchDay = "day04" | "day05";
@@ -37,7 +37,7 @@ function removeConnectedLightBackground(scene: Phaser.Scene, textureKey: string)
   };
 
   if (!source || !source.width || !source.height) return;
-  if (source instanceof HTMLCanvasElement && source.dataset.stockCaseTransparencyReady === "2") return;
+  if (source instanceof HTMLCanvasElement && source.dataset.stockCaseTransparencyReady === "3") return;
 
   const scale = Math.min(1, MAX_TEXTURE_EDGE / Math.max(source.width, source.height));
   const width = Math.max(1, Math.round(source.width * scale));
@@ -46,7 +46,7 @@ function removeConnectedLightBackground(scene: Phaser.Scene, textureKey: string)
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
-  canvas.dataset.stockCaseTransparencyReady = "2";
+  canvas.dataset.stockCaseTransparencyReady = "3";
 
   const context = canvas.getContext("2d", { willReadFrequently: true });
   if (!context) return;
@@ -80,6 +80,20 @@ function removeConnectedLightBackground(scene: Phaser.Scene, textureKey: string)
     queue[tail++] = index;
   };
 
+  const forEachNeighbor = (index: number, visit: (neighbor: number) => void): void => {
+    const x = index % width;
+    const y = Math.floor(index / width);
+    for (let deltaY = -1; deltaY <= 1; deltaY += 1) {
+      for (let deltaX = -1; deltaX <= 1; deltaX += 1) {
+        if (deltaX === 0 && deltaY === 0) continue;
+        const nextX = x + deltaX;
+        const nextY = y + deltaY;
+        if (nextX < 0 || nextX >= width || nextY < 0 || nextY >= height) continue;
+        visit(nextY * width + nextX);
+      }
+    }
+  };
+
   for (let x = 0; x < width; x += 1) {
     enqueue(x);
     enqueue((height - 1) * width + x);
@@ -91,36 +105,26 @@ function removeConnectedLightBackground(scene: Phaser.Scene, textureKey: string)
 
   while (head < tail) {
     const index = queue[head++];
-    const x = index % width;
-    const y = Math.floor(index / width);
-    if (x > 0) enqueue(index - 1);
-    if (x + 1 < width) enqueue(index + 1);
-    if (y > 0) enqueue(index - width);
-    if (y + 1 < height) enqueue(index + width);
+    forEachNeighbor(index, enqueue);
   }
 
   for (let index = 0; index < total; index += 1) {
     if (connected[index]) pixels[index * 4 + 3] = 0;
   }
 
-  // Remove a thin anti-aliased halo adjoining the connected background while
-  // preserving labels and highlights inside the cardboard artwork.
-  for (let pass = 0; pass < 3; pass += 1) {
+  // Remove anti-aliased and diagonally connected checker remnants while keeping
+  // labels and highlights that are enclosed inside the cardboard artwork.
+  for (let pass = 0; pass < 4; pass += 1) {
     const next = connected.slice();
-    for (let y = 1; y < height - 1; y += 1) {
-      for (let x = 1; x < width - 1; x += 1) {
-        const index = y * width + x;
-        if (!candidate[index] || connected[index]) continue;
-        if (
-          connected[index - 1] ||
-          connected[index + 1] ||
-          connected[index - width] ||
-          connected[index + width]
-        ) {
-          next[index] = 1;
-          pixels[index * 4 + 3] = 0;
-        }
-      }
+    for (let index = 0; index < total; index += 1) {
+      if (!candidate[index] || connected[index]) continue;
+      let touchesBackground = false;
+      forEachNeighbor(index, (neighbor) => {
+        if (connected[neighbor]) touchesBackground = true;
+      });
+      if (!touchesBackground) continue;
+      next[index] = 1;
+      pixels[index * 4 + 3] = 0;
     }
     connected.set(next);
   }
