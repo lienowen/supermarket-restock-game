@@ -241,6 +241,11 @@ function installRegressionHook(scene: RuntimeGame): void {
       scene.updateCartCount();
       scene.updateHud();
       delete document.body.dataset.day3DeadlockRecovery;
+
+      // Execute the same recovery routine deterministically for the browser test.
+      // The POST_UPDATE watchdog above remains responsible for real gameplay.
+      recoverStaleRestock(scene);
+      syncReadyAction(scene);
     },
     state: () => ({
       restockBusy: scene.restockBusy,
