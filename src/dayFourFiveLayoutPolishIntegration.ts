@@ -27,6 +27,8 @@ type BatchFixture = {
 type RuntimeGame = Phaser.Scene & {
   shelfSlots: RuntimeSlot[];
   __batchFixtures?: BatchFixture[];
+  __cartStateLabel?: Phaser.GameObjects.Text;
+  __cartInventoryText?: Phaser.GameObjects.Text;
 };
 
 type GamePrototype = {
@@ -41,7 +43,7 @@ prototype.create = function createWithPolishedBatchLayout(...args: unknown[]): v
   const scene = this as unknown as RuntimeGame;
   if (!isBatchDay(gameSession.day)) return;
 
-  removeRedundantCartLabels(scene);
+  hideRedundantCartLabels(scene);
   if (gameSession.day === "day05") polishWeekendFloor(scene);
 };
 
@@ -86,11 +88,16 @@ function moveFixture(
   slot.productBottomY = position.y + position.height * 0.2;
 }
 
-function removeRedundantCartLabels(scene: Phaser.Scene): void {
+function hideRedundantCartLabels(scene: RuntimeGame): void {
+  scene.__cartStateLabel?.setVisible(false);
+  scene.__cartInventoryText?.setVisible(false);
+
+  // Keep this fallback for older saves or integrations that created labels at
+  // scene level instead of inside the cart container.
   for (const child of [...scene.children.list]) {
     if (!(child instanceof Phaser.GameObjects.Text)) continue;
     const label = child.text.trim().toUpperCase();
-    if (label === "EMPTY" || label === "NO STOCK") child.destroy();
+    if (label === "EMPTY" || label === "NO STOCK") child.setVisible(false);
   }
 }
 
