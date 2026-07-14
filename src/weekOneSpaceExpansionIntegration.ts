@@ -79,6 +79,7 @@ type RuntimeGame = Phaser.Scene & {
   restockBusy: boolean;
   __batchFixtures?: BatchFixture[];
   __campaignIncidentPanel?: Phaser.GameObjects.Container;
+  __supervisorContractPanel?: Phaser.GameObjects.Container;
   __weekOneSpaceController?: SpaceController;
   departureRequirement: () => number;
   snapCart: (destination: "WAREHOUSE" | "SALES") => void;
@@ -140,6 +141,7 @@ function installSpaceController(scene: RuntimeGame, day: SpaceDay): void {
     lastRefreshAt: -Infinity
   };
   scene.__weekOneSpaceController = controller;
+  hideRedundantSpacePanels(scene, day);
 
   tabs.forEach((tab) => {
     tab.hit.on("pointerdown", () => navigateToRoom(scene, controller, tab.definition.id));
@@ -151,6 +153,7 @@ function installSpaceController(scene: RuntimeGame, day: SpaceDay): void {
     if (scene.time.now - controller.lastRefreshAt < 140) return;
     controller.lastRefreshAt = scene.time.now;
 
+    hideRedundantSpacePanels(scene, day);
     const modalActive = Boolean(scene.__campaignIncidentPanel?.active) || gameSession.isPaused;
     controller.navigation.setVisible(!modalActive && !scene.shiftEnded);
     controller.tabs.forEach((tab) => {
@@ -381,6 +384,36 @@ function buildBatchAdapters(scene: RuntimeGame): Map<string, FixtureAdapter> {
   });
 
   return adapters;
+}
+
+function hideRedundantSpacePanels(scene: RuntimeGame, day: SpaceDay): void {
+  if (scene.__supervisorContractPanel?.active) {
+    scene.__supervisorContractPanel.setVisible(false);
+    scene.__supervisorContractPanel.getAll().forEach((child) => child.disableInteractive());
+  }
+
+  if (day === "day03") return;
+
+  for (const child of scene.children.list) {
+    if (child instanceof Phaser.GameObjects.Rectangle) {
+      const isBatchPanel =
+        Math.abs(child.x - 300) < 4 &&
+        Math.abs(child.y - 240) < 4 &&
+        child.width >= 500 &&
+        child.height >= 120 &&
+        child.depth >= 8_900;
+      if (isBatchPanel) child.setVisible(false).disableInteractive();
+      continue;
+    }
+
+    if (!(child instanceof Phaser.GameObjects.Text)) continue;
+    const value = child.text.toUpperCase();
+    const isBatchInstruction =
+      value === "BATCH RESTOCK MODE" ||
+      (value.includes("1 CASE") && value.includes("FULL DISPLAY")) ||
+      (value.includes("LOAD A ROUTE") && value.includes("SIX DISPLAYS"));
+    if (isBatchInstruction) child.setVisible(false).disableInteractive();
+  }
 }
 
 function isFixtureDisplayObject(object: DisplayObject, centerX: number): boolean {
