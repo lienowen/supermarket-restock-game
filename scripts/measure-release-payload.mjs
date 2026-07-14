@@ -83,8 +83,7 @@ try {
   await page.goto(BASE_URL, { waitUntil: "networkidle", timeout: 60000 });
   await waitForCanvas(page);
   await page.waitForFunction(() => document.body.dataset.stockedLobbyVisual === "ready", { timeout: 30000 });
-  // The lobby intentionally begins preparing opening assets after a short delay.
-  // Include those requests because they occur before the player clicks START.
+  // Include delayed preloads that occur before the player clicks START.
   await page.waitForTimeout(3500);
   activePhase = null;
 
@@ -116,6 +115,11 @@ try {
 
   if (runtimeIssues.length > 0) {
     throw new Error(`Payload measurement encountered ${runtimeIssues.length} browser issue(s).`);
+  }
+  if (!report.budgets.homepageMobile20MiB.passed) {
+    throw new Error(
+      `Cold homepage payload ${report.homepageCold.transferredMiB} MiB exceeds the 20 MiB mobile limit.`
+    );
   }
 } catch (error) {
   thrownError = error;
