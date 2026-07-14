@@ -36,6 +36,7 @@ const report = {
   failedRequests: [],
   badResponses: [],
   sdkEvents: [],
+  day3DeadlockState: null,
   fatalError: null,
   regressions: {
     stockedLobby: false,
@@ -144,14 +145,23 @@ try {
   report.regressions.day3MultiFixture = true;
   await capture(page, report, "04-day3-multi-fixture-floor.png", "Day 3 drinks, grocery and cold-case fixtures");
 
-  await page.waitForFunction(() => typeof window.__DAY3_DEADLOCK_TEST__?.prepare === "function", { timeout: 10000 });
+  await page.waitForFunction(
+    () => typeof window.__DAY3_DEADLOCK_TEST__?.prepare === "function",
+    null,
+    { timeout: 10000 }
+  );
   await page.evaluate(() => window.__DAY3_DEADLOCK_TEST__.prepare());
-  await page.waitForFunction(() => window.__DAY3_DEADLOCK_TEST__?.state().restockBusy === false, { timeout: 6000 });
+  report.day3DeadlockState = await page.evaluate(() => window.__DAY3_DEADLOCK_TEST__?.state() ?? null);
   await clickGame(page, 505, 850);
-  await page.waitForFunction(() => (
-    document.body.dataset.day3DeadlockRecovery === "ready" &&
-    window.__DAY3_DEADLOCK_TEST__?.state().cartAtShelf === true
-  ), { timeout: 6000 });
+  await page.waitForFunction(
+    () => (
+      document.body.dataset.day3DeadlockRecovery === "ready" &&
+      window.__DAY3_DEADLOCK_TEST__?.state().cartAtShelf === true
+    ),
+    null,
+    { timeout: 6000 }
+  );
+  report.day3DeadlockState = await page.evaluate(() => window.__DAY3_DEADLOCK_TEST__?.state() ?? null);
   report.regressions.day3CustomerServiceDeadlockRecovery = true;
 
   await page.locator("#market-pause-button").click();
