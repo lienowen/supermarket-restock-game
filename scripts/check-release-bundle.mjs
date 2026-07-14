@@ -7,6 +7,7 @@ const BASIC_LAUNCH_WARNING_BYTES = 50 * 1024 * 1024;
 const ABSOLUTE_MAX_BYTES = 250 * 1024 * 1024;
 const ABSOLUTE_MAX_FILES = 1500;
 const LARGE_FILE_WARNING_BYTES = 10 * 1024 * 1024;
+const TOP_FILE_COUNT = 20;
 const TEXT_EXTENSIONS = new Set([".html", ".js", ".css", ".json"]);
 
 if (!existsSync(DIST_DIR)) {
@@ -15,36 +16,41 @@ if (!existsSync(DIST_DIR)) {
 }
 
 const files = walk(DIST_DIR);
-const totalBytes = files.reduce((sum, file) => sum + statSync(file).size, 0);
+const fileStats = files
+  .map((file) => ({
+    file,
+    name: relative(DIST_DIR, file),
+    size: statSync(file).size
+  }))
+  .sort((left, right) => right.size - left.size);
+const totalBytes = fileStats.reduce((sum, entry) => sum + entry.size, 0);
 const failures = [];
 const warnings = [];
 
-for (const file of files) {
-  const stats = statSync(file);
-  const name = relative(DIST_DIR, file);
-  const extension = extname(file).toLowerCase();
+for (const entry of fileStats) {
+  const extension = extname(entry.file).toLowerCase();
 
-  if (stats.size > LARGE_FILE_WARNING_BYTES) {
-    warnings.push(`${name}: large individual file ${formatBytes(stats.size)}`);
+  if (entry.size > LARGE_FILE_WARNING_BYTES) {
+    warnings.push(`${entry.name}: large individual file ${formatBytes(entry.size)}`);
   }
   if (!TEXT_EXTENSIONS.has(extension)) continue;
 
-  const content = readFileSync(file, "utf8");
+  const content = readFileSync(entry.file, "utf8");
   if (/["'`]\/assets\//.test(content)) {
-    failures.push(`${name}: contains a root-relative /assets/ reference`);
+    failures.push(`${entry.name}: contains a root-relative /assets/ reference`);
   }
 
   if (extension === ".js" && /(?:requestFullscreen|webkitRequestFullscreen)/.test(content)) {
-    failures.push(`${name}: contains a custom fullscreen API call`);
+    failures.push(`${entry.name}: contains a custom fullscreen API call`);
   }
 }
 
-if (!files.some((file) => relative(DIST_DIR, file) === "index.html")) {
+if (!fileStats.some((entry) => entry.name === "index.html")) {
   failures.push("dist/index.html is missing");
 }
 
-if (files.length > ABSOLUTE_MAX_FILES) {
-  failures.push(`bundle contains ${files.length} files, exceeding the 1500-file platform limit`);
+if (fileStats.length > ABSOLUTE_MAX_FILES) {
+  failures.push(`bundle contains ${fileStats.length} files, exceeding the 1500-file platform limit`);
 }
 
 if (totalBytes > ABSOLUTE_MAX_BYTES) {
@@ -59,6 +65,11 @@ if (totalBytes > ABSOLUTE_MAX_BYTES) {
   );
 }
 
+console.log("Largest release files:");
+fileStats.slice(0, TOP_FILE_COUNT).forEach((entry, index) => {
+  console.log(`${String(index + 1).padStart(2, "0")}. ${formatBytes(entry.size).padStart(10)}  ${entry.name}`);
+});
+
 if (warnings.length > 0) {
   console.warn("Release warnings:\n" + warnings.map((warning) => `- ${warning}`).join("\n"));
 }
@@ -68,7 +79,7 @@ if (failures.length > 0) {
   process.exit(1);
 }
 
-console.log(`Release bundle verified: ${files.length} files, ${formatBytes(totalBytes)}.`);
+console.log(`Release bundle verified: ${fileStats.length} files, ${formatBytes(totalBytes)}.`);
 
 function walk(directory) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
