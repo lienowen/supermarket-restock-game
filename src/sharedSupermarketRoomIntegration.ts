@@ -69,7 +69,9 @@ function installGameRoomVisuals(): void {
 
   prototype.preload = function preloadSharedSupermarketRooms(): void {
     originalPreload.call(this);
-    if (!isSupportedDay(gameSession.day)) return;
+    // Day 4/5 selection is finalized after the GameScene preload begins. Load the
+    // four shared room backgrounds for every GameScene so a later day switch can
+    // never create Phaser's green/black missing-texture placeholder.
     loadBackgrounds(this as unknown as Phaser.Scene);
   };
 
