@@ -1,8 +1,10 @@
 import Phaser from "phaser";
+import type { LevelId } from "./domain/gameTypes";
 import { OpeningScene } from "./scenes/OpeningScene";
 
 const DELIVERY_READY_KEY = "supermarket.deliveryReady";
 const ACTIVE_DAY_KEY = "supermarket.activeDay";
+const PLAYABLE_DAYS: LevelId[] = ["day01", "day02", "day03", "day04", "day05"];
 
 type OpeningPrototype = {
   create: (...args: unknown[]) => void;
@@ -48,13 +50,15 @@ function clearDeliveryReady(): void {
   }
 }
 
-function readActiveDay(): "day01" | "day02" | "day03" {
+function readActiveDay(): LevelId {
   try {
     const stored = globalThis.localStorage?.getItem(ACTIVE_DAY_KEY);
-    if (stored === "day03") return "day03";
-    if (stored === "day02") return "day02";
-    return "day01";
+    return isLevelId(stored) ? stored : "day01";
   } catch {
     return "day01";
   }
+}
+
+function isLevelId(value: unknown): value is LevelId {
+  return typeof value === "string" && PLAYABLE_DAYS.includes(value as LevelId);
 }

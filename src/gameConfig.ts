@@ -4,11 +4,14 @@ import { gameSession } from "./systems/GameSession";
 
 export type ProductId = "cola" | "water" | "milk";
 
+export type FixtureType = "drinks_shelf" | "grocery_shelf" | "cold_case";
+
 export type ProductDefinition = {
   id: ProductId;
   label: string;
   boxKey: string;
   productKey: string;
+  fixtureType: FixtureType;
   price: number;
   saleWeight: number;
   shelfWidth: number;
@@ -21,6 +24,7 @@ export const PRODUCTS: Record<ProductId, ProductDefinition> = {
     label: "COLA",
     boxKey: Assets.props.boxCola,
     productKey: Assets.products.cola,
+    fixtureType: "drinks_shelf",
     price: 12,
     saleWeight: 5,
     shelfWidth: 50,
@@ -31,6 +35,7 @@ export const PRODUCTS: Record<ProductId, ProductDefinition> = {
     label: "WATER",
     boxKey: Assets.props.boxWater,
     productKey: Assets.products.water,
+    fixtureType: "grocery_shelf",
     price: 8,
     saleWeight: 4,
     shelfWidth: 48,
@@ -41,6 +46,7 @@ export const PRODUCTS: Record<ProductId, ProductDefinition> = {
     label: "MILK",
     boxKey: Assets.props.boxMilk,
     productKey: Assets.products.milk,
+    fixtureType: "cold_case",
     price: 15,
     saleWeight: 3,
     shelfWidth: 56,

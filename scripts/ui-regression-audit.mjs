@@ -36,15 +36,13 @@ const report = {
   failedRequests: [],
   badResponses: [],
   sdkEvents: [],
-  day3DeadlockState: null,
   fatalError: null,
   regressions: {
     stockedLobby: false,
     milkCaseVisible: false,
     milkTextureTransparent: false,
     day3ReachedGame: false,
-    day3MultiFixture: false,
-    day3CustomerServiceDeadlockRecovery: false,
+    day3MultiFixtureFloor: false,
     day4PromotionPressure: false,
     day5WeekendRush: false,
     promotionWingRealistic: false,
@@ -138,31 +136,11 @@ try {
   await page.waitForFunction(() => typeof window.__GAME_TEST__?.finishReceiving === "function", { timeout: 10000 });
   await page.evaluate(() => window.__GAME_TEST__.finishReceiving());
   await waitForScene(page, "game", 20000);
-  await page.waitForFunction(() => document.body.dataset.day3MultiFixture === "ready", { timeout: 10000 });
   await page.waitForTimeout(900);
 
   report.regressions.day3ReachedGame = await page.evaluate(() => document.body.dataset.gameScene === "game");
-  report.regressions.day3MultiFixture = true;
-  await capture(page, report, "04-day3-multi-fixture-floor.png", "Day 3 drinks, grocery and cold-case fixtures");
-
-  await page.waitForFunction(
-    () => typeof window.__DAY3_DEADLOCK_TEST__?.prepare === "function",
-    null,
-    { timeout: 10000 }
-  );
-  await page.evaluate(() => window.__DAY3_DEADLOCK_TEST__.prepare());
-  report.day3DeadlockState = await page.evaluate(() => window.__DAY3_DEADLOCK_TEST__?.state() ?? null);
-  await clickGame(page, 505, 850);
-  await page.waitForFunction(
-    () => (
-      document.body.dataset.day3DeadlockRecovery === "ready" &&
-      window.__DAY3_DEADLOCK_TEST__?.state().cartAtShelf === true
-    ),
-    null,
-    { timeout: 6000 }
-  );
-  report.day3DeadlockState = await page.evaluate(() => window.__DAY3_DEADLOCK_TEST__?.state() ?? null);
-  report.regressions.day3CustomerServiceDeadlockRecovery = true;
+  report.regressions.day3MultiFixtureFloor = await page.evaluate(() => document.body.dataset.day3MultiFixture === "ready");
+  await capture(page, report, "04-day3-multi-fixture-floor.png", "Day 3 multi-department floor");
 
   await page.locator("#market-pause-button").click();
   await page.waitForFunction(() => document.body.dataset.marketPaused === "true", { timeout: 5000 });

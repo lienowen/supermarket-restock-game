@@ -9,6 +9,7 @@ import { BackStockScene } from "./scenes/BackStockScene";
 import { PromotionWingScene } from "./scenes/PromotionWingScene";
 import { DayTwoRoomNavigationScene } from "./scenes/DayTwoRoomNavigationScene";
 import { installResponsiveShell } from "./responsiveShell";
+import { crazyGamesPlatform } from "./platform/crazyGamesPlatform";
 import "./gameSessionIntegration";
 import "./performanceEconomyIntegration";
 import "./customerDemandIntegration";
@@ -25,8 +26,8 @@ import "./customerLaneIntegration";
 import "./restockFeedbackIntegration";
 import "./dayTwoHookIntegration";
 import "./dayTwoChallengeRewardIntegration";
-import "./dayTwoOpeningExpansionIntegration";
 import "./promotionWingProductionIntegration";
+import "./promotionWingRealisticVisualIntegration";
 import "./promotionWingMainlineIntegration";
 import "./levelPacingIntegration";
 import "./serviceEventPacingIntegration";
@@ -65,32 +66,57 @@ import "./releaseVisualFlowFixIntegration";
 import "./releaseRegressionSignalsIntegration";
 import "./phaserTextSafetyIntegration";
 import "./milkTextureTransparencyIntegration";
+import "./platform/crazyGamesLifecycleIntegration";
+import "./dayThreeMultiFixtureIntegration";
+import "./weekOneReleaseIntegration";
+import "./dayFourFiveBatchRestockIntegration";
+import "./weekOneRuntimeDayGuardIntegration";
+import "./weekOnePendingDayIntegration";
+import "./weekOneSelectionPersistenceIntegration";
+import "./dayFourFiveLegacyCleanupIntegration";
+import "./boxTextureTransparencyIntegration";
+import "./dayFourFiveLayoutPolishIntegration";
+import "./storefrontPayloadOptimizationIntegration";
+import "./dayThreeDeadlockRecoveryIntegration";
+import "./dayThreeSceneIsolationIntegration";
+import "./uiSimplificationIntegration";
+import "./weekOneSpaceExpansionIntegration";
+import "./spaceExpansionBannerCoordinationIntegration";
+import "./finalUiLayoutIntegration";
 
-installResponsiveShell();
+void bootstrap();
 
-new Phaser.Game({
-  type: Phaser.AUTO,
-  parent: "app",
-  width: 1330,
-  height: 1182,
-  backgroundColor: "#151b1b",
-  scale: {
-    mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
-    expandParent: true
-  },
-  render: {
-    antialias: true,
-    roundPixels: true
-  },
-  scene: [
-    StorefrontScene,
-    OpeningScene,
-    GameScene,
-    PolishOverlayScene,
-    ProgressionCustomerScene,
-    BackStockScene,
-    PromotionWingScene,
-    DayTwoRoomNavigationScene
-  ]
-});
+async function bootstrap(): Promise<void> {
+  await crazyGamesPlatform.initialize();
+  crazyGamesPlatform.loadingStart();
+  installResponsiveShell();
+
+  const game = new Phaser.Game({
+    type: Phaser.AUTO,
+    parent: "app",
+    width: 1330,
+    height: 1182,
+    backgroundColor: "#151b1b",
+    scale: {
+      mode: Phaser.Scale.FIT,
+      autoCenter: Phaser.Scale.CENTER_BOTH,
+      expandParent: true
+    },
+    render: {
+      antialias: true,
+      roundPixels: true
+    },
+    scene: [
+      StorefrontScene,
+      OpeningScene,
+      GameScene,
+      PolishOverlayScene,
+      ProgressionCustomerScene,
+      BackStockScene,
+      PromotionWingScene,
+      DayTwoRoomNavigationScene
+    ]
+  });
+
+  crazyGamesPlatform.bindGame(game);
+}

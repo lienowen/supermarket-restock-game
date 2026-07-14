@@ -32,7 +32,7 @@ jobs:
               sha,
               state: "pending",
               context: "UI Regression Audit",
-              description: "Testing milk case, stocked lobby and Day 3 handoff",
+              description: "Testing campaign, release payload, bundle and SDK lifecycle",
               target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
             });
 
@@ -51,12 +51,32 @@ jobs:
           npx playwright install --with-deps chromium
 
       - name: Build production bundle
-        run: npm run build
+        run: |
+          set -o pipefail
+          npm run build 2>&1 | tee build.log
+
+      - name: Verify release bundle
+        run: |
+          set -o pipefail
+          npm run verify:release 2>&1 | tee release-check.log
+
+      - name: Measure initial release payload
+        run: |
+          set -o pipefail
+          node scripts/measure-release-payload.mjs 2>&1 | tee release-payload.log
 
       - name: Capture release regressions
         run: |
           set -o pipefail
           node scripts/capture-release-regressions.mjs 2>&1 | tee ui-audit-run.log
+
+      - name: Upload CrazyGames release package
+        uses: actions/upload-artifact@v4
+        with:
+          name: crazygames-release
+          path: dist
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Upload UI audit
         if: always()
@@ -66,7 +86,11 @@ jobs:
           path: |
             ui-audit
             ui-audit-run.log
-          if-no-files-found: error
+            build.log
+            release-check.log
+            release-payload.log
+            release-payload-report.json
+          if-no-files-found: warn
 
       - name: Publish UI regression status
         if: always()
@@ -78,7 +102,7 @@ jobs:
               ? context.payload.pull_request.head.sha
               : context.sha;
             const passed = "${{ job.status }}" === "success";
-            let description = "Milk case, stocked lobby and Day 3 handoff passed";
+            let description = "Campaign, release payload, bundle and SDK regressions passed";
             let failureKey = "runtime";
 
             if (!passed) {
@@ -96,10 +120,30 @@ jobs:
                 description = `Failed: ${failureKey}; browser issues ${browserIssues}`;
               } catch {
                 try {
-                  const lines = fs.readFileSync("ui-audit-run.log", "utf8").trim().split(/\r?\n/);
-                  const last = lines.at(-1) || "inspect audit log";
-                  failureKey = last.toLowerCase().includes("timeout") ? "timeout" : "runtime";
-                  description = `Failed: ${last}`;
+                  const payloadReport = JSON.parse(fs.readFileSync("release-payload-report.json", "utf8"));
+                  if (payloadReport.fatalError) {
+                    failureKey = "release-payload";
+                    description = payloadReport.fatalError;
+                  } else {
+                    const releaseLines = fs.readFileSync("release-check.log", "utf8").trim().split(/\r?\n/);
+                    const releaseFailure = releaseLines.find((line) => line.includes("Release check failed"));
+                    if (releaseFailure) {
+                      failureKey = "release-bundle";
+                      description = releaseFailure;
+                    } else {
+                      const buildLines = fs.readFileSync("build.log", "utf8").trim().split(/\r?\n/);
+                      const buildError = buildLines.find((line) => line.includes("error TS")) || buildLines.at(-1);
+                      if (buildError) {
+                        failureKey = "build";
+                        description = `Failed: ${buildError}`;
+                      } else {
+                        const lines = fs.readFileSync("ui-audit-run.log", "utf8").trim().split(/\r?\n/);
+                        const last = lines.at(-1) || "inspect audit log";
+                        failureKey = last.toLowerCase().includes("timeout") ? "timeout" : "runtime";
+                        description = `Failed: ${last}`;
+                      }
+                    }
+                  }
                 } catch {
                   description = "UI regression audit failed; inspect workflow log";
                 }

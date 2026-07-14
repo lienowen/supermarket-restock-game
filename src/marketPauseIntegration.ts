@@ -1,10 +1,13 @@
 import Phaser from "phaser";
 import "./marketPause.css";
+import { crazyGamesPlatform } from "./platform/crazyGamesPlatform";
 import { GameScene } from "./scenes/GameScene";
 import { gameSession } from "./systems/GameSession";
 
 const PAUSE_BUTTON_ID = "market-pause-button";
 const PAUSE_OVERLAY_ID = "market-pause-overlay";
+
+type PauseSource = "manual" | "lifecycle";
 
 type SceneRuntimeState = {
   scene: Phaser.Scene;
@@ -24,6 +27,7 @@ type GamePrototype = {
 let activeGame: RuntimeGame | undefined;
 let pausedStates: SceneRuntimeState[] = [];
 let pausing = false;
+let activePauseSource: PauseSource | undefined;
 
 installPauseDom();
 installGamePauseBridge();
@@ -36,7 +40,7 @@ function installPauseDom(): void {
     button.type = "button";
     button.textContent = "PAUSE";
     button.setAttribute("aria-label", "Pause shift");
-    button.addEventListener("click", () => openPause("Manual pause"));
+    button.addEventListener("click", () => openPause("Manual pause", "manual"));
     document.body.appendChild(button);
   }
 
@@ -57,7 +61,7 @@ function installPauseDom(): void {
   ].join("");
 
   overlay.querySelector<HTMLButtonElement>('[data-action="resume"]')
-    ?.addEventListener("click", resumeShift);
+    ?.addEventListener("click", () => resumeShift());
   overlay.querySelector<HTMLButtonElement>('[data-action="restart"]')
     ?.addEventListener("click", restartShift);
   overlay.querySelector<HTMLButtonElement>('[data-action="exit"]')
@@ -87,26 +91,29 @@ function installGamePauseBridge(): void {
       resumeShift();
       return;
     }
-    openPause("Manual pause");
+    openPause("Manual pause", "manual");
   };
 }
 
 function installLifecyclePause(): void {
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "hidden") openPause("Paused because the game moved to the background");
+    if (document.visibilityState === "hidden") {
+      openPause("Paused because the game moved to the background", "lifecycle");
+    }
   });
   window.addEventListener("pagehide", () => {
-    openPause("Paused because the game moved to the background");
+    openPause("Paused because the game moved to the background", "lifecycle");
   });
 }
 
-function openPause(reason: string): void {
+function openPause(reason: string, source: PauseSource): void {
   const scene = activeGame;
   if (pausing || !scene?.scene.isActive() || scene.shiftEnded) return;
   if (document.body.dataset.gameScene !== "game" && document.body.dataset.gameScene !== "promotion") return;
   if (document.body.dataset.marketPaused === "true") return;
 
   pausing = true;
+  activePauseSource = source;
   pausedStates = scene.game.scene.getScenes(true).map((activeScene) => ({
     scene: activeScene,
     timePaused: activeScene.time.paused,
@@ -120,15 +127,19 @@ function openPause(reason: string): void {
   });
   gameSession.setPaused(true);
   document.body.dataset.marketPaused = "true";
+  document.body.dataset.marketPauseSource = source;
   const reasonElement = document.querySelector<HTMLElement>(`#${PAUSE_OVERLAY_ID} [data-role="reason"]`);
   if (reasonElement) reasonElement.textContent = `${reason}. Customers and timers are stopped.`;
+  if (source === "manual") crazyGamesPlatform.gameplayStop();
   pausing = false;
 }
 
-function resumeShift(): void {
+function resumeShift(reportGameplay = true): void {
   if (document.body.dataset.marketPaused !== "true") return;
+  const shouldResumeGameplay = reportGameplay && activePauseSource === "manual";
   resumeAllScenes();
   clearPauseMarker();
+  if (shouldResumeGameplay) crazyGamesPlatform.gameplayStart();
 }
 
 function resumeAllScenes(): void {
@@ -143,14 +154,17 @@ function resumeAllScenes(): void {
 
 function clearPauseMarker(): void {
   document.body.dataset.marketPaused = "false";
+  delete document.body.dataset.marketPauseSource;
   gameSession.setPaused(false);
   pausing = false;
+  activePauseSource = undefined;
 }
 
 function restartShift(): void {
   const scene = activeGame;
   if (!scene?.scene.isActive()) return;
-  resumeShift();
+  resumeShift(false);
+  crazyGamesPlatform.loadingStart();
   stopAuxiliaryScenes(scene);
   scene.scene.restart();
 }
@@ -158,7 +172,8 @@ function restartShift(): void {
 function exitToStorefront(): void {
   const scene = activeGame;
   if (!scene?.scene.isActive()) return;
-  resumeShift();
+  resumeShift(false);
+  crazyGamesPlatform.gameplayStop();
   stopAuxiliaryScenes(scene);
   document.body.dataset.gameScene = "storefront";
   scene.scene.start("storefront", { showResult: false });

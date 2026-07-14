@@ -43,10 +43,10 @@ export const LEVELS: Record<LevelId, LevelConfig> = {
   },
   day03: {
     id: "day03",
-    title: "Shift Supervisor",
-    objective: "Inspect the store, manage service decisions, keep the rush under control, restore a failed register and close the floor professionally.",
-    zones: ["backroom", "drinks", "checkout", "service"],
-    shiftSeconds: 330,
+    title: "Floor Control",
+    objective: "Take control of the sales floor, batch-restock drinks, grocery and dairy fixtures, manage service decisions and close professionally.",
+    zones: ["backroom", "drinks", "dairy", "snacks", "checkout", "service"],
+    shiftSeconds: 360,
     salesTargets: { openToRush: 4, rushToClosing: 8 },
     customerIntervalsMs: { open: 6500, rush: 4700 },
     customerMix: { normal: 0.55, impatient: 0.25, senior: 0.2 },
@@ -62,30 +62,31 @@ export const LEVELS: Record<LevelId, LevelConfig> = {
   },
   day04: {
     id: "day04",
-    title: "Where Is It?",
-    objective: "Answer product-location questions while maintaining shelves.",
-    zones: ["backroom", "drinks", "dairy"],
-    shiftSeconds: 300,
-    salesTargets: { openToRush: 8, rushToClosing: 16 },
-    customerIntervalsMs: { open: 5200, rush: 3600 },
-    customerMix: { normal: 0.55, impatient: 0.2, senior: 0.25 },
+    title: "Promotion Pressure",
+    objective: "Keep four full sales-floor displays ready, protect the promotion end cap during a flash sale and complete twelve sales.",
+    zones: ["backroom", "drinks", "snacks", "dairy", "promotion", "checkout"],
+    shiftSeconds: 420,
+    salesTargets: { openToRush: 6, rushToClosing: 12 },
+    customerIntervalsMs: { open: 5600, rush: 3600 },
+    customerMix: { normal: 0.45, impatient: 0.2, family: 0.15, promotion: 0.2 },
     features: {
       ...baseFeatures,
       customerWaiting: true,
-      customerQuestions: true,
       substitutions: true,
-      rushHour: true
+      rushHour: true,
+      shelfCorrection: true,
+      queueManagement: true
     }
   },
   day05: {
     id: "day05",
-    title: "Lunch Rush",
-    objective: "Prioritize customers, stock and service during a busy rush.",
-    zones: ["backroom", "drinks", "dairy", "checkout"],
-    shiftSeconds: 330,
-    salesTargets: { openToRush: 10, rushToClosing: 22 },
-    customerIntervalsMs: { open: 4400, rush: 3000 },
-    customerMix: { normal: 0.4, impatient: 0.25, family: 0.2, picky: 0.15 },
+    title: "Weekend Rush",
+    objective: "Run the whole store through two demand surges, prioritize six departments and finish the first week with eighteen sales.",
+    zones: ["backroom", "drinks", "dairy", "snacks", "produce", "promotion", "checkout", "service"],
+    shiftSeconds: 540,
+    salesTargets: { openToRush: 8, rushToClosing: 18 },
+    customerIntervalsMs: { open: 4600, rush: 2800 },
+    customerMix: { normal: 0.35, impatient: 0.25, family: 0.2, picky: 0.1, bulk: 0.1 },
     features: {
       ...baseFeatures,
       customerWaiting: true,
@@ -93,7 +94,8 @@ export const LEVELS: Record<LevelId, LevelConfig> = {
       substitutions: true,
       rushHour: true,
       queueManagement: true,
-      incidents: true
+      incidents: true,
+      shelfCorrection: true
     }
   }
 };
