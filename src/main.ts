@@ -78,6 +78,7 @@ import "./dayFourFiveLegacyCleanupIntegration";
 import "./boxTextureTransparencyIntegration";
 import "./dayFourFiveLayoutPolishIntegration";
 import "./storefrontPayloadOptimizationIntegration";
+import "./dayThreeDeadlockRecoveryIntegration";
 
 void bootstrap();
 
