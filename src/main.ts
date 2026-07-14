@@ -79,6 +79,7 @@ import "./boxTextureTransparencyIntegration";
 import "./dayFourFiveLayoutPolishIntegration";
 import "./storefrontPayloadOptimizationIntegration";
 import "./dayThreeDeadlockRecoveryIntegration";
+import "./dayThreeSceneIsolationIntegration";
 
 void bootstrap();
 
