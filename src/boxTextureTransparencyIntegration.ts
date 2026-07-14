@@ -4,8 +4,8 @@ import { GameScene } from "./scenes/GameScene";
 import { gameSession } from "./systems/GameSession";
 
 const BOX_TEXTURES = [Assets.props.boxCola, Assets.props.boxWater, Assets.props.boxMilk] as const;
-const BACKGROUND_MIN_CHANNEL = 178;
-const BACKGROUND_MAX_SPREAD = 46;
+const BACKGROUND_MIN_CHANNEL = 96;
+const BACKGROUND_MAX_SPREAD = 52;
 const MAX_TEXTURE_EDGE = 1024;
 
 type BatchDay = "day04" | "day05";
@@ -37,7 +37,7 @@ function removeConnectedLightBackground(scene: Phaser.Scene, textureKey: string)
   };
 
   if (!source || !source.width || !source.height) return;
-  if (source instanceof HTMLCanvasElement && source.dataset.stockCaseTransparencyReady === "1") return;
+  if (source instanceof HTMLCanvasElement && source.dataset.stockCaseTransparencyReady === "2") return;
 
   const scale = Math.min(1, MAX_TEXTURE_EDGE / Math.max(source.width, source.height));
   const width = Math.max(1, Math.round(source.width * scale));
@@ -46,7 +46,7 @@ function removeConnectedLightBackground(scene: Phaser.Scene, textureKey: string)
   const canvas = document.createElement("canvas");
   canvas.width = width;
   canvas.height = height;
-  canvas.dataset.stockCaseTransparencyReady = "1";
+  canvas.dataset.stockCaseTransparencyReady = "2";
 
   const context = canvas.getContext("2d", { willReadFrequently: true });
   if (!context) return;
@@ -104,8 +104,8 @@ function removeConnectedLightBackground(scene: Phaser.Scene, textureKey: string)
   }
 
   // Remove a thin anti-aliased halo adjoining the connected background while
-  // preserving light labels and highlights inside the cardboard artwork.
-  for (let pass = 0; pass < 2; pass += 1) {
+  // preserving labels and highlights inside the cardboard artwork.
+  for (let pass = 0; pass < 3; pass += 1) {
     const next = connected.slice();
     for (let y = 1; y < height - 1; y += 1) {
       for (let x = 1; x < width - 1; x += 1) {
