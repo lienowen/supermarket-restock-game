@@ -75,6 +75,7 @@ import "./weekOneRuntimeDayGuardIntegration";
 import "./weekOnePendingDayIntegration";
 import "./weekOneSelectionPersistenceIntegration";
 import "./dayFourFiveLegacyCleanupIntegration";
+import "./boxTextureTransparencyIntegration";
 
 void bootstrap();
 
