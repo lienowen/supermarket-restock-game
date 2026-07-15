@@ -13,8 +13,6 @@ const TARGETS = [
   "assets/day01/ChatGPT Image 2026年7月13日 16_09_46.png"
 ];
 
-// Keep every source image in the repository, but ship only the scene files used by
-// the current runtime. These variants are reserved for later departments/days.
 const FORCED_UNUSED_TARGETS = [
   "assets/common/supermarket/backgrounds/store/store-overview-02.png",
   "assets/common/supermarket/backgrounds/store/store-overview-03.png",
@@ -53,32 +51,52 @@ for (const target of TARGETS) {
   if (!existsSync(absolute)) continue;
 
   const targetFiles = statSync(absolute).isDirectory() ? walk(absolute) : [absolute];
-  const referenced = targetFiles.find((file) => {
-    const name = relative(DIST_DIR, file).replaceAll("\\", "/");
-    return runtimeText.includes(name) || runtimeText.includes(encodeURI(name));
-  });
+  const referenced = targetFiles.find((file) => isRuntimeReferenced(file));
 
   if (referenced) {
     const name = relative(DIST_DIR, referenced).replaceAll("\\", "/");
     throw new Error(`Refusing to prune runtime-referenced release asset: ${name}`);
   }
 
-  removedFiles += targetFiles.length;
-  removedBytes += targetFiles.reduce((sum, file) => sum + statSync(file).size, 0);
+  removeFiles(targetFiles);
   rmSync(absolute, { recursive: true, force: true });
 }
 
 for (const target of FORCED_UNUSED_TARGETS) {
   const absolute = join(DIST_DIR, target);
   if (!existsSync(absolute)) continue;
-  removedFiles += 1;
-  removedBytes += statSync(absolute).size;
+  removeFiles([absolute]);
   rmSync(absolute, { force: true });
+}
+
+// The repository intentionally keeps a large reusable supermarket art library.
+// Public assets are copied wholesale by Vite, so remove every image in that library
+// that has no literal reference in the built runtime. This keeps source art available
+// for later days without shipping it in the current CrazyGames package.
+const supermarketRoot = join(DIST_DIR, "assets/common/supermarket");
+if (existsSync(supermarketRoot)) {
+  const unreferencedSupermarketAssets = walk(supermarketRoot).filter((file) => {
+    if (TEXT_EXTENSIONS.has(extname(file).toLowerCase())) return false;
+    return !isRuntimeReferenced(file);
+  });
+
+  removeFiles(unreferencedSupermarketAssets);
+  unreferencedSupermarketAssets.forEach((file) => rmSync(file, { force: true }));
 }
 
 console.log(
   `Pruned ${removedFiles} non-runtime release assets, saving ${(removedBytes / 1024 / 1024).toFixed(2)} MiB.`
 );
+
+function isRuntimeReferenced(file) {
+  const name = relative(DIST_DIR, file).replaceAll("\\", "/");
+  return runtimeText.includes(name) || runtimeText.includes(encodeURI(name));
+}
+
+function removeFiles(files) {
+  removedFiles += files.length;
+  removedBytes += files.reduce((sum, file) => sum + statSync(file).size, 0);
+}
 
 function walk(directory) {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
