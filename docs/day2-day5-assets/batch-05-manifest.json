@@ -1,0 +1,22 @@
+{
+  "package": "supermarket-assets-batch-05",
+  "install": "Extract this ZIP into the repository root.",
+  "asset_count": 9,
+  "asset_root": "public/assets/common/supermarket/fixtures/",
+  "files": [
+    "public/assets/common/supermarket/fixtures/shelf-produce-full.png",
+    "public/assets/common/supermarket/fixtures/shelf-produce-low.png",
+    "public/assets/common/supermarket/fixtures/shelf-produce-empty.png",
+    "public/assets/common/supermarket/fixtures/shelf-frozen-full.png",
+    "public/assets/common/supermarket/fixtures/shelf-frozen-low.png",
+    "public/assets/common/supermarket/fixtures/shelf-frozen-empty.png",
+    "public/assets/common/supermarket/fixtures/shelf-checkout-full.png",
+    "public/assets/common/supermarket/fixtures/shelf-checkout-low.png",
+    "public/assets/common/supermarket/fixtures/shelf-checkout-empty.png"
+  ],
+  "notes": [
+    "All three states in each fixture family share a normalized 1024x1280 canvas.",
+    "The state families preserve consistent placement and sizing for Phaser texture swaps.",
+    "Files use PNG alpha transparency."
+  ]
+}

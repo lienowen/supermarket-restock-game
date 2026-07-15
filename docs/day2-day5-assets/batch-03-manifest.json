@@ -1,0 +1,24 @@
+{
+  "package": "supermarket-assets-batch-03",
+  "install": "Extract this zip into the repository root.",
+  "asset_count": 10,
+  "navigation_files": [
+    "public/assets/common/supermarket/navigation/enter-main-floor.png",
+    "public/assets/common/supermarket/navigation/go-to-promotion.png",
+    "public/assets/common/supermarket/navigation/go-to-cold-case.png",
+    "public/assets/common/supermarket/navigation/back-to-backroom.png",
+    "public/assets/common/supermarket/navigation/back-to-main-floor.png"
+  ],
+  "label_files": [
+    "public/assets/common/supermarket/labels/label-main-floor.png",
+    "public/assets/common/supermarket/labels/label-promotion-wing.png",
+    "public/assets/common/supermarket/labels/label-checkout-zone.png",
+    "public/assets/common/supermarket/labels/label-backroom.png",
+    "public/assets/common/supermarket/labels/label-cold-case.png"
+  ],
+  "notes": [
+    "Batch 03 contains 5 navigation buttons and 5 area labels.",
+    "All files are ready to place under public/assets/common/supermarket/.",
+    "Suggested code path example: assets/common/supermarket/navigation/enter-main-floor.png"
+  ]
+}

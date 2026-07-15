@@ -1,0 +1,23 @@
+{
+  "package": "supermarket-assets-batch-04",
+  "install": "Extract this ZIP into the repository root.",
+  "asset_count": 10,
+  "asset_root": "public/assets/common/supermarket",
+  "files": [
+    "public/assets/common/supermarket/foreground/foreground-aisle-left.png",
+    "public/assets/common/supermarket/foreground/foreground-aisle-right.png",
+    "public/assets/common/supermarket/foreground/foreground-coldcase-left.png",
+    "public/assets/common/supermarket/foreground/foreground-coldcase-right.png",
+    "public/assets/common/supermarket/foreground/foreground-promo-left.png",
+    "public/assets/common/supermarket/effects/tag-low-stock.png",
+    "public/assets/common/supermarket/effects/tag-out-of-stock.png",
+    "public/assets/common/supermarket/effects/tag-restocked.png",
+    "public/assets/common/supermarket/effects/highlight-frame-yellow.png",
+    "public/assets/common/supermarket/effects/click-ring.png"
+  ],
+  "notes": [
+    "Foreground assets use 1330x1182 transparent canvases for direct scene placement.",
+    "Status and interaction graphics use true PNG transparency.",
+    "Foreground shelves were cleaned from the generated checkerboard background."
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "package": "supermarket-assets-batch-08",
+  "install": "Extract this zip into the repository root.",
+  "asset_count": 10,
+  "asset_root": "public/assets/common/supermarket/effects/",
+  "files": [
+    "public/assets/common/supermarket/effects/effect-restock-burst.png",
+    "public/assets/common/supermarket/effects/effect-stock-warning.png",
+    "public/assets/common/supermarket/effects/effect-customer-alert.png",
+    "public/assets/common/supermarket/effects/effect-task-complete.png",
+    "public/assets/common/supermarket/effects/effect-perfect-restock.png",
+    "public/assets/common/supermarket/effects/effect-combo-2.png",
+    "public/assets/common/supermarket/effects/effect-combo-3.png",
+    "public/assets/common/supermarket/effects/effect-money-pop.png",
+    "public/assets/common/supermarket/effects/effect-time-warning.png",
+    "public/assets/common/supermarket/effects/effect-room-unlocked.png"
+  ],
+  "notes": [
+    "Batch 08 contains task feedback and event effect assets.",
+    "All files are 1:1 transparent PNG effect graphics suitable for overlay use.",
+    "Recommended for Day3-Day5 task feedback, alerts, combo, money, and unlock moments."
+  ]
+}

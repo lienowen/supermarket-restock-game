@@ -1,0 +1,25 @@
+{
+  "package": "supermarket-assets-batch-07",
+  "install": "Extract this zip into the repository root.",
+  "asset_count": 10,
+  "asset_root": "public/assets/common/supermarket/",
+  "character_files": [
+    "public/assets/common/supermarket/characters/worker-idle.png",
+    "public/assets/common/supermarket/characters/worker-push-cart.png",
+    "public/assets/common/supermarket/characters/worker-carry-box.png",
+    "public/assets/common/supermarket/characters/worker-restock.png",
+    "public/assets/common/supermarket/characters/worker-scan-stock.png",
+    "public/assets/common/supermarket/characters/customer-waiting.png",
+    "public/assets/common/supermarket/characters/customer-help-request.png",
+    "public/assets/common/supermarket/characters/cashier-service.png"
+  ],
+  "prop_files": [
+    "public/assets/common/supermarket/props/prop-pallet-jack.png",
+    "public/assets/common/supermarket/props/prop-rolling-ladder.png"
+  ],
+  "notes": [
+    "Batch 07 contains character and prop assets for Day3-Day5 gameplay scenes.",
+    "Files are arranged for direct project import.",
+    "Generated images are isolated cutout-style assets intended for sprite or UI scene use."
+  ]
+}

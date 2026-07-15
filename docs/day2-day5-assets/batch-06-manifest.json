@@ -1,0 +1,23 @@
+{
+  "package": "supermarket-assets-batch-06",
+  "install": "Extract this ZIP into the repository root.",
+  "asset_count": 10,
+  "asset_root": "public/assets/common/supermarket/",
+  "files": [
+    "public/assets/common/supermarket/backgrounds/common-stock-dock.png",
+    "public/assets/common/supermarket/fixtures/rack-backroom-full.png",
+    "public/assets/common/supermarket/fixtures/rack-backroom-low.png",
+    "public/assets/common/supermarket/fixtures/rack-backroom-empty.png",
+    "public/assets/common/supermarket/fixtures/shelf-bakery-full.png",
+    "public/assets/common/supermarket/fixtures/shelf-bakery-low.png",
+    "public/assets/common/supermarket/fixtures/shelf-bakery-empty.png",
+    "public/assets/common/supermarket/fixtures/shelf-healthbeauty-full.png",
+    "public/assets/common/supermarket/fixtures/shelf-healthbeauty-low.png",
+    "public/assets/common/supermarket/fixtures/shelf-healthbeauty-empty.png"
+  ],
+  "notes": [
+    "All fixture state families use identical 1024x1280 transparent canvases.",
+    "The stock dock background uses a normalized 2660x1996 opaque scene image.",
+    "Objects rest on shelves and floor surfaces with contact shadows."
+  ]
+}

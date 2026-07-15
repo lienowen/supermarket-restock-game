@@ -1,0 +1,25 @@
+{
+  "package": "supermarket-assets-batch-01",
+  "install": "Extract this zip into the repository root.",
+  "asset_root": "public/assets/common/supermarket",
+  "asset_count": 9,
+  "files": [
+    "public/assets/common/supermarket/carts/cart-empty.png",
+    "public/assets/common/supermarket/carts/cart-load-1.png",
+    "public/assets/common/supermarket/carts/cart-load-2.png",
+    "public/assets/common/supermarket/carts/cart-full.png",
+    "public/assets/common/supermarket/fixtures/shelf-household-low-v2.png",
+    "public/assets/common/supermarket/fixtures/shelf-dairy-low.png",
+    "public/assets/common/supermarket/fixtures/shelf-dairy-empty.png",
+    "public/assets/common/supermarket/fixtures/shelf-snacks-low.png",
+    "public/assets/common/supermarket/fixtures/shelf-snacks-empty.png"
+  ],
+  "pending_for_original_10_asset_plan": [
+    "public/assets/common/supermarket/fixtures/shelf-pantry-low.png"
+  ],
+  "notes": [
+    "This first batch contains 4 cart states and 5 shelf-state assets.",
+    "The original 10-image plan is missing shelf-pantry-low.png.",
+    "Verify true alpha transparency before layered in-game compositing."
+  ]
+}

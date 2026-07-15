@@ -1,0 +1,23 @@
+{
+  "package": "supermarket-assets-batch-02",
+  "install": "Extract this zip into the repository root.",
+  "asset_root": "public/assets/common/supermarket/boxes/",
+  "asset_count": 10,
+  "files": [
+    "public/assets/common/supermarket/boxes/box-beverages.png",
+    "public/assets/common/supermarket/boxes/box-pantry.png",
+    "public/assets/common/supermarket/boxes/box-household.png",
+    "public/assets/common/supermarket/boxes/box-dairy.png",
+    "public/assets/common/supermarket/boxes/box-snacks.png",
+    "public/assets/common/supermarket/boxes/crate-produce.png",
+    "public/assets/common/supermarket/boxes/pallet-goods-01.png",
+    "public/assets/common/supermarket/boxes/pallet-goods-02.png",
+    "public/assets/common/supermarket/boxes/pallet-goods-03.png",
+    "public/assets/common/supermarket/boxes/pallet-empty.png"
+  ],
+  "notes": [
+    "Batch 02 contains warehouse box and pallet assets.",
+    "All files are placed into public/assets/common/supermarket/boxes/.",
+    "These are isolated generated assets intended for Day2-Day5 warehouse and stockroom scenes."
+  ]
+}
