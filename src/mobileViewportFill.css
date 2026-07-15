@@ -1,0 +1,137 @@
+#mobile-game-backdrop {
+  position: absolute;
+  z-index: 0;
+  inset: -24px;
+  display: none;
+  width: calc(100% + 48px) !important;
+  height: calc(100% + 48px) !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0;
+  pointer-events: none;
+  filter: blur(20px) brightness(0.48) saturate(0.78);
+  transform: scale(1.045);
+  transform-origin: center;
+}
+
+html body[data-viewport-mode="mobile-landscape"] #app {
+  padding: 0 !important;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 50% 42%, rgb(49 82 76 / 72%), rgb(11 24 26 / 96%) 72%),
+    #0b1719;
+}
+
+html body[data-viewport-mode="mobile-landscape"] #mobile-game-backdrop {
+  display: block;
+}
+
+html body[data-viewport-mode="mobile-landscape"] #app::after {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgb(4 12 14 / 30%), transparent 18%, transparent 82%, rgb(4 12 14 / 30%)),
+    linear-gradient(180deg, rgb(4 12 14 / 20%), transparent 18%, transparent 82%, rgb(4 12 14 / 24%));
+}
+
+html body[data-viewport-mode="mobile-landscape"] #app > canvas:not(#mobile-game-backdrop) {
+  position: absolute !important;
+  z-index: 2;
+  top: 50% !important;
+  left: 50% !important;
+  width: auto !important;
+  height: auto !important;
+  max-width: calc(var(--visual-vw, 100vw) - env(safe-area-inset-left) - env(safe-area-inset-right)) !important;
+  max-height: calc(var(--visual-vh, 100dvh) - env(safe-area-inset-top) - env(safe-area-inset-bottom)) !important;
+  margin: 0 !important;
+  transform: translate(-50%, -50%) !important;
+  transform-origin: center center !important;
+  box-shadow: 0 0 26px rgb(0 0 0 / 32%) !important;
+}
+
+/* The Phaser scene already owns a complete HUD and task panel. Keeping a
+ * second DOM copy made the playable area shorter and caused the old canvas
+ * crop rules to hide the top and bottom of the store. */
+html body[data-viewport-mode="mobile-landscape"] #mobile-game-hud,
+html body[data-viewport-mode="mobile-landscape"] #mobile-game-task,
+html body[data-viewport-mode="mobile-landscape"] #mobile-storefront-actions,
+html body[data-viewport-mode="mobile-landscape"] #mobile-storefront-close {
+  display: none !important;
+}
+
+html body[data-viewport-mode="mobile-landscape"] #mobile-fullscreen-button,
+html body[data-viewport-mode="mobile-landscape"] #mobile-landscape-lock {
+  display: none !important;
+}
+
+/* Portrait is a rotation gateway, not a second cropped gameplay layout. */
+@media (max-width: 900px) and (orientation: portrait) {
+  html body[data-viewport-mode="mobile-portrait"] #app > canvas:not(#mobile-game-backdrop) {
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    width: auto !important;
+    height: auto !important;
+    max-width: 118vw !important;
+    max-height: 118dvh !important;
+    opacity: 0.12 !important;
+    filter: blur(5px) brightness(0.55) !important;
+    transform: translate(-50%, -50%) !important;
+    pointer-events: none !important;
+  }
+
+  html body[data-viewport-mode="mobile-portrait"] #mobile-game-backdrop {
+    display: none !important;
+  }
+
+  html body[data-viewport-mode="mobile-portrait"] #mobile-orientation-hint {
+    z-index: 10050;
+    inset: 0;
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding:
+      max(36px, env(safe-area-inset-top))
+      max(30px, env(safe-area-inset-right))
+      max(110px, env(safe-area-inset-bottom))
+      max(30px, env(safe-area-inset-left));
+    box-sizing: border-box;
+    background: rgb(7 19 21 / 91%);
+    color: #ffffff;
+    text-align: center;
+    pointer-events: none;
+    backdrop-filter: blur(10px);
+  }
+
+  html body[data-viewport-mode="mobile-portrait"] #mobile-orientation-hint::before {
+    content: "↻";
+    display: block;
+    color: #ffd75a;
+    font: 700 72px/1 Arial, sans-serif;
+  }
+
+  html body[data-viewport-mode="mobile-portrait"] #mobile-orientation-hint strong {
+    font: 900 27px/1.1 Arial, sans-serif;
+    letter-spacing: 1.5px;
+  }
+
+  html body[data-viewport-mode="mobile-portrait"] #mobile-orientation-hint span {
+    max-width: 340px;
+    color: #dbe9e4;
+    font: 700 15px/1.5 Arial, sans-serif;
+  }
+
+  html body[data-viewport-mode="mobile-portrait"] #mobile-game-hud,
+  html body[data-viewport-mode="mobile-portrait"] #mobile-game-task,
+  html body[data-viewport-mode="mobile-portrait"] #mobile-storefront-actions,
+  html body[data-viewport-mode="mobile-portrait"] #mobile-storefront-close,
+  html body[data-viewport-mode="mobile-portrait"] #mobile-fullscreen-button {
+    display: none !important;
+  }
+}
