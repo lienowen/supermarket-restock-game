@@ -468,7 +468,7 @@ function requestStockRoom(scene: RuntimeGame, controller: VerticalSliceControlle
     return;
   }
 
-  controller.previousMainView = controller.view === "stock" ? "overview" : controller.view;
+  controller.previousMainView = controller.view;
   controller.view = "stock";
   controller.transitioning = true;
   hideActors(scene);
