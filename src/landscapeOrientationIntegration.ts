@@ -201,7 +201,7 @@ function markLandscapeState(state: "locked" | "ready"): void {
   button.disabled = false;
   button.dataset.state = state;
   button.textContent = "LANDSCAPE FULLSCREEN";
-  syncLandscapeButton();
+  button.dataset.visible = isPortraitMobile() ? "true" : "false";
 }
 
 function syncLandscapeButton(): void {
@@ -209,7 +209,12 @@ function syncLandscapeButton(): void {
   if (!button) return;
   const visible = isPortraitMobile();
   button.dataset.visible = visible ? "true" : "false";
-  if (!visible) markLandscapeState("locked");
+  if (!visible) {
+    document.body.dataset.orientationLock = "locked";
+    button.disabled = false;
+    button.dataset.state = "locked";
+    button.textContent = "LANDSCAPE FULLSCREEN";
+  }
 }
 
 function isPortraitMobile(): boolean {
