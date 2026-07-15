@@ -1,3 +1,9 @@
+import Phaser from "phaser";
+import { GameScene } from "./scenes/GameScene";
+import { OpeningScene } from "./scenes/OpeningScene";
+import { PromotionWingScene } from "./scenes/PromotionWingScene";
+import { StorefrontScene } from "./scenes/StorefrontScene";
+
 const LANDSCAPE_BUTTON_ID = "mobile-landscape-lock";
 const LANDSCAPE_STYLE_ID = "mobile-landscape-lock-style";
 
@@ -5,18 +11,33 @@ type LockableOrientation = ScreenOrientation & {
   lock?: (orientation: "landscape") => Promise<void>;
 };
 
-type VendorFullscreenDocument = Document & {
-  webkitFullscreenElement?: Element | null;
+type CreatePrototype = {
+  create: (...args: unknown[]) => void;
 };
 
-type VendorFullscreenElement = HTMLElement & {
-  webkitRequestFullscreen?: () => void | Promise<void>;
-};
-
+let activeScene: Phaser.Scene | undefined;
 let lockRequest: Promise<boolean> | undefined;
 let hasAttemptedFromGesture = false;
 
+wrapScene(StorefrontScene.prototype as unknown as CreatePrototype);
+wrapScene(OpeningScene.prototype as unknown as CreatePrototype);
+wrapScene(GameScene.prototype as unknown as CreatePrototype);
+wrapScene(PromotionWingScene.prototype as unknown as CreatePrototype);
 installLandscapeOrientation();
+
+function wrapScene(prototype: CreatePrototype): void {
+  const originalCreate = prototype.create;
+  prototype.create = function createWithLandscapeSupport(...args: unknown[]): void {
+    originalCreate.apply(this, args);
+    const scene = this as unknown as Phaser.Scene;
+    activeScene = scene;
+    syncLandscapeButton();
+
+    scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      if (activeScene === scene) activeScene = undefined;
+    });
+  };
+}
 
 function installLandscapeOrientation(): void {
   ensureLandscapeStyle();
@@ -30,21 +51,19 @@ function installLandscapeOrientation(): void {
 
   document.addEventListener("fullscreenchange", () => {
     syncLandscapeButton();
-    if (isPortraitMobile() && getFullscreenElement()) {
+    if (isPortraitMobile() && document.fullscreenElement) {
       void lockOrientationOnly();
     }
   });
 
   document.addEventListener("webkitfullscreenchange", () => {
     syncLandscapeButton();
-    if (isPortraitMobile() && getFullscreenElement()) {
-      void lockOrientationOnly();
-    }
+    if (isPortraitMobile()) void lockOrientationOnly();
   });
 
-  // Browsers require a real user gesture before fullscreen/orientation lock.
-  // Capture the first in-page tap so Android browsers rotate without requiring
-  // a separate second action. START DAY clicks are also covered by this path.
+  // Fullscreen and orientation locking require a real user gesture. Capturing
+  // the first in-page tap means START DAY and normal menu taps can trigger the
+  // landscape transition without an additional confirmation step.
   document.addEventListener("pointerup", handleFirstUserGesture, { capture: true, passive: true });
 }
 
@@ -132,13 +151,9 @@ async function performLandscapeRequest(explicitButton: boolean): Promise<boolean
   }
   document.body.dataset.orientationLock = "requesting";
 
-  let fullscreenAvailable = Boolean(getFullscreenElement());
-  if (!fullscreenAvailable) {
-    fullscreenAvailable = await requestDocumentFullscreen();
-  }
-
+  const fullscreenAvailable = await requestPhaserFullscreen();
   const orientationLocked = await lockOrientationOnly();
-  await wait(220);
+  await wait(240);
 
   const success = isLandscapeViewport() || orientationLocked;
   if (success) {
@@ -155,27 +170,27 @@ async function performLandscapeRequest(explicitButton: boolean): Promise<boolean
       : "TAP, THEN ROTATE PHONE ↻";
   }
 
-  // An explicit retry remains available for browsers that require the user to
-  // rotate after entering fullscreen, especially Safari/WebKit variants.
+  // Safari/WebKit variants may enter a fullscreen-like mode without exposing
+  // programmatic orientation locking. Keep a visible manual-rotation fallback.
   if (!explicitButton) window.setTimeout(syncLandscapeButton, 250);
   return false;
 }
 
-async function requestDocumentFullscreen(): Promise<boolean> {
-  const root = document.documentElement as VendorFullscreenElement;
+async function requestPhaserFullscreen(): Promise<boolean> {
+  const scene = activeScene;
+  if (!scene?.scene.isActive()) return false;
+
   try {
-    if (typeof root.requestFullscreen === "function") {
-      await root.requestFullscreen({ navigationUI: "hide" });
-      return true;
-    }
-    if (typeof root.webkitRequestFullscreen === "function") {
-      await Promise.resolve(root.webkitRequestFullscreen());
-      return true;
-    }
+    if (!scene.scale.isFullscreen) scene.scale.startFullscreen();
   } catch {
     return false;
   }
-  return false;
+
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    if (scene.scale.isFullscreen || document.fullscreenElement || isLandscapeViewport()) return true;
+    await wait(50);
+  }
+  return scene.scale.isFullscreen || Boolean(document.fullscreenElement);
 }
 
 async function lockOrientationOnly(): Promise<boolean> {
@@ -187,11 +202,6 @@ async function lockOrientationOnly(): Promise<boolean> {
   } catch {
     return false;
   }
-}
-
-function getFullscreenElement(): Element | null {
-  const vendorDocument = document as VendorFullscreenDocument;
-  return document.fullscreenElement ?? vendorDocument.webkitFullscreenElement ?? null;
 }
 
 function markLandscapeState(state: "locked" | "ready"): void {
