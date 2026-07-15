@@ -54,6 +54,8 @@ type GamePrototype = {
 type FixtureVisual = {
   productId: ProductId;
   image: Phaser.GameObjects.Image;
+  shadow: Phaser.GameObjects.Ellipse;
+  label: Phaser.GameObjects.Container;
   empty: string;
   low: string;
   full: string;
@@ -69,12 +71,13 @@ type ArrowControl = {
 type DayTwoStoreController = {
   room: DayTwoRoom;
   mainRoom: Phaser.GameObjects.Container;
-  mainForeground: Phaser.GameObjects.Container;
   stockRoom: Phaser.GameObjects.Container;
   mainFixtures: FixtureVisual[];
   clickRing: Phaser.GameObjects.Image;
   backArrow: ArrowControl;
   floorArrow: ArrowControl;
+  knownFilledSlots: Set<number>;
+  guideExpiresAt: number;
   lastSweepAt: number;
   transitionLocked: boolean;
   monitor: () => void;
@@ -91,26 +94,26 @@ type DisplayObject = Phaser.GameObjects.GameObject & {
 
 const MAIN_SLOT_LAYOUT: Record<ProductId, Array<{ x: number; y: number; bottomY: number }>> = {
   cola: [
-    { x: 360, y: 630, bottomY: 760 },
-    { x: 360, y: 800, bottomY: 930 }
+    { x: 330, y: 640, bottomY: 750 },
+    { x: 330, y: 790, bottomY: 900 }
   ],
   water: [
-    { x: 700, y: 630, bottomY: 760 },
-    { x: 700, y: 800, bottomY: 930 }
+    { x: 665, y: 640, bottomY: 750 },
+    { x: 665, y: 790, bottomY: 900 }
   ],
   milk: [
-    { x: 1040, y: 630, bottomY: 760 },
-    { x: 1040, y: 800, bottomY: 930 }
+    { x: 1000, y: 640, bottomY: 750 },
+    { x: 1000, y: 790, bottomY: 900 }
   ]
 };
 
 const STOCK_BOX_POINTS = [
-  { x: 190, y: 505 },
-  { x: 320, y: 505 },
-  { x: 450, y: 505 },
-  { x: 190, y: 610 },
-  { x: 320, y: 610 },
-  { x: 450, y: 610 }
+  { x: 182, y: 505 },
+  { x: 312, y: 505 },
+  { x: 442, y: 505 },
+  { x: 182, y: 610 },
+  { x: 312, y: 610 },
+  { x: 442, y: 610 }
 ] as const;
 
 const prototype = GameScene.prototype as unknown as GamePrototype;
@@ -140,48 +143,36 @@ prototype.create = function createDayTwoImmersiveStore(...args: unknown[]): void
 };
 
 function installDayTwoStore(scene: RuntimeGame): void {
-  scene.__dayTwoImmersiveStore?.mainRoom.destroy(true);
-  scene.__dayTwoImmersiveStore?.mainForeground.destroy(true);
-  scene.__dayTwoImmersiveStore?.stockRoom.destroy(true);
-
+  destroyExistingController(scene);
   hideLegacyGameplay(scene);
   configureMainSlots(scene);
   scene.input.setDraggable(scene.cart, false);
 
   const mainRoom = createMainRoom(scene);
-  const mainForeground = createMainForeground(scene);
   const stockRoom = createStockRoom(scene);
   const mainFixtures = createMainFixtures(scene, mainRoom);
 
   const clickRing = mark(
     scene.add.image(0, 0, ProductionAssets.effects.clickRing)
-      .setDisplaySize(145, 145)
+      .setDisplaySize(132, 132)
       .setDepth(8_930)
-      .setAlpha(0.55)
+      .setAlpha(0.5)
       .setVisible(false)
   );
-  scene.tweens.add({
-    targets: clickRing,
-    scale: { from: 0.92, to: 1.09 },
-    alpha: { from: 0.32, to: 0.68 },
-    duration: 720,
-    yoyo: true,
-    repeat: -1,
-    ease: "Sine.InOut"
-  });
 
-  const backArrow = createArrow(scene, 180, "← BACKROOM", () => requestRoom(scene, "stock"));
-  const floorArrow = createArrow(scene, 1145, "MAIN FLOOR →", () => requestRoom(scene, "main"));
+  const backArrow = createArrow(scene, 170, "← BACKROOM", () => requestRoom(scene, "stock"));
+  const floorArrow = createArrow(scene, 1160, "MAIN FLOOR →", () => requestRoom(scene, "main"));
 
   const controller: DayTwoStoreController = {
     room: "main",
     mainRoom,
-    mainForeground,
     stockRoom,
     mainFixtures,
     clickRing,
     backArrow,
     floorArrow,
+    knownFilledSlots: new Set(filledSlotIndexes(scene)),
+    guideExpiresAt: -Infinity,
     lastSweepAt: -Infinity,
     transitionLocked: false,
     monitor: () => undefined
@@ -190,14 +181,14 @@ function installDayTwoStore(scene: RuntimeGame): void {
 
   const monitor = (): void => {
     if (!scene.scene.isActive()) return;
-    if (scene.time.now - controller.lastSweepAt < 65) return;
+    if (scene.time.now - controller.lastSweepAt < 120) return;
     controller.lastSweepAt = scene.time.now;
 
-    hideLegacyGameplay(scene);
     applyRoomVisibility(scene, controller);
     updateFixtureTextures(scene, controller);
     updateRoomActors(scene, controller.room);
     updateClickGuide(scene, controller);
+    detectRestock(scene, controller);
 
     document.body.dataset.dayTwoImmersiveRoom = controller.room;
   };
@@ -207,7 +198,6 @@ function installDayTwoStore(scene: RuntimeGame): void {
   scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
     scene.events.off(Phaser.Scenes.Events.POST_UPDATE, monitor);
     mainRoom.destroy(true);
-    mainForeground.destroy(true);
     stockRoom.destroy(true);
     clickRing.destroy();
     backArrow.container.destroy(true);
@@ -217,110 +207,131 @@ function installDayTwoStore(scene: RuntimeGame): void {
   });
 
   monitor();
+  pulseArrowOnce(scene, backArrow.container);
+
+  scene.time.delayedCall(0, () => hideLegacyGameplay(scene));
+  scene.time.delayedCall(220, () => hideLegacyGameplay(scene));
+  scene.time.delayedCall(650, () => hideLegacyGameplay(scene));
   scene.time.delayedCall(420, () => {
     if (!scene.scene.isActive() || gameSession.day !== "day02") return;
-    scene.showTransientHint("Inspect the main floor, then use BACKROOM to load matching cases onto the cart.");
+    scene.showTransientHint("The store floor is open. Enter BACKROOM, load matching cases, then return to restock the aisles.");
   });
 }
 
+function destroyExistingController(scene: RuntimeGame): void {
+  const existing = scene.__dayTwoImmersiveStore;
+  if (!existing) return;
+  existing.mainRoom.destroy(true);
+  existing.stockRoom.destroy(true);
+  existing.clickRing.destroy();
+  existing.backArrow.container.destroy(true);
+  existing.floorArrow.container.destroy(true);
+  scene.__dayTwoImmersiveStore = undefined;
+}
+
 function createMainRoom(scene: RuntimeGame): Phaser.GameObjects.Container {
-  const room = mark(scene.add.container(0, 0).setDepth(2));
+  const room = mark(scene.add.container(0, 0).setDepth(4));
   const background = mark(
     scene.add.image(665, 622, SupermarketAssets.backgrounds.mainFloor)
       .setDisplaySize(1330, 960)
   );
-  const atmosphere = mark(scene.add.rectangle(665, 622, 1330, 960, 0x08120f, 0.06));
-  const floorLight = mark(scene.add.ellipse(665, 965, 1000, 180, 0xffe5a1, 0.08));
-  const label = createRoomLabel(scene, 665, 245, "MAIN FLOOR · RESTOCK AISLES");
-  room.add([background, atmosphere, floorLight, label]);
+  const atmosphere = mark(scene.add.rectangle(665, 622, 1330, 960, 0x08120f, 0.035));
+  const aisleGlow = mark(scene.add.ellipse(665, 960, 760, 145, 0xffe4a0, 0.07));
+  const label = createRoomLabel(scene, 665, 225, "MAIN FLOOR · RESTOCK AISLES");
+  room.add([background, atmosphere, aisleGlow, label]);
   return room;
 }
 
-function createMainForeground(scene: RuntimeGame): Phaser.GameObjects.Container {
-  const foreground = mark(scene.add.container(0, 0).setDepth(35));
-  const left = mark(
-    scene.add.image(665, 591, ProductionAssets.foreground.aisleLeft)
-      .setDisplaySize(1330, 1182)
-      .setAlpha(0.38)
-  );
-  const right = mark(
-    scene.add.image(665, 591, ProductionAssets.foreground.aisleRight)
-      .setDisplaySize(1330, 1182)
-      .setAlpha(0.34)
-  );
-  foreground.add([left, right]);
-  return foreground;
-}
-
 function createStockRoom(scene: RuntimeGame): Phaser.GameObjects.Container {
-  const room = mark(scene.add.container(0, 0).setDepth(2));
+  const room = mark(scene.add.container(0, 0).setDepth(4));
   const background = mark(
     scene.add.image(665, 622, ProductionAssets.backgrounds.stockDock)
       .setDisplaySize(1330, 960)
-      .setAlpha(0.97)
+      .setAlpha(0.98)
   );
-  const shade = mark(scene.add.rectangle(665, 622, 1330, 960, 0x07100d, 0.08));
+  const shade = mark(scene.add.rectangle(665, 622, 1330, 960, 0x07100d, 0.05));
+  const rackShadow = mark(scene.add.ellipse(320, 997, 520, 82, 0x07100d, 0.25));
   const rack = mark(
-    scene.add.image(315, 1000, ProductionAssets.fixtures.rackBackroomEmpty)
+    scene.add.image(315, 995, ProductionAssets.fixtures.rackBackroomEmpty)
       .setOrigin(0.5, 1)
       .setDisplaySize(530, 660)
   );
-  const label = createRoomLabel(scene, 315, 245, "BACKROOM · LOAD THE CART");
+  const label = createRoomLabel(scene, 315, 225, "BACKROOM · LOAD THE CART");
   const loadingZone = mark(
-    scene.add.rectangle(610, 930, 320, 170, 0x173f35, 0.18)
-      .setStrokeStyle(4, 0xffd75a, 0.78)
+    scene.add.rectangle(760, 930, 360, 175, 0x173f35, 0.13)
+      .setStrokeStyle(3, 0xffd75a, 0.62)
   );
-  room.add([background, shade, rack, label, loadingZone]);
+  const loadingLabel = mark(
+    scene.add.text(760, 858, "CART LOADING ZONE", {
+      fontFamily: "Arial",
+      fontSize: "15px",
+      color: "#fff1b0",
+      fontStyle: "bold",
+      backgroundColor: "#173f35",
+      padding: { x: 12, y: 6 }
+    }).setOrigin(0.5)
+  );
+  room.add([background, shade, rackShadow, rack, label, loadingZone, loadingLabel]);
   return room;
 }
 
 function createMainFixtures(scene: RuntimeGame, room: Phaser.GameObjects.Container): FixtureVisual[] {
   const specs: Array<{
     productId: ProductId;
+    department: string;
     x: number;
+    bottomY: number;
     width: number;
     height: number;
-    full: string;
-    low: string;
     empty: string;
+    low: string;
+    full: string;
   }> = [
     {
       productId: "cola",
-      x: 360,
-      width: 285,
-      height: 455,
-      full: ProductionAssets.fixtures.bakeryFull,
-      low: ProductionAssets.fixtures.bakeryLow,
-      empty: ProductionAssets.fixtures.bakeryEmpty
+      department: "DRINKS",
+      x: 330,
+      bottomY: 965,
+      width: 250,
+      height: 380,
+      empty: ProductionAssets.fixtures.checkoutEmpty,
+      low: ProductionAssets.fixtures.checkoutLow,
+      full: ProductionAssets.fixtures.checkoutFull
     },
     {
       productId: "water",
-      x: 700,
-      width: 285,
-      height: 455,
-      full: ProductionAssets.fixtures.healthBeautyFull,
+      department: "WATER",
+      x: 665,
+      bottomY: 965,
+      width: 245,
+      height: 405,
+      empty: ProductionAssets.fixtures.healthBeautyEmpty,
       low: ProductionAssets.fixtures.healthBeautyLow,
-      empty: ProductionAssets.fixtures.healthBeautyEmpty
+      full: ProductionAssets.fixtures.healthBeautyFull
     },
     {
       productId: "milk",
-      x: 1040,
-      width: 330,
-      height: 510,
-      full: ProductionAssets.fixtures.frozenFull,
+      department: "DAIRY",
+      x: 1000,
+      bottomY: 965,
+      width: 300,
+      height: 470,
+      empty: ProductionAssets.fixtures.frozenEmpty,
       low: ProductionAssets.fixtures.frozenLow,
-      empty: ProductionAssets.fixtures.frozenEmpty
+      full: ProductionAssets.fixtures.frozenFull
     }
   ];
 
   return specs.map((spec) => {
+    const shadow = mark(scene.add.ellipse(spec.x, spec.bottomY + 6, spec.width * 0.82, 52, 0x07100d, 0.22));
     const image = mark(
-      scene.add.image(spec.x, 995, spec.empty)
+      scene.add.image(spec.x, spec.bottomY, spec.empty)
         .setOrigin(0.5, 1)
         .setDisplaySize(spec.width, spec.height)
     );
-    room.add(image);
-    return { ...spec, image };
+    const label = createDepartmentLabel(scene, spec.x, spec.bottomY - spec.height - 22, spec.department);
+    room.add([shadow, image, label]);
+    return { ...spec, image, shadow, label };
   });
 }
 
@@ -330,7 +341,7 @@ function configureMainSlots(scene: RuntimeGame): void {
     const layout = MAIN_SLOT_LAYOUT[slot.productId][productOffsets[slot.productId]++] ?? MAIN_SLOT_LAYOUT[slot.productId][0];
     slot.hitArea
       .setPosition(layout.x, layout.y)
-      .setSize(220, 160)
+      .setSize(220, 150)
       .setVisible(true)
       .setDepth(28);
     slot.productBottomY = layout.bottomY;
@@ -362,6 +373,7 @@ function requestRoom(scene: RuntimeGame, target: DayTwoRoom): void {
     scene.snapCart("SALES");
     runRoomTransition(scene, "MAIN FLOOR", () => {
       controller.room = "main";
+      controller.guideExpiresAt = scene.time.now + 1300;
       controller.transitionLocked = false;
       controller.monitor();
     });
@@ -369,7 +381,7 @@ function requestRoom(scene: RuntimeGame, target: DayTwoRoom): void {
   }
 
   if (scene.selectedBox) {
-    scene.showTransientHint("Return the selected case to the rack before leaving the main floor.");
+    scene.showTransientHint("Return the selected case before entering the backroom.");
     return;
   }
 
@@ -380,6 +392,7 @@ function requestRoom(scene: RuntimeGame, target: DayTwoRoom): void {
   }
   runRoomTransition(scene, "BACKROOM", () => {
     controller.room = "stock";
+    controller.guideExpiresAt = -Infinity;
     controller.transitionLocked = false;
     controller.monitor();
   });
@@ -404,16 +417,16 @@ function runRoomTransition(scene: RuntimeGame, label: string, onMidpoint: () => 
 
   scene.tweens.add({
     targets: cover,
-    alpha: 0.82,
+    alpha: 0.78,
     duration: 150,
     onComplete: () => {
       onMidpoint();
-      scene.tweens.add({ targets: text, alpha: 1, duration: 90 });
+      scene.tweens.add({ targets: text, alpha: 1, duration: 80 });
       scene.tweens.add({
         targets: [cover, text],
         alpha: 0,
-        delay: 120,
-        duration: 190,
+        delay: 110,
+        duration: 180,
         onComplete: () => {
           cover.destroy();
           text.destroy();
@@ -426,16 +439,16 @@ function runRoomTransition(scene: RuntimeGame, label: string, onMidpoint: () => 
 function applyRoomVisibility(scene: RuntimeGame, controller: DayTwoStoreController): void {
   const main = controller.room === "main";
   controller.mainRoom.setVisible(main);
-  controller.mainForeground.setVisible(main);
   controller.stockRoom.setVisible(!main);
   controller.backArrow.container.setVisible(main && !controller.transitionLocked);
   controller.floorArrow.container.setVisible(!main && !controller.transitionLocked);
-  controller.backArrow.hit.input!.enabled = main && !controller.transitionLocked;
-  controller.floorArrow.hit.input!.enabled = !main && !controller.transitionLocked;
+  if (controller.backArrow.hit.input) controller.backArrow.hit.input.enabled = main && !controller.transitionLocked;
+  if (controller.floorArrow.hit.input) controller.floorArrow.hit.input.enabled = !main && !controller.transitionLocked;
 
+  const shelfInteractive = main && scene.cartAtShelf && !controller.transitionLocked;
   for (const slot of scene.shelfSlots) {
     slot.hitArea.setVisible(main);
-    if (slot.hitArea.input) slot.hitArea.input.enabled = main && !controller.transitionLocked;
+    if (slot.hitArea.input) slot.hitArea.input.enabled = shelfInteractive;
     slot.missingTag?.setVisible(false);
     slot.typeLabel?.setVisible(false);
     slot.product?.setVisible(false);
@@ -473,14 +486,14 @@ function updateRoomActors(scene: RuntimeGame, room: DayTwoRoom): void {
   if (scene.movingCart || scene.restockBusy || scene.selectedBox) return;
 
   if (room === "stock") {
-    scene.cart.setPosition(610, 970);
-    scene.worker.setPosition(505, 970);
+    scene.cart.setPosition(760, 995);
+    scene.worker.setPosition(625, 995);
     layoutStockBoxes(scene);
     return;
   }
 
-  scene.cart.setPosition(675, 1020);
-  scene.worker.setPosition(545, 1020);
+  scene.cart.setPosition(700, 1020);
+  scene.worker.setPosition(565, 1020);
 }
 
 function layoutStockBoxes(scene: RuntimeGame): void {
@@ -505,18 +518,71 @@ function layoutStockBoxes(scene: RuntimeGame): void {
 }
 
 function updateClickGuide(scene: RuntimeGame, controller: DayTwoStoreController): void {
-  if (controller.room !== "main" || controller.transitionLocked || scene.shiftEnded) {
+  const active =
+    controller.room === "main" &&
+    scene.cartAtShelf &&
+    !controller.transitionLocked &&
+    !scene.shiftEnded &&
+    scene.time.now <= controller.guideExpiresAt;
+
+  if (!active) {
     controller.clickRing.setVisible(false);
     return;
   }
 
-  const target = scene.shelfSlots.find((slot) => !slot.product?.active);
+  const target = scene.shelfSlots.find((slot) => !slot.product?.active && scene.loadedProducts.includes(slot.productId));
   if (!target) {
     controller.clickRing.setVisible(false);
     return;
   }
 
-  controller.clickRing.setPosition(target.hitArea.x, target.hitArea.y).setVisible(true);
+  controller.clickRing
+    .setPosition(target.hitArea.x, target.hitArea.y)
+    .setVisible(true);
+}
+
+function detectRestock(scene: RuntimeGame, controller: DayTwoStoreController): void {
+  const current = new Set(filledSlotIndexes(scene));
+  const newlyFilled = scene.shelfSlots.find(
+    (slot) => current.has(slot.index) && !controller.knownFilledSlots.has(slot.index)
+  );
+  if (newlyFilled) showRestockedTag(scene, newlyFilled.hitArea.x, newlyFilled.hitArea.y - 105);
+  controller.knownFilledSlots = current;
+}
+
+function showRestockedTag(scene: Phaser.Scene, x: number, y: number): void {
+  const tag = mark(
+    scene.add.image(x, y, ProductionAssets.effects.restocked)
+      .setDisplaySize(225, 76)
+      .setDepth(8_940)
+      .setScale(0.72)
+      .setAlpha(0)
+  );
+
+  scene.tweens.add({
+    targets: tag,
+    y: y - 38,
+    scale: 1,
+    alpha: 1,
+    duration: 190,
+    ease: "Back.Out",
+    onComplete: () => {
+      scene.tweens.add({
+        targets: tag,
+        y: y - 68,
+        alpha: 0,
+        delay: 360,
+        duration: 240,
+        onComplete: () => tag.destroy()
+      });
+    }
+  });
+}
+
+function filledSlotIndexes(scene: RuntimeGame): number[] {
+  return scene.shelfSlots
+    .filter((slot) => Boolean(slot.product?.active))
+    .map((slot) => slot.index);
 }
 
 function createArrow(scene: RuntimeGame, x: number, label: string, action: () => void): ArrowControl {
@@ -536,24 +602,51 @@ function createArrow(scene: RuntimeGame, x: number, label: string, action: () =>
     scene.add.rectangle(0, 0, 285, 82, 0xffffff, 0.001)
       .setInteractive({ useHandCursor: true })
   );
-  const container = mark(scene.add.container(x, 1015, [background, text, hit]).setDepth(9_100));
+  const container = mark(scene.add.container(x, 1018, [background, text, hit]).setDepth(9_100));
 
   hit.on("pointerdown", action);
-  hit.on("pointerover", () => container.setScale(1.035));
+  hit.on("pointerover", () => container.setScale(1.025));
   hit.on("pointerout", () => container.setScale(1));
   return { container, hit };
 }
 
+function pulseArrowOnce(scene: Phaser.Scene, arrow: Phaser.GameObjects.Container): void {
+  scene.tweens.add({
+    targets: arrow,
+    scale: 1.045,
+    duration: 260,
+    yoyo: true,
+    repeat: 1,
+    ease: "Sine.InOut"
+  });
+}
+
 function createRoomLabel(scene: RuntimeGame, x: number, y: number, label: string): Phaser.GameObjects.Container {
   const background = mark(
-    scene.add.rectangle(0, 0, 420, 56, 0x173f35, 0.95)
-      .setStrokeStyle(3, 0xffd75a, 1)
+    scene.add.rectangle(0, 0, 430, 52, 0x173f35, 0.91)
+      .setStrokeStyle(3, 0xffd75a, 0.92)
   );
   const text = mark(
     scene.add.text(0, 0, label, {
       fontFamily: "Arial",
-      fontSize: "20px",
+      fontSize: "19px",
       color: "#ffffff",
+      fontStyle: "bold"
+    }).setOrigin(0.5)
+  );
+  return mark(scene.add.container(x, y, [background, text]));
+}
+
+function createDepartmentLabel(scene: RuntimeGame, x: number, y: number, label: string): Phaser.GameObjects.Container {
+  const background = mark(
+    scene.add.rectangle(0, 0, 145, 38, 0x112f29, 0.9)
+      .setStrokeStyle(2, 0xe2c765, 0.75)
+  );
+  const text = mark(
+    scene.add.text(0, 0, label, {
+      fontFamily: "Arial",
+      fontSize: "14px",
+      color: "#fff6c7",
       fontStyle: "bold"
     }).setOrigin(0.5)
   );
@@ -576,20 +669,20 @@ function hideLegacyGameplay(scene: RuntimeGame): void {
   scene.children.list.forEach((child) => {
     if (protectedObjects.has(child) || child.getData("dayTwoImmersive")) return;
     const display = child as DisplayObject;
-    if (!display.active) return;
+    if (!display.active || display.depth >= 50) return;
 
-    if (child instanceof Phaser.GameObjects.Text) {
-      if (display.y >= 160 && display.y <= 1070 && display.depth <= 90) display.setVisible(false);
+    if (child instanceof Phaser.GameObjects.Container) {
+      display.setVisible(false);
       return;
     }
 
     if (
+      child instanceof Phaser.GameObjects.Text ||
       child instanceof Phaser.GameObjects.Image ||
       child instanceof Phaser.GameObjects.Rectangle ||
-      child instanceof Phaser.GameObjects.Ellipse ||
-      child instanceof Phaser.GameObjects.Container
+      child instanceof Phaser.GameObjects.Ellipse
     ) {
-      if (display.y >= 160 && display.y <= 1070 && display.depth <= 50) display.setVisible(false);
+      if (display.y >= 150 && display.y <= 1085) display.setVisible(false);
     }
   });
 }
