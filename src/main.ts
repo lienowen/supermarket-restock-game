@@ -84,7 +84,7 @@ import "./spaceExpansionBannerCoordinationIntegration";
 import "./finalUiLayoutIntegration";
 import "./sharedSupermarketRoomIntegration";
 import "./supermarketProductionVisualIntegration";
-import "./dayTwoRealStoreIntegration";
+import "./dayTwoStoryIntegration";
 
 void bootstrap();
 
