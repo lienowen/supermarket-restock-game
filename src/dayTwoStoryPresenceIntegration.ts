@@ -76,7 +76,7 @@ const STOCK_BOX_POINTS = [
   { x: 300, y: 510 },
   { x: 150, y: 675 },
   { x: 300, y: 675 }
-+] as const;
+] as const;
 
 const prototype = GameScene.prototype as unknown as GamePrototype;
 const originalCreate = prototype.create;
