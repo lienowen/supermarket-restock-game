@@ -10,6 +10,8 @@ type RuntimeBox = {
   loaded: boolean;
   image: Phaser.GameObjects.Image;
   shadow: Phaser.GameObjects.Ellipse;
+  homeX: number;
+  homeY: number;
 };
 
 type StoryController = {
@@ -33,8 +35,11 @@ type RuntimeGame = Phaser.Scene & {
   restockBusy: boolean;
   phase: "PREPARE" | "OPEN" | "RUSH" | "CLOSING" | "RESULT";
   shiftEnded: boolean;
+  loadSelectedBox: () => void;
+  returnBoxHome: (box: RuntimeBox) => void;
   __dayTwoStory?: StoryController;
   __dayTwoPresence?: PresenceController;
+  __dayTwoInteractionFix?: InteractionFixController;
 };
 
 type GamePrototype = {
@@ -42,8 +47,19 @@ type GamePrototype = {
   isOverCart: (image: Phaser.GameObjects.Image) => boolean;
 };
 
+type ManualHandle = {
+  box: RuntimeBox;
+  hit: Phaser.GameObjects.Rectangle;
+};
+
 type InteractionFixController = {
+  handles: ManualHandle[];
+  activeBox?: RuntimeBox;
+  pointerOffsetX: number;
+  pointerOffsetY: number;
   postUpdate: () => void;
+  pointerMove: (pointer: Phaser.Input.Pointer) => void;
+  pointerUp: (pointer: Phaser.Input.Pointer) => void;
 };
 
 const prototype = GameScene.prototype as unknown as GamePrototype;
@@ -55,19 +71,7 @@ prototype.isOverCart = function isOverCartDayTwo(image: Phaser.GameObjects.Image
   const story = scene.__dayTwoStory;
 
   if (gameSession.day === "day02" && story?.view === "stockroom") {
-    const bounds = scene.cart.getBounds();
-    const generousDropZone = new Phaser.Geom.Rectangle(
-      bounds.x - 110,
-      bounds.y - 130,
-      bounds.width + 220,
-      bounds.height + 220
-    );
-
-    if (generousDropZone.contains(image.x, image.y)) return true;
-
-    const basketX = scene.cart.x;
-    const basketY = scene.cart.y - 105;
-    if (Phaser.Math.Distance.Between(image.x, image.y, basketX, basketY) <= 210) return true;
+    if (isInsideDayTwoCart(scene, image)) return true;
   }
 
   return originalIsOverCart.call(this, image);
@@ -82,52 +86,130 @@ prototype.create = function createDayTwoInteractionFix(...args: unknown[]): void
 };
 
 function installInteractionFix(scene: RuntimeGame): void {
-  scene.boxes.forEach((box) => {
-    const image = box.image;
+  destroyExisting(scene);
 
-    image.on("dragstart", () => {
-      if (!isDayTwoStockroom(scene, box)) return;
-      image.setData("dayTwoDragging", true);
-      image.setData("dayTwoDragX", image.x);
-      image.setData("dayTwoDragY", image.y);
-      box.shadow.setVisible(false);
+  const handles = scene.boxes
+    .filter((box) => box.productId === "cola")
+    .map((box) => {
+      const hit = scene.add.rectangle(box.image.x, box.image.y - 56, 142, 142, 0xffffff, 0.001)
+        .setDepth(9_200)
+        .setInteractive({ useHandCursor: true })
+        .setVisible(false);
+      hit.setData("dayTwoManualHandle", true);
+      return { box, hit };
     });
-
-    image.on("drag", (_pointer: Phaser.Input.Pointer, dragX: number, dragY: number) => {
-      if (!image.getData("dayTwoDragging")) return;
-      image.setData("dayTwoDragX", dragX);
-      image.setData("dayTwoDragY", dragY);
-      image.setPosition(dragX, dragY).setVisible(true).setDepth(9_050);
-      box.shadow.setVisible(false);
-    });
-
-    image.on("dragend", () => {
-      if (!image.getData("dayTwoDragging")) return;
-
-      const droppedOnCart = isInsideDayTwoCart(scene, image);
-      image.setData("dayTwoDragging", false);
-
-      if (droppedOnCart) {
-        image.setData("dayTwoLoading", true);
-        image.setVisible(false);
-        box.shadow.setVisible(false);
-        scene.time.delayedCall(450, () => {
-          if (image.active) image.setData("dayTwoLoading", false);
-        });
-      }
-    });
-  });
 
   const controller: InteractionFixController = {
+    handles,
+    pointerOffsetX: 0,
+    pointerOffsetY: 0,
     postUpdate: () => {
+      synchronizeManualHandles(scene, controller);
       preserveDraggedBoxes(scene);
       forceEnglishGuide(scene);
-    }
+    },
+    pointerMove: (pointer) => moveManualDrag(scene, controller, pointer),
+    pointerUp: (pointer) => finishManualDrag(scene, controller, pointer)
   };
+  scene.__dayTwoInteractionFix = controller;
 
+  handles.forEach(({ box, hit }) => {
+    hit.on("pointerdown", (pointer: Phaser.Input.Pointer) => beginManualDrag(scene, controller, box, pointer));
+  });
+
+  scene.input.on("pointermove", controller.pointerMove);
+  scene.input.on("pointerup", controller.pointerUp);
+  scene.input.on("pointerupoutside", controller.pointerUp);
   scene.events.on(Phaser.Scenes.Events.POST_UPDATE, controller.postUpdate);
-  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-    scene.events.off(Phaser.Scenes.Events.POST_UPDATE, controller.postUpdate);
+
+  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => destroyExisting(scene));
+  synchronizeManualHandles(scene, controller);
+}
+
+function beginManualDrag(
+  scene: RuntimeGame,
+  controller: InteractionFixController,
+  box: RuntimeBox,
+  pointer: Phaser.Input.Pointer
+): void {
+  if (!isDayTwoStockroom(scene, box)) return;
+
+  controller.activeBox = box;
+  controller.pointerOffsetX = box.image.x - pointer.worldX;
+  controller.pointerOffsetY = box.image.y - pointer.worldY;
+  scene.selectedBox = box;
+
+  box.image
+    .setData("dayTwoDragging", true)
+    .setData("dayTwoDragX", box.image.x)
+    .setData("dayTwoDragY", box.image.y)
+    .setVisible(true)
+    .setDepth(9_150)
+    .setTint(0xfff0a6);
+  box.shadow.setVisible(false);
+}
+
+function moveManualDrag(
+  scene: RuntimeGame,
+  controller: InteractionFixController,
+  pointer: Phaser.Input.Pointer
+): void {
+  const box = controller.activeBox;
+  if (!box || !pointer.isDown || !box.image.active) return;
+
+  const dragX = Phaser.Math.Clamp(pointer.worldX + controller.pointerOffsetX, 45, 1260);
+  const dragY = Phaser.Math.Clamp(pointer.worldY + controller.pointerOffsetY, 260, 1070);
+
+  box.image
+    .setData("dayTwoDragX", dragX)
+    .setData("dayTwoDragY", dragY)
+    .setPosition(dragX, dragY)
+    .setVisible(true)
+    .setDepth(9_150);
+  box.shadow.setVisible(false);
+}
+
+function finishManualDrag(
+  scene: RuntimeGame,
+  controller: InteractionFixController,
+  _pointer: Phaser.Input.Pointer
+): void {
+  const box = controller.activeBox;
+  if (!box) return;
+  controller.activeBox = undefined;
+
+  const droppedOnCart = isInsideDayTwoCart(scene, box.image);
+  box.image.setData("dayTwoDragging", false).clearTint();
+
+  if (droppedOnCart) {
+    box.image.setData("dayTwoLoading", true);
+    scene.selectedBox = box;
+    scene.loadSelectedBox();
+    scene.time.delayedCall(500, () => {
+      if (box.image.active) box.image.setData("dayTwoLoading", false);
+    });
+    return;
+  }
+
+  scene.returnBoxHome(box);
+}
+
+function synchronizeManualHandles(scene: RuntimeGame, controller: InteractionFixController): void {
+  const stockroomReady = scene.__dayTwoStory?.view === "stockroom" && !scene.shiftEnded;
+
+  controller.handles.forEach(({ box, hit }) => {
+    const dragging = controller.activeBox === box || Boolean(box.image.getData("dayTwoDragging"));
+    const available = stockroomReady && !box.loaded && !box.image.getData("dayTwoLoading");
+
+    // The high-depth transparent handle owns Day 2 dragging. Disable the old image
+    // input so legacy listeners and room overlays cannot compete for the pointer.
+    if (box.image.input) box.image.input.enabled = false;
+
+    hit
+      .setVisible(available)
+      .setPosition(box.image.x, box.image.y - 56)
+      .setDisplaySize(dragging ? 170 : 142, dragging ? 170 : 142);
+    if (hit.input) hit.input.enabled = available;
   });
 }
 
@@ -149,7 +231,7 @@ function preserveDraggedBoxes(scene: RuntimeGame): void {
     const dragY = Number(image.getData("dayTwoDragY"));
     if (!Number.isFinite(dragX) || !Number.isFinite(dragY)) return;
 
-    image.setVisible(true).setPosition(dragX, dragY).setDepth(9_050);
+    image.setVisible(true).setPosition(dragX, dragY).setDepth(9_150);
     box.shadow.setVisible(false);
   });
 }
@@ -207,11 +289,23 @@ function isDayTwoStockroom(scene: RuntimeGame, box: RuntimeBox): boolean {
 function isInsideDayTwoCart(scene: RuntimeGame, image: Phaser.GameObjects.Image): boolean {
   const bounds = scene.cart.getBounds();
   const zone = new Phaser.Geom.Rectangle(
-    bounds.x - 110,
-    bounds.y - 130,
-    bounds.width + 220,
-    bounds.height + 220
+    bounds.x - 150,
+    bounds.y - 170,
+    bounds.width + 300,
+    bounds.height + 300
   );
   return zone.contains(image.x, image.y) ||
-    Phaser.Math.Distance.Between(image.x, image.y, scene.cart.x, scene.cart.y - 105) <= 210;
+    Phaser.Math.Distance.Between(image.x, image.y, scene.cart.x, scene.cart.y - 105) <= 260;
+}
+
+function destroyExisting(scene: RuntimeGame): void {
+  const existing = scene.__dayTwoInteractionFix;
+  if (!existing) return;
+
+  scene.events.off(Phaser.Scenes.Events.POST_UPDATE, existing.postUpdate);
+  scene.input.off("pointermove", existing.pointerMove);
+  scene.input.off("pointerup", existing.pointerUp);
+  scene.input.off("pointerupoutside", existing.pointerUp);
+  existing.handles.forEach(({ hit }) => hit.destroy());
+  scene.__dayTwoInteractionFix = undefined;
 }
