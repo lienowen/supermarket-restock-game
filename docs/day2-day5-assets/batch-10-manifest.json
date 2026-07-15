@@ -1,0 +1,23 @@
+{
+  "package": "supermarket-assets-batch-10",
+  "install": "Extract this zip into the repository root.",
+  "asset_count": 10,
+  "asset_root": "public/assets/common/supermarket/props/",
+  "files": [
+    "public/assets/common/supermarket/props/prop-basket-stack.png",
+    "public/assets/common/supermarket/props/prop-cardboard-recycle-cage.png",
+    "public/assets/common/supermarket/props/prop-promo-standee.png",
+    "public/assets/common/supermarket/props/prop-trash-bin.png",
+    "public/assets/common/supermarket/props/prop-price-sign-stand.png",
+    "public/assets/common/supermarket/props/prop-fire-extinguisher.png",
+    "public/assets/common/supermarket/props/prop-caution-sign.png",
+    "public/assets/common/supermarket/props/prop-queue-barrier.png",
+    "public/assets/common/supermarket/props/prop-handheld-scanner.png",
+    "public/assets/common/supermarket/props/prop-cleaning-cart.png"
+  ],
+  "notes": [
+    "Batch 10 contains supermarket environment prop assets.",
+    "All files are isolated PNG-style prop renders suitable for direct project import.",
+    "Recommended usage: clutter, interaction props, queue control, safety props, and environment dressing."
+  ]
+}

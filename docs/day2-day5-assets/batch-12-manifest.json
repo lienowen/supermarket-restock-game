@@ -1,0 +1,23 @@
+{
+  "package": "supermarket-assets-batch-12",
+  "install": "Extract this ZIP into the repository root.",
+  "asset_count": 10,
+  "asset_root": "public/assets/common/supermarket/rewards/",
+  "files": [
+    "public/assets/common/supermarket/rewards/result-star-1.png",
+    "public/assets/common/supermarket/rewards/result-star-2.png",
+    "public/assets/common/supermarket/rewards/result-star-3.png",
+    "public/assets/common/supermarket/rewards/medal-bronze.png",
+    "public/assets/common/supermarket/rewards/medal-silver.png",
+    "public/assets/common/supermarket/rewards/medal-gold.png",
+    "public/assets/common/supermarket/rewards/card-shelf-unlocked.png",
+    "public/assets/common/supermarket/rewards/card-room-unlocked.png",
+    "public/assets/common/supermarket/rewards/badge-best-employee.png",
+    "public/assets/common/supermarket/rewards/button-next-day.png"
+  ],
+  "notes": [
+    "Batch 12 contains end-of-day rating, medal, unlock, employee award, and next-day UI assets.",
+    "All assets use transparent PNG backgrounds.",
+    "The next-day button is 1400x440; other reward assets are 1024x1024 or 1200x760."
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "package": "supermarket-assets-batch-09",
+  "install": "Extract this zip into the repository root.",
+  "asset_count": 10,
+  "asset_root": "public/assets/common/supermarket/customers/",
+  "files": [
+    "public/assets/common/supermarket/customers/customer-male.png",
+    "public/assets/common/supermarket/customers/customer-vip.png",
+    "public/assets/common/supermarket/customers/customer-angry.png",
+    "public/assets/common/supermarket/customers/customer-satisfied.png",
+    "public/assets/common/supermarket/customers/customer-with-child.png",
+    "public/assets/common/supermarket/customers/customer-return.png",
+    "public/assets/common/supermarket/customers/customer-looking-for-item.png",
+    "public/assets/common/supermarket/customers/customer-queue.png",
+    "public/assets/common/supermarket/customers/customer-rushed.png",
+    "public/assets/common/supermarket/customers/customer-senior.png"
+  ],
+  "notes": [
+    "Batch 09 contains customer variation assets for Day3-Day5 scenes.",
+    "All files are full-body cutout character renders on transparent PNG backgrounds.",
+    "Recommended usage: spawn variety in main floor, queue, customer service, and event scenes."
+  ]
+}

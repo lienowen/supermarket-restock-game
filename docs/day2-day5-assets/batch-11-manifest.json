@@ -1,0 +1,23 @@
+{
+  "package": "supermarket-assets-batch-11",
+  "install": "Extract this zip into the repository root.",
+  "asset_count": 10,
+  "asset_root": "public/assets/common/supermarket/events/",
+  "files": [
+    "public/assets/common/supermarket/events/event-spilled-drinks.png",
+    "public/assets/common/supermarket/events/event-floor-mess.png",
+    "public/assets/common/supermarket/events/event-fallen-goods.png",
+    "public/assets/common/supermarket/events/event-damaged-box.png",
+    "public/assets/common/supermarket/events/event-fridge-fault.png",
+    "public/assets/common/supermarket/events/event-out-of-stock-light.png",
+    "public/assets/common/supermarket/events/event-customer-queue.png",
+    "public/assets/common/supermarket/events/event-promotion-rush.png",
+    "public/assets/common/supermarket/events/event-warehouse-congestion.png",
+    "public/assets/common/supermarket/events/event-area-closed.png"
+  ],
+  "notes": [
+    "Batch 11 contains Day4-Day5 special event assets.",
+    "All files are isolated event / obstacle / crowd assets intended for scene overlays and gameplay triggers.",
+    "Recommended usage: hazards, temporary closures, queue events, promotion rush, and warehouse blockage events."
+  ]
+}
