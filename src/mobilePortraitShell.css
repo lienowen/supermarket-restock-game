@@ -41,11 +41,23 @@
     transform: translateX(-50%);
   }
 
+  /*
+   * Storefront/opening are landscape compositions, but portrait phones need a
+   * full-height first impression rather than a width-fitted canvas floating in
+   * the lower half of the page. Use a cover-style canvas: fill the available
+   * viewport height, keep the source aspect ratio, and crop the left/right
+   * edges. The portrait DOM action panel remains fully visible above it.
+   */
   body[data-viewport-mode="mobile-portrait"][data-game-scene="storefront"] canvas,
   body[data-viewport-mode="mobile-portrait"][data-game-scene="opening"] canvas {
-    top: 50%;
-    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-    transform: translate(-50%, -50%);
+    top: 0;
+    left: 50%;
+    width: auto !important;
+    height: var(--app-vh, 100dvh) !important;
+    min-width: 100vw;
+    max-width: none;
+    max-height: none;
+    transform: translateX(-50%);
   }
 
   body[data-viewport-mode="mobile-portrait"][data-game-scene="game"] #mobile-game-hud,
