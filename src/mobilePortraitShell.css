@@ -1,4 +1,9 @@
 @media (max-width: 760px) and (orientation: portrait) {
+  body[data-viewport-mode="mobile-portrait"] {
+    --portrait-hud-space: max(86px, calc(env(safe-area-inset-top) + 80px));
+    --portrait-task-space: max(96px, calc(env(safe-area-inset-bottom) + 90px));
+  }
+
   body[data-viewport-mode="mobile-portrait"] #mobile-orientation-hint {
     display: none !important;
   }
@@ -14,23 +19,33 @@
     width: calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right)) !important;
     height: auto !important;
     max-width: none;
-    max-height: calc(100dvh - 190px);
     margin: 0;
     opacity: 1 !important;
     filter: none !important;
     pointer-events: auto !important;
     box-shadow: none;
-    transform: translate(-50%, -50%);
+    transform-origin: top center;
   }
 
+  /*
+   * Gameplay used to be vertically centered at 51%. On a portrait phone the
+   * 1330x1182 landscape canvas is only about one screen-width tall, so that
+   * centering pushed the complete game into the lower half of the viewport.
+   * Anchor it directly below the DOM HUD and enlarge it slightly instead.
+   */
   body[data-viewport-mode="mobile-portrait"][data-game-scene="game"] canvas,
   body[data-viewport-mode="mobile-portrait"][data-game-scene="promotion"] canvas {
-    top: 51%;
+    top: var(--portrait-hud-space);
+    width: calc(118vw - env(safe-area-inset-left) - env(safe-area-inset-right)) !important;
+    max-height: calc(100dvh - var(--portrait-hud-space) - var(--portrait-task-space)) !important;
+    transform: translateX(-50%);
   }
 
   body[data-viewport-mode="mobile-portrait"][data-game-scene="storefront"] canvas,
   body[data-viewport-mode="mobile-portrait"][data-game-scene="opening"] canvas {
-    top: 47%;
+    top: 50%;
+    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    transform: translate(-50%, -50%);
   }
 
   body[data-viewport-mode="mobile-portrait"][data-game-scene="game"] #mobile-game-hud,
@@ -175,8 +190,14 @@
 }
 
 @media (max-width: 430px) and (orientation: portrait) {
-  body[data-viewport-mode="mobile-portrait"] canvas {
-    max-height: calc(100dvh - 178px);
+  body[data-viewport-mode="mobile-portrait"] {
+    --portrait-hud-space: max(82px, calc(env(safe-area-inset-top) + 76px));
+    --portrait-task-space: max(92px, calc(env(safe-area-inset-bottom) + 86px));
+  }
+
+  body[data-viewport-mode="mobile-portrait"][data-game-scene="game"] canvas,
+  body[data-viewport-mode="mobile-portrait"][data-game-scene="promotion"] canvas {
+    width: calc(120vw - env(safe-area-inset-left) - env(safe-area-inset-right)) !important;
   }
 
   body[data-viewport-mode="mobile-portrait"] .mobile-hud-stats span {
