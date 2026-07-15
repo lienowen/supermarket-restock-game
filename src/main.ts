@@ -87,6 +87,7 @@ import "./supermarketProductionVisualIntegration";
 import "./dayTwoStoryIntegration";
 import "./dayTwoStoryBootstrapIntegration";
 import "./dayTwoStoryPresenceIntegration";
+import "./dayTwoStoryInteractionFixIntegration";
 
 void bootstrap();
 
