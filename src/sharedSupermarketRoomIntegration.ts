@@ -4,7 +4,6 @@ import { PromotionWingScene } from "./scenes/PromotionWingScene";
 import { SupermarketAssets, SupermarketBackgroundPaths } from "./supermarketAssets";
 import { gameSession } from "./systems/GameSession";
 
-type SupportedDay = "day02" | "day03" | "day04" | "day05";
 type SpaceDay = "day03" | "day04" | "day05";
 type RoomId = "stock" | "main" | "promotion" | "cold";
 
@@ -69,21 +68,13 @@ function installGameRoomVisuals(): void {
 
   prototype.preload = function preloadSharedSupermarketRooms(): void {
     originalPreload.call(this);
-    // Day 4/5 selection is finalized after the GameScene preload begins. Load the
-    // four shared room backgrounds for every GameScene so a later day switch can
-    // never create Phaser's green/black missing-texture placeholder.
     loadBackgrounds(this as unknown as Phaser.Scene);
   };
 
   prototype.create = function createSharedSupermarketRooms(...args: unknown[]): void {
     originalCreate.apply(this, args);
     const scene = this as unknown as RuntimeGame;
-    if (!isSupportedDay(gameSession.day)) return;
-
-    if (gameSession.day === "day02") {
-      installDayTwoSplitBackground(scene);
-      return;
-    }
+    if (!isSpaceDay(gameSession.day)) return;
 
     installSpaceDayBackgrounds(scene, gameSession.day);
   };
@@ -122,20 +113,6 @@ function loadBackgrounds(scene: Phaser.Scene): void {
 
 function loadTexture(scene: Phaser.Scene, key: string, path: string): void {
   if (!scene.textures.exists(key)) scene.load.image(key, path);
-}
-
-function installDayTwoSplitBackground(scene: RuntimeGame): void {
-  const gameplayY = 622;
-  const gameplayHeight = 924;
-
-  scene.add.image(339, gameplayY, SupermarketAssets.backgrounds.backroom)
-    .setDisplaySize(678, gameplayHeight)
-    .setDepth(1);
-  scene.add.image(1004, gameplayY, SupermarketAssets.backgrounds.mainFloor)
-    .setDisplaySize(652, gameplayHeight)
-    .setDepth(1);
-
-  document.body.dataset.sharedSupermarketRoom = "day02:split";
 }
 
 function installSpaceDayBackgrounds(scene: RuntimeGame, day: SpaceDay): void {
@@ -308,6 +285,6 @@ function hideLegacyRoomChrome(scene: RuntimeGame, day: SpaceDay): void {
   }
 }
 
-function isSupportedDay(value: unknown): value is SupportedDay {
-  return value === "day02" || value === "day03" || value === "day04" || value === "day05";
+function isSpaceDay(value: unknown): value is SpaceDay {
+  return value === "day03" || value === "day04" || value === "day05";
 }
