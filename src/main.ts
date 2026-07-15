@@ -7,7 +7,6 @@ import { PolishOverlayScene } from "./scenes/PolishOverlayScene";
 import { ProgressionCustomerScene } from "./scenes/ProgressionCustomerScene";
 import { BackStockScene } from "./scenes/BackStockScene";
 import { PromotionWingScene } from "./scenes/PromotionWingScene";
-import { DayTwoRoomNavigationScene } from "./scenes/DayTwoRoomNavigationScene";
 import { installResponsiveShell } from "./responsiveShell";
 import { crazyGamesPlatform } from "./platform/crazyGamesPlatform";
 import "./gameSessionIntegration";
@@ -116,8 +115,7 @@ async function bootstrap(): Promise<void> {
       PolishOverlayScene,
       ProgressionCustomerScene,
       BackStockScene,
-      PromotionWingScene,
-      DayTwoRoomNavigationScene
+      PromotionWingScene
     ]
   });
 
