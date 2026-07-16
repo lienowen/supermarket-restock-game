@@ -29,6 +29,8 @@ const CART_MIN_X = 430;
 const CART_MAX_X = 850;
 const CART_MIN_Y = 760;
 const CART_MAX_Y = 985;
+const CART_DRAG_DISTANCE = 10;
+const CART_DRAG_DELAY_MS = 70;
 
 const prototype = GameScene.prototype as unknown as GameScenePrototype;
 const originalCreate = prototype.create;
@@ -58,9 +60,10 @@ function installImmediateCartDrag(scene: ImmediateCartScene): void {
   );
   scene.input.setDraggable(cart);
 
-  // No movement threshold and no hold threshold: first movement starts the drag.
-  scene.input.dragDistanceThreshold = 0;
-  scene.input.dragTimeThreshold = 0;
+  // Keep taps and drags distinct. Zero thresholds made normal button taps and
+  // small finger jitter start a cart drag immediately on touch devices.
+  scene.input.dragDistanceThreshold = CART_DRAG_DISTANCE;
+  scene.input.dragTimeThreshold = CART_DRAG_DELAY_MS;
   scene.game.canvas.style.touchAction = "none";
   if (cart.input) cart.input.cursor = "grab";
 
