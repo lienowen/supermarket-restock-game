@@ -7,6 +7,7 @@ const DIST_DIR = resolve("dist");
 const OUTPUT_FILE = resolve("release-payload-report.json");
 const PORT = 4174;
 const BASE_URL = `http://127.0.0.1:${PORT}/?test=1`;
+const GAME_CANVAS_SELECTOR = "#app > canvas:not(#mobile-game-backdrop)";
 const MOBILE_HOMEPAGE_TARGET_BYTES = 20 * 1024 * 1024;
 const BASIC_LAUNCH_TARGET_BYTES = 50 * 1024 * 1024;
 
@@ -83,7 +84,8 @@ try {
   await page.goto(BASE_URL, { waitUntil: "networkidle", timeout: 60000 });
   await waitForCanvas(page);
   await page.waitForFunction(() => document.body.dataset.stockedLobbyVisual === "ready", { timeout: 30000 });
-  // Include delayed preloads that occur before the player clicks START.
+  // Include delayed lobby work, but opening/delivery assets must remain deferred
+  // until the player actually starts the shift.
   await page.waitForTimeout(3500);
   activePhase = null;
 
@@ -182,15 +184,15 @@ function printSummary(label, summary) {
 }
 
 async function waitForCanvas(page) {
-  await page.waitForSelector("canvas", { state: "visible", timeout: 30000 });
-  await page.waitForFunction(() => {
-    const canvas = document.querySelector("canvas");
+  await page.waitForSelector(GAME_CANVAS_SELECTOR, { state: "visible", timeout: 30000 });
+  await page.waitForFunction((selector) => {
+    const canvas = document.querySelector(selector);
     return Boolean(canvas && canvas.getBoundingClientRect().width > 100);
-  }, { timeout: 30000 });
+  }, GAME_CANVAS_SELECTOR, { timeout: 30000 });
 }
 
 async function clickGame(page, gameX, gameY) {
-  const box = await page.locator("canvas").boundingBox();
+  const box = await page.locator(GAME_CANVAS_SELECTOR).boundingBox();
   if (!box) throw new Error("Game canvas has no bounding box.");
   await page.mouse.click(
     box.x + (gameX / 1330) * box.width,
