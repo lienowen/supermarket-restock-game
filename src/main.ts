@@ -1,6 +1,5 @@
 import Phaser from "phaser";
 import "./styles.css";
-import "./mobilePortraitShell.css";
 import { StorefrontScene } from "./scenes/StorefrontScene";
 import { OpeningScene } from "./scenes/OpeningScene";
 import { GameScene } from "./scenes/GameScene";
@@ -46,7 +45,6 @@ import "./deliveryInventoryIntegration";
 import "./storeOpeningActionIntegration";
 import "./operatingHoursTimerIntegration";
 import "./settingsRuntimeIntegration";
-import "./mobileLandscapeShellIntegration";
 import "./landscapeOrientationIntegration";
 import "./currentDutyHighlightIntegration";
 import "./contractDefaultMigrationIntegration";
