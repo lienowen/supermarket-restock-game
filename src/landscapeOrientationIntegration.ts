@@ -15,10 +15,6 @@ type LockableOrientation = ScreenOrientation & {
   lock?: (orientation: "landscape") => Promise<void>;
 };
 
-type VendorFullscreenElement = HTMLElement & {
-  webkitRequestFullscreen?: () => void | Promise<void>;
-};
-
 type CreatePrototype = {
   create: (...args: unknown[]) => void;
 };
@@ -40,7 +36,6 @@ function wrapScene(prototype: CreatePrototype): void {
     activeScene = scene;
     removeLegacyElements();
 
-    // Standalone/PWA launches may already have permission to lock orientation.
     if (isLandscapeViewport()) void lockOrientationOnly();
 
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
@@ -53,9 +48,8 @@ function installLandscapeOrientation(): void {
   ensureHiddenControlsStyle();
   removeLegacyElements();
 
-  // Browsers require a real user gesture before fullscreen. There is no visible
-  // prompt or dedicated button: the first normal touch anywhere performs the
-  // request in the background.
+  // No prompt or dedicated button. The first normal touch anywhere asks
+  // Phaser to enter fullscreen, then locks the screen to landscape.
   document.addEventListener("pointerdown", handleUserGesture, { capture: true, passive: true });
   document.addEventListener("touchstart", handleUserGesture, { capture: true, passive: true });
   document.addEventListener("keydown", handleUserGesture, { capture: true });
@@ -100,7 +94,7 @@ async function enterLandscapeFullscreen(): Promise<boolean> {
 async function performLandscapeRequest(): Promise<boolean> {
   document.body.dataset.orientationLock = "requesting";
 
-  const fullscreenStarted = await requestFullscreenFromGesture();
+  const fullscreenStarted = await requestPhaserFullscreen();
   const orientationLocked = await lockOrientationOnly();
   await wait(120);
 
@@ -109,33 +103,18 @@ async function performLandscapeRequest(): Promise<boolean> {
   return success;
 }
 
-async function requestFullscreenFromGesture(): Promise<boolean> {
-  if (document.fullscreenElement) return true;
-
-  const root = document.documentElement as VendorFullscreenElement;
-  try {
-    if (typeof root.requestFullscreen === "function") {
-      await root.requestFullscreen({ navigationUI: "hide" });
-      return true;
-    }
-    if (typeof root.webkitRequestFullscreen === "function") {
-      await Promise.resolve(root.webkitRequestFullscreen());
-      return true;
-    }
-  } catch {
-    // Fall through to Phaser's fullscreen manager.
-  }
-
+async function requestPhaserFullscreen(): Promise<boolean> {
   const scene = activeScene;
   if (!scene?.scene.isActive()) return false;
+
   try {
     if (!scene.scale.isFullscreen) scene.scale.startFullscreen();
   } catch {
     return false;
   }
 
-  for (let attempt = 0; attempt < 10; attempt += 1) {
-    if (scene.scale.isFullscreen || document.fullscreenElement) return true;
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    if (scene.scale.isFullscreen || document.fullscreenElement || isLandscapeViewport()) return true;
     await wait(40);
   }
   return scene.scale.isFullscreen || Boolean(document.fullscreenElement);
