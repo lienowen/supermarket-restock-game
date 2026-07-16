@@ -91,6 +91,7 @@ import "./dayTwoStoryPresenceIntegration";
 import "./dayTwoStoryInteractionFixIntegration";
 import "./supermarketImmersionIntegration";
 import "./storefrontEntranceImmersionIntegration";
+import "./weekOneImmersionUpgradeIntegration";
 
 void bootstrap();
 
