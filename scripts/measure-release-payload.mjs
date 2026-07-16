@@ -96,7 +96,10 @@ try {
   activePhase = "firstShiftAdditional";
   await clickGame(page, 965, 770);
   await page.waitForFunction(
-    () => document.body.dataset.gameScene === "opening",
+    () => (
+      document.body.dataset.gameScene === "opening" ||
+      document.body.dataset.crazyGamesScene === "receiving"
+    ),
     null,
     { timeout: 90000 }
   );
