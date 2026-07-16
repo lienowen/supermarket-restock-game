@@ -4,7 +4,7 @@ const RESPONSIVE_LISTENER_FLAG = "supermarketResponsiveListeners";
 
 export function installResponsiveShell(): void {
   ensureViewportMeta();
-  ensureOrientationHint();
+  removeOrientationHint();
   installResponsiveListeners();
   syncViewportMode();
 }
@@ -18,15 +18,8 @@ function ensureViewportMeta(): void {
   if (!existing) document.head.appendChild(meta);
 }
 
-function ensureOrientationHint(): void {
-  if (document.getElementById(ORIENTATION_HINT_ID)) return;
-  const hint = document.createElement("div");
-  hint.id = ORIENTATION_HINT_ID;
-  hint.innerHTML = "<strong>TAP TO ENTER LANDSCAPE</strong><span>THE GAME WILL REQUEST FULLSCREEN LANDSCAPE. YOUR PHONE AUTO-ROTATE SETTING IS NOT REQUIRED.</span>";
-  hint.setAttribute("role", "button");
-  hint.setAttribute("aria-label", "Enter landscape fullscreen mode");
-  hint.tabIndex = 0;
-  document.body.appendChild(hint);
+function removeOrientationHint(): void {
+  document.getElementById(ORIENTATION_HINT_ID)?.remove();
 }
 
 function installResponsiveListeners(): void {
@@ -52,6 +45,7 @@ function syncViewportMode(): void {
       ? "compact"
       : "desktop";
 
+  removeOrientationHint();
   document.body.dataset.viewportMode = mode;
   document.documentElement.style.setProperty("--app-vw", `${width}px`);
   document.documentElement.style.setProperty("--app-vh", `${height}px`);
