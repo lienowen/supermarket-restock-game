@@ -92,6 +92,7 @@ import "./dayTwoStoryInteractionFixIntegration";
 import "./supermarketImmersionIntegration";
 import "./storefrontEntranceImmersionIntegration";
 import "./weekOneImmersionUpgradeIntegration";
+import "./weekOneImmersionRegressionBridgeIntegration";
 
 void bootstrap();
 
