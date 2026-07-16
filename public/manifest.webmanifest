@@ -1,0 +1,12 @@
+{
+  "name": "Supermarket Restock Game",
+  "short_name": "Restock Game",
+  "start_url": "/",
+  "scope": "/",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "landscape",
+  "background_color": "#0b1719",
+  "theme_color": "#0b1719",
+  "description": "A landscape supermarket restocking game."
+}
