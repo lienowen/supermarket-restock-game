@@ -83,7 +83,11 @@ try {
   activePhase = "homepageCold";
   await page.goto(BASE_URL, { waitUntil: "networkidle", timeout: 60000 });
   await waitForCanvas(page);
-  await page.waitForFunction(() => document.body.dataset.stockedLobbyVisual === "ready", { timeout: 30000 });
+  await page.waitForFunction(
+    () => document.body.dataset.stockedLobbyVisual === "ready",
+    null,
+    { timeout: 30000 }
+  );
   // Include delayed lobby work, but opening/delivery assets must remain deferred
   // until the player actually starts the shift.
   await page.waitForTimeout(3500);
@@ -91,7 +95,11 @@ try {
 
   activePhase = "firstShiftAdditional";
   await clickGame(page, 965, 770);
-  await page.waitForFunction(() => document.body.dataset.gameScene === "opening", { timeout: 60000 });
+  await page.waitForFunction(
+    () => document.body.dataset.gameScene === "opening",
+    null,
+    { timeout: 90000 }
+  );
   await page.waitForTimeout(2500);
   activePhase = null;
 
