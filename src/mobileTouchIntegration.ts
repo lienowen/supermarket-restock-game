@@ -15,6 +15,9 @@ type GamePrototype = {
   create: () => void;
 };
 
+const MOBILE_DRAG_DISTANCE = 10;
+const MOBILE_DRAG_DELAY_MS = 70;
+
 const prototype = GameScene.prototype as unknown as GamePrototype;
 const originalCreate = prototype.create;
 
@@ -24,8 +27,8 @@ prototype.create = function createWithMobileTouchTargets(): void {
   if (!usesCoarsePointer()) return;
 
   scene.game.canvas.style.touchAction = "none";
-  scene.input.dragDistanceThreshold = 0;
-  scene.input.dragTimeThreshold = 0;
+  scene.input.dragDistanceThreshold = MOBILE_DRAG_DISTANCE;
+  scene.input.dragTimeThreshold = MOBILE_DRAG_DELAY_MS;
 
   for (const slot of scene.shelfSlots) {
     slot.hitArea.setDisplaySize(144, 164);
