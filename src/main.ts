@@ -47,7 +47,6 @@ import "./storeOpeningActionIntegration";
 import "./operatingHoursTimerIntegration";
 import "./settingsRuntimeIntegration";
 import "./mobileLandscapeShellIntegration";
-import "./landscapeOrientationIntegration";
 import "./currentDutyHighlightIntegration";
 import "./contractDefaultMigrationIntegration";
 import "./shiftContractIntegration";
