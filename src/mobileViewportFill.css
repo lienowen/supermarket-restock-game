@@ -14,8 +14,7 @@
   transform-origin: center;
 }
 
-html body[data-viewport-mode="mobile-landscape"] #app,
-html body[data-forced-landscape="true"] #app {
+html body[data-viewport-mode="mobile-landscape"] #app {
   padding: 0 !important;
   overflow: hidden;
   isolation: isolate;
@@ -24,13 +23,11 @@ html body[data-forced-landscape="true"] #app {
     #0b1719;
 }
 
-html body[data-viewport-mode="mobile-landscape"] #mobile-game-backdrop,
-html body[data-forced-landscape="true"] #mobile-game-backdrop {
-  display: block !important;
+html body[data-viewport-mode="mobile-landscape"] #mobile-game-backdrop {
+  display: block;
 }
 
-html body[data-viewport-mode="mobile-landscape"] #app::after,
-html body[data-forced-landscape="true"] #app::after {
+html body[data-viewport-mode="mobile-landscape"] #app::after {
   position: absolute;
   z-index: 1;
   inset: 0;
@@ -56,67 +53,99 @@ html body[data-viewport-mode="mobile-landscape"] #app > canvas:not(#mobile-game-
   box-shadow: 0 0 26px rgb(0 0 0 / 32%) !important;
 }
 
-/* The Phaser scene already owns the gameplay HUD. The duplicate DOM HUD
- * reduced the available game height on mobile browsers. */
 html body[data-viewport-mode="mobile-landscape"] #mobile-game-hud,
 html body[data-viewport-mode="mobile-landscape"] #mobile-game-task,
 html body[data-viewport-mode="mobile-landscape"] #mobile-storefront-actions,
 html body[data-viewport-mode="mobile-landscape"] #mobile-storefront-close,
-html body[data-forced-landscape="true"] #mobile-game-hud,
-html body[data-forced-landscape="true"] #mobile-game-task,
-html body[data-forced-landscape="true"] #mobile-storefront-actions,
-html body[data-forced-landscape="true"] #mobile-storefront-close {
-  display: none !important;
-}
-
 html body[data-viewport-mode="mobile-landscape"] #mobile-fullscreen-button,
 html body[data-viewport-mode="mobile-landscape"] #mobile-landscape-lock,
-html body[data-forced-landscape="true"] #mobile-fullscreen-button,
-html body[data-forced-landscape="true"] #mobile-landscape-lock,
-html body[data-forced-landscape="true"] #mobile-orientation-hint {
+html body[data-viewport-mode="mobile-landscape"] #mobile-orientation-hint {
   display: none !important;
 }
 
 /*
- * A touch device held in portrait still runs a fixed landscape game.
- * The shell is rotated clockwise using viewport dimensions only; no motion,
- * accelerometer or gravity sensor is read. Turning the phone physically makes
- * this fixed landscape surface upright even when OS auto-rotation is disabled.
+ * Browsers do not allow a page to rotate the browser chrome automatically.
+ * In portrait we keep the real canvas unrotated so Phaser's touch coordinates
+ * remain correct, and use the first user tap to request fullscreen landscape.
  */
-html body[data-forced-landscape="true"] {
-  overflow: hidden !important;
-  background: #0b1719;
-}
+@media (max-width: 900px) and (orientation: portrait) {
+  html body[data-viewport-mode="mobile-portrait"] {
+    overflow: hidden !important;
+    background: #071315;
+  }
 
-html body[data-forced-landscape="true"] #app {
-  position: fixed !important;
-  inset: auto !important;
-  left: calc(50% - var(--visual-vh-half, 50dvh)) !important;
-  top: calc(50% - var(--visual-vw-half, 50vw)) !important;
-  width: var(--visual-vh, 100dvh) !important;
-  height: var(--visual-vw, 100vw) !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
-  max-width: none !important;
-  max-height: none !important;
-  transform: rotate(90deg) !important;
-  transform-origin: center center !important;
-}
+  html body[data-viewport-mode="mobile-portrait"] #app {
+    padding: 0 !important;
+    overflow: hidden;
+    background: #071315;
+    transform: none !important;
+  }
 
-html body[data-forced-landscape="true"] #app > canvas:not(#mobile-game-backdrop) {
-  position: absolute !important;
-  z-index: 2;
-  top: 50% !important;
-  left: 50% !important;
-  width: auto !important;
-  height: auto !important;
-  max-width: calc(var(--visual-vh, 100dvh) - env(safe-area-inset-top) - env(safe-area-inset-bottom)) !important;
-  max-height: calc(var(--visual-vw, 100vw) - env(safe-area-inset-left) - env(safe-area-inset-right)) !important;
-  margin: 0 !important;
-  opacity: 1 !important;
-  filter: none !important;
-  transform: translate(-50%, -50%) !important;
-  transform-origin: center center !important;
-  pointer-events: auto !important;
-  box-shadow: 0 0 26px rgb(0 0 0 / 32%) !important;
+  html body[data-viewport-mode="mobile-portrait"] #app > canvas:not(#mobile-game-backdrop) {
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    width: min(108vw, 760px) !important;
+    height: auto !important;
+    max-width: none !important;
+    max-height: 78dvh !important;
+    margin: 0 !important;
+    opacity: 0.22 !important;
+    filter: blur(3px) brightness(0.52) !important;
+    transform: translate(-50%, -50%) !important;
+    pointer-events: none !important;
+    box-shadow: none !important;
+  }
+
+  html body[data-viewport-mode="mobile-portrait"] #mobile-game-backdrop {
+    display: none !important;
+  }
+
+  html body[data-viewport-mode="mobile-portrait"] #mobile-orientation-hint {
+    z-index: 10050;
+    inset: 0;
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding:
+      max(36px, env(safe-area-inset-top))
+      max(30px, env(safe-area-inset-right))
+      max(100px, env(safe-area-inset-bottom))
+      max(30px, env(safe-area-inset-left));
+    box-sizing: border-box;
+    background: rgb(7 19 21 / 88%);
+    color: #ffffff;
+    text-align: center;
+    pointer-events: auto;
+    touch-action: manipulation;
+    backdrop-filter: blur(9px);
+  }
+
+  html body[data-viewport-mode="mobile-portrait"] #mobile-orientation-hint::before {
+    content: "↔";
+    display: block;
+    color: #ffd75a;
+    font: 800 68px/1 Arial, sans-serif;
+  }
+
+  html body[data-viewport-mode="mobile-portrait"] #mobile-orientation-hint strong {
+    font: 900 26px/1.15 Arial, sans-serif;
+    letter-spacing: 1.5px;
+  }
+
+  html body[data-viewport-mode="mobile-portrait"] #mobile-orientation-hint span {
+    max-width: 340px;
+    color: #dbe9e4;
+    font: 700 15px/1.5 Arial, sans-serif;
+  }
+
+  html body[data-viewport-mode="mobile-portrait"] #mobile-game-hud,
+  html body[data-viewport-mode="mobile-portrait"] #mobile-game-task,
+  html body[data-viewport-mode="mobile-portrait"] #mobile-storefront-actions,
+  html body[data-viewport-mode="mobile-portrait"] #mobile-storefront-close,
+  html body[data-viewport-mode="mobile-portrait"] #mobile-fullscreen-button {
+    display: none !important;
+  }
 }
