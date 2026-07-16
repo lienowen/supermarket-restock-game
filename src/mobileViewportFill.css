@@ -14,7 +14,8 @@
   transform-origin: center;
 }
 
-html body[data-viewport-mode="mobile-landscape"] #app {
+html body[data-viewport-mode="mobile-landscape"] #app,
+html body[data-viewport-mode="mobile-portrait"] #app {
   padding: 0 !important;
   overflow: hidden;
   isolation: isolate;
@@ -23,22 +24,25 @@ html body[data-viewport-mode="mobile-landscape"] #app {
     #0b1719;
 }
 
-html body[data-viewport-mode="mobile-landscape"] #mobile-game-backdrop {
-  display: block;
+html body[data-viewport-mode="mobile-landscape"] #mobile-game-backdrop,
+html body[data-viewport-mode="mobile-portrait"] #mobile-game-backdrop {
+  display: block !important;
 }
 
-html body[data-viewport-mode="mobile-landscape"] #app::after {
+html body[data-viewport-mode="mobile-landscape"] #app::after,
+html body[data-viewport-mode="mobile-portrait"] #app::after {
   position: absolute;
   z-index: 1;
   inset: 0;
   content: "";
   pointer-events: none;
   background:
-    linear-gradient(90deg, rgb(4 12 14 / 30%), transparent 18%, transparent 82%, rgb(4 12 14 / 30%)),
-    linear-gradient(180deg, rgb(4 12 14 / 20%), transparent 18%, transparent 82%, rgb(4 12 14 / 24%));
+    linear-gradient(90deg, rgb(4 12 14 / 26%), transparent 18%, transparent 82%, rgb(4 12 14 / 26%)),
+    linear-gradient(180deg, rgb(4 12 14 / 18%), transparent 18%, transparent 82%, rgb(4 12 14 / 22%));
 }
 
-html body[data-viewport-mode="mobile-landscape"] #app > canvas:not(#mobile-game-backdrop) {
+html body[data-viewport-mode="mobile-landscape"] #app > canvas:not(#mobile-game-backdrop),
+html body[data-viewport-mode="mobile-portrait"] #app > canvas:not(#mobile-game-backdrop) {
   position: absolute !important;
   z-index: 2;
   top: 50% !important;
@@ -48,104 +52,23 @@ html body[data-viewport-mode="mobile-landscape"] #app > canvas:not(#mobile-game-
   max-width: calc(var(--visual-vw, 100vw) - env(safe-area-inset-left) - env(safe-area-inset-right)) !important;
   max-height: calc(var(--visual-vh, 100dvh) - env(safe-area-inset-top) - env(safe-area-inset-bottom)) !important;
   margin: 0 !important;
+  opacity: 1 !important;
+  filter: none !important;
   transform: translate(-50%, -50%) !important;
   transform-origin: center center !important;
+  pointer-events: auto !important;
   box-shadow: 0 0 26px rgb(0 0 0 / 32%) !important;
 }
 
-html body[data-viewport-mode="mobile-landscape"] #mobile-game-hud,
-html body[data-viewport-mode="mobile-landscape"] #mobile-game-task,
-html body[data-viewport-mode="mobile-landscape"] #mobile-storefront-actions,
-html body[data-viewport-mode="mobile-landscape"] #mobile-storefront-close,
-html body[data-viewport-mode="mobile-landscape"] #mobile-fullscreen-button,
-html body[data-viewport-mode="mobile-landscape"] #mobile-landscape-lock,
-html body[data-viewport-mode="mobile-landscape"] #mobile-orientation-hint {
+/* All legacy DOM shells are disabled. Phaser owns the complete interface. */
+#mobile-orientation-hint,
+#mobile-landscape-lock,
+#mobile-fullscreen-button,
+#mobile-game-hud,
+#mobile-game-task,
+#mobile-storefront-actions,
+#mobile-storefront-close {
   display: none !important;
-}
-
-/*
- * Browsers do not allow a page to rotate the browser chrome automatically.
- * In portrait we keep the real canvas unrotated so Phaser's touch coordinates
- * remain correct, and use the first user tap to request fullscreen landscape.
- */
-@media (max-width: 900px) and (orientation: portrait) {
-  html body[data-viewport-mode="mobile-portrait"] {
-    overflow: hidden !important;
-    background: #071315;
-  }
-
-  html body[data-viewport-mode="mobile-portrait"] #app {
-    padding: 0 !important;
-    overflow: hidden;
-    background: #071315;
-    transform: none !important;
-  }
-
-  html body[data-viewport-mode="mobile-portrait"] #app > canvas:not(#mobile-game-backdrop) {
-    position: absolute !important;
-    top: 50% !important;
-    left: 50% !important;
-    width: min(108vw, 760px) !important;
-    height: auto !important;
-    max-width: none !important;
-    max-height: 78dvh !important;
-    margin: 0 !important;
-    opacity: 0.22 !important;
-    filter: blur(3px) brightness(0.52) !important;
-    transform: translate(-50%, -50%) !important;
-    pointer-events: none !important;
-    box-shadow: none !important;
-  }
-
-  html body[data-viewport-mode="mobile-portrait"] #mobile-game-backdrop {
-    display: none !important;
-  }
-
-  html body[data-viewport-mode="mobile-portrait"] #mobile-orientation-hint {
-    z-index: 10050;
-    inset: 0;
-    display: flex !important;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 14px;
-    padding:
-      max(36px, env(safe-area-inset-top))
-      max(30px, env(safe-area-inset-right))
-      max(100px, env(safe-area-inset-bottom))
-      max(30px, env(safe-area-inset-left));
-    box-sizing: border-box;
-    background: rgb(7 19 21 / 88%);
-    color: #ffffff;
-    text-align: center;
-    pointer-events: auto;
-    touch-action: manipulation;
-    backdrop-filter: blur(9px);
-  }
-
-  html body[data-viewport-mode="mobile-portrait"] #mobile-orientation-hint::before {
-    content: "↔";
-    display: block;
-    color: #ffd75a;
-    font: 800 68px/1 Arial, sans-serif;
-  }
-
-  html body[data-viewport-mode="mobile-portrait"] #mobile-orientation-hint strong {
-    font: 900 26px/1.15 Arial, sans-serif;
-    letter-spacing: 1.5px;
-  }
-
-  html body[data-viewport-mode="mobile-portrait"] #mobile-orientation-hint span {
-    max-width: 340px;
-    color: #dbe9e4;
-    font: 700 15px/1.5 Arial, sans-serif;
-  }
-
-  html body[data-viewport-mode="mobile-portrait"] #mobile-game-hud,
-  html body[data-viewport-mode="mobile-portrait"] #mobile-game-task,
-  html body[data-viewport-mode="mobile-portrait"] #mobile-storefront-actions,
-  html body[data-viewport-mode="mobile-portrait"] #mobile-storefront-close,
-  html body[data-viewport-mode="mobile-portrait"] #mobile-fullscreen-button {
-    display: none !important;
-  }
+  visibility: hidden !important;
+  pointer-events: none !important;
 }
