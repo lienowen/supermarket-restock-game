@@ -109,7 +109,7 @@ function installLifecyclePause(): void {
 function openPause(reason: string, source: PauseSource): void {
   const scene = activeGame;
   if (pausing || !scene?.scene.isActive() || scene.shiftEnded) return;
-  if (document.body.dataset.gameScene !== "game" && document.body.dataset.gameScene !== "promotion") return;
+  if (!isGameplayScene()) return;
   if (document.body.dataset.marketPaused === "true") return;
 
   pausing = true;
@@ -132,6 +132,17 @@ function openPause(reason: string, source: PauseSource): void {
   if (reasonElement) reasonElement.textContent = `${reason}. Customers and timers are stopped.`;
   if (source === "manual") crazyGamesPlatform.gameplayStop();
   pausing = false;
+}
+
+function isGameplayScene(): boolean {
+  const legacyScene = document.body.dataset.gameScene;
+  const platformScene = document.body.dataset.crazyGamesScene;
+  return (
+    legacyScene === "game" ||
+    legacyScene === "promotion" ||
+    platformScene === "main-store" ||
+    platformScene === "promotion-wing"
+  );
 }
 
 function resumeShift(reportGameplay = true): void {
