@@ -22,9 +22,10 @@ function ensureOrientationHint(): void {
   if (document.getElementById(ORIENTATION_HINT_ID)) return;
   const hint = document.createElement("div");
   hint.id = ORIENTATION_HINT_ID;
-  hint.innerHTML = "<strong>ROTATE DEVICE</strong><span>PLAY IN LANDSCAPE FOR THE FULL STORE AND LARGER CONTROLS</span>";
-  hint.setAttribute("role", "status");
-  hint.setAttribute("aria-live", "polite");
+  hint.innerHTML = "<strong>TAP TO ENTER LANDSCAPE</strong><span>THE GAME WILL REQUEST FULLSCREEN LANDSCAPE. YOUR PHONE AUTO-ROTATE SETTING IS NOT REQUIRED.</span>";
+  hint.setAttribute("role", "button");
+  hint.setAttribute("aria-label", "Enter landscape fullscreen mode");
+  hint.tabIndex = 0;
   document.body.appendChild(hint);
 }
 
@@ -38,8 +39,9 @@ function installResponsiveListeners(): void {
 }
 
 function syncViewportMode(): void {
-  const width = Math.max(1, window.innerWidth);
-  const height = Math.max(1, window.innerHeight);
+  const viewport = window.visualViewport;
+  const width = Math.max(1, Math.round(viewport?.width ?? window.innerWidth));
+  const height = Math.max(1, Math.round(viewport?.height ?? window.innerHeight));
   const mobile = Math.min(width, height) <= 760;
   const portrait = height > width;
   const mode = mobile
