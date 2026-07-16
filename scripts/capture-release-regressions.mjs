@@ -45,9 +45,12 @@ const report = {
     milkTextureTransparent: false,
     day3ReachedGame: false,
     day3MultiFixture: false,
+    day3ImmersiveStore: false,
     day3CustomerServiceDeadlockRecovery: false,
     day4PromotionPressure: false,
+    day4ImmersiveStore: false,
     day5WeekendRush: false,
+    day5ImmersiveStore: false,
     promotionWingRealistic: false,
     crazyGamesSdkLifecycle: false
   }
@@ -160,14 +163,16 @@ try {
     null,
     { timeout: 10000 }
   );
-  await page.waitForTimeout(900);
+  await showImmersiveRoom(page, "day03", "main");
+  await page.waitForTimeout(1100);
 
   report.regressions.day3ReachedGame = await page.evaluate(() => (
     document.body.dataset.gameScene === "game" ||
     document.body.dataset.crazyGamesScene === "main-store"
   ));
   report.regressions.day3MultiFixture = true;
-  await capture(page, report, "04-day3-multi-fixture-floor.png", "Day 3 drinks, grocery and cold-case fixtures");
+  report.regressions.day3ImmersiveStore = true;
+  await capture(page, report, "04-day3-multi-fixture-floor.png", "Day 3 immersive supervisor floor walk");
 
   await page.waitForFunction(
     () => typeof window.__DAY3_DEADLOCK_TEST__?.prepare === "function",
@@ -224,11 +229,13 @@ try {
     "gameplayStart"
   ]);
 
-  await captureBatchDay(page, report, "day04", "05-day4-promotion-pressure.png", "Day 4 promotion pressure full floor");
+  await captureBatchDay(page, report, "day04", "promotion", "05-day4-promotion-pressure.png", "Day 4 immersive flash-sale promotion aisle");
   report.regressions.day4PromotionPressure = true;
+  report.regressions.day4ImmersiveStore = true;
 
-  await captureBatchDay(page, report, "day05", "06-day5-weekend-rush.png", "Day 5 weekend rush whole store");
+  await captureBatchDay(page, report, "day05", "main", "06-day5-weekend-rush.png", "Day 5 immersive weekend main-floor rush");
   report.regressions.day5WeekendRush = true;
+  report.regressions.day5ImmersiveStore = true;
 
   await page.goto(`${BASE_URL}&promotionTest=1`, { waitUntil: "networkidle", timeout: 60000 });
   await waitForCanvas(page);
@@ -258,7 +265,7 @@ try {
 console.log(JSON.stringify({ regressions: report.regressions, fatalError: report.fatalError }, null, 2));
 if (thrownError) throw thrownError;
 
-async function captureBatchDay(page, auditReport, day, filename, label) {
+async function captureBatchDay(page, auditReport, day, showcaseRoom, filename, label) {
   const priorStars = day === "day04"
     ? { day01: 3, day02: 3, day03: 3 }
     : { day01: 3, day02: 3, day03: 3, day04: 3 };
@@ -279,8 +286,24 @@ async function captureBatchDay(page, auditReport, day, filename, label) {
   await page.evaluate(() => window.__GAME_TEST__.finishReceiving());
   await waitForScene(page, "game", 30000);
   await page.waitForFunction((expectedDay) => document.body.dataset.weekOneBatchFloor === expectedDay, day, { timeout: 30000 });
-  await page.waitForTimeout(1200);
+  await showImmersiveRoom(page, day, showcaseRoom);
+  await page.waitForTimeout(1400);
   await capture(page, auditReport, filename, label);
+}
+
+async function showImmersiveRoom(page, day, room) {
+  await page.waitForFunction(
+    () => typeof window.__WEEK_ONE_IMMERSION_TEST__?.showRoom === "function",
+    null,
+    { timeout: 15000 }
+  );
+  const switched = await page.evaluate((targetRoom) => window.__WEEK_ONE_IMMERSION_TEST__.showRoom(targetRoom), room);
+  if (!switched) throw new Error(`Immersive room ${room} is not available for ${day}`);
+  await page.waitForFunction(
+    ({ expectedDay, expectedRoom }) => document.body.dataset.weekOneImmersion === `${expectedDay}:${expectedRoom}:ready`,
+    { expectedDay: day, expectedRoom: room },
+    { timeout: 10000 }
+  );
 }
 
 function hasOrderedEvents(events, expected) {
