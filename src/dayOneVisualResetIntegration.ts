@@ -120,6 +120,7 @@ function installVisualReset(scene: RuntimeGame): void {
     simplifyEmptyShelfState(scene);
     keepPreparationFloorQuiet(scene);
     tuneRestockGuide(scene);
+    syncFixtureStates(scene);
   };
 
   const destroy = (): void => {
@@ -314,4 +315,51 @@ function findInObjectTree<T extends Phaser.GameObjects.GameObject>(
 function fitImage(image: Phaser.GameObjects.Image, maxWidth: number, maxHeight: number): void {
   const scale = Math.min(maxWidth / image.width, maxHeight / image.height);
   image.setScale(scale);
+}
+
+type FixtureState = "empty" | "low" | "full";
+
+const FROZEN_STATE_TEXTURES: Record<FixtureState, string> = {
+  empty: ProductionAssets.fixtures.frozenEmpty,
+  low: ProductionAssets.fixtures.frozenLow,
+  full: ProductionAssets.fixtures.frozenFull
+};
+
+const RACK_STATE_TEXTURES: Record<FixtureState, string> = {
+  empty: ProductionAssets.fixtures.rackBackroomEmpty,
+  low: ProductionAssets.fixtures.rackBackroomLow,
+  full: ProductionAssets.fixtures.rackBackroomFull
+};
+
+// Mirrors the day03-05 production fixture state machine for Day 1: the cold
+// case visually depletes while slots are empty and refills as the player
+// restocks; the backroom rack thins out as boxes are loaded onto the cart.
+function syncFixtureStates(scene: RuntimeGame): void {
+  const slots = scene.shelfSlots ?? [];
+  if (slots.length > 0) {
+    const filled = slots.filter((slot) => Boolean(slot.product?.active)).length;
+    const state: FixtureState = filled === 0 ? "empty" : filled < slots.length ? "low" : "full";
+    swapFixtureTexture(scene, FROZEN_STATE_TEXTURES, state);
+  }
+
+  const remainingBoxes = (scene.boxes ?? []).filter((box) => box.image.active && !box.loaded).length;
+  const rackState: FixtureState = remainingBoxes === 0 ? "empty" : remainingBoxes < 5 ? "low" : "full";
+  swapFixtureTexture(scene, RACK_STATE_TEXTURES, rackState);
+}
+
+function swapFixtureTexture(
+  scene: Phaser.Scene,
+  stateTextures: Record<FixtureState, string>,
+  state: FixtureState
+): void {
+  const target = stateTextures[state];
+  const image = scene.children.list.find(
+    (child): child is Phaser.GameObjects.Image =>
+      child instanceof Phaser.GameObjects.Image &&
+      (child.texture.key === stateTextures.empty ||
+        child.texture.key === stateTextures.low ||
+        child.texture.key === stateTextures.full)
+  );
+  if (!image || image.texture.key === target || !scene.textures.exists(target)) return;
+  image.setTexture(target);
 }
