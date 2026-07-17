@@ -91,12 +91,11 @@ import "./dayTwoStoryPresenceIntegration";
 import "./dayTwoStoryInteractionFixIntegration";
 import "./mobileViewportFillIntegration";
 import "./supermarketImmersionIntegration";
-import "./dayOneSupermarketVisualIntegration";
 import "./storefrontEntranceImmersionIntegration";
 import "./weekOneImmersionUpgradeIntegration";
 import "./weekOneImmersionRegressionBridgeIntegration";
 import "./dayOneRestockImmersionIntegration";
-import "./dayOneDepartmentPolishIntegration";
+import "./dayOneVisualResetIntegration";
 
 void bootstrap();
 
