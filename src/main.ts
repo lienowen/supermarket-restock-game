@@ -96,6 +96,7 @@ import "./weekOneImmersionUpgradeIntegration";
 import "./weekOneImmersionRegressionBridgeIntegration";
 import "./dayOneRestockImmersionIntegration";
 import "./dayOneVisualResetIntegration";
+import "./dayOneMotionCleanupIntegration";
 
 void bootstrap();
 
