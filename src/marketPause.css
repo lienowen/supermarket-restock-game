@@ -22,7 +22,9 @@
 }
 
 body[data-game-scene="game"] #market-pause-button,
-body[data-game-scene="promotion"] #market-pause-button {
+body[data-game-scene="promotion"] #market-pause-button,
+body[data-crazy-games-scene="main-store"] #market-pause-button,
+body[data-crazy-games-scene="promotion-wing"] #market-pause-button {
   display: block;
 }
 
