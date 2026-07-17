@@ -91,6 +91,7 @@ import "./dayTwoStoryPresenceIntegration";
 import "./dayTwoStoryInteractionFixIntegration";
 import "./mobileViewportFillIntegration";
 import "./supermarketImmersionIntegration";
+import "./dayOneSupermarketVisualIntegration";
 
 void bootstrap();
 
@@ -105,24 +106,9 @@ async function bootstrap(): Promise<void> {
     width: 1330,
     height: 1182,
     backgroundColor: "#151b1b",
-    scale: {
-      mode: Phaser.Scale.FIT,
-      autoCenter: Phaser.Scale.CENTER_BOTH,
-      expandParent: true
-    },
-    render: {
-      antialias: true,
-      roundPixels: true
-    },
-    scene: [
-      StorefrontScene,
-      OpeningScene,
-      GameScene,
-      PolishOverlayScene,
-      ProgressionCustomerScene,
-      BackStockScene,
-      PromotionWingScene
-    ]
+    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH, expandParent: true },
+    render: { antialias: true, roundPixels: true },
+    scene: [StorefrontScene, OpeningScene, GameScene, PolishOverlayScene, ProgressionCustomerScene, BackStockScene, PromotionWingScene]
   });
 
   crazyGamesPlatform.bindGame(game);
