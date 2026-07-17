@@ -678,11 +678,11 @@ function playRoomTransition(room: RoomId): void {
   const context = getAudioContext();
   if (!context || context.state !== "running") return;
   if (room === "cold") {
-    playTone(context, 460, 0.018, 0.08, "sine");
-    playTone(context, 610, 0.012, 0.11, "sine", 0.07);
+    playTone(context, 460, 0.045, 0.08, "sine");
+    playTone(context, 610, 0.03, 0.11, "sine", 0.07);
     return;
   }
-  playTone(context, 330, 0.014, 0.07, "triangle");
+  playTone(context, 330, 0.035, 0.07, "triangle");
 }
 
 function startSupermarketAmbience(scene: Phaser.Scene, zone: RoomId | "entrance"): void {
@@ -703,7 +703,7 @@ function startSupermarketAmbience(scene: Phaser.Scene, zone: RoomId | "entrance"
     const humGain = context.createGain();
     hum.type = "sine";
     hum.frequency.value = zone === "cold" ? 72 : 60;
-    humGain.gain.value = zone === "cold" ? 0.0055 : 0.0035;
+    humGain.gain.value = zone === "cold" ? 0.028 : 0.02;
     hum.connect(humGain);
     humGain.connect(master);
     hum.start();
@@ -712,7 +712,7 @@ function startSupermarketAmbience(scene: Phaser.Scene, zone: RoomId | "entrance"
     const upperGain = context.createGain();
     upperHum.type = "sine";
     upperHum.frequency.value = zone === "cold" ? 144 : 120;
-    upperGain.gain.value = 0.0018;
+    upperGain.gain.value = 0.008;
     upperHum.connect(upperGain);
     upperGain.connect(master);
     upperHum.start();
@@ -724,7 +724,7 @@ function startSupermarketAmbience(scene: Phaser.Scene, zone: RoomId | "entrance"
     noise.loop = true;
     noiseFilter.type = "lowpass";
     noiseFilter.frequency.value = zone === "stock" ? 620 : 980;
-    noiseGain.gain.value = zone === "entrance" ? 0.006 : 0.008;
+    noiseGain.gain.value = zone === "entrance" ? 0.024 : 0.03;
     noise.connect(noiseFilter);
     noiseFilter.connect(noiseGain);
     noiseGain.connect(master);
@@ -737,8 +737,8 @@ function startSupermarketAmbience(scene: Phaser.Scene, zone: RoomId | "entrance"
       callback: () => {
         if (context.state !== "running") return;
         beepCycle += 1;
-        playTone(context, 880, 0.018, 0.055, "sine");
-        playTone(context, 1175, 0.012, 0.06, "sine", 0.07);
+        playTone(context, 880, 0.045, 0.055, "sine");
+        playTone(context, 1175, 0.032, 0.06, "sine", 0.07);
         if (beepCycle % 3 === 0) playPaChime(context);
       }
     });
@@ -777,14 +777,14 @@ function startSupermarketAmbience(scene: Phaser.Scene, zone: RoomId | "entrance"
 function playDoorChime(): void {
   const context = getAudioContext();
   if (!context || context.state !== "running") return;
-  playTone(context, 660, 0.025, 0.12, "sine");
-  playTone(context, 880, 0.02, 0.16, "sine", 0.12);
+  playTone(context, 660, 0.06, 0.12, "sine");
+  playTone(context, 880, 0.05, 0.16, "sine", 0.12);
 }
 
 function playPaChime(context: AudioContext): void {
-  playTone(context, 523, 0.012, 0.12, "triangle");
-  playTone(context, 659, 0.012, 0.13, "triangle", 0.11);
-  playTone(context, 784, 0.01, 0.16, "triangle", 0.22);
+  playTone(context, 523, 0.032, 0.12, "triangle");
+  playTone(context, 659, 0.032, 0.13, "triangle", 0.11);
+  playTone(context, 784, 0.028, 0.16, "triangle", 0.22);
 }
 
 function playTone(

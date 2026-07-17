@@ -166,7 +166,7 @@ function reframeStoreFixtures(scene: Phaser.Scene): void {
   coldCase?.setPosition(1080, 1010).setOrigin(0.5, 1).setDisplaySize(430, 585).setDepth(3.4);
 
   const produce = findTextureImage(scene, ProductionAssets.fixtures.produceFull);
-  produce?.setVisible(false).disableInteractive();
+  produce?.setPosition(665, 1015).setOrigin(0.5, 1).setDisplaySize(300, 210).setDepth(3.2).setVisible(true);
 
   const leftForeground = findTextureImage(scene, ProductionAssets.foreground.aisleLeft);
   leftForeground?.setPosition(0, 1015).setOrigin(0, 1).setDisplaySize(150, 500).setAlpha(0.68).setDepth(6);

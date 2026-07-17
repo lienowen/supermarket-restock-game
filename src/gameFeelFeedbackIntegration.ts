@@ -135,9 +135,9 @@ function animatePressed(scene: Phaser.Scene, target: PressTarget): void {
   scene.tweens.killTweensOf(displayTarget);
   scene.tweens.add({
     targets: displayTarget,
-    scaleX: originalX * 0.965,
-    scaleY: originalY * 0.965,
-    duration: 55,
+    scaleX: originalX * 0.93,
+    scaleY: originalY * 0.93,
+    duration: 70,
     yoyo: true,
     ease: "Quad.Out",
     onComplete: () => {
@@ -155,28 +155,28 @@ function playTone(kind: "tap" | "success" | "open" | "complete" | "error"): void
 
   const now = context.currentTime;
   if (kind === "tap") {
-    scheduleTone(context, now, 420, 0.035, 0.045, "sine");
+    scheduleTone(context, now, 420, 0.07, 0.05, "sine");
     return;
   }
   if (kind === "error") {
-    scheduleTone(context, now, 170, 0.09, 0.11, "square");
-    scheduleTone(context, now + 0.09, 125, 0.07, 0.12, "square");
+    scheduleTone(context, now, 170, 0.13, 0.11, "square");
+    scheduleTone(context, now + 0.09, 125, 0.1, 0.12, "square");
     return;
   }
   if (kind === "success") {
-    scheduleTone(context, now, 520, 0.065, 0.09, "sine");
-    scheduleTone(context, now + 0.075, 720, 0.055, 0.12, "sine");
+    scheduleTone(context, now, 520, 0.1, 0.09, "sine");
+    scheduleTone(context, now + 0.075, 720, 0.08, 0.12, "sine");
     return;
   }
   if (kind === "open") {
-    scheduleTone(context, now, 392, 0.06, 0.12, "triangle");
-    scheduleTone(context, now + 0.1, 523, 0.065, 0.13, "triangle");
-    scheduleTone(context, now + 0.2, 659, 0.07, 0.16, "triangle");
+    scheduleTone(context, now, 392, 0.1, 0.12, "triangle");
+    scheduleTone(context, now + 0.1, 523, 0.1, 0.13, "triangle");
+    scheduleTone(context, now + 0.2, 659, 0.11, 0.16, "triangle");
     return;
   }
-  scheduleTone(context, now, 523, 0.07, 0.14, "triangle");
-  scheduleTone(context, now + 0.11, 659, 0.075, 0.15, "triangle");
-  scheduleTone(context, now + 0.23, 784, 0.08, 0.22, "triangle");
+  scheduleTone(context, now, 523, 0.11, 0.14, "triangle");
+  scheduleTone(context, now + 0.11, 659, 0.11, 0.15, "triangle");
+  scheduleTone(context, now + 0.23, 784, 0.12, 0.22, "triangle");
 }
 
 function scheduleTone(
