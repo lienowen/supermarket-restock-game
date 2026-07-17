@@ -37,7 +37,7 @@ test("The first three shifts add responsibility without excessive sales targets"
   assert.deepEqual(LEVELS.day03.salesTargets, { openToRush: 4, rushToClosing: 8 });
   assert.equal(LEVELS.day01.title, "Opening Routine");
   assert.equal(LEVELS.day02.title, "Promotion & Checkout");
-  assert.equal(LEVELS.day03.title, "Shift Supervisor");
+  assert.equal(LEVELS.day03.title, "Floor Control");
 });
 
 test("GameSession rejects phase sales and wallet overwrite from legacy scene sync", () => {
@@ -106,7 +106,7 @@ test("Performance stars reward completion quality instead of raw sales only", ()
   }), 2);
 });
 
-test("Runtime rules follow all three active campaign days", () => {
+test("Runtime rules follow the complete five-day campaign", () => {
   gameSession.reset("day01");
   assert.equal(GAME_RULES.shiftSeconds, 240);
   assert.equal(GAME_RULES.normalSalesTarget, 2);
@@ -122,11 +122,25 @@ test("Runtime rules follow all three active campaign days", () => {
   assert.equal(GAME_RULES.customerIntervalRushMs, 5000);
 
   gameSession.reset("day03");
-  assert.equal(GAME_RULES.shiftSeconds, 330);
+  assert.equal(GAME_RULES.shiftSeconds, 360);
   assert.equal(GAME_RULES.normalSalesTarget, 4);
   assert.equal(GAME_RULES.rushSalesTarget, 8);
   assert.equal(GAME_RULES.customerIntervalOpenMs, 6500);
   assert.equal(GAME_RULES.customerIntervalRushMs, 4700);
+
+  gameSession.reset("day04");
+  assert.equal(GAME_RULES.shiftSeconds, 420);
+  assert.equal(GAME_RULES.normalSalesTarget, 6);
+  assert.equal(GAME_RULES.rushSalesTarget, 12);
+  assert.equal(GAME_RULES.customerIntervalOpenMs, 5600);
+  assert.equal(GAME_RULES.customerIntervalRushMs, 3600);
+
+  gameSession.reset("day05");
+  assert.equal(GAME_RULES.shiftSeconds, 540);
+  assert.equal(GAME_RULES.normalSalesTarget, 8);
+  assert.equal(GAME_RULES.rushSalesTarget, 18);
+  assert.equal(GAME_RULES.customerIntervalOpenMs, 4600);
+  assert.equal(GAME_RULES.customerIntervalRushMs, 2800);
 });
 
 test("Cart load states are visually distinct", () => {

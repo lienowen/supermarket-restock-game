@@ -7,8 +7,20 @@ const DIST_DIR = resolve("dist");
 const OUTPUT_FILE = resolve("release-payload-report.json");
 const PORT = 4174;
 const BASE_URL = `http://127.0.0.1:${PORT}/?test=1`;
+const GAME_CANVAS_SELECTOR = "#app > canvas:not(#mobile-game-backdrop)";
 const MOBILE_HOMEPAGE_TARGET_BYTES = 20 * 1024 * 1024;
 const BASIC_LAUNCH_TARGET_BYTES = 50 * 1024 * 1024;
+const MOBILE_NETWORK_PROFILE = {
+  label: "mobile-10mbps",
+  latencyMs: 80,
+  downloadMbps: 10,
+  uploadMbps: 3
+};
+const TIMING_LIMITS_MS = {
+  canvasVisible: 20_000,
+  lobbyInteractive: 30_000,
+  firstShiftReady: 60_000
+};
 
 if (!existsSync(join(DIST_DIR, "index.html"))) {
   throw new Error("dist/index.html is missing. Run npm run build first.");
@@ -72,6 +84,16 @@ try {
   });
 
   const page = await context.newPage();
+  const cdp = await context.newCDPSession(page);
+  await cdp.send("Network.enable");
+  await cdp.send("Network.emulateNetworkConditions", {
+    offline: false,
+    latency: MOBILE_NETWORK_PROFILE.latencyMs,
+    downloadThroughput: mbpsToBytesPerSecond(MOBILE_NETWORK_PROFILE.downloadMbps),
+    uploadThroughput: mbpsToBytesPerSecond(MOBILE_NETWORK_PROFILE.uploadMbps),
+    connectionType: "cellular4g"
+  });
+
   const runtimeIssues = [];
   page.on("pageerror", (error) => runtimeIssues.push(`pageerror: ${error.message}`));
   page.on("requestfailed", (request) => {
@@ -79,52 +101,78 @@ try {
     if (!failure.includes("ERR_ABORTED")) runtimeIssues.push(`requestfailed: ${request.url()} (${failure})`);
   });
 
+  const navigationStartedAt = Date.now();
   activePhase = "homepageCold";
-  await page.goto(BASE_URL, { waitUntil: "networkidle", timeout: 60000 });
+  await page.goto(BASE_URL, { waitUntil: "networkidle", timeout: 90000 });
+  const navigationReadyMs = Date.now() - navigationStartedAt;
+
   await waitForCanvas(page);
-  await page.waitForFunction(() => document.body.dataset.stockedLobbyVisual === "ready", { timeout: 30000 });
-  // Include delayed preloads that occur before the player clicks START.
+  const canvasVisibleMs = Date.now() - navigationStartedAt;
+
+  await page.waitForFunction(
+    () => document.body.dataset.stockedLobbyVisual === "ready",
+    null,
+    { timeout: 45000 }
+  );
+  const lobbyInteractiveMs = Date.now() - navigationStartedAt;
+  const browserNavigation = await readNavigationTiming(page);
+
   await page.waitForTimeout(3500);
   activePhase = null;
 
   activePhase = "firstShiftAdditional";
+  const firstShiftStartedAt = Date.now();
   await clickGame(page, 965, 770);
-  await page.waitForFunction(() => document.body.dataset.gameScene === "opening", { timeout: 60000 });
+  await page.waitForFunction(
+    () => (
+      document.body.dataset.gameScene === "opening" ||
+      document.body.dataset.crazyGamesScene === "receiving"
+    ),
+    null,
+    { timeout: 90000 }
+  );
+  const firstShiftReadyMs = Date.now() - firstShiftStartedAt;
   await page.waitForTimeout(2500);
   activePhase = null;
 
   report = {
     generatedAt: new Date().toISOString(),
+    networkProfile: MOBILE_NETWORK_PROFILE,
+    timings: {
+      navigationReadyMs,
+      canvasVisibleMs,
+      lobbyInteractiveMs,
+      firstShiftReadyMs,
+      browserNavigation
+    },
     homepageCold: summarize(requestsByPhase.homepageCold),
     firstShiftAdditional: summarize(requestsByPhase.firstShiftAdditional),
     runtimeIssues
   };
 
   report.budgets = {
-    homepageMobile20MiB: {
-      limitBytes: MOBILE_HOMEPAGE_TARGET_BYTES,
-      actualBytes: report.homepageCold.transferredBytes,
-      passed: report.homepageCold.transferredBytes <= MOBILE_HOMEPAGE_TARGET_BYTES
-    },
-    homepageBasic50MiB: {
-      limitBytes: BASIC_LAUNCH_TARGET_BYTES,
-      actualBytes: report.homepageCold.transferredBytes,
-      passed: report.homepageCold.transferredBytes <= BASIC_LAUNCH_TARGET_BYTES
-    }
+    homepageMobile20MiB: byteBudget(MOBILE_HOMEPAGE_TARGET_BYTES, report.homepageCold.transferredBytes),
+    homepageBasic50MiB: byteBudget(BASIC_LAUNCH_TARGET_BYTES, report.homepageCold.transferredBytes),
+    canvasVisible20s: timingBudget(TIMING_LIMITS_MS.canvasVisible, canvasVisibleMs),
+    lobbyInteractive30s: timingBudget(TIMING_LIMITS_MS.lobbyInteractive, lobbyInteractiveMs),
+    firstShiftReady60s: timingBudget(TIMING_LIMITS_MS.firstShiftReady, firstShiftReadyMs)
   };
 
   if (runtimeIssues.length > 0) {
     throw new Error(`Payload measurement encountered ${runtimeIssues.length} browser issue(s).`);
   }
-  if (!report.budgets.homepageMobile20MiB.passed) {
-    throw new Error(
-      `Cold homepage payload ${report.homepageCold.transferredMiB} MiB exceeds the 20 MiB mobile limit.`
-    );
+  const failedBudgets = Object.entries(report.budgets)
+    .filter(([, budget]) => !budget.passed)
+    .map(([name]) => name);
+  if (failedBudgets.length > 0) {
+    throw new Error(`Loading or payload budgets failed: ${failedBudgets.join(", ")}.`);
   }
 } catch (error) {
   thrownError = error;
   report ??= {
     generatedAt: new Date().toISOString(),
+    networkProfile: MOBILE_NETWORK_PROFILE,
+    timings: null,
     homepageCold: summarize(requestsByPhase.homepageCold),
     firstShiftAdditional: summarize(requestsByPhase.firstShiftAdditional),
     runtimeIssues: []
@@ -137,16 +185,14 @@ try {
   await new Promise((resolveServer) => server.close(resolveServer));
 }
 
-console.log("Release payload measurement:");
+console.log(`Release payload and speed measurement (${MOBILE_NETWORK_PROFILE.label}):`);
 printSummary("Cold homepage", report.homepageCold);
 printSummary("First shift additional", report.firstShiftAdditional);
+if (report.timings) printTimingSummary(report.timings);
 if (report.budgets) {
-  console.log(
-    `Mobile homepage 20 MiB target: ${report.budgets.homepageMobile20MiB.passed ? "PASS" : "OVER"}`
-  );
-  console.log(
-    `Basic homepage 50 MiB target: ${report.budgets.homepageBasic50MiB.passed ? "PASS" : "OVER"}`
-  );
+  Object.entries(report.budgets).forEach(([name, budget]) => {
+    console.log(`${name}: ${budget.passed ? "PASS" : "OVER"}`);
+  });
 }
 if (thrownError) throw thrownError;
 
@@ -181,16 +227,28 @@ function printSummary(label, summary) {
   });
 }
 
+function printTimingSummary(timings) {
+  console.log("Loading timings:");
+  console.log(`  Navigation network-idle: ${toSeconds(timings.navigationReadyMs)} s`);
+  console.log(`  Canvas visible:          ${toSeconds(timings.canvasVisibleMs)} s`);
+  console.log(`  Lobby interactive:       ${toSeconds(timings.lobbyInteractiveMs)} s`);
+  console.log(`  Start to receiving:      ${toSeconds(timings.firstShiftReadyMs)} s`);
+  if (timings.browserNavigation) {
+    console.log(`  Browser DOMContentLoaded:${toSeconds(timings.browserNavigation.domContentLoadedMs)} s`);
+    console.log(`  Browser load event:      ${toSeconds(timings.browserNavigation.loadEventMs)} s`);
+  }
+}
+
 async function waitForCanvas(page) {
-  await page.waitForSelector("canvas", { state: "visible", timeout: 30000 });
-  await page.waitForFunction(() => {
-    const canvas = document.querySelector("canvas");
+  await page.waitForSelector(GAME_CANVAS_SELECTOR, { state: "visible", timeout: 45000 });
+  await page.waitForFunction((selector) => {
+    const canvas = document.querySelector(selector);
     return Boolean(canvas && canvas.getBoundingClientRect().width > 100);
-  }, { timeout: 30000 });
+  }, GAME_CANVAS_SELECTOR, { timeout: 45000 });
 }
 
 async function clickGame(page, gameX, gameY) {
-  const box = await page.locator("canvas").boundingBox();
+  const box = await page.locator(GAME_CANVAS_SELECTOR).boundingBox();
   if (!box) throw new Error("Game canvas has no bounding box.");
   await page.mouse.click(
     box.x + (gameX / 1330) * box.width,
@@ -198,8 +256,38 @@ async function clickGame(page, gameX, gameY) {
   );
 }
 
+async function readNavigationTiming(page) {
+  return page.evaluate(() => {
+    const entry = performance.getEntriesByType("navigation")[0];
+    if (!(entry instanceof PerformanceNavigationTiming)) return null;
+    return {
+      responseStartMs: Math.round(entry.responseStart),
+      domContentLoadedMs: Math.round(entry.domContentLoadedEventEnd),
+      loadEventMs: Math.round(entry.loadEventEnd),
+      transferSize: entry.transferSize,
+      decodedBodySize: entry.decodedBodySize
+    };
+  });
+}
+
+function byteBudget(limitBytes, actualBytes) {
+  return { limitBytes, actualBytes, passed: actualBytes <= limitBytes };
+}
+
+function timingBudget(limitMs, actualMs) {
+  return { limitMs, actualMs, passed: actualMs <= limitMs };
+}
+
+function mbpsToBytesPerSecond(mbps) {
+  return Math.round((mbps * 1024 * 1024) / 8);
+}
+
 function toMiB(bytes) {
   return (bytes / 1024 / 1024).toFixed(2);
+}
+
+function toSeconds(milliseconds) {
+  return (milliseconds / 1000).toFixed(2);
 }
 
 function mimeType(filePath) {
