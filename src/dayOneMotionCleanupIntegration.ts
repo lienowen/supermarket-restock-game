@@ -32,8 +32,6 @@ type RuntimePolishOverlay = Phaser.Scene & {
 
 type DisplayObject = Phaser.GameObjects.GameObject & {
   setVisible?: (visible: boolean) => unknown;
-  setAlpha?: (alpha: number) => unknown;
-  setScale?: (x: number, y?: number) => unknown;
 };
 
 const CUSTOMER_TEXTURES = new Set<string>([
@@ -122,8 +120,7 @@ function stopDecorativeLoops(scene: Phaser.Scene): void {
 
     if (isOpeningIntro) {
       scene.tweens.killTweensOf(object);
-      display.setAlpha?.(1);
-      display.setScale?.(1);
+      display.setVisible?.(false);
     }
   });
 }
