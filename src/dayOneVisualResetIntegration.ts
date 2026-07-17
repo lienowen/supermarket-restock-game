@@ -8,6 +8,10 @@ type GamePrototype = {
   create: (...args: unknown[]) => void;
 };
 
+type VisibleGameObject = Phaser.GameObjects.GameObject & {
+  setVisible: (visible: boolean) => unknown;
+};
+
 type RuntimeBox = {
   positionIndex: number;
   image: Phaser.GameObjects.Image;
@@ -142,7 +146,7 @@ function hideCompetingLayers(scene: Phaser.Scene): void {
     "day1-zone-world",
     "immersion-room-sign-bg",
     "immersion-room-sign"
-  ].forEach((name) => findNamedObject(scene, name)?.setVisible(false));
+  ].forEach((name) => findNamedObject<VisibleGameObject>(scene, name)?.setVisible(false));
 
   hideContainerContainingText(scene, "STOCK CAGE");
   hideContainerContainingText(scene, "AISLE 4 · DRINKS & DAIRY");
@@ -222,9 +226,11 @@ function disableLegacyGuides(scene: RuntimeGame): void {
 function keepPreparationFloorQuiet(scene: RuntimeGame): void {
   const showShoppers = scene.phase !== "PREPARE" && !scene.shiftEnded;
   for (const child of scene.children.list) {
-    if (child.name === "immersion-floor-shopper" || child.name === "immersion-actor-shadow") {
-      child.setVisible(showShoppers);
-    }
+    if (child.name !== "immersion-floor-shopper" && child.name !== "immersion-actor-shadow") continue;
+    const display = child as Phaser.GameObjects.GameObject & {
+      setVisible?: (visible: boolean) => unknown;
+    };
+    display.setVisible?.(showShoppers);
   }
 }
 
