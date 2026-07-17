@@ -18,6 +18,10 @@ export const DAY_ONE_IMMERSIVE_MAP: StoreZoneVisual[] = [
   { id: "grains", title: "GRAINS", x: 760, y: 720, color: 0xffd166 }
 ];
 
+// Compatibility aliases for the early Day 1 planning modules already present on main.
+export const DAY_ONE_STORE_MAP = DAY_ONE_IMMERSIVE_MAP;
+export const dayOneStoreMap = DAY_ONE_IMMERSIVE_MAP;
+
 export function getDayOneZone(id: string) {
   return DAY_ONE_IMMERSIVE_MAP.find((zone) => zone.id === id);
 }
