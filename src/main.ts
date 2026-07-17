@@ -93,6 +93,7 @@ import "./supermarketImmersionIntegration";
 import "./storefrontEntranceImmersionIntegration";
 import "./weekOneImmersionUpgradeIntegration";
 import "./weekOneImmersionRegressionBridgeIntegration";
+import "./dayOneRestockImmersionIntegration";
 
 void bootstrap();
 
