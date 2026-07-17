@@ -94,6 +94,7 @@ import "./storefrontEntranceImmersionIntegration";
 import "./weekOneImmersionUpgradeIntegration";
 import "./weekOneImmersionRegressionBridgeIntegration";
 import "./dayOneRestockImmersionIntegration";
+import "./dayOneDepartmentPolishIntegration";
 
 void bootstrap();
 
