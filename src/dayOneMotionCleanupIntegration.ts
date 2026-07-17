@@ -30,6 +30,12 @@ type RuntimePolishOverlay = Phaser.Scene & {
   pressureTween?: Phaser.Tweens.Tween;
 };
 
+type DisplayObject = Phaser.GameObjects.GameObject & {
+  setVisible?: (visible: boolean) => unknown;
+  setAlpha?: (alpha: number) => unknown;
+  setScale?: (x: number, y?: number) => unknown;
+};
+
 const CUSTOMER_TEXTURES = new Set<string>([
   Assets.characters.customer01Idle,
   Assets.characters.customer01Basket,
@@ -98,13 +104,14 @@ function removeGhostCustomers(scene: Phaser.Scene): void {
 function stopDecorativeLoops(scene: Phaser.Scene): void {
   visitSceneObjects(scene, (object) => {
     const name = object.name ?? "";
+    const display = object as DisplayObject;
     const isCeilingLight = name.startsWith("immersion-ceiling-light-");
     const isDepartmentFloat = name.startsWith("day1-polished-zone-");
     const isOpeningIntro = name === "day1-opening-intro";
 
     if (isCeilingLight) {
       scene.tweens.killTweensOf(object);
-      object.setVisible(false);
+      display.setVisible?.(false);
       return;
     }
 
@@ -115,7 +122,8 @@ function stopDecorativeLoops(scene: Phaser.Scene): void {
 
     if (isOpeningIntro) {
       scene.tweens.killTweensOf(object);
-      object.setAlpha(1).setScale(1);
+      display.setAlpha?.(1);
+      display.setScale?.(1);
     }
   });
 }
@@ -168,7 +176,6 @@ function removeOversizedCartHighlight(scene: Phaser.Scene): void {
 
     const rectangle = object as Phaser.GameObjects.Rectangle & {
       strokeColor?: number;
-      isStroked?: boolean;
     };
     const color = rectangle.strokeColor ?? 0;
     const yellowStroke = color === 0xffd75a || color === 0xffdf67 || color === 0xffd95c;
