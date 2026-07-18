@@ -1,3 +1,14 @@
+import { STARTER_MARKET_LAYOUT } from "../../game/world/starterMarketLayout";
+
+const [worldWidth, worldHeight] = STARTER_MARKET_LAYOUT.logicalSize;
+const interaction = (id: string) => {
+  const point = STARTER_MARKET_LAYOUT.interactions.find((entry) => entry.id === id);
+  if (!point) throw new Error(`Missing starter market interaction point: ${id}`);
+  return point.position;
+};
+const workerSpawn = STARTER_MARKET_LAYOUT.spawns.find((entry) => entry.id === "worker-a-spawn");
+if (!workerSpawn) throw new Error("Missing worker-a-spawn in starter market layout");
+
 export const DAY_ONE_CONTENT = {
   id: "day01-beverage-opening",
   title: "DAY 1",
@@ -7,29 +18,29 @@ export const DAY_ONE_CONTENT = {
   totalRows: 6,
   startingCoins: 100,
   world: {
-    width: 1536,
-    height: 1024,
-    backroomBox: { x: 695, y: 600 },
-    cartStart: { x: 760, y: 760 },
-    workerStart: { x: 710, y: 785 },
-    cartCooler: { x: 1045, y: 735 },
-    workerCooler: { x: 965, y: 760 },
-    coolerTarget: { x: 1180, y: 430, width: 260, height: 375 }
+    width: worldWidth,
+    height: worldHeight,
+    backroomBox: interaction("cola-case-pickup-point"),
+    cartStart: interaction("restock-cart-load-point"),
+    workerStart: workerSpawn.position,
+    cartCooler: interaction("beverage-restock-zone"),
+    workerCooler: { x: 1055, y: 735 },
+    coolerTarget: { x: 1325, y: 490, width: 300, height: 465 }
   },
   palette: {
-    hud: 0x0a0f0c,
-    hudBorder: 0x2e4e2b,
-    green: 0x365c2c,
-    greenBright: 0x6e9e43,
-    gold: 0xf5c64d,
+    hud: 0x09100c,
+    hudBorder: 0x31583a,
+    green: 0x315f38,
+    greenBright: 0x56894d,
+    gold: 0xf1c441,
     cream: 0xf4eddb,
-    floor: 0xa79f91,
-    aisle: 0xd7d0c3,
-    cooler: 0x343b3e,
-    coolerLight: 0xe8f5f2,
+    floor: 0xaaa295,
+    aisle: 0xd8d0c2,
+    cooler: 0x2f393d,
+    coolerLight: 0xeaf6f5,
     backroom: 0x5f5446,
     shadow: 0x000000
   }
-};
+} as const;
 
 export type DayOneContent = typeof DAY_ONE_CONTENT;
