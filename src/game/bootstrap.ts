@@ -12,6 +12,10 @@ import {
   resolveRestockShiftRuntime,
   validateRestockShiftRuntime
 } from "./application/ShiftRuntimeContent";
+import {
+  STARTER_MARKET_PRESENTATION,
+  validateStarterMarketPresentationContext
+} from "./presentation/context/StarterMarketPresentationContext";
 
 function validateProjectContracts(): void {
   const starterShift = resolveRestockShiftRuntime(STARTER_MARKET_CONTENT, "starter-shift-001");
@@ -20,7 +24,8 @@ function validateProjectContracts(): void {
     ...validateWorldLayout(STARTER_MARKET_LAYOUT),
     ...validateStarterMarketVisualSpec().errors,
     ...validateProductionAssetPlan(),
-    ...validateRestockShiftRuntime(starterShift)
+    ...validateRestockShiftRuntime(starterShift),
+    ...validateStarterMarketPresentationContext()
   ];
 
   if (errors.length > 0) {
@@ -31,15 +36,14 @@ function validateProjectContracts(): void {
 /**
  * Project-wide startup boundary.
  *
- * The V2 bootstrap remains behind this adapter while domain systems, content,
- * presentation, and assets are migrated into src/game. New features must not
- * import game-v2 directly.
+ * The legacy bootstrap remains behind this adapter only for Phaser creation.
+ * Domain, content, application, presentation, and assets are owned by src/game.
  */
 export async function bootstrapGame(): Promise<Phaser.Game> {
   validateProjectContracts();
   document.body.dataset.uiLanguage = PROJECT_CONFIG.language;
   document.body.dataset.gameArchitecture = PROJECT_CONFIG.version;
   document.body.dataset.visualTarget = "locked-starter-market";
-  document.body.dataset.activeShift = "starter-shift-001";
+  document.body.dataset.activeShift = STARTER_MARKET_PRESENTATION.runtime.shift.id;
   return bootstrapImmersiveGame();
 }
