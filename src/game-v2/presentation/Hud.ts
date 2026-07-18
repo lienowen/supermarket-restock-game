@@ -60,30 +60,30 @@ export class ImmersiveHud {
       fontStyle: "bold"
     }).setDepth(101);
 
-    scene.add.rectangle(1380, 146, 400, 132, palette.hud, 0.96)
+    scene.add.rectangle(1405, 212, 350, 112, palette.hud, 0.95)
       .setStrokeStyle(2, 0xffffff, 0.11)
       .setDepth(100)
       .setName("v3-hud-objective");
-    scene.add.text(1205, 98, "TASK OBJECTIVE", {
+    scene.add.text(1250, 169, "TASK OBJECTIVE", {
       fontFamily: "Arial",
-      fontSize: "16px",
+      fontSize: "15px",
       color: "#f5c64d",
       fontStyle: "bold"
     }).setDepth(101);
-    scene.add.rectangle(1380, 130, 350, 1, 0xffffff, 0.13).setDepth(101);
-    scene.add.rectangle(1208, 157, 17, 17, 0x000000, 0)
+    scene.add.rectangle(1405, 198, 300, 1, 0xffffff, 0.13).setDepth(101);
+    scene.add.rectangle(1253, 219, 16, 16, 0x000000, 0)
       .setStrokeStyle(2, 0xffffff, 0.88)
       .setDepth(101);
-    this.objectiveText = scene.add.text(1234, 143, DAY_ONE_CONTENT.objective, {
+    this.objectiveText = scene.add.text(1278, 207, DAY_ONE_CONTENT.objective, {
       fontFamily: "Arial",
-      fontSize: "16px",
+      fontSize: "15px",
       color: "#ffffff",
-      wordWrap: { width: 225, useAdvancedWrap: true },
+      wordWrap: { width: 190, useAdvancedWrap: true },
       lineSpacing: 3
     }).setDepth(101);
-    this.progressText = scene.add.text(1550, 146, "0/6 ROWS", {
+    this.progressText = scene.add.text(1560, 211, "0/6 ROWS", {
       fontFamily: "Arial",
-      fontSize: "16px",
+      fontSize: "15px",
       color: "#ffffff",
       fontStyle: "bold",
       align: "right"
