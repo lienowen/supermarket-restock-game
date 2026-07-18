@@ -19,6 +19,14 @@
     "src/systems/CustomerStateMachine.ts",
     "src/systems/GameSession.ts",
     "src/systems/PerformanceRating.ts",
-    "src/systems/interactionRules.ts"
+    "src/systems/interactionRules.ts",
+    "src/game/core/DomainEventBus.ts",
+    "src/game/entities/StoreEntities.ts",
+    "src/game/content/GameContent.ts",
+    "src/game/content/starterMarket.ts",
+    "src/game/missions/MissionTracker.ts",
+    "src/game/systems/stocking/RestockWorkflow.ts",
+    "src/game/interactions/RestockInteractionResolver.ts",
+    "src/game-v2/domain/restock.ts"
   ]
 }
