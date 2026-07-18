@@ -32,6 +32,7 @@ export interface StarterMarketWorldPresentation {
 
 export interface StarterMarketPresentationContext {
   readonly campaignShift: CampaignShiftRuntime;
+  readonly campaignTotalShifts: number;
   readonly scene: {
     readonly key: "starter-market-shift";
     readonly datasetName: "starter-market";
@@ -96,6 +97,7 @@ export function createStarterMarketPresentationContext(
 
   return Object.freeze({
     campaignShift,
+    campaignTotalShifts: MAIN_CAMPAIGN_RUNTIME.shifts.length,
     scene: Object.freeze({
       key: "starter-market-shift" as const,
       datasetName: "starter-market" as const,
@@ -184,6 +186,10 @@ export function validateStarterMarketPresentationContext(
 
   if (context.labels.day !== context.campaignShift.dayLabel) {
     errors.push("Presentation day label must come from campaign order");
+  }
+
+  if (context.campaignTotalShifts !== MAIN_CAMPAIGN_RUNTIME.shifts.length) {
+    errors.push("Presentation campaign size must match the shared campaign runtime");
   }
 
   return Object.freeze(errors);
