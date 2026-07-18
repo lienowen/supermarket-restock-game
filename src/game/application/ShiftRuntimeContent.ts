@@ -28,6 +28,7 @@ export interface RestockShiftRuntimeContent {
 }
 
 export interface ResolveRestockShiftOptions {
+  readonly missionId?: string;
   readonly slotCount?: number;
   readonly progressRewardRatio?: number;
 }
@@ -48,6 +49,16 @@ const assertPositiveInteger = (value: number, label: string): void => {
   }
 };
 
+const transferObjectivesFor = (
+  mission: MissionDefinition
+): readonly Extract<MissionObjectiveDefinition, { type: "transfer-product" }>[] => (
+  mission.objectives.filter(
+    (objective): objective is Extract<MissionObjectiveDefinition, { type: "transfer-product" }> => (
+      objective.type === "transfer-product"
+    )
+  )
+);
+
 export function resolveRestockShiftRuntime(
   catalogue: GameContentCatalogue,
   shiftId: string,
@@ -55,18 +66,27 @@ export function resolveRestockShiftRuntime(
 ): RestockShiftRuntimeContent {
   const shift = findRequired(catalogue.shifts, shiftId, "shift");
   const store = findRequired(catalogue.stores, shift.storeId, "store");
+  const shiftMissions = shift.missionIds.map((missionId) => (
+    findRequired(catalogue.missions, missionId, "mission")
+  ));
 
-  if (shift.missionIds.length !== 1) {
-    throw new Error(`Restock shift ${shift.id} must contain exactly one mission during the vertical slice`);
+  let mission: MissionDefinition;
+  if (options.missionId) {
+    if (!shift.missionIds.includes(options.missionId)) {
+      throw new Error(`Mission ${options.missionId} does not belong to shift ${shift.id}`);
+    }
+    mission = findRequired(catalogue.missions, options.missionId, "mission");
+  } else {
+    const restockMissions = shiftMissions.filter((entry) => transferObjectivesFor(entry).length > 0);
+    if (restockMissions.length !== 1) {
+      throw new Error(
+        `Shift ${shift.id} must contain exactly one restock mission or specify ResolveRestockShiftOptions.missionId`
+      );
+    }
+    mission = restockMissions[0];
   }
 
-  const mission = findRequired(catalogue.missions, shift.missionIds[0], "mission");
-  const transferObjectives = mission.objectives.filter(
-    (objective): objective is Extract<MissionObjectiveDefinition, { type: "transfer-product" }> => (
-      objective.type === "transfer-product"
-    )
-  );
-
+  const transferObjectives = transferObjectivesFor(mission);
   if (transferObjectives.length !== 1) {
     throw new Error(`Restock mission ${mission.id} must contain exactly one transfer-product objective`);
   }
@@ -149,6 +169,10 @@ export function validateRestockShiftRuntime(runtime: RestockShiftRuntimeContent)
 
   if (runtime.objective.targetFixtureId !== runtime.fixture.id) {
     errors.push("Restock objective fixture does not match the resolved fixture");
+  }
+
+  if (!runtime.shift.missionIds.includes(runtime.mission.id)) {
+    errors.push("Restock mission does not belong to its resolved shift");
   }
 
   return Object.freeze(errors);
