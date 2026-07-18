@@ -60,7 +60,7 @@ let report;
 
 try {
   const context = await browser.newContext({
-    viewport: { width: 1330, height: 1182 },
+    viewport: { width: 1536, height: 1024 },
     deviceScaleFactor: 1
   });
   await context.addInitScript(() => {
@@ -110,9 +110,15 @@ try {
   const canvasVisibleMs = Date.now() - navigationStartedAt;
 
   await page.waitForFunction(
-    () => document.body.dataset.stockedLobbyVisual === "ready",
+    () => (
+      document.body.dataset.gameArchitecture === "immersive-v2" ||
+      document.body.dataset.stockedLobbyVisual === "ready"
+    ),
     null,
     { timeout: 45000 }
+  );
+  const immersiveV2 = await page.evaluate(
+    () => document.body.dataset.gameArchitecture === "immersive-v2"
   );
   const lobbyInteractiveMs = Date.now() - navigationStartedAt;
   const browserNavigation = await readNavigationTiming(page);
@@ -122,21 +128,30 @@ try {
 
   activePhase = "firstShiftAdditional";
   const firstShiftStartedAt = Date.now();
-  await clickGame(page, 965, 770);
-  await page.waitForFunction(
-    () => (
-      document.body.dataset.gameScene === "opening" ||
-      document.body.dataset.crazyGamesScene === "receiving"
-    ),
-    null,
-    { timeout: 90000 }
-  );
+  if (immersiveV2) {
+    await page.waitForFunction(
+      () => document.body.dataset.gameScene === "game-v2",
+      null,
+      { timeout: 15000 }
+    );
+  } else {
+    await clickGame(page, 965, 770);
+    await page.waitForFunction(
+      () => (
+        document.body.dataset.gameScene === "opening" ||
+        document.body.dataset.crazyGamesScene === "receiving"
+      ),
+      null,
+      { timeout: 90000 }
+    );
+  }
   const firstShiftReadyMs = Date.now() - firstShiftStartedAt;
   await page.waitForTimeout(2500);
   activePhase = null;
 
   report = {
     generatedAt: new Date().toISOString(),
+    runtimeMode: immersiveV2 ? "immersive-v2" : "legacy",
     networkProfile: MOBILE_NETWORK_PROFILE,
     timings: {
       navigationReadyMs,
@@ -231,8 +246,8 @@ function printTimingSummary(timings) {
   console.log("Loading timings:");
   console.log(`  Navigation network-idle: ${toSeconds(timings.navigationReadyMs)} s`);
   console.log(`  Canvas visible:          ${toSeconds(timings.canvasVisibleMs)} s`);
-  console.log(`  Lobby interactive:       ${toSeconds(timings.lobbyInteractiveMs)} s`);
-  console.log(`  Start to receiving:      ${toSeconds(timings.firstShiftReadyMs)} s`);
+  console.log(`  Initial experience ready:${toSeconds(timings.lobbyInteractiveMs)} s`);
+  console.log(`  First shift ready:       ${toSeconds(timings.firstShiftReadyMs)} s`);
   if (timings.browserNavigation) {
     console.log(`  Browser DOMContentLoaded:${toSeconds(timings.browserNavigation.domContentLoadedMs)} s`);
     console.log(`  Browser load event:      ${toSeconds(timings.browserNavigation.loadEventMs)} s`);
