@@ -6,8 +6,9 @@ import { V2_ASSET_LIST, V2_ASSETS } from "../assets/manifest";
 import { ImmersiveHud } from "./Hud";
 import { crazyGamesPlatform } from "../../platform/crazyGamesPlatform";
 import { STARTER_MARKET_LAYOUT } from "../../game/world/starterMarketLayout";
+import { STARTER_MARKET_VISUAL_SPEC } from "../../game/presentation/visual/StarterMarketVisualSpec";
 
-const COOLER_ROW_Y = [286, 364, 442, 520, 598, 676] as const;
+const COOLER_ROW_Y = STARTER_MARKET_VISUAL_SPEC.cooler.rowYs;
 
 export class ImmersiveDayOneScene extends Phaser.Scene {
   private readonly controller = new RestockController(DAY_ONE_CONTENT.totalRows);
@@ -20,6 +21,7 @@ export class ImmersiveDayOneScene extends Phaser.Scene {
   private target?: Phaser.GameObjects.Rectangle;
   private targetArrow?: Phaser.GameObjects.Text;
   private targetTween?: Phaser.Tweens.Tween;
+  private movementUnlockTimer?: Phaser.Time.TimerEvent;
   private coolerRows: Phaser.GameObjects.Container[] = [];
   private inputLocked = false;
   private cartMoved = false;
@@ -45,7 +47,10 @@ export class ImmersiveDayOneScene extends Phaser.Scene {
     this.hud = new ImmersiveHud(this, () => this.performCurrentAction());
 
     this.controller.subscribe((snapshot, copy) => this.sync(snapshot, copy));
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.targetTween?.stop());
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.targetTween?.stop();
+      this.movementUnlockTimer?.remove(false);
+    });
 
     crazyGamesPlatform.loadingStop();
     crazyGamesPlatform.gameplayStart();
@@ -86,8 +91,8 @@ export class ImmersiveDayOneScene extends Phaser.Scene {
       height: DAY_ONE_CONTENT.world.height,
       palette: DAY_ONE_CONTENT.palette
     };
-    const vanishingX = width / 2;
-    const vanishingY = 298;
+    const vanishingX = STARTER_MARKET_VISUAL_SPEC.camera.vanishingPoint.x;
+    const vanishingY = STARTER_MARKET_VISUAL_SPEC.camera.vanishingPoint.y;
 
     this.add.polygon(width / 2, 600, [
       -width / 2, -302,
@@ -305,7 +310,10 @@ export class ImmersiveDayOneScene extends Phaser.Scene {
       V2_ASSETS.products.milkBottle.key,
       V2_ASSETS.products.waterBottle.key
     ];
-    const positions = [1110, 1140, 1170, 1200, 1450, 1480, 1510, 1540];
+    const positions = [
+      ...STARTER_MARKET_VISUAL_SPEC.cooler.ambientLeftXs,
+      ...STARTER_MARKET_VISUAL_SPEC.cooler.ambientRightXs
+    ];
 
     positions.forEach((x, index) => {
       this.add.image(x, y, productKeys[(rowIndex + index) % productKeys.length])
@@ -316,8 +324,8 @@ export class ImmersiveDayOneScene extends Phaser.Scene {
 
   private createRestockRow(y: number, rowIndex: number): Phaser.GameObjects.Container {
     const objects: Phaser.GameObjects.GameObject[] = [];
-    for (let index = 0; index < 6; index += 1) {
-      const x = 1262 + index * 26;
+    for (let index = 0; index < STARTER_MARKET_VISUAL_SPEC.cooler.restockItemCount; index += 1) {
+      const x = STARTER_MARKET_VISUAL_SPEC.cooler.restockStartX + index * STARTER_MARKET_VISUAL_SPEC.cooler.restockStepX;
       objects.push(this.add.image(x, y, V2_ASSETS.products.colaBottle.key).setDisplaySize(25, 63));
     }
     return this.add.container(0, 0, objects)
@@ -328,7 +336,7 @@ export class ImmersiveDayOneScene extends Phaser.Scene {
 
   private createFloorRoute(): void {
     const route = this.add.graphics().setDepth(6);
-    route.fillStyle(0xf1c441, 0.22);
+    route.fillStyle(STARTER_MARKET_VISUAL_SPEC.targeting.color, 0.22);
     [970, 1030, 1090].forEach((x, index) => {
       const y = 738 + index * 5;
       route.fillTriangle(x - 26, y - 13, x + 5, y, x - 26, y + 13);
@@ -343,9 +351,16 @@ export class ImmersiveDayOneScene extends Phaser.Scene {
 
   private createActors(): void {
     const world = DAY_ONE_CONTENT.world;
+    const { actor } = STARTER_MARKET_VISUAL_SPEC;
 
-    this.workerShadow = this.add.ellipse(world.workerStart.x + 8, world.workerStart.y + 86, 210, 48, 0x000000, 0.3)
-      .setDepth(20);
+    this.workerShadow = this.add.ellipse(
+      world.workerStart.x + actor.shadowOffset.x,
+      world.workerStart.y + actor.shadowOffset.y,
+      210,
+      48,
+      0x000000,
+      0.3
+    ).setDepth(20);
     this.cartShadow = this.add.ellipse(world.cartStart.x, world.cartStart.y + 52, 225, 45, 0x000000, 0.24)
       .setDepth(20)
       .setVisible(false);
@@ -357,7 +372,7 @@ export class ImmersiveDayOneScene extends Phaser.Scene {
       .setName("v3-restock-cart");
 
     this.worker = this.add.image(world.workerStart.x, world.workerStart.y, V2_ASSETS.characters.workerPush.key)
-      .setDisplaySize(250, 375)
+      .setDisplaySize(actor.pushSize.width, actor.pushSize.height)
       .setDepth(24)
       .setName("v3-worker");
 
@@ -368,8 +383,9 @@ export class ImmersiveDayOneScene extends Phaser.Scene {
   }
 
   private createTargeting(): void {
-    this.target = this.add.rectangle(0, 0, 120, 90, 0xf1c441, 0.055)
-      .setStrokeStyle(4, 0xf1c441, 0.96)
+    const targetColor = STARTER_MARKET_VISUAL_SPEC.targeting.color;
+    this.target = this.add.rectangle(0, 0, 120, 90, targetColor, 0.055)
+      .setStrokeStyle(4, targetColor, 0.96)
       .setInteractive({ useHandCursor: true })
       .setDepth(60)
       .setName("v3-interaction-target");
@@ -402,6 +418,20 @@ export class ImmersiveDayOneScene extends Phaser.Scene {
     this.controller.dispatch(action);
   }
 
+  private lockInputFor(maxDurationMs: number): void {
+    this.inputLocked = true;
+    this.movementUnlockTimer?.remove(false);
+    this.movementUnlockTimer = this.time.delayedCall(maxDurationMs, () => this.unlockInput());
+  }
+
+  private unlockInput(): void {
+    if (!this.inputLocked) return;
+    this.inputLocked = false;
+    this.movementUnlockTimer?.remove(false);
+    this.movementUnlockTimer = undefined;
+    this.syncTarget(this.controller.snapshot());
+  }
+
   private sync(snapshot: RestockSnapshot, copy: RestockViewCopy): void {
     this.hud?.update(snapshot, copy);
     this.syncActors(snapshot);
@@ -421,13 +451,17 @@ export class ImmersiveDayOneScene extends Phaser.Scene {
   private syncActors(snapshot: RestockSnapshot): void {
     if (!this.worker || !this.cart || !this.caseBox || !this.workerShadow || !this.cartShadow) return;
     const world = DAY_ONE_CONTENT.world;
+    const { actor } = STARTER_MARKET_VISUAL_SPEC;
 
     if (snapshot.step === "collect") {
       this.worker.setTexture(V2_ASSETS.characters.workerPush.key)
-        .setDisplaySize(250, 375)
+        .setDisplaySize(actor.pushSize.width, actor.pushSize.height)
         .setPosition(world.workerStart.x, world.workerStart.y)
         .setVisible(true);
-      this.workerShadow.setPosition(world.workerStart.x + 8, world.workerStart.y + 86).setVisible(true);
+      this.workerShadow.setPosition(
+        world.workerStart.x + actor.shadowOffset.x,
+        world.workerStart.y + actor.shadowOffset.y
+      ).setVisible(true);
       this.cart.setVisible(false);
       this.cartShadow.setVisible(false);
       this.caseBox.setVisible(true)
@@ -439,7 +473,7 @@ export class ImmersiveDayOneScene extends Phaser.Scene {
 
     if (snapshot.step === "load") {
       this.worker.setTexture(V2_ASSETS.characters.workerCarry.key)
-        .setDisplaySize(220, 330)
+        .setDisplaySize(actor.carrySize.width, actor.carrySize.height)
         .setPosition(790, 675)
         .setVisible(true);
       this.workerShadow.setPosition(795, 758).setScale(0.85).setVisible(true);
@@ -454,10 +488,13 @@ export class ImmersiveDayOneScene extends Phaser.Scene {
 
     if (snapshot.step === "push") {
       this.worker.setTexture(V2_ASSETS.characters.workerPush.key)
-        .setDisplaySize(250, 375)
+        .setDisplaySize(actor.pushSize.width, actor.pushSize.height)
         .setPosition(world.workerStart.x, world.workerStart.y)
         .setVisible(true);
-      this.workerShadow.setPosition(world.workerStart.x + 8, world.workerStart.y + 86).setScale(1).setVisible(true);
+      this.workerShadow.setPosition(
+        world.workerStart.x + actor.shadowOffset.x,
+        world.workerStart.y + actor.shadowOffset.y
+      ).setScale(1).setVisible(true);
       this.cart.setVisible(false);
       this.cartShadow.setVisible(false);
       this.caseBox.setVisible(false);
@@ -466,8 +503,9 @@ export class ImmersiveDayOneScene extends Phaser.Scene {
 
     if (snapshot.step === "park" && !this.cartMoved) {
       this.cartMoved = true;
-      this.inputLocked = true;
-      this.worker.setTexture(V2_ASSETS.characters.workerPush.key).setDisplaySize(250, 375);
+      this.lockInputFor(1350);
+      this.worker.setTexture(V2_ASSETS.characters.workerPush.key)
+        .setDisplaySize(actor.pushSize.width, actor.pushSize.height);
       this.cart.setVisible(false);
       this.cartShadow.setVisible(false);
       this.caseBox.setVisible(false);
@@ -477,23 +515,21 @@ export class ImmersiveDayOneScene extends Phaser.Scene {
         x: world.workerCooler.x,
         y: world.workerCooler.y,
         duration: 1150,
-        ease: "Sine.InOut"
+        ease: "Sine.InOut",
+        onComplete: () => this.unlockInput()
       });
       this.tweens.add({
         targets: this.workerShadow,
-        x: world.workerCooler.x + 8,
-        y: world.workerCooler.y + 86,
+        x: world.workerCooler.x + actor.shadowOffset.x,
+        y: world.workerCooler.y + actor.shadowOffset.y,
         duration: 1150,
-        ease: "Sine.InOut",
-        onComplete: () => {
-          this.inputLocked = false;
-          this.syncTarget(this.controller.snapshot());
-        }
+        ease: "Sine.InOut"
       });
       return;
     }
 
     if (["open", "restock", "complete"].includes(snapshot.step)) {
+      this.unlockInput();
       this.worker.setPosition(world.workerCooler.x, world.workerCooler.y)
         .setTexture(V2_ASSETS.characters.workerPush.key)
         .setDisplaySize(240, 360)
@@ -566,16 +602,16 @@ export class ImmersiveDayOneScene extends Phaser.Scene {
         break;
       case "restock": {
         const rowIndex = Math.min(snapshot.stockedRows, snapshot.totalRows - 1);
-        x = 1325;
+        x = STARTER_MARKET_VISUAL_SPEC.cooler.centre.x;
         y = COOLER_ROW_Y[rowIndex];
-        width = 190;
+        width = STARTER_MARKET_VISUAL_SPEC.cooler.activeStockBounds.width;
         height = 68;
         break;
       }
     }
 
     this.target.setPosition(x, y).setSize(width, height).setDisplaySize(width, height);
-    this.targetArrow.setPosition(x, y - height / 2 - 25);
+    this.targetArrow.setPosition(x, y - height / 2 - STARTER_MARKET_VISUAL_SPEC.targeting.arrowOffsetY);
     this.target.disableInteractive();
     if (!this.inputLocked) this.target.setInteractive({ useHandCursor: true });
   }
