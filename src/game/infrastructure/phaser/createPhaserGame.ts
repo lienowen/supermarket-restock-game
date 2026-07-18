@@ -1,13 +1,22 @@
 import Phaser from "phaser";
 import { crazyGamesPlatform } from "../../../platform/crazyGamesPlatform";
-import { STARTER_MARKET_PRESENTATION } from "../../presentation/context/StarterMarketPresentationContext";
+import {
+  createStarterMarketPresentationContext,
+  MAIN_CAMPAIGN_RUNTIME
+} from "../../presentation/context/StarterMarketPresentationContext";
 import { StarterMarketScene } from "../../presentation/scenes/StarterMarketScene";
 import { installSafeInteractiveGuard } from "./SafeInteractiveGuard";
 
 export interface PhaserGameFactoryOptions {
   readonly parent?: string;
   readonly exposeTestBridge?: boolean;
+  readonly shiftId?: string;
 }
+
+const requestedShiftFromLocation = (): string | undefined => {
+  const requested = new URLSearchParams(window.location.search).get("shift")?.trim();
+  return requested || undefined;
+};
 
 export async function createPhaserGame(
   options: PhaserGameFactoryOptions = {}
@@ -16,11 +25,18 @@ export async function createPhaserGame(
   await crazyGamesPlatform.initialize();
   crazyGamesPlatform.loadingStart();
 
+  const shiftId = options.shiftId ?? requestedShiftFromLocation() ?? MAIN_CAMPAIGN_RUNTIME.shifts[0]?.shift.id;
+  if (!shiftId) throw new Error("Main campaign has no playable shifts");
+  const presentation = createStarterMarketPresentationContext(shiftId);
+
+  document.body.dataset.activeShift = presentation.runtime.shift.id;
+  document.body.dataset.activeDay = String(presentation.campaignShift.dayNumber);
+
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: options.parent ?? "app",
-    width: STARTER_MARKET_PRESENTATION.world.width,
-    height: STARTER_MARKET_PRESENTATION.world.height,
+    width: presentation.world.width,
+    height: presentation.world.height,
     backgroundColor: "#171712",
     scale: {
       mode: Phaser.Scale.FIT,
@@ -35,7 +51,7 @@ export async function createPhaserGame(
     input: {
       activePointers: 3
     },
-    scene: [StarterMarketScene]
+    scene: [new StarterMarketScene(presentation)]
   });
 
   const exposeTestBridge = options.exposeTestBridge ?? (
