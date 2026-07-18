@@ -31,7 +31,7 @@ export class ImmersiveDayOneScene extends Phaser.Scene {
 
   create(): void {
     document.body.dataset.gameScene = "game-v2";
-    document.body.dataset.gameArchitecture = "immersive-v2";
+    document.body.dataset.gameArchitecture = "architecture-v3";
     this.cameras.main.setBackgroundColor("#171712");
 
     this.createEnvironment();
@@ -46,7 +46,7 @@ export class ImmersiveDayOneScene extends Phaser.Scene {
     crazyGamesPlatform.gameplayStart();
     crazyGamesPlatform.setGameContext({
       game: "supermarket-restock",
-      version: "immersive-v2",
+      version: "architecture-v3",
       day: "day01",
       task: "beverage-cooler"
     });
@@ -176,48 +176,51 @@ export class ImmersiveDayOneScene extends Phaser.Scene {
   }
 
   private createCoolerWall(): void {
-    const { palette } = DAY_ONE_CONTENT;
-    this.add.rectangle(1260, 478, 555, 700, palette.cooler, 1)
-      .setStrokeStyle(10, 0x646c6f, 1)
-      .setDepth(0);
-    this.add.rectangle(1260, 155, 555, 88, 0x365d2e, 1).setDepth(3);
-    this.add.text(1134, 121, "BEVERAGES", {
+    const coolerKey = V2_ASSETS.fixtures.beverageCooler.key;
+
+    if (this.textures.exists(coolerKey)) {
+      this.add.image(1260, 493, coolerKey)
+        .setDisplaySize(555, 700)
+        .setDepth(0)
+        .setName("v3-beverage-cooler-prototype");
+    } else {
+      this.add.rectangle(1260, 478, 555, 700, 0x263033, 1)
+        .setStrokeStyle(10, 0x646c6f, 1)
+        .setDepth(0);
+    }
+
+    this.add.rectangle(1260, 132, 555, 68, 0x365d2e, 1).setDepth(3);
+    this.add.text(1260, 119, "BEVERAGES", {
       fontFamily: "Arial",
-      fontSize: "37px",
+      fontSize: "34px",
       color: "#f0e6cf",
       fontStyle: "bold"
-    }).setDepth(4);
-    this.add.text(1138, 164, "COLD DRINKS", {
+    }).setOrigin(0.5).setDepth(4);
+    this.add.text(1260, 151, "COLD DRINKS", {
       fontFamily: "Arial",
-      fontSize: "18px",
+      fontSize: "16px",
       color: "#e8dfca"
-    }).setDepth(4);
-
-    this.add.rectangle(1260, 250, 522, 16, palette.coolerLight, 0.92).setDepth(2);
-    this.add.rectangle(1260, 520, 522, 16, palette.coolerLight, 0.78).setDepth(2);
-
-    [1012, 1180, 1348, 1510].forEach((x) => {
-      this.add.rectangle(x, 510, 9, 620, 0xa7aeb0, 0.9).setDepth(4);
-    });
+    }).setOrigin(0.5).setDepth(4);
 
     const shelfYs = [320, 405, 490, 575, 660, 745];
     shelfYs.forEach((y, rowIndex) => {
-      this.add.rectangle(1260, y + 35, 510, 9, 0xa7aeb0, 1).setDepth(4);
       this.createAmbientCoolerStock(y, rowIndex);
       this.coolerRows.push(this.createRestockRow(y, rowIndex));
     });
   }
 
   private createAmbientCoolerStock(y: number, rowIndex: number): void {
-    const colors = [0xc74435, 0x2d7b45, 0xe58a27, 0x3273a8, 0x26312b];
-    const positions = [1035, 1070, 1105, 1395, 1430, 1465, 1500];
+    const productKeys = [
+      V2_ASSETS.products.colaBottle.key,
+      V2_ASSETS.products.milkBottle.key,
+      V2_ASSETS.products.waterBottle.key
+    ];
+    const positions = [1038, 1071, 1104, 1396, 1429, 1462, 1495];
+
     positions.forEach((x, index) => {
-      const color = colors[(rowIndex + index) % colors.length];
-      this.add.rectangle(x, y, 22, 58, color, 1)
-        .setStrokeStyle(1, 0xffffff, 0.2)
+      this.add.image(x, y, productKeys[(rowIndex + index) % productKeys.length])
+        .setDisplaySize(25, 62)
         .setDepth(3);
-      this.add.rectangle(x, y - 34, 11, 9, 0xe8e3d6, 1).setDepth(3);
-      this.add.rectangle(x, y + 4, 16, 13, 0xf4eee0, 0.82).setDepth(4);
     });
   }
 
@@ -225,13 +228,15 @@ export class ImmersiveDayOneScene extends Phaser.Scene {
     const objects: Phaser.GameObjects.GameObject[] = [];
     for (let index = 0; index < 6; index += 1) {
       const x = 1140 + index * 39;
-      const bottle = this.add.rectangle(x, y, 25, 60, rowIndex % 2 === 0 ? 0xb93329 : 0x9d2d27, 1)
-        .setStrokeStyle(1, 0xffffff, 0.22);
-      const cap = this.add.rectangle(x, y - 35, 12, 9, 0xe9e3d8, 1);
-      const label = this.add.rectangle(x, y + 3, 18, 14, 0xf4eee2, 0.9);
-      objects.push(bottle, cap, label);
+      objects.push(
+        this.add.image(x, y, V2_ASSETS.products.colaBottle.key)
+          .setDisplaySize(27, 66)
+      );
     }
-    return this.add.container(0, 0, objects).setAlpha(0.12).setDepth(5).setName(`v2-cooler-row-${rowIndex}`);
+    return this.add.container(0, 0, objects)
+      .setAlpha(0.12)
+      .setDepth(5)
+      .setName(`v2-cooler-row-${rowIndex}`);
   }
 
   private createFloorRoute(): void {
@@ -405,6 +410,13 @@ export class ImmersiveDayOneScene extends Phaser.Scene {
 
   private syncTarget(snapshot: RestockSnapshot): void {
     if (!this.target || !this.targetArrow) return;
+    if (snapshot.step === "complete") {
+      this.target.setVisible(false).disableInteractive();
+      this.targetArrow.setVisible(false);
+      return;
+    }
+    this.target.setVisible(true);
+    this.targetArrow.setVisible(true);
     const world = DAY_ONE_CONTENT.world;
     let x = world.backroomBox.x;
     let y = world.backroomBox.y;
