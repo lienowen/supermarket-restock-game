@@ -79,6 +79,7 @@ const fixturePosition = (fixtureId: string): PresentationPoint => {
 
 const workerSpawn = STARTER_MARKET_LAYOUT.spawns.find((entry) => entry.id === "worker-a-spawn");
 if (!workerSpawn) throw new Error("Missing worker-a-spawn in starter market layout");
+const workerSpawnPosition: PresentationPoint = workerSpawn.position;
 
 export const MAIN_CAMPAIGN_RUNTIME = resolveCampaignRuntime(
   STARTER_MARKET_CONTENT,
@@ -133,7 +134,7 @@ export function createStarterMarketPresentationContext(
       backroomBox: interactionPosition("cola-case-pickup-point"),
       cartStart: interactionPosition("restock-cart-load-point"),
       cartCooler: interactionPosition("beverage-restock-zone"),
-      workerStart: workerSpawn.position,
+      workerStart: workerSpawnPosition,
       workerCooler: STARTER_MARKET_VISUAL_SPEC.actor.coolerPosition,
       backroomFixture: fixturePosition("backroom-rack-a"),
       beverageCooler: fixturePosition("beverage-cooler-a")
