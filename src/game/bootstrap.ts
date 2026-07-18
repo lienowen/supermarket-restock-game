@@ -7,13 +7,20 @@ import { validateWorldLayout } from "./world/WorldLayout";
 import { STARTER_MARKET_LAYOUT } from "./world/starterMarketLayout";
 import { validateStarterMarketVisualSpec } from "./presentation/visual/StarterMarketVisualSpec";
 import { validateProductionAssetPlan } from "./presentation/assets/ProductionAssetPlan";
+import { STARTER_MARKET_CONTENT } from "./content/starterMarket";
+import {
+  resolveRestockShiftRuntime,
+  validateRestockShiftRuntime
+} from "./application/ShiftRuntimeContent";
 
 function validateProjectContracts(): void {
+  const starterShift = resolveRestockShiftRuntime(STARTER_MARKET_CONTENT, "starter-shift-001");
   const errors = [
     ...validateAssetCatalogue(STARTER_ASSET_CATALOGUE),
     ...validateWorldLayout(STARTER_MARKET_LAYOUT),
     ...validateStarterMarketVisualSpec().errors,
-    ...validateProductionAssetPlan()
+    ...validateProductionAssetPlan(),
+    ...validateRestockShiftRuntime(starterShift)
   ];
 
   if (errors.length > 0) {
@@ -33,5 +40,6 @@ export async function bootstrapGame(): Promise<Phaser.Game> {
   document.body.dataset.uiLanguage = PROJECT_CONFIG.language;
   document.body.dataset.gameArchitecture = PROJECT_CONFIG.version;
   document.body.dataset.visualTarget = "locked-starter-market";
+  document.body.dataset.activeShift = "starter-shift-001";
   return bootstrapImmersiveGame();
 }
