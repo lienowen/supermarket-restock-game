@@ -16,7 +16,11 @@ writeFileSync(resolve(".test-dist/package.json"), '{"type":"commonjs"}\n', "utf8
 
 const run = spawnSync(
   process.execPath,
-  ["--test", "tests/core-flow.test.cjs"],
+  [
+    "--test",
+    "tests/core-flow.test.cjs",
+    "tests/v3-architecture.test.cjs"
+  ],
   { stdio: "inherit" }
 );
 
