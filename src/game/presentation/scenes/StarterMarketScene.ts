@@ -99,7 +99,7 @@ export class StarterMarketScene extends Phaser.Scene {
       game: "supermarket-restock",
       version: context.scene.architecture,
       campaign: context.campaignShift.campaignId,
-      day: context.campaignShift.dayNumber,
+      day: String(context.campaignShift.dayNumber),
       shift: context.runtime.shift.id,
       task: context.runtime.mission.id
     });
