@@ -8,6 +8,9 @@ const {
   STARTER_ASSET_CATALOGUE
 } = require("../.test-dist/src/game/assets/starterAssetCatalogue.js");
 const {
+  V2_ASSET_LIST
+} = require("../.test-dist/src/game-v2/assets/manifest.js");
+const {
   validateWorldLayout
 } = require("../.test-dist/src/game/world/WorldLayout.js");
 const {
@@ -34,6 +37,13 @@ test("Starter asset catalogue has valid reusable paths and unique keys", () => {
   assert.deepEqual(validateAssetCatalogue(STARTER_ASSET_CATALOGUE), []);
   assert.ok(STARTER_ASSET_CATALOGUE.assets.length >= 20);
   assert.ok(STARTER_ASSET_CATALOGUE.assets.every((asset) => asset.path.startsWith("assets/game/")));
+});
+
+test("Compatibility scene loads only canonical project assets", () => {
+  assert.ok(V2_ASSET_LIST.length > 0);
+  assert.ok(V2_ASSET_LIST.every((asset) => asset.path.startsWith("assets/game/")));
+  assert.ok(V2_ASSET_LIST.every((asset) => !asset.path.includes("/day01/")));
+  assert.ok(V2_ASSET_LIST.every((asset) => asset.status === "prototype" || asset.status === "production"));
 });
 
 test("Beverage cooler exposes six independent product rows", () => {
@@ -63,4 +73,10 @@ test("Worker assets are action-oriented rather than day-oriented", () => {
   ].forEach((state) => assert.equal(states.has(state), true));
 
   assert.ok(workerAssets.every((asset) => !asset.key.toLowerCase().includes("day")));
+});
+
+test("Retained assets are explicitly prototypes, never mislabeled as final art", () => {
+  const prototypes = STARTER_ASSET_CATALOGUE.assets.filter((asset) => asset.status === "prototype");
+  assert.ok(prototypes.length >= 15);
+  assert.ok(prototypes.every((asset) => asset.path.startsWith("assets/game/")));
 });
