@@ -1,4 +1,4 @@
 import "./styles.css";
-import { bootstrapImmersiveGame } from "./game-v2/bootstrap";
+import { bootstrapGame } from "./game/bootstrap";
 
-void bootstrapImmersiveGame();
+void bootstrapGame();
