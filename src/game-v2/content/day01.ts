@@ -24,7 +24,7 @@ export const DAY_ONE_CONTENT = {
     cartStart: interaction("restock-cart-load-point"),
     workerStart: workerSpawn.position,
     cartCooler: interaction("beverage-restock-zone"),
-    workerCooler: { x: 1055, y: 735 },
+    workerCooler: { x: 1055, y: 665 },
     coolerTarget: { x: 1325, y: 490, width: 300, height: 465 }
   },
   palette: {
