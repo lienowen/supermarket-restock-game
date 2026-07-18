@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 
 const {
   STARTER_MARKET_PRESENTATION,
+  createStarterMarketPresentationContext,
   validateStarterMarketPresentationContext
 } = require("../.test-dist/src/game/presentation/context/StarterMarketPresentationContext.js");
 const {
@@ -30,19 +31,45 @@ const resolver = new RestockTargetResolver({
   coolerTargetWidth: STARTER_MARKET_PRESENTATION.visual.cooler.activeStockBounds.width
 });
 
-test("Global starter market presentation context is internally consistent", () => {
-  assert.deepEqual(validateStarterMarketPresentationContext(), []);
-  assert.equal(
-    STARTER_MARKET_PRESENTATION.runtime.slotCount,
-    STARTER_MARKET_PRESENTATION.visual.cooler.rowYs.length
-  );
-  assert.equal(
-    STARTER_MARKET_PRESENTATION.runtime.store.worldLayoutId,
-    STARTER_MARKET_PRESENTATION.layout.id
-  );
+test("Day 1 and Day 2 contexts are internally consistent", () => {
+  const dayOne = createStarterMarketPresentationContext("starter-shift-001");
+  const dayTwo = createStarterMarketPresentationContext("starter-shift-002");
+
+  assert.deepEqual(validateStarterMarketPresentationContext(dayOne), []);
+  assert.deepEqual(validateStarterMarketPresentationContext(dayTwo), []);
+  assert.equal(dayOne.runtime.slotCount, dayOne.visual.cooler.rowYs.length);
+  assert.equal(dayTwo.runtime.slotCount, dayTwo.visual.cooler.rowYs.length);
+  assert.equal(dayOne.runtime.store.worldLayoutId, dayOne.layout.id);
+  assert.equal(dayTwo.runtime.store.worldLayoutId, dayTwo.layout.id);
 });
 
-test("Restock target resolver maps workflow phases without knowing Phaser", () => {
+test("Both days use the same scene, world layout, fixture, and presentation modules", () => {
+  const dayOne = createStarterMarketPresentationContext("starter-shift-001");
+  const dayTwo = createStarterMarketPresentationContext("starter-shift-002");
+
+  assert.equal(dayOne.scene.key, "starter-market-shift");
+  assert.equal(dayTwo.scene.key, dayOne.scene.key);
+  assert.equal(dayTwo.layout, dayOne.layout);
+  assert.equal(dayTwo.visual, dayOne.visual);
+  assert.equal(dayTwo.assets, dayOne.assets);
+  assert.equal(dayTwo.runtime.store.id, dayOne.runtime.store.id);
+  assert.equal(dayTwo.runtime.fixture.id, dayOne.runtime.fixture.id);
+});
+
+test("Campaign order supplies day labels while shift content supplies task differences", () => {
+  const dayOne = createStarterMarketPresentationContext("starter-shift-001");
+  const dayTwo = createStarterMarketPresentationContext("starter-shift-002");
+
+  assert.equal(dayOne.labels.day, "DAY 1");
+  assert.equal(dayTwo.labels.day, "DAY 2");
+  assert.equal(dayOne.runtime.product.id, "cola-bottle");
+  assert.equal(dayTwo.runtime.product.id, "water-bottle");
+  assert.equal(dayOne.runtime.mission.id, "restock-cola-cooler");
+  assert.equal(dayTwo.runtime.mission.id, "restock-water-promotion");
+  assert.notEqual(dayOne.productAssets.restockProductKey, dayTwo.productAssets.restockProductKey);
+});
+
+test("Restock target resolver maps workflow phases without knowing day or Phaser", () => {
   assert.deepEqual(resolver.resolve(snapshot("collect")), {
     x: STARTER_MARKET_PRESENTATION.world.backroomBox.x,
     y: STARTER_MARKET_PRESENTATION.world.backroomBox.y,
