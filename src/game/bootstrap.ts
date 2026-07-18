@@ -1,5 +1,4 @@
 import type Phaser from "phaser";
-import { bootstrapImmersiveGame } from "../game-v2/bootstrap";
 import { PROJECT_CONFIG } from "./config/project";
 import { validateAssetCatalogue } from "./assets/AssetDescriptor";
 import { STARTER_ASSET_CATALOGUE } from "./assets/starterAssetCatalogue";
@@ -16,6 +15,7 @@ import {
   STARTER_MARKET_PRESENTATION,
   validateStarterMarketPresentationContext
 } from "./presentation/context/StarterMarketPresentationContext";
+import { createPhaserGame } from "./infrastructure/phaser/createPhaserGame";
 
 function validateProjectContracts(): void {
   const starterShift = resolveRestockShiftRuntime(STARTER_MARKET_CONTENT, "starter-shift-001");
@@ -33,17 +33,13 @@ function validateProjectContracts(): void {
   }
 }
 
-/**
- * Project-wide startup boundary.
- *
- * The legacy bootstrap remains behind this adapter only for Phaser creation.
- * Domain, content, application, presentation, and assets are owned by src/game.
- */
+/** Project-wide startup boundary. */
 export async function bootstrapGame(): Promise<Phaser.Game> {
   validateProjectContracts();
   document.body.dataset.uiLanguage = PROJECT_CONFIG.language;
   document.body.dataset.gameArchitecture = PROJECT_CONFIG.version;
+  document.body.dataset.gameVersion = PROJECT_CONFIG.version;
   document.body.dataset.visualTarget = "locked-starter-market";
   document.body.dataset.activeShift = STARTER_MARKET_PRESENTATION.runtime.shift.id;
-  return bootstrapImmersiveGame();
+  return createPhaserGame();
 }
