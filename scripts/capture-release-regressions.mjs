@@ -8,8 +8,8 @@ const OUTPUT_DIR = resolve("ui-audit");
 const PORT = 4173;
 const BASE_URL = `http://127.0.0.1:${PORT}/?test=1`;
 const GAME_CANVAS_SELECTOR = "#app > canvas:not(#mobile-game-backdrop)";
-const GAME_WIDTH = 1536;
-const GAME_HEIGHT = 1024;
+const GAME_WIDTH = 1600;
+const GAME_HEIGHT = 900;
 
 if (!existsSync(join(DIST_DIR, "index.html"))) {
   throw new Error("dist/index.html is missing. Run npm run build first.");
@@ -138,38 +138,38 @@ try {
     coins: 100,
     stars: 0
   });
-  await capture(page, report, "01-day1-initial.png", "Immersive Day 1 initial beverage task");
+  await capture(page, report, "01-day1-initial.png", "Immersive initial beverage task");
 
-  await clickGame(page, 695, 600);
+  await clickGame(page, 770, 510);
   const collected = await waitForSnapshot(page, { step: "load", boxCollected: true });
   recordSnapshot(report, "case-collected", collected);
   report.regressions.collectCase = true;
 
-  await clickGame(page, 760, 755);
+  await clickGame(page, 860, 730);
   const loaded = await waitForSnapshot(page, { step: "push", boxLoaded: true });
   recordSnapshot(report, "cart-loaded", loaded);
   report.regressions.loadCart = true;
 
-  await clickGame(page, 760, 755);
+  await clickGame(page, 860, 730);
   const travelling = await waitForSnapshot(page, { step: "park" });
   recordSnapshot(report, "cart-travelling", travelling);
   await page.waitForTimeout(1450);
   report.regressions.cartTravel = true;
   await capture(page, report, "02-cart-at-cooler.png", "Employee and loaded cart beside the beverage cooler");
 
-  await clickGame(page, 1045, 735);
+  await clickGame(page, 1120, 725);
   const parked = await waitForSnapshot(page, { step: "open", cartAtCooler: true });
   recordSnapshot(report, "cart-parked", parked);
   report.regressions.parkCart = true;
 
-  await clickGame(page, 1045, 657);
+  await clickGame(page, 1138, 641);
   const opened = await waitForSnapshot(page, { step: "restock", boxOpened: true });
   recordSnapshot(report, "case-opened", opened);
   report.regressions.openCase = true;
   await capture(page, report, "03-case-opened.png", "Opened beverage case ready for row-by-row stocking");
 
   for (let row = 0; row < 6; row += 1) {
-    await clickGame(page, 1238, 320 + row * 85);
+    await clickGame(page, 1325, 286 + row * 78);
     await waitForSnapshot(page, { stockedRows: row + 1 });
     if (row === 2) {
       await capture(page, report, "04-three-rows-stocked.png", "Three beverage cooler rows stocked");
@@ -191,7 +191,7 @@ try {
     { timeout: 10000 }
   );
   await page.waitForTimeout(550);
-  await capture(page, report, "05-task-complete.png", "Completed Day 1 beverage cooler task and reward");
+  await capture(page, report, "05-task-complete.png", "Completed beverage cooler task and reward");
   report.regressions.completionReward = true;
 
   const sdkEvents = await page.evaluate(() => [...(window.__CRAZY_GAMES_TEST_EVENTS__ ?? [])]);
