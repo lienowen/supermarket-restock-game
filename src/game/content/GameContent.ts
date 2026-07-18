@@ -25,6 +25,7 @@ export interface FixtureDefinition {
   readonly id: string;
   readonly kind: FixtureKind;
   readonly capacity: number;
+  readonly slotCount?: number;
   readonly acceptedProductCategories: readonly ProductCategory[];
   readonly assetKey: string;
 }
