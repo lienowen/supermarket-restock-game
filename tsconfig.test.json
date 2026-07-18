@@ -24,6 +24,7 @@
     "src/game/entities/StoreEntities.ts",
     "src/game/content/GameContent.ts",
     "src/game/content/starterMarket.ts",
+    "src/game/application/ShiftRuntimeContent.ts",
     "src/game/missions/MissionTracker.ts",
     "src/game/systems/stocking/RestockWorkflow.ts",
     "src/game/interactions/RestockInteractionResolver.ts",
