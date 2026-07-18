@@ -153,16 +153,16 @@ try {
   await clickGame(page, 860, 730);
   const travelling = await waitForSnapshot(page, { step: "park" });
   recordSnapshot(report, "cart-travelling", travelling);
-  await page.waitForTimeout(1450);
+  await waitForInputUnlocked(page);
   report.regressions.cartTravel = true;
   await capture(page, report, "02-cart-at-cooler.png", "Employee and loaded cart beside the beverage cooler");
 
-  await clickGame(page, 1310, 850);
+  await clickGame(page, 1120, 725);
   const parked = await waitForSnapshot(page, { step: "open", cartAtCooler: true });
   recordSnapshot(report, "cart-parked", parked);
   report.regressions.parkCart = true;
 
-  await clickGame(page, 1310, 850);
+  await clickGame(page, 1138, 641);
   const opened = await waitForSnapshot(page, { step: "restock", boxOpened: true });
   recordSnapshot(report, "case-opened", opened);
   report.regressions.openCase = true;
@@ -242,6 +242,13 @@ async function waitForSnapshot(page, expected) {
     return Object.entries(target).every(([key, value]) => snapshot[key] === value);
   }, expected, { timeout: 10000 });
   return readSnapshot(page);
+}
+
+async function waitForInputUnlocked(page) {
+  await page.waitForFunction(() => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene("immersive-day-one");
+    return Boolean(scene && scene.inputLocked === false);
+  }, null, { timeout: 10000 });
 }
 
 function recordSnapshot(auditReport, label, snapshot) {
