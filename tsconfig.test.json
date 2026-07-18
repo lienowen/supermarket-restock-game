@@ -31,6 +31,8 @@
     "src/game/world/starterMarketLayout.ts",
     "src/game/assets/AssetDescriptor.ts",
     "src/game/assets/starterAssetCatalogue.ts",
+    "src/game/presentation/visual/StarterMarketVisualSpec.ts",
+    "src/game/presentation/assets/ProductionAssetPlan.ts",
     "src/game-v2/assets/manifest.ts",
     "src/game-v2/domain/restock.ts"
   ]
