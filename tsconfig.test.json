@@ -27,6 +27,10 @@
     "src/game/missions/MissionTracker.ts",
     "src/game/systems/stocking/RestockWorkflow.ts",
     "src/game/interactions/RestockInteractionResolver.ts",
+    "src/game/world/WorldLayout.ts",
+    "src/game/world/starterMarketLayout.ts",
+    "src/game/assets/AssetDescriptor.ts",
+    "src/game/assets/starterAssetCatalogue.ts",
     "src/game-v2/domain/restock.ts"
   ]
 }
