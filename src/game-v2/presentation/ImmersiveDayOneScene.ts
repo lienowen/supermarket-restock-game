@@ -453,17 +453,11 @@ export class ImmersiveDayOneScene extends Phaser.Scene {
         height = 72;
         break;
       }
-      case "complete":
-        x = world.coolerTarget.x;
-        y = world.coolerTarget.y + 115;
-        width = world.coolerTarget.width;
-        height = world.coolerTarget.height;
-        break;
     }
 
     this.target.setPosition(x, y).setSize(width, height).setDisplaySize(width, height);
     this.targetArrow.setPosition(x, y - height / 2 - 28);
-    const interactive = snapshot.step !== "complete" && !this.inputLocked;
+    const interactive = !this.inputLocked;
     this.target.disableInteractive();
     if (interactive) this.target.setInteractive({ useHandCursor: true });
   }
