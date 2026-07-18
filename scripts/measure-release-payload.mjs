@@ -111,14 +111,14 @@ try {
 
   await page.waitForFunction(
     () => (
-      document.body.dataset.gameArchitecture === "immersive-v2" ||
+      document.body.dataset.gameArchitecture === "architecture-v3" ||
       document.body.dataset.stockedLobbyVisual === "ready"
     ),
     null,
     { timeout: 45000 }
   );
-  const immersiveV2 = await page.evaluate(
-    () => document.body.dataset.gameArchitecture === "immersive-v2"
+  const architectureV3 = await page.evaluate(
+    () => document.body.dataset.gameArchitecture === "architecture-v3"
   );
   const lobbyInteractiveMs = Date.now() - navigationStartedAt;
   const browserNavigation = await readNavigationTiming(page);
@@ -128,7 +128,7 @@ try {
 
   activePhase = "firstShiftAdditional";
   const firstShiftStartedAt = Date.now();
-  if (immersiveV2) {
+  if (architectureV3) {
     await page.waitForFunction(
       () => document.body.dataset.gameScene === "game-v2",
       null,
@@ -151,7 +151,7 @@ try {
 
   report = {
     generatedAt: new Date().toISOString(),
-    runtimeMode: immersiveV2 ? "immersive-v2" : "legacy",
+    runtimeMode: architectureV3 ? "architecture-v3" : "legacy",
     networkProfile: MOBILE_NETWORK_PROFILE,
     timings: {
       navigationReadyMs,

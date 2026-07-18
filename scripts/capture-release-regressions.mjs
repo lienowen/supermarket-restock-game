@@ -42,7 +42,7 @@ const report = {
   snapshots: [],
   fatalError: null,
   regressions: {
-    architectureV2: false,
+    architectureV3: false,
     englishHud: false,
     initialState: false,
     collectCase: false,
@@ -106,7 +106,7 @@ try {
   await waitForCanvas(page);
   await page.waitForFunction(
     () => (
-      document.body.dataset.gameArchitecture === "immersive-v2" &&
+      document.body.dataset.gameArchitecture === "architecture-v3" &&
       document.body.dataset.gameScene === "game-v2"
     ),
     null,
@@ -126,7 +126,7 @@ try {
     loading: document.body.dataset.crazyGamesLoading,
     gameplay: document.body.dataset.crazyGamesGameplay
   }));
-  report.regressions.architectureV2 = runtime.architecture === "immersive-v2" && runtime.version === "immersive-v2";
+  report.regressions.architectureV3 = runtime.architecture === "architecture-v3" && runtime.version === "architecture-v3";
   report.regressions.englishHud = runtime.language === "en";
 
   const initial = await readSnapshot(page);
@@ -213,7 +213,7 @@ try {
   const issueCount = report.consoleErrors.length + report.pageErrors.length + report.failedRequests.length + report.badResponses.length;
   const failed = Object.entries(report.regressions).filter(([, value]) => !value).map(([key]) => key);
   if (issueCount > 0 || failed.length > 0) {
-    throw new Error(`Immersive V2 regressions failed: ${failed.join(", ") || "browser runtime"}; browser issues ${issueCount}`);
+    throw new Error(`Architecture V3 regressions failed: ${failed.join(", ") || "browser runtime"}; browser issues ${issueCount}`);
   }
 } catch (error) {
   thrownError = error;
