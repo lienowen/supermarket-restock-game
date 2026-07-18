@@ -6,6 +6,17 @@ The approved visual target is the uploaded fixed-camera, third-person supermarke
 
 `prototype` means the asset is useful for gameplay and architecture validation but is not yet approved as final production art.
 
+## Migration status
+
+The first asset clean-up pass has been applied to `main`.
+
+- retained semi-realistic assets were physically moved into `public/assets/game/`;
+- conflicting cartoon duplicates and the Day 1 delivery art pack were deleted;
+- the compatibility scene no longer references `assets/day01`;
+- the current cooler, beverage products, worker, cart, and case load through canonical V3 paths;
+- catalogue tests prevent day-owned runtime paths from being reintroduced;
+- deleted files remain recoverable from `archive/pre-immersive-v2` and Git history.
+
 ## Retained and migrated
 
 ### Worker A — prototype
@@ -57,6 +68,8 @@ These can support cooler stocking, promotional displays, inventory, ordering, an
 ### Beverage cooler — prototype
 
 The existing empty cooler frame was retained as `fixtures/coolers/beverage-cooler-a/base.png` because its transparent structure can support independent product rows.
+
+The current scene now renders this retained cooler and the migrated beverage product images instead of geometric bottle placeholders.
 
 It is not final because its perspective and lighting must be matched to the approved supermarket environment.
 
