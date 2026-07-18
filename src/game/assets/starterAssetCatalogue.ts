@@ -5,60 +5,46 @@ const asset = (descriptor: AssetDescriptor): AssetDescriptor => descriptor;
 export const STARTER_ASSET_CATALOGUE: AssetCatalogue = {
   assets: [
     asset({
-      key: "environment-starter-market-base",
-      path: "assets/game/environments/stores/starter-market/base.webp",
+      key: "environment-starter-market-salesfloor-prototype",
+      path: "assets/game/environments/stores/starter-market/salesfloor-prototype.png",
       category: "environment",
-      canvasSize: [1600, 900],
+      canvasSize: [1448, 1086],
       anchor: [0, 0],
       defaultScale: 1,
       depthGroup: "far-environment",
       preloadGroup: "starter-market",
       perspective: "fixed-third-person",
       lightDirection: "upper-left",
-      state: "base",
-      status: "concept"
+      state: "salesfloor-prototype",
+      status: "prototype"
     }),
     asset({
-      key: "fixture-produce-display-a",
-      path: "assets/game/fixtures/produce-displays/produce-display-a.webp",
-      category: "fixture",
-      canvasSize: [620, 700],
-      anchor: [0.5, 0.92],
+      key: "environment-starter-market-backroom-prototype",
+      path: "assets/game/environments/stores/starter-market/backroom-prototype.png",
+      category: "environment",
+      canvasSize: [1448, 1086],
+      anchor: [0, 0],
       defaultScale: 1,
-      depthGroup: "fixtures",
+      depthGroup: "far-environment",
       preloadGroup: "starter-market",
       perspective: "fixed-third-person",
       lightDirection: "upper-left",
-      state: "stocked",
-      status: "concept"
-    }),
-    asset({
-      key: "fixture-backroom-rack-a",
-      path: "assets/game/fixtures/backroom-racks/backroom-rack-a.webp",
-      category: "fixture",
-      canvasSize: [540, 580],
-      anchor: [0.5, 0.92],
-      defaultScale: 1,
-      depthGroup: "fixtures",
-      preloadGroup: "starter-market",
-      perspective: "fixed-third-person",
-      lightDirection: "upper-left",
-      state: "stocked",
-      status: "concept"
+      state: "backroom-prototype",
+      status: "prototype"
     }),
     asset({
       key: "fixture-beverage-cooler-a",
-      path: "assets/game/fixtures/coolers/beverage-cooler-a/base.webp",
+      path: "assets/game/fixtures/coolers/beverage-cooler-a/base.png",
       category: "fixture",
-      canvasSize: [680, 820],
+      canvasSize: [1088, 1143],
       anchor: [0.5, 0.92],
-      defaultScale: 1,
+      defaultScale: 0.58,
       depthGroup: "fixtures",
       preloadGroup: "starter-market",
       perspective: "fixed-third-person",
       lightDirection: "upper-left",
       state: "base",
-      status: "concept"
+      status: "prototype"
     }),
     ...Array.from({ length: 6 }, (_, index): AssetDescriptor => ({
       key: `fixture-beverage-cooler-a-row-${String(index + 1).padStart(2, "0")}`,
@@ -74,11 +60,12 @@ export const STARTER_ASSET_CATALOGUE: AssetCatalogue = {
       state: `stock-row-${index + 1}`,
       status: "concept"
     })),
+
     asset({
       key: "worker-a-idle",
-      path: "assets/game/characters/workers/worker-a/idle.webp",
+      path: "assets/game/characters/workers/worker-a/idle.png",
       category: "character",
-      canvasSize: [700, 1000],
+      canvasSize: [512, 768],
       anchor: [0.5, 0.94],
       defaultScale: 0.42,
       depthGroup: "actors",
@@ -86,13 +73,13 @@ export const STARTER_ASSET_CATALOGUE: AssetCatalogue = {
       perspective: "fixed-third-person",
       lightDirection: "upper-left",
       state: "idle",
-      status: "concept"
+      status: "prototype"
     }),
     asset({
       key: "worker-a-carry-medium",
-      path: "assets/game/characters/workers/worker-a/carry-medium.webp",
+      path: "assets/game/characters/workers/worker-a/carry-medium.png",
       category: "character",
-      canvasSize: [700, 1000],
+      canvasSize: [512, 768],
       anchor: [0.5, 0.94],
       defaultScale: 0.42,
       depthGroup: "actors",
@@ -100,13 +87,13 @@ export const STARTER_ASSET_CATALOGUE: AssetCatalogue = {
       perspective: "fixed-third-person",
       lightDirection: "upper-left",
       state: "carry-medium",
-      status: "concept"
+      status: "prototype"
     }),
     asset({
       key: "worker-a-push-cart",
-      path: "assets/game/characters/workers/worker-a/push-cart.webp",
+      path: "assets/game/characters/workers/worker-a/push-cart.png",
       category: "character",
-      canvasSize: [760, 1040],
+      canvasSize: [512, 768],
       anchor: [0.5, 0.94],
       defaultScale: 0.42,
       depthGroup: "actors",
@@ -114,11 +101,11 @@ export const STARTER_ASSET_CATALOGUE: AssetCatalogue = {
       perspective: "fixed-third-person",
       lightDirection: "upper-left",
       state: "push-cart",
-      status: "concept"
+      status: "prototype"
     }),
     asset({
       key: "worker-a-open-case",
-      path: "assets/game/characters/workers/worker-a/open-case.webp",
+      path: "assets/game/characters/workers/worker-a/open-case.png",
       category: "character",
       canvasSize: [760, 1040],
       anchor: [0.5, 0.94],
@@ -130,9 +117,23 @@ export const STARTER_ASSET_CATALOGUE: AssetCatalogue = {
       state: "open-case",
       status: "concept"
     }),
-    ...(["place-low", "place-middle", "place-high"] as const).map((state): AssetDescriptor => ({
+    asset({
+      key: "worker-a-place-low",
+      path: "assets/game/characters/workers/worker-a/place-low.png",
+      category: "character",
+      canvasSize: [512, 768],
+      anchor: [0.5, 0.94],
+      defaultScale: 0.42,
+      depthGroup: "actors",
+      preloadGroup: "starter-market",
+      perspective: "fixed-third-person",
+      lightDirection: "upper-left",
+      state: "place-low",
+      status: "prototype"
+    }),
+    ...(["place-middle", "place-high"] as const).map((state): AssetDescriptor => ({
       key: `worker-a-${state}`,
-      path: `assets/game/characters/workers/worker-a/${state}.webp`,
+      path: `assets/game/characters/workers/worker-a/${state}.png`,
       category: "character",
       canvasSize: [760, 1040],
       anchor: [0.5, 0.94],
@@ -144,39 +145,27 @@ export const STARTER_ASSET_CATALOGUE: AssetCatalogue = {
       state,
       status: "concept"
     })),
-    asset({
-      key: "equipment-restock-cart-empty",
-      path: "assets/game/equipment/restock-carts/cart-a-empty.png",
+
+    ...(["empty", "loaded", "ready", "full"] as const).map((state): AssetDescriptor => ({
+      key: `equipment-restock-cart-a-${state}`,
+      path: `assets/game/equipment/restock-carts/cart-a-${state}.png`,
       category: "equipment",
-      canvasSize: [520, 620],
+      canvasSize: [768, 512],
       anchor: [0.5, 0.91],
       defaultScale: 0.44,
       depthGroup: "props",
       preloadGroup: "starter-market",
       perspective: "fixed-third-person",
       lightDirection: "upper-left",
-      state: "empty",
-      status: "concept"
-    }),
-    asset({
-      key: "equipment-restock-cart-loaded",
-      path: "assets/game/equipment/restock-carts/cart-a-loaded.png",
-      category: "equipment",
-      canvasSize: [520, 620],
-      anchor: [0.5, 0.91],
-      defaultScale: 0.44,
-      depthGroup: "props",
-      preloadGroup: "starter-market",
-      perspective: "fixed-third-person",
-      lightDirection: "upper-left",
-      state: "loaded",
-      status: "concept"
-    }),
-    asset({
-      key: "prop-cola-case-closed",
-      path: "assets/game/props/cases/cola-case-closed.png",
+      state,
+      status: "prototype"
+    })),
+
+    ...(["cola", "milk", "water"] as const).map((product): AssetDescriptor => ({
+      key: `prop-${product}-case-closed`,
+      path: `assets/game/props/cases/${product}-case-closed.png`,
       category: "prop",
-      canvasSize: [360, 260],
+      canvasSize: [512, 512],
       anchor: [0.5, 0.86],
       defaultScale: 0.42,
       depthGroup: "props",
@@ -184,22 +173,54 @@ export const STARTER_ASSET_CATALOGUE: AssetCatalogue = {
       perspective: "fixed-third-person",
       lightDirection: "upper-left",
       state: "closed",
-      status: "concept"
-    }),
-    asset({
-      key: "prop-cola-case-open",
-      path: "assets/game/props/cases/cola-case-open.png",
-      category: "prop",
-      canvasSize: [400, 300],
-      anchor: [0.5, 0.86],
-      defaultScale: 0.42,
-      depthGroup: "props",
+      status: "prototype"
+    })),
+    ...(["cola", "milk", "water"] as const).map((product): AssetDescriptor => ({
+      key: `product-${product}-bottle`,
+      path: `assets/game/products/beverages/${product}-bottle.png`,
+      category: "product",
+      canvasSize: [512, 768],
+      anchor: [0.5, 0.96],
+      defaultScale: 0.18,
+      depthGroup: "fixture-contents",
       preloadGroup: "starter-market",
       perspective: "fixed-third-person",
       lightDirection: "upper-left",
-      state: "open",
-      status: "concept"
-    }),
+      state: "single-unit",
+      status: "prototype"
+    })),
+
+    ...(["customer-a", "customer-b"] as const).flatMap((customer): AssetDescriptor[] => [
+      {
+        key: `${customer}-idle`,
+        path: `assets/game/characters/customers/${customer}/idle.png`,
+        category: "character",
+        canvasSize: [512, 768],
+        anchor: [0.5, 0.95],
+        defaultScale: 0.4,
+        depthGroup: "actors",
+        preloadGroup: "starter-market-customers",
+        perspective: "fixed-third-person",
+        lightDirection: "upper-left",
+        state: "idle",
+        status: "prototype"
+      },
+      {
+        key: `${customer}-carry-basket`,
+        path: `assets/game/characters/customers/${customer}/carry-basket.png`,
+        category: "character",
+        canvasSize: [512, 768],
+        anchor: [0.5, 0.95],
+        defaultScale: 0.4,
+        depthGroup: "actors",
+        preloadGroup: "starter-market-customers",
+        perspective: "fixed-third-person",
+        lightDirection: "upper-left",
+        state: "carry-basket",
+        status: "prototype"
+      }
+    ]),
+
     asset({
       key: "effect-active-target-arrow",
       path: "assets/game/effects/arrows/active-target.svg",
