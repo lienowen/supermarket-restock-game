@@ -1,6 +1,9 @@
 import { STARTER_MARKET_LAYOUT } from "../../game/world/starterMarketLayout";
 import { STARTER_MARKET_VISUAL_SPEC } from "../../game/presentation/visual/StarterMarketVisualSpec";
+import { STARTER_MARKET_CONTENT } from "../../game/content/starterMarket";
+import { resolveRestockShiftRuntime } from "../../game/application/ShiftRuntimeContent";
 
+const runtime = resolveRestockShiftRuntime(STARTER_MARKET_CONTENT, "starter-shift-001");
 const [worldWidth, worldHeight] = STARTER_MARKET_LAYOUT.logicalSize;
 const interaction = (id: string) => {
   const point = STARTER_MARKET_LAYOUT.interactions.find((entry) => entry.id === id);
@@ -10,14 +13,17 @@ const interaction = (id: string) => {
 const workerSpawn = STARTER_MARKET_LAYOUT.spawns.find((entry) => entry.id === "worker-a-spawn");
 if (!workerSpawn) throw new Error("Missing worker-a-spawn in starter market layout");
 
+const displayTime = `${runtime.shift.startTime} AM`;
+
 export const DAY_ONE_CONTENT = {
-  id: "day01-beverage-opening",
+  id: runtime.shift.id,
   title: "DAY 1",
-  timeLabel: "09:00 AM",
+  timeLabel: displayTime,
   department: "BEVERAGES",
-  objective: "Restock the beverage cooler",
-  totalRows: STARTER_MARKET_VISUAL_SPEC.cooler.rowYs.length,
+  objective: runtime.mission.title,
+  totalRows: runtime.slotCount,
   startingCoins: 100,
+  runtime,
   world: {
     width: worldWidth,
     height: worldHeight,
