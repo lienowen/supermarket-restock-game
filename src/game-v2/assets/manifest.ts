@@ -50,6 +50,29 @@ export const V2_ASSETS = {
       status: "prototype"
     }
   },
+  products: {
+    colaBottle: {
+      key: "v2-product-cola-bottle",
+      path: "assets/game/products/beverages/cola-bottle.png",
+      role: "Reusable cola product prototype",
+      expectedSize: [512, 768],
+      status: "prototype"
+    },
+    milkBottle: {
+      key: "v2-product-milk-bottle",
+      path: "assets/game/products/beverages/milk-bottle.png",
+      role: "Reusable milk product prototype",
+      expectedSize: [512, 768],
+      status: "prototype"
+    },
+    waterBottle: {
+      key: "v2-product-water-bottle",
+      path: "assets/game/products/beverages/water-bottle.png",
+      role: "Reusable water product prototype",
+      expectedSize: [512, 768],
+      status: "prototype"
+    }
+  },
   props: {
     cart: {
       key: "v2-restock-cart",
@@ -70,13 +93,6 @@ export const V2_ASSETS = {
       path: "assets/game/props/cases/cola-case-closed.png",
       role: "Reusable closed beverage case prototype",
       expectedSize: [512, 512],
-      status: "prototype"
-    },
-    colaBottle: {
-      key: "v2-cola-bottle",
-      path: "assets/game/products/beverages/cola-bottle.png",
-      role: "Reusable beverage product prototype",
-      expectedSize: [512, 768],
       status: "prototype"
     }
   }
