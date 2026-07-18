@@ -95,4 +95,13 @@ if (source.includes(targetGuard)) {
   throw new Error("Could not locate target visibility guard");
 }
 
+source = source.replace(
+  `      case "complete":\n        x = world.coolerTarget.x;\n        y = world.coolerTarget.y + 115;\n        width = world.coolerTarget.width;\n        height = world.coolerTarget.height;\n        break;\n`,
+  ""
+);
+source = source.replace(
+  'const interactive = snapshot.step !== "complete" && !this.inputLocked;',
+  "const interactive = !this.inputLocked;"
+);
+
 writeFileSync(scenePath, source, "utf8");
