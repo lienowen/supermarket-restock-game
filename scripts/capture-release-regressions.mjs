@@ -7,7 +7,9 @@ const DIST_DIR = resolve("dist");
 const OUTPUT_DIR = resolve("ui-audit");
 const PORT = 4173;
 const BASE_URL = `http://127.0.0.1:${PORT}/?test=1`;
+const DAY_TWO_URL = `http://127.0.0.1:${PORT}/?test=1&shift=starter-shift-002`;
 const GAME_CANVAS_SELECTOR = "#app > canvas:not(#mobile-game-backdrop)";
+const GAME_SCENE_KEY = "starter-market-shift";
 const GAME_WIDTH = 1600;
 const GAME_HEIGHT = 900;
 
@@ -52,7 +54,8 @@ const report = {
     openCase: false,
     rowRestock: false,
     completionReward: false,
-    crazyGamesSdkLifecycle: false
+    crazyGamesSdkLifecycle: false,
+    dayTwoSharedScene: false
   }
 };
 
@@ -88,35 +91,9 @@ try {
   });
 
   const page = await context.newPage();
-  page.on("console", (message) => {
-    if (message.type() === "error") {
-      report.consoleErrors.push({ text: message.text(), location: message.location() });
-    }
-  });
-  page.on("pageerror", (error) => report.pageErrors.push({ message: error.message, stack: error.stack ?? null }));
-  page.on("requestfailed", (request) => {
-    const error = request.failure()?.errorText ?? "unknown";
-    if (!error.includes("ERR_ABORTED")) report.failedRequests.push({ url: request.url(), error });
-  });
-  page.on("response", (response) => {
-    if (response.status() >= 400) report.badResponses.push({ url: response.url(), status: response.status() });
-  });
-
+  attachRuntimeListeners(page, report);
   await page.goto(BASE_URL, { waitUntil: "networkidle", timeout: 90000 });
-  await waitForCanvas(page);
-  await page.waitForFunction(
-    () => (
-      document.body.dataset.gameArchitecture === "architecture-v3" &&
-      document.body.dataset.gameScene === "starter-market"
-    ),
-    null,
-    { timeout: 30000 }
-  );
-  await page.waitForFunction(
-    () => Boolean(window.__IMMERSIVE_GAME__?.scene?.getScene("immersive-day-one")),
-    null,
-    { timeout: 15000 }
-  );
+  await waitForGame(page, "starter-shift-001", "1");
 
   const runtime = await page.evaluate(() => ({
     architecture: document.body.dataset.gameArchitecture,
@@ -130,7 +107,7 @@ try {
   report.regressions.englishHud = runtime.language === "en";
 
   const initial = await readSnapshot(page);
-  recordSnapshot(report, "initial", initial);
+  recordSnapshot(report, "day1-initial", initial);
   report.regressions.initialState = matches(initial, {
     step: "collect",
     stockedRows: 0,
@@ -138,33 +115,33 @@ try {
     coins: 100,
     stars: 0
   });
-  await capture(page, report, "01-day1-initial.png", "Immersive initial beverage task");
+  await capture(page, report, "01-day1-initial.png", "Day 1 cola restock task");
 
   await clickGame(page, 770, 510);
   const collected = await waitForSnapshot(page, { step: "load", boxCollected: true });
-  recordSnapshot(report, "case-collected", collected);
+  recordSnapshot(report, "day1-case-collected", collected);
   report.regressions.collectCase = true;
 
   await clickGame(page, 860, 730);
   const loaded = await waitForSnapshot(page, { step: "push", boxLoaded: true });
-  recordSnapshot(report, "cart-loaded", loaded);
+  recordSnapshot(report, "day1-cart-loaded", loaded);
   report.regressions.loadCart = true;
 
   await clickGame(page, 860, 730);
   const travelling = await waitForSnapshot(page, { step: "park" });
-  recordSnapshot(report, "cart-travelling", travelling);
+  recordSnapshot(report, "day1-cart-travelling", travelling);
   await waitForInteractionReady(page);
   report.regressions.cartTravel = true;
   await capture(page, report, "02-cart-at-cooler.png", "Employee and loaded cart beside the beverage cooler");
 
   await clickGame(page, 1120, 725);
   const parked = await waitForSnapshot(page, { step: "open", cartAtCooler: true });
-  recordSnapshot(report, "cart-parked", parked);
+  recordSnapshot(report, "day1-cart-parked", parked);
   report.regressions.parkCart = true;
 
   await clickGame(page, 1138, 641);
   const opened = await waitForSnapshot(page, { step: "restock", boxOpened: true });
-  recordSnapshot(report, "case-opened", opened);
+  recordSnapshot(report, "day1-case-opened", opened);
   report.regressions.openCase = true;
   await capture(page, report, "03-case-opened.png", "Opened beverage case ready for row-by-row stocking");
 
@@ -182,7 +159,7 @@ try {
     coins: 200,
     stars: 1
   });
-  recordSnapshot(report, "complete", completed);
+  recordSnapshot(report, "day1-complete", completed);
   report.regressions.rowRestock = true;
 
   await page.waitForFunction(
@@ -191,7 +168,7 @@ try {
     { timeout: 10000 }
   );
   await page.waitForTimeout(550);
-  await capture(page, report, "05-task-complete.png", "Completed beverage cooler task and reward");
+  await capture(page, report, "05-task-complete.png", "Completed Day 1 beverage cooler task and reward");
   report.regressions.completionReward = true;
 
   const sdkEvents = await page.evaluate(() => [...(window.__CRAZY_GAMES_TEST_EVENTS__ ?? [])]);
@@ -205,10 +182,46 @@ try {
       "loadingStart",
       "loadingStop",
       "gameplayStart",
-      "progress:20",
+      "progress:50",
       "gameplayStop"
     ])
   );
+
+  const dayTwoPage = await context.newPage();
+  attachRuntimeListeners(dayTwoPage, report);
+  await dayTwoPage.goto(DAY_TWO_URL, { waitUntil: "networkidle", timeout: 90000 });
+  await waitForGame(dayTwoPage, "starter-shift-002", "2");
+  const dayTwoRuntime = await dayTwoPage.evaluate((sceneKey) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+    return {
+      sceneKey: scene?.sys?.settings?.key,
+      shiftId: document.body.dataset.activeShift,
+      day: document.body.dataset.activeDay,
+      productId: scene?.controller?.config?.runtime?.product?.id,
+      missionId: scene?.controller?.config?.runtime?.mission?.id,
+      startTime: scene?.controller?.config?.runtime?.shift?.startTime,
+      rewardCoins: scene?.controller?.config?.runtime?.reward?.totalCoins,
+      initialSnapshot: scene?.controller?.snapshot?.()
+    };
+  }, GAME_SCENE_KEY);
+  recordSnapshot(report, "day2-runtime", dayTwoRuntime);
+  report.regressions.dayTwoSharedScene = (
+    dayTwoRuntime.sceneKey === GAME_SCENE_KEY &&
+    dayTwoRuntime.shiftId === "starter-shift-002" &&
+    dayTwoRuntime.day === "2" &&
+    dayTwoRuntime.productId === "water-bottle" &&
+    dayTwoRuntime.missionId === "restock-water-promotion" &&
+    dayTwoRuntime.startTime === "10:30" &&
+    dayTwoRuntime.rewardCoins === 120 &&
+    matches(dayTwoRuntime.initialSnapshot, {
+      step: "collect",
+      stockedRows: 0,
+      totalRows: 6,
+      coins: 100,
+      stars: 0
+    })
+  );
+  await capture(dayTwoPage, report, "06-day2-initial.png", "Day 2 water promotion using the shared scene");
 
   const issueCount = report.consoleErrors.length + report.pageErrors.length + report.failedRequests.length + report.badResponses.length;
   const failed = Object.entries(report.regressions).filter(([, value]) => !value).map(([key]) => key);
@@ -227,28 +240,63 @@ try {
 console.log(JSON.stringify({ regressions: report.regressions, fatalError: report.fatalError }, null, 2));
 if (thrownError) throw thrownError;
 
-async function readSnapshot(page) {
-  return page.evaluate(() => {
-    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene("immersive-day-one");
-    return scene?.controller?.snapshot?.() ?? null;
+function attachRuntimeListeners(page, auditReport) {
+  page.on("console", (message) => {
+    if (message.type() === "error") {
+      auditReport.consoleErrors.push({ text: message.text(), location: message.location() });
+    }
+  });
+  page.on("pageerror", (error) => auditReport.pageErrors.push({ message: error.message, stack: error.stack ?? null }));
+  page.on("requestfailed", (request) => {
+    const error = request.failure()?.errorText ?? "unknown";
+    if (!error.includes("ERR_ABORTED")) auditReport.failedRequests.push({ url: request.url(), error });
+  });
+  page.on("response", (response) => {
+    if (response.status() >= 400) auditReport.badResponses.push({ url: response.url(), status: response.status() });
   });
 }
 
+async function waitForGame(page, shiftId, dayNumber) {
+  await waitForCanvas(page);
+  await page.waitForFunction(
+    ({ expectedShiftId, expectedDay }) => (
+      document.body.dataset.gameArchitecture === "architecture-v3" &&
+      document.body.dataset.gameScene === "starter-market" &&
+      document.body.dataset.activeShift === expectedShiftId &&
+      document.body.dataset.activeDay === expectedDay
+    ),
+    { expectedShiftId: shiftId, expectedDay: dayNumber },
+    { timeout: 30000 }
+  );
+  await page.waitForFunction(
+    (sceneKey) => Boolean(window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)),
+    GAME_SCENE_KEY,
+    { timeout: 15000 }
+  );
+}
+
+async function readSnapshot(page) {
+  return page.evaluate((sceneKey) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+    return scene?.controller?.snapshot?.() ?? null;
+  }, GAME_SCENE_KEY);
+}
+
 async function waitForSnapshot(page, expected) {
-  await page.waitForFunction((target) => {
-    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene("immersive-day-one");
+  await page.waitForFunction(({ sceneKey, target }) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
     const snapshot = scene?.controller?.snapshot?.();
     if (!snapshot) return false;
     return Object.entries(target).every(([key, value]) => snapshot[key] === value);
-  }, expected, { timeout: 10000 });
+  }, { sceneKey: GAME_SCENE_KEY, target: expected }, { timeout: 10000 });
   return readSnapshot(page);
 }
 
 async function waitForInteractionReady(page) {
-  await page.waitForFunction(() => {
-    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene("immersive-day-one");
+  await page.waitForFunction((sceneKey) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
     return Boolean(scene?.isInteractionReady?.());
-  }, null, { timeout: 10000 });
+  }, GAME_SCENE_KEY, { timeout: 10000 });
 }
 
 function recordSnapshot(auditReport, label, snapshot) {
