@@ -1,3 +1,10 @@
+import { RESTOCK_COLA_COOLER_MISSION } from "../../game/content/starterMarket";
+import {
+  RestockWorkflow,
+  type RestockCommand,
+  type RestockPhase
+} from "../../game/systems/stocking/RestockWorkflow";
+
 export type RestockAction =
   | "PICK_BOX"
   | "LOAD_CART"
@@ -6,14 +13,7 @@ export type RestockAction =
   | "OPEN_BOX"
   | "RESTOCK_ROW";
 
-export type RestockStep =
-  | "collect"
-  | "load"
-  | "push"
-  | "park"
-  | "open"
-  | "restock"
-  | "complete";
+export type RestockStep = RestockPhase;
 
 export type RestockSnapshot = Readonly<{
   step: RestockStep;
@@ -32,80 +32,88 @@ export type DispatchResult = Readonly<{
   snapshot: RestockSnapshot;
 }>;
 
+const COMMAND_BY_ACTION: Record<RestockAction, RestockCommand> = {
+  PICK_BOX: "PICK_CASE",
+  LOAD_CART: "LOAD_CART",
+  PUSH_CART: "PUSH_CART",
+  PARK_CART: "PARK_CART",
+  OPEN_BOX: "OPEN_CASE",
+  RESTOCK_ROW: "STOCK_SLOT"
+};
+
+/**
+ * Compatibility adapter for the existing Phaser scene.
+ *
+ * The actual state, entities, inventory, mission progress, and rewards now live
+ * in the project-wide RestockWorkflow under src/game. This class can be removed
+ * when the V3 presentation layer replaces the temporary V2 scene.
+ */
 export class RestockSession {
-  private step: RestockStep = "collect";
-  private stockedRows = 0;
-  private readonly totalRows: number;
-  private boxCollected = false;
-  private boxLoaded = false;
-  private cartAtCooler = false;
-  private boxOpened = false;
-  private coins = 100;
-  private stars = 0;
+  private readonly workflow: RestockWorkflow;
 
   constructor(totalRows = 6) {
     if (!Number.isInteger(totalRows) || totalRows <= 0) {
       throw new Error("totalRows must be a positive integer");
     }
-    this.totalRows = totalRows;
-  }
 
-  dispatch(action: RestockAction): DispatchResult {
-    const accepted = this.apply(action);
-    return { accepted, snapshot: this.snapshot() };
-  }
+    const unitsPerRow = 4;
+    const totalUnits = totalRows * unitsPerRow;
+    const mission = {
+      ...RESTOCK_COLA_COOLER_MISSION,
+      objectives: [
+        {
+          type: "transfer-product" as const,
+          productId: "cola-bottle",
+          targetFixtureId: "beverage-cooler-a",
+          amount: totalUnits
+        }
+      ]
+    };
 
-  snapshot(): RestockSnapshot {
-    return Object.freeze({
-      step: this.step,
-      stockedRows: this.stockedRows,
-      totalRows: this.totalRows,
-      boxCollected: this.boxCollected,
-      boxLoaded: this.boxLoaded,
-      cartAtCooler: this.cartAtCooler,
-      boxOpened: this.boxOpened,
-      coins: this.coins,
-      stars: this.stars
+    this.workflow = new RestockWorkflow({
+      workerId: "worker-a",
+      cartId: "restock-cart-a",
+      caseId: "cola-case-a",
+      productId: "cola-bottle",
+      fixtureId: "beverage-cooler-a",
+      sourceLocationId: "staff-backroom",
+      destinationLocationId: "beverage-restock-zone",
+      caseQuantity: totalUnits,
+      unitsPerSlot: unitsPerRow,
+      slotCount: totalRows,
+      cartCapacity: totalUnits,
+      initialCoins: 100,
+      coinsPerSlot: 10,
+      completionCoins: 40,
+      completionStars: 1,
+      mission
     });
   }
 
-  private apply(action: RestockAction): boolean {
-    switch (action) {
-      case "PICK_BOX":
-        if (this.step !== "collect") return false;
-        this.boxCollected = true;
-        this.step = "load";
-        return true;
-      case "LOAD_CART":
-        if (this.step !== "load" || !this.boxCollected) return false;
-        this.boxLoaded = true;
-        this.step = "push";
-        return true;
-      case "PUSH_CART":
-        if (this.step !== "push" || !this.boxLoaded) return false;
-        this.step = "park";
-        return true;
-      case "PARK_CART":
-        if (this.step !== "park") return false;
-        this.cartAtCooler = true;
-        this.step = "open";
-        return true;
-      case "OPEN_BOX":
-        if (this.step !== "open" || !this.cartAtCooler) return false;
-        this.boxOpened = true;
-        this.step = "restock";
-        return true;
-      case "RESTOCK_ROW":
-        if (this.step !== "restock" || !this.boxOpened) return false;
-        this.stockedRows += 1;
-        this.coins += 10;
-        if (this.stockedRows >= this.totalRows) {
-          this.stockedRows = this.totalRows;
-          this.stars = 1;
-          this.coins += 40;
-          this.step = "complete";
-        }
-        return true;
-    }
+  dispatch(action: RestockAction): DispatchResult {
+    const result = this.workflow.dispatch(COMMAND_BY_ACTION[action]);
+    return Object.freeze({
+      accepted: result.accepted,
+      snapshot: this.toLegacySnapshot()
+    });
+  }
+
+  snapshot(): RestockSnapshot {
+    return this.toLegacySnapshot();
+  }
+
+  private toLegacySnapshot(): RestockSnapshot {
+    const snapshot = this.workflow.snapshot();
+    return Object.freeze({
+      step: snapshot.phase,
+      stockedRows: snapshot.stockedSlots,
+      totalRows: snapshot.totalSlots,
+      boxCollected: snapshot.caseCollected,
+      boxLoaded: snapshot.caseLoaded,
+      cartAtCooler: snapshot.cartAtFixture,
+      boxOpened: snapshot.caseOpened,
+      coins: snapshot.coins,
+      stars: snapshot.stars
+    });
   }
 }
