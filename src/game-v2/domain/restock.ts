@@ -1,4 +1,5 @@
-import { RESTOCK_COLA_COOLER_MISSION } from "../../game/content/starterMarket";
+import { STARTER_MARKET_CONTENT } from "../../game/content/starterMarket";
+import { resolveRestockShiftRuntime } from "../../game/application/ShiftRuntimeContent";
 import {
   RestockWorkflow,
   type RestockCommand,
@@ -41,41 +42,52 @@ const COMMAND_BY_ACTION: Record<RestockAction, RestockCommand> = {
   RESTOCK_ROW: "STOCK_SLOT"
 };
 
+export const STARTER_RESTOCK_RUNTIME = resolveRestockShiftRuntime(
+  STARTER_MARKET_CONTENT,
+  "starter-shift-001"
+);
+
 /**
  * Compatibility adapter for the existing Phaser scene.
  *
- * The actual state, entities, inventory, mission progress, and rewards now live
- * in the project-wide RestockWorkflow under src/game. This class can be removed
- * when the V3 presentation layer replaces the temporary V2 scene.
+ * The actual state, entities, inventory, mission progress, rewards, product,
+ * fixture, and shift definitions live in project-wide modules under src/game.
+ * This class can be removed when the V3 scene replaces the temporary V2 scene.
  */
 export class RestockSession {
   private readonly workflow: RestockWorkflow;
 
-  constructor(totalRows = 6) {
+  constructor(totalRows = STARTER_RESTOCK_RUNTIME.slotCount) {
     if (!Number.isInteger(totalRows) || totalRows <= 0) {
       throw new Error("totalRows must be a positive integer");
     }
 
-    const unitsPerRow = 4;
+    const unitsPerRow = STARTER_RESTOCK_RUNTIME.unitsPerSlot;
     const totalUnits = totalRows * unitsPerRow;
     const mission = {
-      ...RESTOCK_COLA_COOLER_MISSION,
+      ...STARTER_RESTOCK_RUNTIME.mission,
       objectives: [
         {
           type: "transfer-product" as const,
-          productId: "cola-bottle",
-          targetFixtureId: "beverage-cooler-a",
+          productId: STARTER_RESTOCK_RUNTIME.product.id,
+          targetFixtureId: STARTER_RESTOCK_RUNTIME.fixture.id,
           amount: totalUnits
         }
       ]
     };
 
+    const rewardScale = totalRows / STARTER_RESTOCK_RUNTIME.slotCount;
+    const completionCoins = Math.max(
+      0,
+      Math.round(STARTER_RESTOCK_RUNTIME.reward.completionCoins * rewardScale)
+    );
+
     this.workflow = new RestockWorkflow({
       workerId: "worker-a",
       cartId: "restock-cart-a",
-      caseId: "cola-case-a",
-      productId: "cola-bottle",
-      fixtureId: "beverage-cooler-a",
+      caseId: `${STARTER_RESTOCK_RUNTIME.product.id}-case-a`,
+      productId: STARTER_RESTOCK_RUNTIME.product.id,
+      fixtureId: STARTER_RESTOCK_RUNTIME.fixture.id,
       sourceLocationId: "staff-backroom",
       destinationLocationId: "beverage-restock-zone",
       caseQuantity: totalUnits,
@@ -83,9 +95,9 @@ export class RestockSession {
       slotCount: totalRows,
       cartCapacity: totalUnits,
       initialCoins: 100,
-      coinsPerSlot: 10,
-      completionCoins: 40,
-      completionStars: 1,
+      coinsPerSlot: STARTER_RESTOCK_RUNTIME.reward.coinsPerSlot,
+      completionCoins,
+      completionStars: STARTER_RESTOCK_RUNTIME.reward.completionStars,
       mission
     });
   }
