@@ -30,6 +30,6 @@ export const DAY_ONE_CONTENT = {
     backroom: 0x5f5446,
     shadow: 0x000000
   }
-} as const;
+};
 
 export type DayOneContent = typeof DAY_ONE_CONTENT;
