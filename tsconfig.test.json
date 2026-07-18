@@ -25,6 +25,7 @@
     "src/game/content/GameContent.ts",
     "src/game/content/starterMarket.ts",
     "src/game/application/ShiftRuntimeContent.ts",
+    "src/game/application/RestockSceneController.ts",
     "src/game/missions/MissionTracker.ts",
     "src/game/systems/stocking/RestockWorkflow.ts",
     "src/game/interactions/RestockInteractionResolver.ts",
@@ -34,6 +35,9 @@
     "src/game/assets/starterAssetCatalogue.ts",
     "src/game/presentation/visual/StarterMarketVisualSpec.ts",
     "src/game/presentation/assets/ProductionAssetPlan.ts",
+    "src/game/presentation/assets/RetainedAssetManifest.ts",
+    "src/game/presentation/context/StarterMarketPresentationContext.ts",
+    "src/game/presentation/interactions/RestockTargetResolver.ts",
     "src/game-v2/assets/manifest.ts",
     "src/game-v2/domain/restock.ts"
   ]
