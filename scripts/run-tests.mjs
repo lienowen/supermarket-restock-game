@@ -21,7 +21,8 @@ const run = spawnSync(
     "tests/core-flow.test.cjs",
     "tests/v3-architecture.test.cjs",
     "tests/v3-catalogues.test.cjs",
-    "tests/v3-visual-target.test.cjs"
+    "tests/v3-visual-target.test.cjs",
+    "tests/v3-shift-runtime.test.cjs"
   ],
   { stdio: "inherit" }
 );
