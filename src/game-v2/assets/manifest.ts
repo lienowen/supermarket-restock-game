@@ -25,6 +25,15 @@ export const V2_ASSETS = {
       status: "prototype"
     }
   },
+  fixtures: {
+    beverageCooler: {
+      key: "v2-fixture-beverage-cooler",
+      path: "assets/game/fixtures/coolers/beverage-cooler-a/base.png",
+      role: "Reusable empty beverage cooler prototype with independent product-row support",
+      expectedSize: [1088, 1143],
+      status: "prototype"
+    }
+  },
   characters: {
     workerPush: {
       key: "v2-worker-push",
