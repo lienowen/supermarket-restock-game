@@ -19,7 +19,8 @@ const run = spawnSync(
   [
     "--test",
     "tests/core-flow.test.cjs",
-    "tests/v3-architecture.test.cjs"
+    "tests/v3-architecture.test.cjs",
+    "tests/v3-catalogues.test.cjs"
   ],
   { stdio: "inherit" }
 );
