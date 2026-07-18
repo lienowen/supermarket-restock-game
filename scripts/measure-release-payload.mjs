@@ -60,7 +60,7 @@ let report;
 
 try {
   const context = await browser.newContext({
-    viewport: { width: 1536, height: 1024 },
+    viewport: { width: 1600, height: 900 },
     deviceScaleFactor: 1
   });
   await context.addInitScript(() => {
@@ -130,7 +130,7 @@ try {
   const firstShiftStartedAt = Date.now();
   if (architectureV3) {
     await page.waitForFunction(
-      () => document.body.dataset.gameScene === "game-v2",
+      () => document.body.dataset.gameScene === "starter-market",
       null,
       { timeout: 15000 }
     );
