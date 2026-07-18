@@ -5,7 +5,7 @@ import { ImmersiveDayOneScene } from "./presentation/ImmersiveDayOneScene";
 
 export async function bootstrapImmersiveGame(): Promise<Phaser.Game> {
   document.body.dataset.uiLanguage = "en";
-  document.body.dataset.gameVersion = "immersive-v2";
+  document.body.dataset.gameVersion = "architecture-v3";
 
   await crazyGamesPlatform.initialize();
   crazyGamesPlatform.loadingStart();
