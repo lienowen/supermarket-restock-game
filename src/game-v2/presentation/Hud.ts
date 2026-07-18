@@ -15,7 +15,7 @@ export class ImmersiveHud {
   constructor(scene: Phaser.Scene, onAction: () => void) {
     const { palette } = DAY_ONE_CONTENT;
 
-    const dayPanel = scene.add.rectangle(92, 67, 160, 94, palette.hud, 0.92)
+    const dayPanel = scene.add.rectangle(92, 67, 160, 94, palette.hud, 0.94)
       .setStrokeStyle(2, 0xffffff, 0.12)
       .setDepth(100);
     scene.add.text(32, 24, DAY_ONE_CONTENT.title, {
@@ -32,7 +32,7 @@ export class ImmersiveHud {
     }).setDepth(101);
     dayPanel.setName("v2-hud-day");
 
-    scene.add.rectangle(1380, 46, 280, 66, palette.hud, 0.94)
+    scene.add.rectangle(1380, 46, 280, 66, palette.hud, 0.96)
       .setStrokeStyle(2, 0xffffff, 0.1)
       .setDepth(100);
     scene.add.text(1273, 28, "★", {
@@ -59,32 +59,36 @@ export class ImmersiveHud {
       fontStyle: "bold"
     }).setDepth(101);
 
-    scene.add.rectangle(1360, 147, 320, 118, palette.hud, 0.94)
+    scene.add.rectangle(1325, 158, 390, 148, palette.hud, 0.97)
       .setStrokeStyle(2, 0xffffff, 0.11)
-      .setDepth(100);
-    scene.add.text(1217, 101, "TASK OBJECTIVE", {
+      .setDepth(100)
+      .setName("v3-hud-objective");
+    scene.add.text(1155, 101, "TASK OBJECTIVE", {
       fontFamily: "Arial",
       fontSize: "17px",
       color: "#f5c64d",
       fontStyle: "bold"
     }).setDepth(101);
-    scene.add.rectangle(1360, 137, 284, 1, 0xffffff, 0.14).setDepth(101);
-    this.objectiveText = scene.add.text(1248, 154, DAY_ONE_CONTENT.objective, {
-      fontFamily: "Arial",
-      fontSize: "18px",
-      color: "#ffffff"
-    }).setDepth(101);
-    this.progressText = scene.add.text(1445, 153, "0/6 ROWS", {
-      fontFamily: "Arial",
-      fontSize: "18px",
-      color: "#ffffff",
-      fontStyle: "bold"
-    }).setOrigin(1, 0).setDepth(101);
-    scene.add.rectangle(1226, 170, 18, 18, 0x000000, 0)
+    scene.add.rectangle(1325, 139, 340, 1, 0xffffff, 0.14).setDepth(101);
+    scene.add.rectangle(1158, 170, 18, 18, 0x000000, 0)
       .setStrokeStyle(2, 0xffffff, 0.9)
       .setDepth(101);
+    this.objectiveText = scene.add.text(1184, 153, DAY_ONE_CONTENT.objective, {
+      fontFamily: "Arial",
+      fontSize: "17px",
+      color: "#ffffff",
+      wordWrap: { width: 205, useAdvancedWrap: true },
+      lineSpacing: 4
+    }).setDepth(101);
+    this.progressText = scene.add.text(1490, 153, "0/6 ROWS", {
+      fontFamily: "Arial",
+      fontSize: "17px",
+      color: "#ffffff",
+      fontStyle: "bold",
+      align: "right"
+    }).setOrigin(1, 0).setDepth(101);
 
-    scene.add.rectangle(768, 974, 940, 76, palette.hud, 0.9)
+    scene.add.rectangle(768, 974, 940, 76, palette.hud, 0.92)
       .setStrokeStyle(2, palette.gold, 0.5)
       .setDepth(100);
     this.instructionText = scene.add.text(338, 955, "", {
