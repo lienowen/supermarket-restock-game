@@ -8,6 +8,8 @@ const OUTPUT_DIR = resolve("ui-audit");
 const PORT = 4173;
 const BASE_URL = `http://127.0.0.1:${PORT}/?test=1`;
 const GAME_CANVAS_SELECTOR = "#app > canvas:not(#mobile-game-backdrop)";
+const GAME_WIDTH = 1536;
+const GAME_HEIGHT = 1024;
 
 if (!existsSync(join(DIST_DIR, "index.html"))) {
   throw new Error("dist/index.html is missing. Run npm run build first.");
@@ -37,21 +39,19 @@ const report = {
   failedRequests: [],
   badResponses: [],
   sdkEvents: [],
-  day3DeadlockState: null,
+  snapshots: [],
   fatalError: null,
   regressions: {
-    stockedLobby: false,
-    milkCaseVisible: false,
-    milkTextureTransparent: false,
-    day3ReachedGame: false,
-    day3MultiFixture: false,
-    day3ImmersiveStore: false,
-    day3CustomerServiceDeadlockRecovery: false,
-    day4PromotionPressure: false,
-    day4ImmersiveStore: false,
-    day5WeekendRush: false,
-    day5ImmersiveStore: false,
-    promotionWingRealistic: false,
+    architectureV2: false,
+    englishHud: false,
+    initialState: false,
+    collectCase: false,
+    loadCart: false,
+    cartTravel: false,
+    parkCart: false,
+    openCase: false,
+    rowRestock: false,
+    completionReward: false,
     crazyGamesSdkLifecycle: false
   }
 };
@@ -60,22 +60,24 @@ const browser = await chromium.launch({ headless: true });
 let thrownError;
 
 try {
-  const context = await browser.newContext({ viewport: { width: 1330, height: 1182 }, deviceScaleFactor: 1 });
+  const context = await browser.newContext({
+    viewport: { width: GAME_WIDTH, height: GAME_HEIGHT },
+    deviceScaleFactor: 1
+  });
+
   await context.addInitScript(() => {
     const events = [];
     window.__CRAZY_GAMES_TEST_EVENTS__ = events;
     window.CrazyGames = {
       SDK: {
-        init: async () => {
-          events.push("init");
-        },
+        init: async () => events.push("init"),
         game: {
           settings: { muteAudio: false },
           gameplayStart: () => events.push("gameplayStart"),
           gameplayStop: () => events.push("gameplayStop"),
           loadingStart: () => events.push("loadingStart"),
           loadingStop: () => events.push("loadingStop"),
-          setGameContext: (contextValue) => events.push(`context:${contextValue.scene ?? "unknown"}`),
+          setGameContext: (value) => events.push(`context:${value.version ?? "unknown"}`),
           clearGameContext: () => events.push("context:clear"),
           reportGameCompletedPercentage: (value) => events.push(`progress:${value}`),
           addSettingsChangeListener: () => undefined,
@@ -86,13 +88,9 @@ try {
   });
 
   const page = await context.newPage();
-
   page.on("console", (message) => {
     if (message.type() === "error") {
-      report.consoleErrors.push({
-        text: message.text(),
-        location: message.location()
-      });
+      report.consoleErrors.push({ text: message.text(), location: message.location() });
     }
   });
   page.on("pageerror", (error) => report.pageErrors.push({ message: error.message, stack: error.stack ?? null }));
@@ -104,154 +102,118 @@ try {
     if (response.status() >= 400) report.badResponses.push({ url: response.url(), status: response.status() });
   });
 
-  await page.goto(BASE_URL, { waitUntil: "domcontentloaded", timeout: 60000 });
-  await page.evaluate(() => {
-    localStorage.clear();
-    localStorage.setItem("supermarket.activeDay", "day03");
-    localStorage.setItem("supermarket.bestStars", JSON.stringify({ day01: 3, day02: 3 }));
-  });
-  await page.reload({ waitUntil: "networkidle", timeout: 60000 });
+  await page.goto(BASE_URL, { waitUntil: "networkidle", timeout: 90000 });
   await waitForCanvas(page);
-
-  const lobbySdkState = await page.evaluate(() => ({
-    sdk: document.body.dataset.crazyGamesSdk,
-    loading: document.body.dataset.crazyGamesLoading,
-    gameplay: document.body.dataset.crazyGamesGameplay,
-    events: [...(window.__CRAZY_GAMES_TEST_EVENTS__ ?? [])]
-  }));
-  if (lobbySdkState.sdk !== "ready") throw new Error(`CrazyGames SDK did not initialize: ${lobbySdkState.sdk}`);
-  if (lobbySdkState.loading !== "stopped") throw new Error(`Initial loading did not stop: ${lobbySdkState.loading}`);
-  if (lobbySdkState.events.includes("gameplayStart")) throw new Error("Gameplay started while still in the storefront lobby");
-
-  report.regressions.stockedLobby = await page.evaluate(() => document.body.dataset.stockedLobbyVisual === "ready");
-  await capture(page, report, "01-stocked-lobby.png", "Stocked supermarket lobby");
-
-  await clickGame(page, 965, 770);
-  await waitForScene(page, "opening", 60000);
-  await page.waitForFunction(
-    () => document.body.dataset.crazyGamesGameplay === "started",
-    null,
-    { timeout: 10000 }
-  );
-  await capture(page, report, "02-day3-receiving.png", "Day 3 receiving area");
-
-  await clickGame(page, 835, 1085);
-  await page.waitForFunction(
-    () => document.body.dataset.milkCaseVisual === "ready",
-    null,
-    { timeout: 30000 }
-  );
-  await page.waitForFunction(
-    () => document.body.dataset.milkTextureTransparent === "ready",
-    null,
-    { timeout: 30000 }
-  );
-  report.regressions.milkCaseVisible = true;
-  report.regressions.milkTextureTransparent = true;
-  await page.waitForTimeout(350);
-  await capture(page, report, "03-visible-milk-case.png", "Transparent milk delivery case");
-
-  await page.waitForFunction(
-    () => typeof window.__GAME_TEST__?.finishReceiving === "function",
-    null,
-    { timeout: 10000 }
-  );
-  await page.evaluate(() => window.__GAME_TEST__.finishReceiving());
-  await waitForScene(page, "game", 20000);
-  await page.waitForFunction(
-    () => document.body.dataset.day3MultiFixture === "ready",
-    null,
-    { timeout: 10000 }
-  );
-  await showImmersiveRoom(page, "day03", "main");
-  await page.waitForTimeout(1100);
-
-  report.regressions.day3ReachedGame = await page.evaluate(() => (
-    document.body.dataset.gameScene === "game" ||
-    document.body.dataset.crazyGamesScene === "main-store"
-  ));
-  report.regressions.day3MultiFixture = true;
-  report.regressions.day3ImmersiveStore = true;
-  await capture(page, report, "04-day3-multi-fixture-floor.png", "Day 3 immersive supervisor floor walk");
-
-  await page.waitForFunction(
-    () => typeof window.__DAY3_DEADLOCK_TEST__?.prepare === "function",
-    null,
-    { timeout: 10000 }
-  );
-  await page.evaluate(() => window.__DAY3_DEADLOCK_TEST__.prepare());
-  report.day3DeadlockState = await page.evaluate(() => window.__DAY3_DEADLOCK_TEST__?.state() ?? null);
-  await clickGame(page, 505, 850);
   await page.waitForFunction(
     () => (
-      document.body.dataset.day3DeadlockRecovery === "ready" &&
-      window.__DAY3_DEADLOCK_TEST__?.state().cartAtShelf === true
+      document.body.dataset.gameArchitecture === "immersive-v2" &&
+      document.body.dataset.gameScene === "game-v2"
     ),
     null,
-    { timeout: 6000 }
+    { timeout: 30000 }
   );
-  report.day3DeadlockState = await page.evaluate(() => window.__DAY3_DEADLOCK_TEST__?.state() ?? null);
-  report.regressions.day3CustomerServiceDeadlockRecovery = true;
-
-  await page.locator("#market-pause-button").click();
   await page.waitForFunction(
-    () => document.body.dataset.marketPaused === "true",
+    () => Boolean(window.__IMMERSIVE_GAME__?.scene?.getScene("immersive-day-one")),
     null,
-    { timeout: 5000 }
+    { timeout: 15000 }
   );
+
+  const runtime = await page.evaluate(() => ({
+    architecture: document.body.dataset.gameArchitecture,
+    version: document.body.dataset.gameVersion,
+    language: document.body.dataset.uiLanguage,
+    sdk: document.body.dataset.crazyGamesSdk,
+    loading: document.body.dataset.crazyGamesLoading,
+    gameplay: document.body.dataset.crazyGamesGameplay
+  }));
+  report.regressions.architectureV2 = runtime.architecture === "immersive-v2" && runtime.version === "immersive-v2";
+  report.regressions.englishHud = runtime.language === "en";
+
+  const initial = await readSnapshot(page);
+  recordSnapshot(report, "initial", initial);
+  report.regressions.initialState = matches(initial, {
+    step: "collect",
+    stockedRows: 0,
+    totalRows: 6,
+    coins: 100,
+    stars: 0
+  });
+  await capture(page, report, "01-day1-initial.png", "Immersive Day 1 initial beverage task");
+
+  await clickGame(page, 695, 600);
+  const collected = await waitForSnapshot(page, { step: "load", boxCollected: true });
+  recordSnapshot(report, "case-collected", collected);
+  report.regressions.collectCase = true;
+
+  await clickGame(page, 760, 755);
+  const loaded = await waitForSnapshot(page, { step: "push", boxLoaded: true });
+  recordSnapshot(report, "cart-loaded", loaded);
+  report.regressions.loadCart = true;
+
+  await clickGame(page, 760, 755);
+  const travelling = await waitForSnapshot(page, { step: "park" });
+  recordSnapshot(report, "cart-travelling", travelling);
+  await page.waitForTimeout(1450);
+  report.regressions.cartTravel = true;
+  await capture(page, report, "02-cart-at-cooler.png", "Employee and loaded cart beside the beverage cooler");
+
+  await clickGame(page, 1045, 735);
+  const parked = await waitForSnapshot(page, { step: "open", cartAtCooler: true });
+  recordSnapshot(report, "cart-parked", parked);
+  report.regressions.parkCart = true;
+
+  await clickGame(page, 1045, 657);
+  const opened = await waitForSnapshot(page, { step: "restock", boxOpened: true });
+  recordSnapshot(report, "case-opened", opened);
+  report.regressions.openCase = true;
+  await capture(page, report, "03-case-opened.png", "Opened beverage case ready for row-by-row stocking");
+
+  for (let row = 0; row < 6; row += 1) {
+    await clickGame(page, 1238, 320 + row * 85);
+    await waitForSnapshot(page, { stockedRows: row + 1 });
+    if (row === 2) {
+      await capture(page, report, "04-three-rows-stocked.png", "Three beverage cooler rows stocked");
+    }
+  }
+
+  const completed = await waitForSnapshot(page, {
+    step: "complete",
+    stockedRows: 6,
+    coins: 200,
+    stars: 1
+  });
+  recordSnapshot(report, "complete", completed);
+  report.regressions.rowRestock = true;
+
   await page.waitForFunction(
     () => document.body.dataset.crazyGamesGameplay === "stopped",
     null,
-    { timeout: 5000 }
+    { timeout: 10000 }
   );
-  await page.locator('#market-pause-overlay [data-action="resume"]').click();
-  await page.waitForFunction(
-    () => document.body.dataset.marketPaused === "false",
-    null,
-    { timeout: 5000 }
-  );
-  await page.waitForFunction(
-    () => document.body.dataset.crazyGamesGameplay === "started",
-    null,
-    { timeout: 5000 }
-  );
+  await page.waitForTimeout(550);
+  await capture(page, report, "05-task-complete.png", "Completed Day 1 beverage cooler task and reward");
+  report.regressions.completionReward = true;
 
   const sdkEvents = await page.evaluate(() => [...(window.__CRAZY_GAMES_TEST_EVENTS__ ?? [])]);
   report.sdkEvents = sdkEvents;
-  report.regressions.crazyGamesSdkLifecycle = hasOrderedEvents(sdkEvents, [
-    "init",
-    "loadingStart",
-    "loadingStop",
-    "loadingStart",
-    "loadingStop",
-    "gameplayStart",
-    "gameplayStop",
-    "gameplayStart"
-  ]);
-
-  await captureBatchDay(page, report, "day04", "promotion", "05-day4-promotion-pressure.png", "Day 4 immersive flash-sale promotion aisle");
-  report.regressions.day4PromotionPressure = true;
-  report.regressions.day4ImmersiveStore = true;
-
-  await captureBatchDay(page, report, "day05", "main", "06-day5-weekend-rush.png", "Day 5 immersive weekend main-floor rush");
-  report.regressions.day5WeekendRush = true;
-  report.regressions.day5ImmersiveStore = true;
-
-  await page.goto(`${BASE_URL}&promotionTest=1`, { waitUntil: "networkidle", timeout: 60000 });
-  await waitForCanvas(page);
-  await page.waitForFunction(
-    () => document.body.dataset.promotionWingVisual === "ready",
-    null,
-    { timeout: 60000 }
+  report.regressions.crazyGamesSdkLifecycle = (
+    runtime.sdk === "ready" &&
+    runtime.loading === "stopped" &&
+    runtime.gameplay === "started" &&
+    hasOrderedEvents(sdkEvents, [
+      "init",
+      "loadingStart",
+      "loadingStop",
+      "gameplayStart",
+      "progress:20",
+      "gameplayStop"
+    ])
   );
-  await page.waitForTimeout(1200);
-  report.regressions.promotionWingRealistic = true;
-  await capture(page, report, "07-promotion-wing.png", "Realistic supermarket promotion wing");
 
   const issueCount = report.consoleErrors.length + report.pageErrors.length + report.failedRequests.length + report.badResponses.length;
   const failed = Object.entries(report.regressions).filter(([, value]) => !value).map(([key]) => key);
   if (issueCount > 0 || failed.length > 0) {
-    throw new Error(`Release regressions failed: ${failed.join(", ") || "browser runtime"}; browser issues ${issueCount}`);
+    throw new Error(`Immersive V2 regressions failed: ${failed.join(", ") || "browser runtime"}; browser issues ${issueCount}`);
   }
 } catch (error) {
   thrownError = error;
@@ -265,45 +227,30 @@ try {
 console.log(JSON.stringify({ regressions: report.regressions, fatalError: report.fatalError }, null, 2));
 if (thrownError) throw thrownError;
 
-async function captureBatchDay(page, auditReport, day, showcaseRoom, filename, label) {
-  const priorStars = day === "day04"
-    ? { day01: 3, day02: 3, day03: 3 }
-    : { day01: 3, day02: 3, day03: 3, day04: 3 };
-  await page.goto(BASE_URL, { waitUntil: "domcontentloaded", timeout: 60000 });
-  await page.evaluate(({ selectedDay, stars }) => {
-    localStorage.setItem("supermarket.activeDay", selectedDay);
-    localStorage.setItem("supermarket.bestStars", JSON.stringify(stars));
-  }, { selectedDay: day, stars: priorStars });
-  await page.reload({ waitUntil: "networkidle", timeout: 60000 });
-  await waitForCanvas(page);
-  await clickGame(page, 965, 770);
-  await waitForScene(page, "opening", 60000);
-  await page.waitForFunction(
-    () => typeof window.__GAME_TEST__?.finishReceiving === "function",
-    null,
-    { timeout: 15000 }
-  );
-  await page.evaluate(() => window.__GAME_TEST__.finishReceiving());
-  await waitForScene(page, "game", 30000);
-  await page.waitForFunction((expectedDay) => document.body.dataset.weekOneBatchFloor === expectedDay, day, { timeout: 30000 });
-  await showImmersiveRoom(page, day, showcaseRoom);
-  await page.waitForTimeout(1400);
-  await capture(page, auditReport, filename, label);
+async function readSnapshot(page) {
+  return page.evaluate(() => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene("immersive-day-one");
+    return scene?.controller?.snapshot?.() ?? null;
+  });
 }
 
-async function showImmersiveRoom(page, day, room) {
-  await page.waitForFunction(
-    () => typeof window.__WEEK_ONE_IMMERSION_TEST__?.showRoom === "function",
-    null,
-    { timeout: 15000 }
-  );
-  const switched = await page.evaluate((targetRoom) => window.__WEEK_ONE_IMMERSION_TEST__.showRoom(targetRoom), room);
-  if (!switched) throw new Error(`Immersive room ${room} is not available for ${day}`);
-  await page.waitForFunction(
-    ({ expectedDay, expectedRoom }) => document.body.dataset.weekOneImmersion === `${expectedDay}:${expectedRoom}:ready`,
-    { expectedDay: day, expectedRoom: room },
-    { timeout: 10000 }
-  );
+async function waitForSnapshot(page, expected) {
+  await page.waitForFunction((target) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene("immersive-day-one");
+    const snapshot = scene?.controller?.snapshot?.();
+    if (!snapshot) return false;
+    return Object.entries(target).every(([key, value]) => snapshot[key] === value);
+  }, expected, { timeout: 10000 });
+  return readSnapshot(page);
+}
+
+function recordSnapshot(auditReport, label, snapshot) {
+  auditReport.snapshots.push({ label, snapshot });
+}
+
+function matches(value, expected) {
+  if (!value) return false;
+  return Object.entries(expected).every(([key, expectedValue]) => value[key] === expectedValue);
 }
 
 function hasOrderedEvents(events, expected) {
@@ -316,35 +263,20 @@ function hasOrderedEvents(events, expected) {
 }
 
 async function waitForCanvas(page) {
-  await page.waitForSelector(GAME_CANVAS_SELECTOR, { state: "visible", timeout: 30000 });
+  await page.waitForSelector(GAME_CANVAS_SELECTOR, { state: "visible", timeout: 45000 });
   await page.waitForFunction((selector) => {
     const canvas = document.querySelector(selector);
     return Boolean(canvas && canvas.getBoundingClientRect().width > 100);
-  }, GAME_CANVAS_SELECTOR, { timeout: 30000 });
+  }, GAME_CANVAS_SELECTOR, { timeout: 45000 });
   await page.waitForTimeout(850);
-}
-
-async function waitForScene(page, scene, timeout) {
-  await page.waitForFunction((expected) => {
-    const legacyScene = document.body.dataset.gameScene;
-    const platformScene = document.body.dataset.crazyGamesScene;
-
-    if (expected === "opening") {
-      return legacyScene === "opening" || platformScene === "receiving";
-    }
-    if (expected === "game") {
-      return legacyScene === "game" || platformScene === "main-store";
-    }
-    return legacyScene === expected;
-  }, scene, { timeout });
 }
 
 async function gamePoint(page, gameX, gameY) {
   const box = await page.locator(GAME_CANVAS_SELECTOR).boundingBox();
   if (!box) throw new Error("Game canvas has no bounding box.");
   return {
-    x: box.x + (gameX / 1330) * box.width,
-    y: box.y + (gameY / 1182) * box.height
+    x: box.x + (gameX / GAME_WIDTH) * box.width,
+    y: box.y + (gameY / GAME_HEIGHT) * box.height
   };
 }
 
