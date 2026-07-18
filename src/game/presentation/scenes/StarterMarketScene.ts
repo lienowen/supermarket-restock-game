@@ -8,7 +8,10 @@ import {
 } from "../../application/RestockSceneController";
 import { RETAINED_RUNTIME_ASSET_LIST } from "../assets/RetainedAssetManifest";
 import { RestockActorView } from "../actors/RestockActorView";
-import { STARTER_MARKET_PRESENTATION } from "../context/StarterMarketPresentationContext";
+import {
+  STARTER_MARKET_PRESENTATION,
+  type StarterMarketPresentationContext
+} from "../context/StarterMarketPresentationContext";
 import { playRestockCompletionFeedback } from "../effects/RestockCompletionFeedback";
 import { BeverageCoolerView } from "../fixtures/BeverageCoolerView";
 import { InteractionGate } from "../interactions/InteractionGate";
@@ -17,25 +20,11 @@ import { RestockTargetResolver } from "../interactions/RestockTargetResolver";
 import { ShiftHud } from "../ui/ShiftHud";
 import { StarterMarketEnvironmentView } from "../world/StarterMarketEnvironmentView";
 
-const CONTEXT = STARTER_MARKET_PRESENTATION;
-
 export class StarterMarketScene extends Phaser.Scene {
-  readonly controller = new RestockSceneController({
-    runtime: CONTEXT.runtime,
-    initialCoins: 100,
-    sourceLocationId: "staff-backroom",
-    destinationLocationId: "beverage-restock-zone"
-  });
+  readonly controller: RestockSceneController;
 
   private readonly interactionGate = new InteractionGate();
-  private readonly targetResolver = new RestockTargetResolver({
-    backroomBox: CONTEXT.world.backroomBox,
-    cartStart: CONTEXT.world.cartStart,
-    cartDestination: CONTEXT.world.cartCooler,
-    coolerCentreX: CONTEXT.visual.cooler.centre.x,
-    coolerRowYs: CONTEXT.visual.cooler.rowYs,
-    coolerTargetWidth: CONTEXT.visual.cooler.activeStockBounds.width
-  });
+  private readonly targetResolver: RestockTargetResolver;
   private readonly disposers: Array<() => void> = [];
   private hud?: ShiftHud;
   private actors?: RestockActorView;
@@ -43,8 +32,24 @@ export class StarterMarketScene extends Phaser.Scene {
   private target?: InteractionTargetView;
   private previousStep?: RestockSceneStep;
 
-  constructor() {
-    super(CONTEXT.scene.key);
+  constructor(
+    private readonly context: StarterMarketPresentationContext = STARTER_MARKET_PRESENTATION
+  ) {
+    super(context.scene.key);
+    this.controller = new RestockSceneController({
+      runtime: context.runtime,
+      initialCoins: 100,
+      sourceLocationId: "staff-backroom",
+      destinationLocationId: "beverage-restock-zone"
+    });
+    this.targetResolver = new RestockTargetResolver({
+      backroomBox: context.world.backroomBox,
+      cartStart: context.world.cartStart,
+      cartDestination: context.world.cartCooler,
+      coolerCentreX: context.visual.cooler.centre.x,
+      coolerRowYs: context.visual.cooler.rowYs,
+      coolerTargetWidth: context.visual.cooler.activeStockBounds.width
+    });
   }
 
   preload(): void {
@@ -52,19 +57,21 @@ export class StarterMarketScene extends Phaser.Scene {
   }
 
   create(): void {
-    document.body.dataset.gameScene = CONTEXT.scene.datasetName;
-    document.body.dataset.gameArchitecture = CONTEXT.scene.architecture;
-    document.body.dataset.activeShift = CONTEXT.runtime.shift.id;
+    const context = this.context;
+    document.body.dataset.gameScene = context.scene.datasetName;
+    document.body.dataset.gameArchitecture = context.scene.architecture;
+    document.body.dataset.activeShift = context.runtime.shift.id;
+    document.body.dataset.activeDay = String(context.campaignShift.dayNumber);
     this.cameras.main.setBackgroundColor("#171712");
 
-    new StarterMarketEnvironmentView(this, CONTEXT).create();
+    new StarterMarketEnvironmentView(this, context).create();
     this.cooler = this.createCooler();
     this.actors = this.createActors();
     this.target = new InteractionTargetView(
       this,
       {
-        color: CONTEXT.visual.targeting.color,
-        arrowOffsetY: CONTEXT.visual.targeting.arrowOffsetY,
+        color: context.visual.targeting.color,
+        arrowOffsetY: context.visual.targeting.arrowOffsetY,
         name: "starter-market-interaction-target"
       },
       () => this.performCurrentAction()
@@ -72,10 +79,10 @@ export class StarterMarketScene extends Phaser.Scene {
     this.hud = new ShiftHud(
       this,
       {
-        dayLabel: CONTEXT.labels.day,
-        timeLabel: `${CONTEXT.runtime.shift.startTime} AM`,
-        initialObjective: CONTEXT.runtime.mission.title,
-        palette: CONTEXT.palette
+        dayLabel: context.labels.day,
+        timeLabel: `${context.runtime.shift.startTime} AM`,
+        initialObjective: context.runtime.mission.title,
+        palette: context.palette
       },
       () => this.performCurrentAction()
     );
@@ -90,9 +97,11 @@ export class StarterMarketScene extends Phaser.Scene {
     crazyGamesPlatform.gameplayStart();
     crazyGamesPlatform.setGameContext({
       game: "supermarket-restock",
-      version: CONTEXT.scene.architecture,
-      shift: CONTEXT.runtime.shift.id,
-      task: CONTEXT.runtime.mission.id
+      version: context.scene.architecture,
+      campaign: context.campaignShift.campaignId,
+      day: context.campaignShift.dayNumber,
+      shift: context.runtime.shift.id,
+      task: context.runtime.mission.id
     });
   }
 
@@ -101,50 +110,52 @@ export class StarterMarketScene extends Phaser.Scene {
   }
 
   private createCooler(): BeverageCoolerView {
+    const context = this.context;
     const cooler = new BeverageCoolerView(this, {
-      centreX: CONTEXT.world.beverageCooler.x,
+      centreX: context.world.beverageCooler.x,
       baseY: 495,
       backgroundY: 487,
       frameWidth: 555,
       frameHeight: 660,
-      displayWidth: CONTEXT.visual.cooler.displaySize.width,
-      displayHeight: CONTEXT.visual.cooler.displaySize.height,
-      departmentLabel: CONTEXT.labels.beverageDepartment,
-      subtitleLabel: CONTEXT.labels.beverageSubtitle,
-      rowYs: CONTEXT.visual.cooler.rowYs,
+      displayWidth: context.visual.cooler.displaySize.width,
+      displayHeight: context.visual.cooler.displaySize.height,
+      departmentLabel: context.labels.beverageDepartment,
+      subtitleLabel: context.labels.beverageSubtitle,
+      rowYs: context.visual.cooler.rowYs,
       ambientPositions: [
-        ...CONTEXT.visual.cooler.ambientLeftXs,
-        ...CONTEXT.visual.cooler.ambientRightXs
+        ...context.visual.cooler.ambientLeftXs,
+        ...context.visual.cooler.ambientRightXs
       ],
-      restockStartX: CONTEXT.visual.cooler.restockStartX,
-      restockStepX: CONTEXT.visual.cooler.restockStepX,
-      restockItemCount: CONTEXT.visual.cooler.restockItemCount,
-      coolerAssetKey: CONTEXT.assets.fixtures.beverageCooler.key,
+      restockStartX: context.visual.cooler.restockStartX,
+      restockStepX: context.visual.cooler.restockStepX,
+      restockItemCount: context.visual.cooler.restockItemCount,
+      coolerAssetKey: context.assets.fixtures.beverageCooler.key,
       ambientProductKeys: [
-        CONTEXT.assets.products.colaBottle.key,
-        CONTEXT.assets.products.milkBottle.key,
-        CONTEXT.assets.products.waterBottle.key
+        context.assets.products.colaBottle.key,
+        context.assets.products.milkBottle.key,
+        context.assets.products.waterBottle.key
       ],
-      restockProductKey: CONTEXT.assets.products.colaBottle.key
+      restockProductKey: context.productAssets.restockProductKey
     });
     cooler.create();
     return cooler;
   }
 
   private createActors(): RestockActorView {
+    const context = this.context;
     return new RestockActorView(this, {
-      workerStart: CONTEXT.world.workerStart,
-      workerDestination: CONTEXT.world.workerCooler,
-      caseStart: CONTEXT.world.backroomBox,
-      cartStart: CONTEXT.world.cartStart,
-      cartDestination: CONTEXT.world.cartCooler,
-      workerPushAssetKey: CONTEXT.assets.characters.workerPush.key,
-      workerCarryAssetKey: CONTEXT.assets.characters.workerCarry.key,
-      cartAssetKey: CONTEXT.assets.props.cart.key,
-      caseAssetKey: CONTEXT.assets.props.colaCase.key,
-      pushSize: CONTEXT.visual.actor.pushSize,
-      carrySize: CONTEXT.visual.actor.carrySize,
-      shadowOffset: CONTEXT.visual.actor.shadowOffset
+      workerStart: context.world.workerStart,
+      workerDestination: context.world.workerCooler,
+      caseStart: context.world.backroomBox,
+      cartStart: context.world.cartStart,
+      cartDestination: context.world.cartCooler,
+      workerPushAssetKey: context.assets.characters.workerPush.key,
+      workerCarryAssetKey: context.assets.characters.workerCarry.key,
+      cartAssetKey: context.assets.props.cart.key,
+      caseAssetKey: context.assets.props.colaCase.key,
+      pushSize: context.visual.actor.pushSize,
+      carrySize: context.visual.actor.carrySize,
+      shadowOffset: context.visual.actor.shadowOffset
     });
   }
 
@@ -155,6 +166,7 @@ export class StarterMarketScene extends Phaser.Scene {
   }
 
   private sync(snapshot: RestockSceneSnapshot, copy: RestockSceneCopy): void {
+    const context = this.context;
     this.hud?.update(snapshot, copy);
     this.actors?.sync(snapshot, {
       onTravelStart: (maxDurationMs) => this.interactionGate.lockFor(maxDurationMs),
@@ -165,17 +177,19 @@ export class StarterMarketScene extends Phaser.Scene {
 
     if (snapshot.step === "complete" && this.previousStep !== "complete") {
       playRestockCompletionFeedback(this, {
-        title: CONTEXT.labels.completionTitle,
-        coins: CONTEXT.runtime.reward.totalCoins,
-        stars: CONTEXT.runtime.reward.totalStars,
-        hudColor: CONTEXT.palette.hud,
-        accentColor: CONTEXT.palette.gold,
-        centreX: CONTEXT.world.width / 2,
+        title: context.labels.completionTitle,
+        coins: context.runtime.reward.totalCoins,
+        stars: context.runtime.reward.totalStars,
+        hudColor: context.palette.hud,
+        accentColor: context.palette.gold,
+        centreX: context.world.width / 2,
         centreY: 430,
-        sparkleOriginX: CONTEXT.world.beverageCooler.x,
+        sparkleOriginX: context.world.beverageCooler.x,
         sparkleOriginY: 490
       });
-      crazyGamesPlatform.reportProgress(20);
+      crazyGamesPlatform.reportProgress(
+        Math.round((context.campaignShift.dayNumber / context.campaignShift.dayNumber) * 20)
+      );
       crazyGamesPlatform.gameplayStop();
     }
 
