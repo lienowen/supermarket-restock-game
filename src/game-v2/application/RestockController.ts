@@ -1,5 +1,6 @@
 import {
   RestockSession,
+  STARTER_RESTOCK_RUNTIME,
   type RestockAction,
   type RestockSnapshot,
   type RestockStep
@@ -13,40 +14,44 @@ export type RestockViewCopy = Readonly<{
 
 type SnapshotListener = (snapshot: RestockSnapshot, copy: RestockViewCopy) => void;
 
+const productName = STARTER_RESTOCK_RUNTIME.product.name;
+const fixtureName = STARTER_RESTOCK_RUNTIME.fixture.kind === "cooler" ? "cooler" : "fixture";
+const missionObjective = STARTER_RESTOCK_RUNTIME.mission.title;
+
 const COPY_BY_STEP: Record<RestockStep, RestockViewCopy> = {
   collect: {
-    objective: "Restock the beverage cooler",
-    instruction: "Pick up the cola case from the backroom pallet.",
+    objective: missionObjective,
+    instruction: `Pick up the ${productName.toLowerCase()} case from the backroom pallet.`,
     actionLabel: "PICK UP CASE"
   },
   load: {
-    objective: "Restock the beverage cooler",
+    objective: missionObjective,
     instruction: "Load the case onto the restock cart.",
     actionLabel: "LOAD CART"
   },
   push: {
-    objective: "Restock the beverage cooler",
+    objective: missionObjective,
     instruction: "Push the cart through the staff aisle.",
     actionLabel: "PUSH CART"
   },
   park: {
-    objective: "Restock the beverage cooler",
-    instruction: "Park the cart beside the highlighted cooler bay.",
+    objective: missionObjective,
+    instruction: `Park the cart beside the highlighted ${fixtureName} bay.`,
     actionLabel: "PARK CART"
   },
   open: {
-    objective: "Restock the beverage cooler",
+    objective: missionObjective,
     instruction: "Open the case before stocking the shelf.",
     actionLabel: "OPEN CASE"
   },
   restock: {
-    objective: "Restock the beverage cooler",
-    instruction: "Fill the highlighted cooler row from left to right.",
+    objective: missionObjective,
+    instruction: `Fill the highlighted ${fixtureName} row from left to right.`,
     actionLabel: "RESTOCK ROW"
   },
   complete: {
-    objective: "Beverage cooler ready",
-    instruction: "Great work. The opening display is fully stocked.",
+    objective: `${productName} section ready`,
+    instruction: `Great work. The ${fixtureName} display is fully stocked.`,
     actionLabel: "TASK COMPLETE"
   }
 };
@@ -55,7 +60,7 @@ export class RestockController {
   private readonly session: RestockSession;
   private readonly listeners = new Set<SnapshotListener>();
 
-  constructor(totalRows = 6) {
+  constructor(totalRows = STARTER_RESTOCK_RUNTIME.slotCount) {
     this.session = new RestockSession(totalRows);
   }
 
