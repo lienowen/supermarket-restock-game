@@ -34,6 +34,7 @@ export const STARTER_MARKET_CONTENT: GameContentCatalogue = {
       id: "beverage-cooler-a",
       kind: "cooler",
       capacity: 24,
+      slotCount: 6,
       acceptedProductCategories: ["beverage"],
       assetKey: "fixture-beverage-cooler-a"
     }
