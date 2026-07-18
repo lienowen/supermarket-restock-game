@@ -157,12 +157,12 @@ try {
   report.regressions.cartTravel = true;
   await capture(page, report, "02-cart-at-cooler.png", "Employee and loaded cart beside the beverage cooler");
 
-  await clickGame(page, 1120, 725);
+  await clickGame(page, 1310, 850);
   const parked = await waitForSnapshot(page, { step: "open", cartAtCooler: true });
   recordSnapshot(report, "cart-parked", parked);
   report.regressions.parkCart = true;
 
-  await clickGame(page, 1138, 641);
+  await clickGame(page, 1310, 850);
   const opened = await waitForSnapshot(page, { step: "restock", boxOpened: true });
   recordSnapshot(report, "case-opened", opened);
   report.regressions.openCase = true;
