@@ -107,7 +107,7 @@ try {
   await page.waitForFunction(
     () => (
       document.body.dataset.gameArchitecture === "architecture-v3" &&
-      document.body.dataset.gameScene === "game-v2"
+      document.body.dataset.gameScene === "starter-market"
     ),
     null,
     { timeout: 30000 }
@@ -153,7 +153,7 @@ try {
   await clickGame(page, 860, 730);
   const travelling = await waitForSnapshot(page, { step: "park" });
   recordSnapshot(report, "cart-travelling", travelling);
-  await waitForInputUnlocked(page);
+  await waitForInteractionReady(page);
   report.regressions.cartTravel = true;
   await capture(page, report, "02-cart-at-cooler.png", "Employee and loaded cart beside the beverage cooler");
 
@@ -244,10 +244,10 @@ async function waitForSnapshot(page, expected) {
   return readSnapshot(page);
 }
 
-async function waitForInputUnlocked(page) {
+async function waitForInteractionReady(page) {
   await page.waitForFunction(() => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene("immersive-day-one");
-    return Boolean(scene && scene.inputLocked === false);
+    return Boolean(scene?.isInteractionReady?.());
   }, null, { timeout: 10000 });
 }
 
