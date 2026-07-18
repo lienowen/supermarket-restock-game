@@ -188,7 +188,7 @@ export class StarterMarketScene extends Phaser.Scene {
         sparkleOriginY: 490
       });
       crazyGamesPlatform.reportProgress(
-        Math.round((context.campaignShift.dayNumber / context.campaignShift.dayNumber) * 20)
+        Math.round((context.campaignShift.dayNumber / context.campaignTotalShifts) * 100)
       );
       crazyGamesPlatform.gameplayStop();
     }
