@@ -32,6 +32,11 @@ export async function bootstrapImmersiveGame(): Promise<Phaser.Game> {
     scene: [ImmersiveDayOneScene]
   });
 
+  if (new URLSearchParams(window.location.search).get("test") === "1") {
+    const testWindow = window as Window & { __IMMERSIVE_GAME__?: Phaser.Game };
+    testWindow.__IMMERSIVE_GAME__ = game;
+  }
+
   crazyGamesPlatform.bindGame(game);
   return game;
 }
