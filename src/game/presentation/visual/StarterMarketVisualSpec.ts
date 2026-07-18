@@ -32,11 +32,11 @@ export const STARTER_MARKET_VISUAL_SPEC = {
     centreDepthAxis: { x: 625, y: 170, width: 350, height: 620 }
   },
   actor: {
-    spawn: { x: 890, y: 665 },
-    coolerPosition: { x: 1055, y: 665 },
+    spawn: { x: 890, y: 625 },
+    coolerPosition: { x: 1055, y: 625 },
     pushSize: { width: 250, height: 375 },
     carrySize: { width: 220, height: 330 },
-    safeBounds: { x: 600, y: 475, width: 520, height: 365 },
+    safeBounds: { x: 600, y: 435, width: 520, height: 375 },
     shadowOffset: { x: 8, y: 86 }
   },
   backroom: {
