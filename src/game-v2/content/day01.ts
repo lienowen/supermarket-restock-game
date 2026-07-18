@@ -1,4 +1,5 @@
 import { STARTER_MARKET_LAYOUT } from "../../game/world/starterMarketLayout";
+import { STARTER_MARKET_VISUAL_SPEC } from "../../game/presentation/visual/StarterMarketVisualSpec";
 
 const [worldWidth, worldHeight] = STARTER_MARKET_LAYOUT.logicalSize;
 const interaction = (id: string) => {
@@ -15,7 +16,7 @@ export const DAY_ONE_CONTENT = {
   timeLabel: "09:00 AM",
   department: "BEVERAGES",
   objective: "Restock the beverage cooler",
-  totalRows: 6,
+  totalRows: STARTER_MARKET_VISUAL_SPEC.cooler.rowYs.length,
   startingCoins: 100,
   world: {
     width: worldWidth,
@@ -24,15 +25,15 @@ export const DAY_ONE_CONTENT = {
     cartStart: interaction("restock-cart-load-point"),
     workerStart: workerSpawn.position,
     cartCooler: interaction("beverage-restock-zone"),
-    workerCooler: { x: 1055, y: 665 },
-    coolerTarget: { x: 1325, y: 490, width: 300, height: 465 }
+    workerCooler: STARTER_MARKET_VISUAL_SPEC.actor.coolerPosition,
+    coolerTarget: STARTER_MARKET_VISUAL_SPEC.cooler.activeStockBounds
   },
   palette: {
     hud: 0x09100c,
     hudBorder: 0x31583a,
     green: 0x315f38,
     greenBright: 0x56894d,
-    gold: 0xf1c441,
+    gold: STARTER_MARKET_VISUAL_SPEC.targeting.color,
     cream: 0xf4eddb,
     floor: 0xaaa295,
     aisle: 0xd8d0c2,
