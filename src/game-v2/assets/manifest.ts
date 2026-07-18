@@ -1,4 +1,4 @@
-export type AssetStatus = "production" | "temporary";
+export type AssetStatus = "production" | "prototype";
 
 export type AssetDefinition = Readonly<{
   key: string;
@@ -8,60 +8,67 @@ export type AssetDefinition = Readonly<{
   status: AssetStatus;
 }>;
 
+/**
+ * Temporary compatibility manifest for the existing Phaser scene.
+ *
+ * Every retained image now lives under assets/game and follows the project-wide
+ * asset architecture. These files remain prototypes until the approved
+ * back-facing, fixed-camera visual set replaces them.
+ */
 export const V2_ASSETS = {
   environment: {
     salesFloor: {
       key: "v2-environment-sales-floor",
-      path: "assets/day01/backgrounds/salesfloor_bg.png",
-      role: "Temporary floor texture while the new immersive supermarket environment is produced",
-      expectedSize: [1536, 1024],
-      status: "temporary"
+      path: "assets/game/environments/stores/starter-market/salesfloor-prototype.png",
+      role: "Prototype floor plate retained while the production supermarket environment is created",
+      expectedSize: [1448, 1086],
+      status: "prototype"
     }
   },
   characters: {
     workerPush: {
       key: "v2-worker-push",
-      path: "assets/day01/characters/worker_push_cart.png",
-      role: "Third-person restock employee pushing the cart",
-      expectedSize: [360, 520],
-      status: "temporary"
+      path: "assets/game/characters/workers/worker-a/push-cart.png",
+      role: "Prototype employee pushing the reusable restock cart",
+      expectedSize: [512, 768],
+      status: "prototype"
     },
     workerCarry: {
       key: "v2-worker-carry",
-      path: "assets/day01/characters/worker_carry_box.png",
-      role: "Employee carrying a beverage case",
-      expectedSize: [320, 520],
-      status: "temporary"
+      path: "assets/game/characters/workers/worker-a/carry-medium.png",
+      role: "Prototype employee carrying a medium product case",
+      expectedSize: [512, 768],
+      status: "prototype"
     }
   },
   props: {
     cart: {
       key: "v2-restock-cart",
-      path: "assets/day01/props/cart_empty.png",
-      role: "Restock cart",
-      expectedSize: [420, 420],
-      status: "temporary"
+      path: "assets/game/equipment/restock-carts/cart-a-empty.png",
+      role: "Reusable empty restock cart prototype",
+      expectedSize: [768, 512],
+      status: "prototype"
     },
     cartLoaded: {
       key: "v2-restock-cart-loaded",
-      path: "assets/day01/props/cart_loading.png",
-      role: "Restock cart carrying a beverage case",
-      expectedSize: [420, 420],
-      status: "temporary"
+      path: "assets/game/equipment/restock-carts/cart-a-loaded.png",
+      role: "Reusable loaded restock cart prototype",
+      expectedSize: [768, 512],
+      status: "prototype"
     },
     colaCase: {
       key: "v2-cola-case",
-      path: "assets/day01/props/box_cola.png",
-      role: "Cardboard cola case used by the Day 1 task",
-      expectedSize: [260, 200],
-      status: "temporary"
+      path: "assets/game/props/cases/cola-case-closed.png",
+      role: "Reusable closed beverage case prototype",
+      expectedSize: [512, 512],
+      status: "prototype"
     },
     colaBottle: {
       key: "v2-cola-bottle",
-      path: "assets/day01/products/product_cola.png",
-      role: "Bottle repeated across the cooler rows",
-      expectedSize: [96, 180],
-      status: "temporary"
+      path: "assets/game/products/beverages/cola-bottle.png",
+      role: "Reusable beverage product prototype",
+      expectedSize: [512, 768],
+      status: "prototype"
     }
   }
 } as const satisfies Record<string, Record<string, AssetDefinition>>;
