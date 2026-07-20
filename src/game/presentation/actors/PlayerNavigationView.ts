@@ -72,7 +72,7 @@ export class PlayerNavigationView {
       }) as NavigationKeys;
     }
 
-    scene.input.on("pointerdown", this.handlePointerDown, this);
+    scene.game.canvas.addEventListener("pointerdown", this.handleCanvasPointerDown);
     this.syncVisual();
   }
 
@@ -125,22 +125,28 @@ export class PlayerNavigationView {
   }
 
   destroy(): void {
-    this.scene.input.off("pointerdown", this.handlePointerDown, this);
+    this.scene.game.canvas.removeEventListener("pointerdown", this.handleCanvasPointerDown);
     this.actor.destroy();
     this.shadow.destroy();
   }
 
-  private handlePointerDown(pointer: Phaser.Input.Pointer): void {
+  private readonly handleCanvasPointerDown = (event: PointerEvent): void => {
     if (!this.enabled) return;
+    const canvas = this.scene.game.canvas;
+    const rectangle = canvas.getBoundingClientRect();
+    if (rectangle.width <= 0 || rectangle.height <= 0) return;
+
+    const x = (event.clientX - rectangle.left) * (this.scene.scale.gameSize.width / rectangle.width);
+    const y = (event.clientY - rectangle.top) * (this.scene.scale.gameSize.height / rectangle.height);
     const { bounds } = this.config;
     if (
-      pointer.x < bounds.x ||
-      pointer.x > bounds.x + bounds.width ||
-      pointer.y < bounds.y ||
-      pointer.y > bounds.y + bounds.height
+      x < bounds.x ||
+      x > bounds.x + bounds.width ||
+      y < bounds.y ||
+      y > bounds.y + bounds.height
     ) return;
-    this.controller.setDestination({ x: pointer.x, y: pointer.y });
-  }
+    this.controller.setDestination({ x, y });
+  };
 
   private axis(
     negativePrimary?: Phaser.Input.Keyboard.Key,
