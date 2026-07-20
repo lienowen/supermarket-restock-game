@@ -1,5 +1,9 @@
 import Phaser from "phaser";
-import type { NavigationBounds, NavigationPoint } from "../../application/PlayerNavigationController";
+import type {
+  NavigationBounds,
+  NavigationPoint,
+  PlayerNavigationSnapshot
+} from "../../application/PlayerNavigationController";
 import type { RestockSceneSnapshot } from "../../application/RestockSceneController";
 import { PlayerNavigationView } from "./PlayerNavigationView";
 
@@ -62,6 +66,10 @@ export class RestockActorView {
 
   update(deltaMs: number): void {
     this.navigation.update(deltaMs);
+  }
+
+  navigationSnapshot(): PlayerNavigationSnapshot {
+    return this.navigation.snapshot();
   }
 
   position(): NavigationPoint {
