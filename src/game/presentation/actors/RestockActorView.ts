@@ -12,6 +12,8 @@ export interface RestockActorViewConfig {
   readonly workerCarryAssetKey: string;
   readonly cartAssetKey: string;
   readonly caseAssetKey: string;
+  readonly travelDurationMs: number;
+  readonly travelLockBufferMs: number;
   readonly pushSize: { readonly width: number; readonly height: number };
   readonly carrySize: { readonly width: number; readonly height: number };
   readonly shadowOffset: PresentationPoint;
@@ -140,9 +142,10 @@ export class RestockActorView {
   private playTravelOnce(callbacks: RestockActorSyncCallbacks): void {
     if (this.cartMoved) return;
     this.cartMoved = true;
-    callbacks.onTravelStart(1350);
 
     const { config } = this;
+    callbacks.onTravelStart(config.travelDurationMs + config.travelLockBufferMs);
+
     this.worker.setTexture(config.workerPushAssetKey)
       .setDisplaySize(config.pushSize.width, config.pushSize.height);
     this.cart.setVisible(false);
@@ -153,7 +156,7 @@ export class RestockActorView {
       targets: this.worker,
       x: config.workerDestination.x,
       y: config.workerDestination.y,
-      duration: 1150,
+      duration: config.travelDurationMs,
       ease: "Sine.InOut",
       onComplete: callbacks.onTravelComplete
     });
@@ -161,7 +164,7 @@ export class RestockActorView {
       targets: this.workerShadow,
       x: config.workerDestination.x + config.shadowOffset.x,
       y: config.workerDestination.y + config.shadowOffset.y,
-      duration: 1150,
+      duration: config.travelDurationMs,
       ease: "Sine.InOut"
     });
   }
