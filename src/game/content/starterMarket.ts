@@ -1,4 +1,8 @@
-import type { GameContentCatalogue, MissionDefinition } from "./GameContent";
+import type {
+  GameContentCatalogue,
+  LevelDefinition,
+  MissionDefinition
+} from "./GameContent";
 
 export const RESTOCK_COLA_COOLER_MISSION: MissionDefinition = {
   id: "restock-cola-cooler",
@@ -53,6 +57,60 @@ export const ASSIST_CHECKOUT_RUSH_MISSION: MissionDefinition = {
     reputation: 5
   }
 };
+
+const SHARED_RESTOCK_ASSETS = {
+  environmentAssetKey: "environment-starter-market-salesfloor-prototype",
+  fixtureAssetKey: "fixture-beverage-cooler-a",
+  workerPushAssetKey: "worker-a-push-cart",
+  workerCarryAssetKey: "worker-a-carry-medium",
+  cartAssetKey: "equipment-restock-cart-a-empty",
+  ambientProductAssetKeys: [
+    "product-cola-bottle",
+    "product-milk-bottle",
+    "product-water-bottle"
+  ]
+} as const;
+
+export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
+  {
+    id: "starter-level-001",
+    mode: "restock",
+    shiftId: "starter-shift-001",
+    missionId: "restock-cola-cooler",
+    title: "First Delivery",
+    assetBindings: {
+      ...SHARED_RESTOCK_ASSETS,
+      caseAssetKey: "prop-cola-case-closed",
+      productAssetKey: "product-cola-bottle"
+    },
+    tuning: {
+      initialCoins: 100,
+      slotCount: 6,
+      progressRewardRatio: 0.6,
+      travelDurationMs: 1150,
+      travelLockBufferMs: 200
+    }
+  },
+  {
+    id: "starter-level-002",
+    mode: "restock",
+    shiftId: "starter-shift-002",
+    missionId: "restock-water-promotion",
+    title: "Promotion Rush",
+    assetBindings: {
+      ...SHARED_RESTOCK_ASSETS,
+      caseAssetKey: "prop-water-case-closed",
+      productAssetKey: "product-water-bottle"
+    },
+    tuning: {
+      initialCoins: 100,
+      slotCount: 6,
+      progressRewardRatio: 0.5,
+      travelDurationMs: 1000,
+      travelLockBufferMs: 180
+    }
+  }
+]);
 
 export const STARTER_MARKET_CONTENT: GameContentCatalogue = {
   products: [
@@ -120,10 +178,12 @@ export const STARTER_MARKET_CONTENT: GameContentCatalogue = {
       unlockIds: ["checkout-assistance", "promotion-rush"]
     }
   ],
+  levels: STARTER_MARKET_LEVELS,
   campaigns: [
     {
       id: "main-campaign",
-      shiftIds: ["starter-shift-001", "starter-shift-002"]
+      shiftIds: ["starter-shift-001", "starter-shift-002"],
+      levelIds: ["starter-level-001", "starter-level-002"]
     }
   ]
 };

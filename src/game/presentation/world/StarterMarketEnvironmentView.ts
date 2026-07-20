@@ -19,7 +19,7 @@ export class StarterMarketEnvironmentView {
 
   private createBase(): void {
     const { scene, context } = this;
-    const backgroundKey = context.assets.environment.salesFloor.key;
+    const backgroundKey = context.levelAssets.environment.key;
     if (scene.textures.exists(backgroundKey)) {
       scene.add.image(context.world.width / 2, context.world.height / 2, backgroundKey)
         .setDisplaySize(context.world.width, context.world.height)

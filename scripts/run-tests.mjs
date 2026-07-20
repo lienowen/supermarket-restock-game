@@ -23,6 +23,8 @@ const run = spawnSync(
     "tests/v3-catalogues.test.cjs",
     "tests/v3-visual-target.test.cjs",
     "tests/v3-campaign-runtime.test.cjs",
+    "tests/v3-level-runtime.test.cjs",
+    "tests/v3-level-progression.test.cjs",
     "tests/v3-shift-runtime.test.cjs",
     "tests/v3-presentation-context.test.cjs",
     "tests/v3-boundaries.test.cjs"

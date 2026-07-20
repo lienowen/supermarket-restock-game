@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import { crazyGamesPlatform } from "../../../platform/crazyGamesPlatform";
 import {
   createStarterMarketPresentationContext,
-  MAIN_CAMPAIGN_RUNTIME
+  MAIN_LEVEL_CAMPAIGN_RUNTIME
 } from "../../presentation/context/StarterMarketPresentationContext";
 import { StarterMarketScene } from "../../presentation/scenes/StarterMarketScene";
 import { installSafeInteractiveGuard } from "./SafeInteractiveGuard";
@@ -10,12 +10,13 @@ import { installSafeInteractiveGuard } from "./SafeInteractiveGuard";
 export interface PhaserGameFactoryOptions {
   readonly parent?: string;
   readonly exposeTestBridge?: boolean;
+  readonly levelId?: string;
   readonly shiftId?: string;
 }
 
-const requestedShiftFromLocation = (): string | undefined => {
-  const requested = new URLSearchParams(window.location.search).get("shift")?.trim();
-  return requested || undefined;
+const requestedLevelFromLocation = (): string | undefined => {
+  const parameters = new URLSearchParams(window.location.search);
+  return parameters.get("level")?.trim() || parameters.get("shift")?.trim() || undefined;
 };
 
 export async function createPhaserGame(
@@ -25,12 +26,14 @@ export async function createPhaserGame(
   await crazyGamesPlatform.initialize();
   crazyGamesPlatform.loadingStart();
 
-  const shiftId = options.shiftId ?? requestedShiftFromLocation() ?? MAIN_CAMPAIGN_RUNTIME.shifts[0]?.shift.id;
-  if (!shiftId) throw new Error("Main campaign has no playable shifts");
-  const presentation = createStarterMarketPresentationContext(shiftId);
+  const requestedId = options.levelId ?? options.shiftId ?? requestedLevelFromLocation();
+  const levelId = requestedId ?? MAIN_LEVEL_CAMPAIGN_RUNTIME.levels[0]?.level.id;
+  if (!levelId) throw new Error("Main campaign has no playable levels");
+  const presentation = createStarterMarketPresentationContext(levelId);
 
   document.body.dataset.activeShift = presentation.runtime.shift.id;
   document.body.dataset.activeDay = String(presentation.campaignShift.dayNumber);
+  document.body.dataset.activeLevel = presentation.campaignLevel.level.id;
 
   const game = new Phaser.Game({
     type: Phaser.AUTO,
