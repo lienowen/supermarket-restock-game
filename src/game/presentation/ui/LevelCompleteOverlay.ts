@@ -24,7 +24,7 @@ export class LevelCompleteOverlay {
     private readonly onContinue: () => void
   ) {}
 
-  show(delayMs = 520): void {
+  show(delayMs = 180): void {
     if (this.timer || this.container) return;
     this.timer = this.scene.time.delayedCall(delayMs, () => this.create());
   }
