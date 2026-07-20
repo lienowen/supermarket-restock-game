@@ -1,5 +1,9 @@
 import Phaser from "phaser";
 import { crazyGamesPlatform } from "../../../platform/crazyGamesPlatform";
+import type {
+  CampaignEconomy,
+  CampaignSession
+} from "../../application/CampaignSession";
 import { resolveLevelProgression } from "../../application/LevelProgression";
 import {
   RestockSceneController,
@@ -22,6 +26,12 @@ import { LevelCompleteOverlay } from "../ui/LevelCompleteOverlay";
 import { ShiftHud } from "../ui/ShiftHud";
 import { StarterMarketEnvironmentView } from "../world/StarterMarketEnvironmentView";
 
+export interface SceneCampaignSessionContext {
+  readonly session: CampaignSession;
+  readonly initialEconomy: CampaignEconomy;
+  readonly firstLevelId: string;
+}
+
 export class StarterMarketScene extends Phaser.Scene {
   readonly controller: RestockSceneController;
 
@@ -36,12 +46,19 @@ export class StarterMarketScene extends Phaser.Scene {
   private previousStep?: RestockSceneStep;
 
   constructor(
-    private readonly context: RestockStarterMarketPresentationContext = STARTER_MARKET_PRESENTATION
+    private readonly context: RestockStarterMarketPresentationContext = STARTER_MARKET_PRESENTATION,
+    private readonly campaignSession?: SceneCampaignSessionContext
   ) {
     super(context.scene.key);
+    const initialEconomy = campaignSession?.initialEconomy ?? {
+      coins: context.campaignLevel.level.tuning.initialCoins,
+      stars: 0,
+      reputation: 0
+    };
     this.controller = new RestockSceneController({
       runtime: context.runtime,
-      initialCoins: context.campaignLevel.level.tuning.initialCoins,
+      initialCoins: initialEconomy.coins,
+      initialStars: initialEconomy.stars,
       sourceLocationId: "staff-backroom",
       destinationLocationId: "beverage-restock-zone"
     });
@@ -194,9 +211,19 @@ export class StarterMarketScene extends Phaser.Scene {
         sparkleOriginY: 490
       });
 
+      this.campaignSession?.session.completeLevel(
+        context.campaignLevel.level.id,
+        context.campaignLevel.nextLevelId,
+        {
+          coins: snapshot.coins,
+          stars: snapshot.stars,
+          reputation: this.campaignSession.initialEconomy.reputation
+        }
+      );
       const progression = resolveLevelProgression(
         context.campaignLevel.level.id,
-        context.campaignLevel.nextLevelId
+        context.campaignLevel.nextLevelId,
+        this.campaignSession?.firstLevelId ?? context.campaignLevel.level.id
       );
       this.completionOverlay = new LevelCompleteOverlay(
         this,
@@ -212,7 +239,12 @@ export class StarterMarketScene extends Phaser.Scene {
           panelColor: context.palette.hud,
           accentColor: context.palette.gold
         },
-        () => navigateToLevel(progression.targetLevelId)
+        () => {
+          if (progression.kind === "replay-campaign") {
+            this.campaignSession?.session.reset();
+          }
+          navigateToLevel(progression.targetLevelId);
+        }
       );
       this.completionOverlay.show();
 
