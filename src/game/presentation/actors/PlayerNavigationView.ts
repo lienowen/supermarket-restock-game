@@ -147,7 +147,7 @@ export class PlayerNavigationView {
 
   private handleWalkAreaPointerDown(pointer: Phaser.Input.Pointer): void {
     if (!this.enabled) return;
-    this.controller.setDestination({ x: pointer.worldX, y: pointer.worldY });
+    this.controller.setDestination({ x: pointer.x, y: pointer.y });
   }
 
   private axis(
