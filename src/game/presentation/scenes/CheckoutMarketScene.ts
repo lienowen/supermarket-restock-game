@@ -12,6 +12,7 @@ import { navigateToLevel } from "../../infrastructure/browser/BrowserLevelNaviga
 import { PlayerNavigationView } from "../actors/PlayerNavigationView";
 import { CheckoutStationView } from "../checkout/CheckoutStationView";
 import type { CheckoutStarterMarketPresentationContext } from "../context/StarterMarketPresentationContext";
+import { playActionFeedback } from "../effects/ActionFeedback";
 import { playRestockCompletionFeedback } from "../effects/RestockCompletionFeedback";
 import { InteractionGate } from "../interactions/InteractionGate";
 import { InteractionTargetView } from "../interactions/InteractionTargetView";
@@ -79,14 +80,17 @@ export class CheckoutMarketScene extends Phaser.Scene {
       accentColor: context.palette.gold
     });
     this.player = new PlayerNavigationView(this, {
-      start: context.world.workerStart,
+      start: {
+        x: context.world.checkout.x + 20,
+        y: context.world.checkout.y - 180
+      },
       bounds: context.visual.actor.navigationBounds,
       speed: context.campaignLevel.level.navigation.moveSpeed,
       assetKey: context.levelAssets.worker.key,
       displaySize: context.visual.actor.idleSize,
       shadowOffset: context.visual.actor.shadowOffset,
       name: "checkout-worker",
-      baseDepth: 34
+      baseDepth: 24
     });
     this.target = new InteractionTargetView(
       this,
@@ -152,7 +156,13 @@ export class CheckoutMarketScene extends Phaser.Scene {
       ? tuning.scanDurationMs + tuning.queueAdvanceDurationMs
       : 280;
     this.interactionGate.lockFor(lockDuration);
-    this.controller.dispatch(action);
+    const accepted = this.controller.dispatch(action);
+    if (!accepted) return;
+
+    const position = this.player?.position();
+    if (position) {
+      playActionFeedback(this, position, action === "SCAN_CUSTOMER" ? "scan" : "interact");
+    }
   }
 
   private sync(snapshot: CheckoutSceneSnapshot, copy: CheckoutSceneCopy): void {
