@@ -280,7 +280,7 @@ export class CheckoutStationView {
     const column = index % 2;
     const row = Math.floor(index / 2);
     return {
-      x: this.config.queueStart.x + column * 122 + row * 24,
+      x: this.config.queueStart.x + 180 + column * 120 + row * 28,
       y: this.config.queueStart.y - row * 108 - column * 26
     };
   }
