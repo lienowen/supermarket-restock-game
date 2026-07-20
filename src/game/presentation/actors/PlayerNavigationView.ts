@@ -30,6 +30,7 @@ type NavigationKeys = {
 export class PlayerNavigationView {
   readonly controller: PlayerNavigationController;
 
+  private readonly walkZone: Phaser.GameObjects.Zone;
   private readonly shadow: Phaser.GameObjects.Ellipse;
   private readonly actor: Phaser.GameObjects.Image;
   private readonly keys?: NavigationKeys;
@@ -44,6 +45,17 @@ export class PlayerNavigationView {
       bounds: config.bounds,
       speed: config.speed
     });
+
+    this.walkZone = scene.add.zone(
+      config.bounds.x + config.bounds.width / 2,
+      config.bounds.y + config.bounds.height / 2,
+      config.bounds.width,
+      config.bounds.height
+    )
+      .setName(`${config.name}-walk-zone`)
+      .setDepth(8)
+      .setInteractive({ useHandCursor: true });
+    this.walkZone.on("pointerdown", this.handleWalkZonePointerDown, this);
 
     this.shadow = scene.add.ellipse(
       config.start.x + config.shadowOffset.x,
@@ -72,7 +84,6 @@ export class PlayerNavigationView {
       }) as NavigationKeys;
     }
 
-    scene.game.canvas.addEventListener("pointerdown", this.handleCanvasPointerDown);
     this.syncVisual();
   }
 
@@ -125,28 +136,16 @@ export class PlayerNavigationView {
   }
 
   destroy(): void {
-    this.scene.game.canvas.removeEventListener("pointerdown", this.handleCanvasPointerDown);
+    this.walkZone.off("pointerdown", this.handleWalkZonePointerDown, this);
+    this.walkZone.destroy();
     this.actor.destroy();
     this.shadow.destroy();
   }
 
-  private readonly handleCanvasPointerDown = (event: PointerEvent): void => {
+  private handleWalkZonePointerDown(pointer: Phaser.Input.Pointer): void {
     if (!this.enabled) return;
-    const canvas = this.scene.game.canvas;
-    const rectangle = canvas.getBoundingClientRect();
-    if (rectangle.width <= 0 || rectangle.height <= 0) return;
-
-    const x = (event.clientX - rectangle.left) * (this.scene.scale.gameSize.width / rectangle.width);
-    const y = (event.clientY - rectangle.top) * (this.scene.scale.gameSize.height / rectangle.height);
-    const { bounds } = this.config;
-    if (
-      x < bounds.x ||
-      x > bounds.x + bounds.width ||
-      y < bounds.y ||
-      y > bounds.y + bounds.height
-    ) return;
-    this.controller.setDestination({ x, y });
-  };
+    this.controller.setDestination({ x: pointer.worldX, y: pointer.worldY });
+  }
 
   private axis(
     negativePrimary?: Phaser.Input.Keyboard.Key,
