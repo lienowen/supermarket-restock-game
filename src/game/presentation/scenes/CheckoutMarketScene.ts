@@ -17,6 +17,7 @@ import { CheckoutTargetResolver } from "../interactions/CheckoutTargetResolver";
 import { LevelCompleteOverlay } from "../ui/LevelCompleteOverlay";
 import { ShiftHud } from "../ui/ShiftHud";
 import { StarterMarketEnvironmentView } from "../world/StarterMarketEnvironmentView";
+import type { SceneCampaignSessionContext } from "./StarterMarketScene";
 
 export class CheckoutMarketScene extends Phaser.Scene {
   readonly controller: CheckoutSceneController;
@@ -30,11 +31,21 @@ export class CheckoutMarketScene extends Phaser.Scene {
   private completionOverlay?: LevelCompleteOverlay;
   private previousStep?: CheckoutSceneStep;
 
-  constructor(private readonly context: CheckoutStarterMarketPresentationContext) {
+  constructor(
+    private readonly context: CheckoutStarterMarketPresentationContext,
+    private readonly campaignSession?: SceneCampaignSessionContext
+  ) {
     super(context.scene.key);
+    const initialEconomy = campaignSession?.initialEconomy ?? {
+      coins: context.campaignLevel.level.tuning.initialCoins,
+      stars: 0,
+      reputation: 0
+    };
     this.controller = new CheckoutSceneController({
       runtime: context.runtime,
-      initialCoins: context.campaignLevel.level.tuning.initialCoins
+      initialCoins: initialEconomy.coins,
+      initialStars: initialEconomy.stars,
+      initialReputation: initialEconomy.reputation
     });
     this.targetResolver = new CheckoutTargetResolver(context.world.checkoutService);
   }
@@ -147,9 +158,19 @@ export class CheckoutMarketScene extends Phaser.Scene {
         sparkleOriginY: context.world.checkout.y - 70
       });
 
+      this.campaignSession?.session.completeLevel(
+        context.campaignLevel.level.id,
+        context.campaignLevel.nextLevelId,
+        {
+          coins: snapshot.coins,
+          stars: snapshot.stars,
+          reputation: snapshot.reputation
+        }
+      );
       const progression = resolveLevelProgression(
         context.campaignLevel.level.id,
-        context.campaignLevel.nextLevelId
+        context.campaignLevel.nextLevelId,
+        this.campaignSession?.firstLevelId ?? context.campaignLevel.level.id
       );
       this.completionOverlay = new LevelCompleteOverlay(
         this,
@@ -165,7 +186,12 @@ export class CheckoutMarketScene extends Phaser.Scene {
           panelColor: context.palette.hud,
           accentColor: context.palette.gold
         },
-        () => navigateToLevel(progression.targetLevelId)
+        () => {
+          if (progression.kind === "replay-campaign") {
+            this.campaignSession?.session.reset();
+          }
+          navigateToLevel(progression.targetLevelId);
+        }
       );
       this.completionOverlay.show();
 
