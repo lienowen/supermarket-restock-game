@@ -10,7 +10,11 @@ const {
 
 test("Completed levels continue to the configured next level", () => {
   assert.deepEqual(
-    resolveLevelProgression("starter-level-001", "starter-level-002"),
+    resolveLevelProgression(
+      "starter-level-001",
+      "starter-level-002",
+      "starter-level-001"
+    ),
     {
       kind: "next-level",
       targetLevelId: "starter-level-002",
@@ -20,12 +24,16 @@ test("Completed levels continue to the configured next level", () => {
   );
 });
 
-test("The final level can be replayed without special scene code", () => {
+test("The final level restarts the campaign from Level 1", () => {
   assert.deepEqual(
-    resolveLevelProgression("starter-level-002"),
+    resolveLevelProgression(
+      "starter-level-003",
+      undefined,
+      "starter-level-001"
+    ),
     {
-      kind: "replay-level",
-      targetLevelId: "starter-level-002",
+      kind: "replay-campaign",
+      targetLevelId: "starter-level-001",
       actionLabel: "PLAY AGAIN",
       statusLabel: "CAMPAIGN COMPLETE"
     }
