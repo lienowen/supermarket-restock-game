@@ -30,6 +30,12 @@ export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
       kind: "beverage",
       label: "Beverages",
       bounds: { x: 975, y: 120, width: 625, height: 780 }
+    },
+    {
+      id: "checkout-zone",
+      kind: "checkout",
+      label: "Checkout",
+      bounds: { x: 250, y: 585, width: 1050, height: 315 }
     }
   ],
   fixtures: [
@@ -50,6 +56,12 @@ export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
       position: { x: 1325, y: 500 },
       anchor: [0.5, 0.92],
       depth: 22
+    },
+    {
+      fixtureId: "checkout-a",
+      position: { x: 470, y: 700 },
+      anchor: [0.5, 0.92],
+      depth: 26
     }
   ],
   interactions: [
@@ -73,6 +85,13 @@ export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
       actionGroup: "parking-zone",
       position: { x: 1120, y: 725 },
       radius: 150
+    },
+    {
+      id: "checkout-service-point",
+      targetId: "checkout-a",
+      actionGroup: "checkout",
+      position: { x: 520, y: 680 },
+      radius: 135
     }
   ],
   spawns: [
@@ -81,6 +100,12 @@ export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
       actorType: "worker",
       position: { x: 890, y: 625 },
       facing: "back-right"
+    },
+    {
+      id: "customer-queue-spawn",
+      actorType: "customer",
+      position: { x: 690, y: 700 },
+      facing: "left"
     }
   ]
 };
