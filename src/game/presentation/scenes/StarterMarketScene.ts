@@ -11,7 +11,7 @@ import { navigateToLevel } from "../../infrastructure/browser/BrowserLevelNaviga
 import { RestockActorView } from "../actors/RestockActorView";
 import {
   STARTER_MARKET_PRESENTATION,
-  type StarterMarketPresentationContext
+  type RestockStarterMarketPresentationContext
 } from "../context/StarterMarketPresentationContext";
 import { playRestockCompletionFeedback } from "../effects/RestockCompletionFeedback";
 import { BeverageCoolerView } from "../fixtures/BeverageCoolerView";
@@ -36,7 +36,7 @@ export class StarterMarketScene extends Phaser.Scene {
   private previousStep?: RestockSceneStep;
 
   constructor(
-    private readonly context: StarterMarketPresentationContext = STARTER_MARKET_PRESENTATION
+    private readonly context: RestockStarterMarketPresentationContext = STARTER_MARKET_PRESENTATION
   ) {
     super(context.scene.key);
     this.controller = new RestockSceneController({
@@ -66,6 +66,7 @@ export class StarterMarketScene extends Phaser.Scene {
     document.body.dataset.activeShift = context.runtime.shift.id;
     document.body.dataset.activeDay = String(context.campaignShift.dayNumber);
     document.body.dataset.activeLevel = context.campaignLevel.level.id;
+    document.body.dataset.activeMode = context.mode;
     this.cameras.main.setBackgroundColor("#171712");
 
     new StarterMarketEnvironmentView(this, context).create();
@@ -105,6 +106,7 @@ export class StarterMarketScene extends Phaser.Scene {
       campaign: context.campaignShift.campaignId,
       day: String(context.campaignShift.dayNumber),
       level: context.campaignLevel.level.id,
+      mode: context.mode,
       shift: context.runtime.shift.id,
       task: context.runtime.mission.id
     });
