@@ -36,7 +36,9 @@ export const STARTER_MARKET_VISUAL_SPEC = {
     coolerPosition: { x: 1055, y: 625 },
     pushSize: { width: 250, height: 375 },
     carrySize: { width: 220, height: 330 },
-    safeBounds: { x: 600, y: 435, width: 520, height: 375 },
+    idleSize: { width: 205, height: 308 },
+    navigationBounds: { x: 480, y: 430, width: 700, height: 340 },
+    safeBounds: { x: 480, y: 430, width: 700, height: 340 },
     shadowOffset: { x: 8, y: 86 }
   },
   backroom: {
@@ -100,39 +102,38 @@ export function validateStarterMarketVisualSpec(): VisualTargetValidationResult 
   if (spec.logicalSize.width !== 1600 || spec.logicalSize.height !== 900) {
     errors.push("The approved logical canvas must remain 1600x900");
   }
-
   if (spec.camera.mode !== "fixed-third-person") {
     errors.push("The camera must remain fixed third-person");
   }
-
   if (spec.actor.spawn.y < spec.camera.foregroundStartY) {
     errors.push("The employee must remain in the foreground composition");
   }
-
   if (spec.composition.produceZone.x >= spec.composition.backroomZone.x) {
     errors.push("Produce must remain left of the backroom");
   }
-
   if (spec.composition.backroomZone.x >= spec.composition.beverageZone.x) {
     errors.push("The backroom must remain left of the beverage zone");
   }
-
   if (spec.cooler.rowYs.length !== 6) {
     errors.push("The beverage cooler must expose six independently controlled rows");
   }
-
   if (intersects(spec.hud.objectivePanel, spec.hud.departmentSignSafeArea)) {
     errors.push("The objective HUD must not cover the beverage department sign");
   }
-
   if (intersects(spec.actor.safeBounds, spec.hud.instructionPanel)) {
     errors.push("The foreground employee must not be covered by the instruction HUD");
   }
-
+  if (
+    spec.actor.spawn.x < spec.actor.navigationBounds.x ||
+    spec.actor.spawn.x > spec.actor.navigationBounds.x + spec.actor.navigationBounds.width ||
+    spec.actor.spawn.y < spec.actor.navigationBounds.y ||
+    spec.actor.spawn.y > spec.actor.navigationBounds.y + spec.actor.navigationBounds.height
+  ) {
+    errors.push("The employee spawn must remain inside the walkable floor bounds");
+  }
   if (spec.language !== "en") {
     errors.push("Production presentation must remain English-only");
   }
-
   if (!spec.targeting.singleActiveTarget) {
     errors.push("Only one active yellow target is allowed");
   }
