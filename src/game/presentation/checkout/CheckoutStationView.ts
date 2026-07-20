@@ -180,8 +180,8 @@ export class CheckoutStationView {
       { shirt: 0xe5a13f, pants: 0x5d4d3d, hair: 0x38271e, basket: 0x56a85d },
       { shirt: 0xb96ab1, pants: 0x50465f, hair: 0x6b432d, basket: 0x4d9f62 },
       { shirt: 0x54aa83, pants: 0x354f48, hair: 0x28231f, basket: 0xe46c42 }
-    ];
-    const palette = palettes[index % palettes.length];
+    ] as const;
+    const palette = palettes[index % palettes.length] ?? palettes[0];
     const { scene } = this;
 
     const shadow = scene.add.ellipse(0, 92, 90, 24, 0x263d35, 0.18);
@@ -209,7 +209,16 @@ export class CheckoutStationView {
     basket.lineStyle(4, 0x314a3d, 0.7);
     basket.strokeRoundedRect(-35, 32, 70, 48, 10);
     basket.lineStyle(5, 0x314a3d, 0.85);
-    basket.strokeArc(0, 31, 28, 200, 340, false);
+    basket.beginPath();
+    basket.arc(
+      0,
+      31,
+      28,
+      Phaser.Math.DegToRad(200),
+      Phaser.Math.DegToRad(340),
+      false
+    );
+    basket.strokePath();
     basket.lineStyle(2, 0xffffff, 0.18);
     [-20, 0, 20].forEach((x) => basket.lineBetween(x, 38, x, 72));
 
