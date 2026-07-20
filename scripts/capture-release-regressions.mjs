@@ -188,6 +188,7 @@ try {
       "gameplayStop"
     ])
   );
+  await page.close();
 
   const dayTwoPage = await context.newPage();
   attachRuntimeListeners(dayTwoPage, report);
@@ -228,6 +229,7 @@ try {
     })
   );
   await capture(dayTwoPage, report, "06-day2-initial.png", "Day 2 water promotion using the shared restock scene");
+  await dayTwoPage.close();
 
   const checkoutPage = await context.newPage();
   attachRuntimeListeners(checkoutPage, report);
@@ -281,6 +283,7 @@ try {
     }) &&
     checkoutComplete?.reputation === 5
   );
+  await checkoutPage.close();
 
   const issueCount = report.consoleErrors.length + report.pageErrors.length + report.failedRequests.length + report.badResponses.length;
   const failed = Object.entries(report.regressions).filter(([, value]) => !value).map(([key]) => key);
