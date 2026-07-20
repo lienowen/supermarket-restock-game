@@ -87,6 +87,9 @@ export class PlayerNavigationView {
       }) as NavigationKeys;
     }
 
+    const canvas = scene.game.canvas;
+    canvas.addEventListener("mousedown", this.handleCanvasMouseDown, true);
+    canvas.addEventListener("touchstart", this.handleCanvasTouchStart, { capture: true, passive: true });
     this.syncVisual();
   }
 
@@ -141,6 +144,9 @@ export class PlayerNavigationView {
   destroy(): void {
     this.walkArea.off("pointerdown", this.handleWalkAreaPointerDown, this);
     this.walkArea.destroy();
+    const canvas = this.scene.game.canvas;
+    canvas.removeEventListener("mousedown", this.handleCanvasMouseDown, true);
+    canvas.removeEventListener("touchstart", this.handleCanvasTouchStart, true);
     this.actor.destroy();
     this.shadow.destroy();
   }
@@ -148,6 +154,33 @@ export class PlayerNavigationView {
   private handleWalkAreaPointerDown(pointer: Phaser.Input.Pointer): void {
     if (!this.enabled) return;
     this.controller.setDestination({ x: pointer.x, y: pointer.y });
+  }
+
+  private readonly handleCanvasMouseDown = (event: MouseEvent): void => {
+    this.setDestinationFromClient(event.clientX, event.clientY);
+  };
+
+  private readonly handleCanvasTouchStart = (event: TouchEvent): void => {
+    const touch = event.changedTouches[0];
+    if (touch) this.setDestinationFromClient(touch.clientX, touch.clientY);
+  };
+
+  private setDestinationFromClient(clientX: number, clientY: number): void {
+    if (!this.enabled) return;
+    const canvas = this.scene.game.canvas;
+    const rectangle = canvas.getBoundingClientRect();
+    if (rectangle.width <= 0 || rectangle.height <= 0) return;
+
+    const x = (clientX - rectangle.left) * (this.scene.scale.gameSize.width / rectangle.width);
+    const y = (clientY - rectangle.top) * (this.scene.scale.gameSize.height / rectangle.height);
+    const { bounds } = this.config;
+    if (
+      x < bounds.x ||
+      x > bounds.x + bounds.width ||
+      y < bounds.y ||
+      y > bounds.y + bounds.height
+    ) return;
+    this.controller.setDestination({ x, y });
   }
 
   private axis(
