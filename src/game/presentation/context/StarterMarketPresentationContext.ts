@@ -1,16 +1,22 @@
+import type { AssetDescriptor } from "../../assets/AssetDescriptor";
+import {
+  STARTER_RUNTIME_ASSET_REGISTRY,
+  type RuntimeAssetRegistry
+} from "../../assets/RuntimeAssetRegistry";
 import {
   resolveCampaignRuntime,
   resolveCampaignShift,
   type CampaignShiftRuntime
 } from "../../application/CampaignRuntime";
 import {
-  resolveRestockShiftRuntime,
-  type RestockShiftRuntimeContent
-} from "../../application/ShiftRuntimeContent";
+  levelAssetKeys,
+  resolveLevelCampaignRuntime,
+  selectCampaignLevel,
+  type CampaignLevelRuntime
+} from "../../application/LevelRuntimeContent";
+import type { RestockShiftRuntimeContent } from "../../application/ShiftRuntimeContent";
 import { STARTER_MARKET_CONTENT } from "../../content/starterMarket";
 import { STARTER_MARKET_LAYOUT } from "../../world/starterMarketLayout";
-import { resolveProductAssetKey } from "../assets/ProductAssetResolver";
-import { RETAINED_RUNTIME_ASSETS } from "../assets/RetainedAssetManifest";
 import { STARTER_MARKET_VISUAL_SPEC } from "../visual/StarterMarketVisualSpec";
 
 export interface PresentationPoint {
@@ -30,18 +36,33 @@ export interface StarterMarketWorldPresentation {
   readonly beverageCooler: PresentationPoint;
 }
 
+export interface StarterMarketLevelAssets {
+  readonly preload: readonly AssetDescriptor[];
+  readonly environment: AssetDescriptor;
+  readonly fixture: AssetDescriptor;
+  readonly workerPush: AssetDescriptor;
+  readonly workerCarry: AssetDescriptor;
+  readonly cart: AssetDescriptor;
+  readonly case: AssetDescriptor;
+  readonly product: AssetDescriptor;
+  readonly ambientProducts: readonly AssetDescriptor[];
+}
+
 export interface StarterMarketPresentationContext {
   readonly campaignShift: CampaignShiftRuntime;
+  readonly campaignLevel: CampaignLevelRuntime;
   readonly campaignTotalShifts: number;
+  readonly campaignTotalLevels: number;
   readonly scene: {
     readonly key: "starter-market-shift";
     readonly datasetName: "starter-market";
     readonly architecture: "architecture-v3";
   };
   readonly runtime: RestockShiftRuntimeContent;
+  readonly assets: RuntimeAssetRegistry;
+  readonly levelAssets: StarterMarketLevelAssets;
   readonly layout: typeof STARTER_MARKET_LAYOUT;
   readonly visual: typeof STARTER_MARKET_VISUAL_SPEC;
-  readonly assets: typeof RETAINED_RUNTIME_ASSETS;
   readonly productAssets: {
     readonly restockProductKey: string;
   };
@@ -55,6 +76,8 @@ export interface StarterMarketPresentationContext {
   };
   readonly labels: {
     readonly day: string;
+    readonly level: string;
+    readonly levelTitle: string;
     readonly produceDepartment: string;
     readonly produceSubtitle: string;
     readonly backroom: string;
@@ -86,30 +109,67 @@ export const MAIN_CAMPAIGN_RUNTIME = resolveCampaignRuntime(
   "main-campaign"
 );
 
+export const MAIN_LEVEL_CAMPAIGN_RUNTIME = resolveLevelCampaignRuntime(
+  STARTER_MARKET_CONTENT,
+  "main-campaign"
+);
+
+const resolveLevelAssets = (
+  campaignLevel: CampaignLevelRuntime
+): StarterMarketLevelAssets => {
+  const bindings = campaignLevel.level.assetBindings;
+  const registry = STARTER_RUNTIME_ASSET_REGISTRY;
+
+  return Object.freeze({
+    preload: registry.resolve(levelAssetKeys(campaignLevel.level)),
+    environment: registry.require(bindings.environmentAssetKey),
+    fixture: registry.require(bindings.fixtureAssetKey),
+    workerPush: registry.require(bindings.workerPushAssetKey),
+    workerCarry: registry.require(bindings.workerCarryAssetKey),
+    cart: registry.require(bindings.cartAssetKey),
+    case: registry.require(bindings.caseAssetKey),
+    product: registry.require(bindings.productAssetKey),
+    ambientProducts: Object.freeze(
+      bindings.ambientProductAssetKeys.map((assetKey) => registry.require(assetKey))
+    )
+  });
+};
+
 export function createStarterMarketPresentationContext(
-  shiftId: string
+  requestedLevelOrShiftId: string
 ): StarterMarketPresentationContext {
-  const campaignShift = resolveCampaignShift(MAIN_CAMPAIGN_RUNTIME, shiftId);
-  const runtime = resolveRestockShiftRuntime(STARTER_MARKET_CONTENT, shiftId);
+  const campaignLevel = selectCampaignLevel(
+    MAIN_LEVEL_CAMPAIGN_RUNTIME,
+    requestedLevelOrShiftId
+  );
+  const campaignShift = resolveCampaignShift(
+    MAIN_CAMPAIGN_RUNTIME,
+    campaignLevel.shift.id
+  );
+  const runtime = campaignLevel.runtime;
+  const levelAssets = resolveLevelAssets(campaignLevel);
 
   if (campaignShift.store.id !== runtime.store.id) {
-    throw new Error(`Campaign and restock runtime disagree about store for shift ${shiftId}`);
+    throw new Error(`Campaign and level runtime disagree about store for ${campaignLevel.level.id}`);
   }
 
   return Object.freeze({
     campaignShift,
+    campaignLevel,
     campaignTotalShifts: MAIN_CAMPAIGN_RUNTIME.shifts.length,
+    campaignTotalLevels: MAIN_LEVEL_CAMPAIGN_RUNTIME.levels.length,
     scene: Object.freeze({
       key: "starter-market-shift" as const,
       datasetName: "starter-market" as const,
       architecture: "architecture-v3" as const
     }),
     runtime,
+    assets: STARTER_RUNTIME_ASSET_REGISTRY,
+    levelAssets,
     layout: STARTER_MARKET_LAYOUT,
     visual: STARTER_MARKET_VISUAL_SPEC,
-    assets: RETAINED_RUNTIME_ASSETS,
     productAssets: Object.freeze({
-      restockProductKey: resolveProductAssetKey(runtime.product.id)
+      restockProductKey: levelAssets.product.key
     }),
     palette: Object.freeze({
       hud: 0x09100c,
@@ -121,6 +181,8 @@ export function createStarterMarketPresentationContext(
     }),
     labels: Object.freeze({
       day: campaignShift.dayLabel,
+      level: campaignLevel.levelLabel,
+      levelTitle: campaignLevel.level.title,
       produceDepartment: "FRUITS & VEGETABLES",
       produceSubtitle: "FRESH MARKET",
       backroom: "STAFF ONLY",
@@ -143,7 +205,7 @@ export function createStarterMarketPresentationContext(
 }
 
 export const STARTER_MARKET_PRESENTATION = createStarterMarketPresentationContext(
-  "starter-shift-001"
+  "starter-level-001"
 );
 
 export function validateStarterMarketPresentationContext(
@@ -182,16 +244,38 @@ export function validateStarterMarketPresentationContext(
   }
 
   if (context.campaignShift.shift.id !== context.runtime.shift.id) {
-    errors.push("Presentation campaign shift and restock runtime shift must be identical");
+    errors.push("Presentation campaign shift and level runtime shift must be identical");
+  }
+
+  if (context.campaignLevel.level.missionId !== context.runtime.mission.id) {
+    errors.push("Presentation level mission and runtime mission must be identical");
   }
 
   if (context.labels.day !== context.campaignShift.dayLabel) {
     errors.push("Presentation day label must come from campaign order");
   }
 
+  if (context.labels.level !== context.campaignLevel.levelLabel) {
+    errors.push("Presentation level label must come from level campaign order");
+  }
+
   if (context.campaignTotalShifts !== MAIN_CAMPAIGN_RUNTIME.shifts.length) {
     errors.push("Presentation campaign size must match the shared campaign runtime");
   }
+
+  if (context.campaignTotalLevels !== MAIN_LEVEL_CAMPAIGN_RUNTIME.levels.length) {
+    errors.push("Presentation level count must match the level campaign runtime");
+  }
+
+  if (context.levelAssets.product.key !== context.runtime.product.assetKey) {
+    errors.push("Level product asset must match the product catalogue");
+  }
+
+  if (context.levelAssets.fixture.key !== context.runtime.fixture.assetKey) {
+    errors.push("Level fixture asset must match the fixture catalogue");
+  }
+
+  errors.push(...context.assets.validateKeys(levelAssetKeys(context.campaignLevel.level)));
 
   return Object.freeze(errors);
 }
