@@ -7,6 +7,8 @@ export interface CheckoutWorkflowConfig {
   readonly checkoutId: string;
   readonly customerCount: number;
   readonly initialCoins: number;
+  readonly initialStars?: number;
+  readonly initialReputation?: number;
   readonly coinsPerCustomer: number;
   readonly completionCoins: number;
   readonly completionStars: number;
@@ -34,16 +36,25 @@ export class CheckoutWorkflow {
   private phase: CheckoutPhase = "open";
   private customersServed = 0;
   private coins: number;
-  private stars = 0;
-  private reputation = 0;
+  private stars: number;
+  private reputation: number;
   private rewarded = false;
 
   constructor(readonly config: CheckoutWorkflowConfig) {
     if (!Number.isInteger(config.customerCount) || config.customerCount <= 0) {
       throw new Error("Checkout customer count must be a positive integer");
     }
-    if (config.initialCoins < 0) throw new Error("Checkout initial coins cannot be negative");
-    this.coins = config.initialCoins;
+    const initialValues = [
+      config.initialCoins,
+      config.initialStars ?? 0,
+      config.initialReputation ?? 0
+    ];
+    if (initialValues.some((value) => !Number.isFinite(value) || value < 0)) {
+      throw new Error("Checkout initial economy cannot be negative");
+    }
+    this.coins = Math.floor(config.initialCoins);
+    this.stars = Math.floor(config.initialStars ?? 0);
+    this.reputation = Math.floor(config.initialReputation ?? 0);
   }
 
   dispatch(command: CheckoutCommand): CheckoutCommandResult {
