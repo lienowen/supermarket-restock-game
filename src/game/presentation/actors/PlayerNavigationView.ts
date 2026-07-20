@@ -89,7 +89,8 @@ export class PlayerNavigationView {
       }) as NavigationKeys;
     }
 
-    window.addEventListener("pointerdown", this.handleWindowPointerDown, true);
+    window.addEventListener("mousedown", this.handleWindowMouseDown, true);
+    window.addEventListener("touchstart", this.handleWindowTouchStart, { capture: true, passive: true });
     this.syncVisual();
   }
 
@@ -187,7 +188,8 @@ export class PlayerNavigationView {
 
   destroy(): void {
     this.stopDestinationTween();
-    window.removeEventListener("pointerdown", this.handleWindowPointerDown, true);
+    window.removeEventListener("mousedown", this.handleWindowMouseDown, true);
+    window.removeEventListener("touchstart", this.handleWindowTouchStart, true);
     this.walkArea.off("pointerdown", this.handleWalkAreaPointerDown, this);
     this.walkArea.destroy();
     this.actor.destroy();
@@ -198,8 +200,13 @@ export class PlayerNavigationView {
     this.setDestination({ x: pointer.x, y: pointer.y });
   }
 
-  private readonly handleWindowPointerDown = (event: PointerEvent): void => {
+  private readonly handleWindowMouseDown = (event: MouseEvent): void => {
     this.setDestinationFromClient(event.clientX, event.clientY);
+  };
+
+  private readonly handleWindowTouchStart = (event: TouchEvent): void => {
+    const touch = event.changedTouches[0];
+    if (touch) this.setDestinationFromClient(touch.clientX, touch.clientY);
   };
 
   private setDestinationFromClient(clientX: number, clientY: number): void {
