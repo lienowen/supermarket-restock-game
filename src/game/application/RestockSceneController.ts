@@ -41,6 +41,7 @@ export interface RestockSceneControllerConfig {
   readonly sourceLocationId?: string;
   readonly destinationLocationId?: string;
   readonly initialCoins?: number;
+  readonly initialStars?: number;
 }
 
 type SnapshotListener = (snapshot: RestockSceneSnapshot, copy: RestockSceneCopy) => void;
@@ -79,6 +80,8 @@ export class RestockSceneController {
       completionStars: runtime.reward.completionStars,
       mission: runtime.mission
     });
+    const initialStars = config.initialStars ?? 0;
+    if (initialStars > 0) this.workflow.wallet.grant(0, initialStars);
     this.copyByStep = createCopy(runtime);
   }
 
