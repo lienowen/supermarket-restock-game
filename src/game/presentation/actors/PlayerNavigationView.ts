@@ -47,7 +47,7 @@ export class PlayerNavigationView {
   private readonly actor: Phaser.GameObjects.Container;
   private readonly actorParts: CartoonActorParts;
   private readonly keys?: NavigationKeys;
-  private destinationTween?: Phaser.Tweens.Tween;
+  private destinationFrame?: number;
   private enabled = true;
 
   constructor(
@@ -118,13 +118,9 @@ export class PlayerNavigationView {
     const horizontal = this.axis(this.keys?.left, this.keys?.a, this.keys?.right, this.keys?.d);
     const vertical = this.axis(this.keys?.up, this.keys?.w, this.keys?.down, this.keys?.s);
     if (horizontal !== 0 || vertical !== 0) {
-      this.stopDestinationTween();
+      this.stopDestinationMovement();
       if (this.controller.moveDirection(horizontal, vertical, deltaMs)) this.syncVisual();
-      return;
     }
-
-    if (this.destinationTween) return;
-    if (this.controller.update(deltaMs)) this.syncVisual();
   }
 
   snapshot(): PlayerNavigationSnapshot {
@@ -140,7 +136,7 @@ export class PlayerNavigationView {
   }
 
   setPosition(point: NavigationPoint): void {
-    this.stopDestinationTween();
+    this.stopDestinationMovement();
     this.controller.setPosition(point);
     this.syncVisual();
   }
@@ -148,7 +144,7 @@ export class PlayerNavigationView {
   setDestination(point: NavigationPoint): void {
     if (!this.enabled) return;
 
-    this.stopDestinationTween();
+    this.stopDestinationMovement();
     this.controller.setDestination(point);
     const destination = this.controller.snapshot().destination;
     if (!destination) return;
@@ -162,25 +158,30 @@ export class PlayerNavigationView {
     }
 
     const duration = Math.max(1, (distance / this.config.speed) * 1000);
-    this.destinationTween = this.scene.tweens.addCounter({
-      from: 0,
-      to: 1,
-      duration,
-      ease: "Linear",
-      onUpdate: (tween) => {
-        const progress = Number(tween.getValue() ?? 0);
-        this.controller.setPosition({
-          x: Phaser.Math.Linear(start.x, destination.x, progress),
-          y: Phaser.Math.Linear(start.y, destination.y, progress)
-        });
-        this.syncVisual();
-      },
-      onComplete: () => {
-        this.controller.setPosition(destination);
-        this.destinationTween = undefined;
-        this.syncVisual();
+    const startedAt = performance.now();
+    const animate = (now: number): void => {
+      if (!this.enabled) {
+        this.destinationFrame = undefined;
+        return;
       }
-    });
+
+      const progress = Phaser.Math.Clamp((now - startedAt) / duration, 0, 1);
+      this.controller.setPosition({
+        x: Phaser.Math.Linear(start.x, destination.x, progress),
+        y: Phaser.Math.Linear(start.y, destination.y, progress)
+      });
+      this.syncVisual();
+
+      if (progress >= 1) {
+        this.controller.setPosition(destination);
+        this.destinationFrame = undefined;
+        this.syncVisual();
+        return;
+      }
+      this.destinationFrame = window.requestAnimationFrame(animate);
+    };
+
+    this.destinationFrame = window.requestAnimationFrame(animate);
   }
 
   setTexture(assetKey: string): void {
@@ -199,13 +200,13 @@ export class PlayerNavigationView {
   setEnabled(enabled: boolean): void {
     this.enabled = enabled;
     if (!enabled) {
-      this.stopDestinationTween();
+      this.stopDestinationMovement();
       this.controller.clearDestination();
     }
   }
 
   destroy(): void {
-    this.stopDestinationTween();
+    this.stopDestinationMovement();
     window.removeEventListener("mousedown", this.handleWindowMouseDown, true);
     window.removeEventListener("click", this.handleWindowClick, true);
     window.removeEventListener("touchstart", this.handleWindowTouchStart, true);
@@ -355,9 +356,11 @@ export class PlayerNavigationView {
     );
   }
 
-  private stopDestinationTween(): void {
-    this.destinationTween?.stop();
-    this.destinationTween = undefined;
+  private stopDestinationMovement(): void {
+    if (this.destinationFrame !== undefined) {
+      window.cancelAnimationFrame(this.destinationFrame);
+      this.destinationFrame = undefined;
+    }
   }
 
   private axis(
