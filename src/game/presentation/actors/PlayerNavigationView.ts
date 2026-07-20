@@ -35,6 +35,7 @@ export class PlayerNavigationView {
   private readonly shadow: Phaser.GameObjects.Ellipse;
   private readonly actor: Phaser.GameObjects.Image;
   private readonly keys?: NavigationKeys;
+  private destinationTween?: Phaser.Tweens.Tween;
   private enabled = true;
 
   constructor(
@@ -97,11 +98,14 @@ export class PlayerNavigationView {
 
     const horizontal = this.axis(this.keys?.left, this.keys?.a, this.keys?.right, this.keys?.d);
     const vertical = this.axis(this.keys?.up, this.keys?.w, this.keys?.down, this.keys?.s);
-    const moved = horizontal !== 0 || vertical !== 0
-      ? this.controller.moveDirection(horizontal, vertical, deltaMs)
-      : this.controller.update(deltaMs);
+    if (horizontal !== 0 || vertical !== 0) {
+      this.stopDestinationTween();
+      if (this.controller.moveDirection(horizontal, vertical, deltaMs)) this.syncVisual();
+      return;
+    }
 
-    if (moved) this.syncVisual();
+    if (this.destinationTween) return;
+    if (this.controller.update(deltaMs)) this.syncVisual();
   }
 
   snapshot(): PlayerNavigationSnapshot {
@@ -117,13 +121,47 @@ export class PlayerNavigationView {
   }
 
   setPosition(point: NavigationPoint): void {
+    this.stopDestinationTween();
     this.controller.setPosition(point);
     this.syncVisual();
   }
 
   setDestination(point: NavigationPoint): void {
     if (!this.enabled) return;
+
+    this.stopDestinationTween();
     this.controller.setDestination(point);
+    const destination = this.controller.snapshot().destination;
+    if (!destination) return;
+
+    const start = this.controller.snapshot().position;
+    const distance = Math.hypot(destination.x - start.x, destination.y - start.y);
+    if (distance <= 1) {
+      this.controller.setPosition(destination);
+      this.syncVisual();
+      return;
+    }
+
+    const duration = Math.max(1, (distance / this.config.speed) * 1000);
+    this.destinationTween = this.scene.tweens.addCounter({
+      from: 0,
+      to: 1,
+      duration,
+      ease: "Linear",
+      onUpdate: (tween) => {
+        const progress = Number(tween.getValue() ?? 0);
+        this.controller.setPosition({
+          x: Phaser.Math.Linear(start.x, destination.x, progress),
+          y: Phaser.Math.Linear(start.y, destination.y, progress)
+        });
+        this.syncVisual();
+      },
+      onComplete: () => {
+        this.controller.setPosition(destination);
+        this.destinationTween = undefined;
+        this.syncVisual();
+      }
+    });
   }
 
   setTexture(assetKey: string): void {
@@ -141,10 +179,14 @@ export class PlayerNavigationView {
 
   setEnabled(enabled: boolean): void {
     this.enabled = enabled;
-    if (!enabled) this.controller.clearDestination();
+    if (!enabled) {
+      this.stopDestinationTween();
+      this.controller.clearDestination();
+    }
   }
 
   destroy(): void {
+    this.stopDestinationTween();
     window.removeEventListener("pointerdown", this.handleWindowPointerDown, true);
     this.walkArea.off("pointerdown", this.handleWalkAreaPointerDown, this);
     this.walkArea.destroy();
@@ -153,8 +195,7 @@ export class PlayerNavigationView {
   }
 
   private handleWalkAreaPointerDown(pointer: Phaser.Input.Pointer): void {
-    if (!this.enabled) return;
-    this.controller.setDestination({ x: pointer.x, y: pointer.y });
+    this.setDestination({ x: pointer.x, y: pointer.y });
   }
 
   private readonly handleWindowPointerDown = (event: PointerEvent): void => {
@@ -182,7 +223,12 @@ export class PlayerNavigationView {
       y < bounds.y ||
       y > bounds.y + bounds.height
     ) return;
-    this.controller.setDestination({ x, y });
+    this.setDestination({ x, y });
+  }
+
+  private stopDestinationTween(): void {
+    this.destinationTween?.stop();
+    this.destinationTween = undefined;
   }
 
   private axis(
