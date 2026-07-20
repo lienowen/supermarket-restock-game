@@ -20,7 +20,7 @@ export const STARTER_MARKET_PRODUCTION_ASSET_PLAN: readonly ProductionAssetPlanE
   {
     slot: "starter-market-environment-base",
     category: "environment",
-    currentAssetKey: "v2-environment-sales-floor",
+    currentAssetKey: "environment-starter-market-salesfloor-prototype",
     targetPath: "assets/game/environments/stores/starter-market/base.webp",
     decision: "replace-with-production",
     priority: "P0",
@@ -58,7 +58,7 @@ export const STARTER_MARKET_PRODUCTION_ASSET_PLAN: readonly ProductionAssetPlanE
   {
     slot: "worker-a-push-cart",
     category: "character",
-    currentAssetKey: "v2-worker-push",
+    currentAssetKey: "worker-a-push-cart",
     targetPath: "assets/game/characters/workers/worker-a/push-cart.webp",
     decision: "replace-with-production",
     priority: "P0",
@@ -72,7 +72,7 @@ export const STARTER_MARKET_PRODUCTION_ASSET_PLAN: readonly ProductionAssetPlanE
   {
     slot: "worker-a-carry-medium",
     category: "character",
-    currentAssetKey: "v2-worker-carry",
+    currentAssetKey: "worker-a-carry-medium",
     targetPath: "assets/game/characters/workers/worker-a/carry-medium.webp",
     decision: "replace-with-production",
     priority: "P0",
@@ -108,7 +108,7 @@ export const STARTER_MARKET_PRODUCTION_ASSET_PLAN: readonly ProductionAssetPlanE
   {
     slot: "beverage-cooler-a-base",
     category: "fixture",
-    currentAssetKey: "v2-fixture-beverage-cooler",
+    currentAssetKey: "fixture-beverage-cooler-a",
     targetPath: "assets/game/fixtures/coolers/beverage-cooler-a/base.webp",
     decision: "refine-existing",
     priority: "P1",
@@ -121,7 +121,7 @@ export const STARTER_MARKET_PRODUCTION_ASSET_PLAN: readonly ProductionAssetPlanE
   {
     slot: "restock-cart-a-empty",
     category: "equipment",
-    currentAssetKey: "v2-restock-cart",
+    currentAssetKey: "equipment-restock-cart-a-empty",
     targetPath: "assets/game/equipment/restock-carts/cart-a-empty.png",
     decision: "refine-existing",
     priority: "P1",
@@ -133,7 +133,7 @@ export const STARTER_MARKET_PRODUCTION_ASSET_PLAN: readonly ProductionAssetPlanE
   {
     slot: "restock-cart-a-loaded",
     category: "equipment",
-    currentAssetKey: "v2-restock-cart-loaded",
+    currentAssetKey: "equipment-restock-cart-a-loaded",
     targetPath: "assets/game/equipment/restock-carts/cart-a-loaded.png",
     decision: "refine-existing",
     priority: "P1",
@@ -145,7 +145,7 @@ export const STARTER_MARKET_PRODUCTION_ASSET_PLAN: readonly ProductionAssetPlanE
   {
     slot: "cola-case-closed",
     category: "prop",
-    currentAssetKey: "v2-cola-case",
+    currentAssetKey: "prop-cola-case-closed",
     targetPath: "assets/game/props/cases/cola-case-closed.png",
     decision: "retain-prototype",
     priority: "P1",
@@ -168,7 +168,7 @@ export const STARTER_MARKET_PRODUCTION_ASSET_PLAN: readonly ProductionAssetPlanE
   ...(["cola", "milk", "water"] as const).map((product): ProductionAssetPlanEntry => ({
     slot: `${product}-beverage-product`,
     category: "product",
-    currentAssetKey: `v2-product-${product}-bottle`,
+    currentAssetKey: `product-${product}-bottle`,
     targetPath: `assets/game/products/beverages/${product}-bottle.png`,
     decision: "retain-prototype",
     priority: "P2",
