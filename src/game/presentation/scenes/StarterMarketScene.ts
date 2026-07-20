@@ -18,6 +18,7 @@ import {
   STARTER_MARKET_PRESENTATION,
   type RestockStarterMarketPresentationContext
 } from "../context/StarterMarketPresentationContext";
+import { playActionFeedback } from "../effects/ActionFeedback";
 import { playRestockCompletionFeedback } from "../effects/RestockCompletionFeedback";
 import { BeverageCoolerView } from "../fixtures/BeverageCoolerView";
 import { InteractionGate } from "../interactions/InteractionGate";
@@ -196,7 +197,18 @@ export class StarterMarketScene extends Phaser.Scene {
     const snapshot = this.controller.snapshot();
     if (!this.canInteract(snapshot)) return;
     const action = this.controller.actionForCurrentStep();
-    if (action) this.controller.dispatch(action);
+    if (!action) return;
+
+    const accepted = this.controller.dispatch(action);
+    if (!accepted) return;
+    const position = this.actors?.position();
+    if (position) {
+      playActionFeedback(
+        this,
+        position,
+        action === "RESTOCK_ROW" ? "restock" : "interact"
+      );
+    }
   }
 
   private sync(snapshot: RestockSceneSnapshot, copy: RestockSceneCopy): void {
