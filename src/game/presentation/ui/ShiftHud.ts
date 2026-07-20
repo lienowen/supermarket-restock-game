@@ -38,6 +38,8 @@ export class ShiftHud {
   private readonly actionButton: Phaser.GameObjects.Rectangle;
   private readonly coinText: Phaser.GameObjects.Text;
   private readonly starText: Phaser.GameObjects.Text;
+  private complete = false;
+  private actionEnabled = false;
 
   constructor(
     scene: Phaser.Scene,
@@ -136,7 +138,6 @@ export class ShiftHud {
 
     this.actionButton = scene.add.rectangle(1310, 850, 220, 46, palette.green, 1)
       .setStrokeStyle(2, palette.gold, 0.88)
-      .setInteractive({ useHandCursor: true })
       .setDepth(102);
     this.actionLabel = scene.add.text(1310, 850, "", {
       fontFamily: "Arial",
@@ -146,9 +147,14 @@ export class ShiftHud {
       align: "center"
     }).setOrigin(0.5).setDepth(103);
 
-    this.actionButton.on("pointerover", () => this.actionButton.setFillStyle(palette.greenBright, 1));
+    this.actionButton.on("pointerover", () => {
+      if (this.actionEnabled && !this.complete) {
+        this.actionButton.setFillStyle(palette.greenBright, 1);
+      }
+    });
     this.actionButton.on("pointerout", () => this.actionButton.setFillStyle(palette.green, 1));
     this.actionButton.on("pointerdown", onAction);
+    this.syncActionState();
   }
 
   update(snapshot: ShiftHudSnapshot, copy: ShiftHudCopy): void {
@@ -160,10 +166,20 @@ export class ShiftHud {
     this.actionLabel.setText(copy.actionLabel);
     this.coinText.setText(String(snapshot.coins));
     this.starText.setText(String(snapshot.stars));
+    this.complete = snapshot.step === "complete";
+    this.syncActionState();
+  }
 
-    const complete = snapshot.step === "complete";
-    this.actionButton.setAlpha(complete ? 0.45 : 1);
+  setActionEnabled(enabled: boolean): void {
+    this.actionEnabled = enabled;
+    this.syncActionState();
+  }
+
+  private syncActionState(): void {
+    const active = this.actionEnabled && !this.complete;
+    this.actionButton.setAlpha(active ? 1 : 0.45);
+    this.actionLabel.setAlpha(active ? 1 : 0.65);
     this.actionButton.disableInteractive();
-    if (!complete) this.actionButton.setInteractive({ useHandCursor: true });
+    if (active) this.actionButton.setInteractive({ useHandCursor: true });
   }
 }
