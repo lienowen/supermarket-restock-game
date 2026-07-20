@@ -83,6 +83,7 @@ export interface ShiftDefinition {
 export interface RestockLevelAssetBindingsDefinition {
   readonly environmentAssetKey: string;
   readonly fixtureAssetKey: string;
+  readonly workerIdleAssetKey: string;
   readonly workerPushAssetKey: string;
   readonly workerCarryAssetKey: string;
   readonly cartAssetKey: string;
@@ -100,12 +101,15 @@ export interface CheckoutLevelAssetBindingsDefinition {
   readonly customerAssetKeys: readonly string[];
 }
 
+export interface LevelNavigationDefinition {
+  readonly moveSpeed: number;
+  readonly interactionRadius: number;
+}
+
 export interface RestockLevelTuningDefinition {
   readonly initialCoins: number;
   readonly slotCount?: number;
   readonly progressRewardRatio?: number;
-  readonly travelDurationMs: number;
-  readonly travelLockBufferMs?: number;
 }
 
 export interface CheckoutLevelTuningDefinition {
@@ -120,6 +124,7 @@ interface BaseLevelDefinition {
   readonly shiftId: string;
   readonly missionId: string;
   readonly title: string;
+  readonly navigation: LevelNavigationDefinition;
 }
 
 export interface RestockLevelDefinition extends BaseLevelDefinition {
