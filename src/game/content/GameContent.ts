@@ -80,7 +80,7 @@ export interface ShiftDefinition {
   readonly unlockIds?: readonly string[];
 }
 
-export interface LevelAssetBindingsDefinition {
+export interface RestockLevelAssetBindingsDefinition {
   readonly environmentAssetKey: string;
   readonly fixtureAssetKey: string;
   readonly workerPushAssetKey: string;
@@ -91,6 +91,15 @@ export interface LevelAssetBindingsDefinition {
   readonly ambientProductAssetKeys: readonly string[];
 }
 
+/** Compatibility name retained for existing imports. */
+export type LevelAssetBindingsDefinition = RestockLevelAssetBindingsDefinition;
+
+export interface CheckoutLevelAssetBindingsDefinition {
+  readonly environmentAssetKey: string;
+  readonly workerAssetKey: string;
+  readonly customerAssetKeys: readonly string[];
+}
+
 export interface RestockLevelTuningDefinition {
   readonly initialCoins: number;
   readonly slotCount?: number;
@@ -99,15 +108,33 @@ export interface RestockLevelTuningDefinition {
   readonly travelLockBufferMs?: number;
 }
 
-export interface LevelDefinition {
+export interface CheckoutLevelTuningDefinition {
+  readonly initialCoins: number;
+  readonly serviceRewardRatio?: number;
+  readonly scanDurationMs: number;
+  readonly queueAdvanceDurationMs: number;
+}
+
+interface BaseLevelDefinition {
   readonly id: string;
-  readonly mode: "restock";
   readonly shiftId: string;
   readonly missionId: string;
   readonly title: string;
-  readonly assetBindings: LevelAssetBindingsDefinition;
+}
+
+export interface RestockLevelDefinition extends BaseLevelDefinition {
+  readonly mode: "restock";
+  readonly assetBindings: RestockLevelAssetBindingsDefinition;
   readonly tuning: RestockLevelTuningDefinition;
 }
+
+export interface CheckoutLevelDefinition extends BaseLevelDefinition {
+  readonly mode: "checkout";
+  readonly assetBindings: CheckoutLevelAssetBindingsDefinition;
+  readonly tuning: CheckoutLevelTuningDefinition;
+}
+
+export type LevelDefinition = RestockLevelDefinition | CheckoutLevelDefinition;
 
 export interface CampaignDefinition {
   readonly id: string;

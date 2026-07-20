@@ -5,6 +5,7 @@ import {
 } from "./assets/RuntimeAssetRegistry";
 import { STARTER_ASSET_CATALOGUE } from "./assets/starterAssetCatalogue";
 import { validateCampaignRuntime } from "./application/CampaignRuntime";
+import { validateCheckoutLevelRuntime } from "./application/CheckoutLevelRuntimeContent";
 import {
   levelAssetKeys,
   validateLevelCampaignRuntime
@@ -25,13 +26,19 @@ import { validateWorldLayout } from "./world/WorldLayout";
 import { STARTER_MARKET_LAYOUT } from "./world/starterMarketLayout";
 
 function validateProjectContracts(): void {
-  const restockRuntimes = MAIN_LEVEL_CAMPAIGN_RUNTIME.levels.map((entry) => entry.runtime);
   const presentationContexts = MAIN_LEVEL_CAMPAIGN_RUNTIME.levels.map((entry) => (
     createStarterMarketPresentationContext(entry.level.id)
   ));
-  const productIds = restockRuntimes.map((runtime) => runtime.product.id);
+  const productIds = MAIN_LEVEL_CAMPAIGN_RUNTIME.levels.flatMap((entry) => (
+    "product" in entry.runtime ? [entry.runtime.product.id] : []
+  ));
   const configuredAssetKeys = MAIN_LEVEL_CAMPAIGN_RUNTIME.levels.flatMap((entry) => (
     levelAssetKeys(entry.level)
+  ));
+  const gameplayRuntimeErrors = MAIN_LEVEL_CAMPAIGN_RUNTIME.levels.flatMap((entry) => (
+    "product" in entry.runtime
+      ? validateRestockShiftRuntime(entry.runtime)
+      : validateCheckoutLevelRuntime(entry.runtime)
   ));
 
   const errors = [
@@ -43,7 +50,7 @@ function validateProjectContracts(): void {
     ...validateCampaignRuntime(MAIN_CAMPAIGN_RUNTIME),
     ...validateLevelCampaignRuntime(MAIN_LEVEL_CAMPAIGN_RUNTIME),
     ...validateProductAssetMappings(productIds),
-    ...restockRuntimes.flatMap((runtime) => validateRestockShiftRuntime(runtime)),
+    ...gameplayRuntimeErrors,
     ...presentationContexts.flatMap((context) => validateStarterMarketPresentationContext(context))
   ];
 

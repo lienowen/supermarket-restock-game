@@ -58,8 +58,10 @@ export const ASSIST_CHECKOUT_RUSH_MISSION: MissionDefinition = {
   }
 };
 
+const SHARED_ENVIRONMENT_ASSET_KEY = "environment-starter-market-salesfloor-prototype";
+
 const SHARED_RESTOCK_ASSETS = {
-  environmentAssetKey: "environment-starter-market-salesfloor-prototype",
+  environmentAssetKey: SHARED_ENVIRONMENT_ASSET_KEY,
   fixtureAssetKey: "fixture-beverage-cooler-a",
   workerPushAssetKey: "worker-a-push-cart",
   workerCarryAssetKey: "worker-a-carry-medium",
@@ -96,18 +98,39 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     mode: "restock",
     shiftId: "starter-shift-002",
     missionId: "restock-water-promotion",
-    title: "Promotion Rush",
+    title: "Promotion Restock",
     assetBindings: {
       ...SHARED_RESTOCK_ASSETS,
       caseAssetKey: "prop-water-case-closed",
       productAssetKey: "product-water-bottle"
     },
     tuning: {
-      initialCoins: 100,
+      initialCoins: 200,
       slotCount: 6,
       progressRewardRatio: 0.5,
       travelDurationMs: 1000,
       travelLockBufferMs: 180
+    }
+  },
+  {
+    id: "starter-level-003",
+    mode: "checkout",
+    shiftId: "starter-shift-002",
+    missionId: "assist-checkout-rush",
+    title: "Checkout Rush",
+    assetBindings: {
+      environmentAssetKey: SHARED_ENVIRONMENT_ASSET_KEY,
+      workerAssetKey: "worker-a-idle",
+      customerAssetKeys: [
+        "customer-a-carry-basket",
+        "customer-b-carry-basket"
+      ]
+    },
+    tuning: {
+      initialCoins: 320,
+      serviceRewardRatio: 0.75,
+      scanDurationMs: 520,
+      queueAdvanceDurationMs: 360
     }
   }
 ]);
@@ -145,7 +168,7 @@ export const STARTER_MARKET_CONTENT: GameContentCatalogue = {
       kind: "checkout",
       capacity: 1,
       acceptedProductCategories: [],
-      assetKey: "fixture-checkout-a"
+      assetKey: "procedural-checkout-a"
     }
   ],
   missions: [
@@ -159,7 +182,7 @@ export const STARTER_MARKET_CONTENT: GameContentCatalogue = {
       name: "Freshway Market",
       worldLayoutId: "starter-market-layout",
       fixtureIds: ["beverage-cooler-a", "checkout-a"],
-      zoneIds: ["produce-zone", "staff-backroom", "beverage-zone"]
+      zoneIds: ["produce-zone", "staff-backroom", "beverage-zone", "checkout-zone"]
     }
   ],
   shifts: [
@@ -183,7 +206,7 @@ export const STARTER_MARKET_CONTENT: GameContentCatalogue = {
     {
       id: "main-campaign",
       shiftIds: ["starter-shift-001", "starter-shift-002"],
-      levelIds: ["starter-level-001", "starter-level-002"]
+      levelIds: ["starter-level-001", "starter-level-002", "starter-level-003"]
     }
   ]
 };

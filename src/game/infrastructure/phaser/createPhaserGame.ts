@@ -4,6 +4,7 @@ import {
   createStarterMarketPresentationContext,
   MAIN_LEVEL_CAMPAIGN_RUNTIME
 } from "../../presentation/context/StarterMarketPresentationContext";
+import { CheckoutMarketScene } from "../../presentation/scenes/CheckoutMarketScene";
 import { StarterMarketScene } from "../../presentation/scenes/StarterMarketScene";
 import { installSafeInteractiveGuard } from "./SafeInteractiveGuard";
 
@@ -34,6 +35,11 @@ export async function createPhaserGame(
   document.body.dataset.activeShift = presentation.runtime.shift.id;
   document.body.dataset.activeDay = String(presentation.campaignShift.dayNumber);
   document.body.dataset.activeLevel = presentation.campaignLevel.level.id;
+  document.body.dataset.activeMode = presentation.mode;
+
+  const activeScene = presentation.mode === "restock"
+    ? new StarterMarketScene(presentation)
+    : new CheckoutMarketScene(presentation);
 
   const game = new Phaser.Game({
     type: Phaser.AUTO,
@@ -54,7 +60,7 @@ export async function createPhaserGame(
     input: {
       activePointers: 3
     },
-    scene: [new StarterMarketScene(presentation)]
+    scene: [activeScene]
   });
 
   const exposeTestBridge = options.exposeTestBridge ?? (

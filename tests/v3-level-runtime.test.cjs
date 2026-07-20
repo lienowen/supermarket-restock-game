@@ -20,49 +20,64 @@ test("Main campaign resolves ordered dynamic level definitions", () => {
   assert.deepEqual(validateLevelCampaignRuntime(campaign), []);
   assert.deepEqual(
     campaign.levels.map((entry) => entry.level.id),
-    ["starter-level-001", "starter-level-002"]
+    ["starter-level-001", "starter-level-002", "starter-level-003"]
+  );
+  assert.deepEqual(
+    campaign.levels.map((entry) => entry.level.mode),
+    ["restock", "restock", "checkout"]
   );
   assert.deepEqual(
     campaign.levels.map((entry) => entry.levelLabel),
-    ["LEVEL 1", "LEVEL 2"]
+    ["LEVEL 1", "LEVEL 2", "LEVEL 3"]
   );
-  assert.equal(campaign.levels[0].nextLevelId, "starter-level-002");
-  assert.equal(campaign.levels[1].previousLevelId, "starter-level-001");
+  assert.equal(campaign.levels[1].nextLevelId, "starter-level-003");
+  assert.equal(campaign.levels[2].previousLevelId, "starter-level-002");
 });
 
-test("Each level owns tuning values instead of scene constants", () => {
+test("Each level owns mode-specific tuning instead of scene constants", () => {
   const levelOne = campaign.levels[0];
   const levelTwo = campaign.levels[1];
+  const levelThree = campaign.levels[2];
 
   assert.equal(levelOne.level.tuning.travelDurationMs, 1150);
   assert.equal(levelTwo.level.tuning.travelDurationMs, 1000);
+  assert.equal(levelThree.level.tuning.scanDurationMs, 520);
+  assert.equal(levelThree.level.tuning.queueAdvanceDurationMs, 360);
   assert.equal(levelOne.runtime.reward.completionCoins, 40);
   assert.equal(levelTwo.runtime.reward.completionCoins, 60);
-  assert.equal(levelOne.runtime.slotCount, 6);
-  assert.equal(levelTwo.runtime.slotCount, 6);
+  assert.equal(levelThree.runtime.reward.totalCoins, 80);
+  assert.equal(levelThree.runtime.customerCount, 6);
 });
 
-test("Level assets use canonical catalogue keys and share reusable art", () => {
+test("All level assets resolve through the canonical catalogue", () => {
+  campaign.levels.forEach((entry) => {
+    assert.deepEqual(
+      STARTER_RUNTIME_ASSET_REGISTRY.validateKeys(levelAssetKeys(entry.level)),
+      []
+    );
+  });
+
   const levelOne = campaign.levels[0].level;
   const levelTwo = campaign.levels[1].level;
-
-  assert.deepEqual(STARTER_RUNTIME_ASSET_REGISTRY.validateKeys(levelAssetKeys(levelOne)), []);
-  assert.deepEqual(STARTER_RUNTIME_ASSET_REGISTRY.validateKeys(levelAssetKeys(levelTwo)), []);
+  const levelThree = campaign.levels[2].level;
 
   assert.equal(
     levelOne.assetBindings.environmentAssetKey,
-    levelTwo.assetBindings.environmentAssetKey
+    levelThree.assetBindings.environmentAssetKey
   );
   assert.equal(levelOne.assetBindings.fixtureAssetKey, levelTwo.assetBindings.fixtureAssetKey);
-  assert.notEqual(levelOne.assetBindings.caseAssetKey, levelTwo.assetBindings.caseAssetKey);
   assert.notEqual(levelOne.assetBindings.productAssetKey, levelTwo.assetBindings.productAssetKey);
+  assert.deepEqual(levelThree.assetBindings.customerAssetKeys, [
+    "customer-a-carry-basket",
+    "customer-b-carry-basket"
+  ]);
 });
 
-test("Level selector accepts the new level ID and the legacy shift ID", () => {
+test("Level selector accepts level IDs and keeps legacy shift selection deterministic", () => {
   assert.equal(selectCampaignLevel(campaign).level.id, "starter-level-001");
   assert.equal(
-    selectCampaignLevel(campaign, "starter-level-002").shift.id,
-    "starter-shift-002"
+    selectCampaignLevel(campaign, "starter-level-003").level.mode,
+    "checkout"
   );
   assert.equal(
     selectCampaignLevel(campaign, "starter-shift-002").level.id,

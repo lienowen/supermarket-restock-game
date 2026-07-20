@@ -16,7 +16,7 @@ test("Legacy bootstrap is only a compatibility export", () => {
   assert.equal(source.includes("createPhaserGame as bootstrapImmersiveGame"), true);
 });
 
-test("Starter market scene remains a composition root instead of a drawing monolith", () => {
+test("Restock scene remains a composition root instead of a drawing monolith", () => {
   const source = read("src/game/presentation/scenes/StarterMarketScene.ts");
   assert.equal(source.includes("this.add."), false);
   assert.equal(source.includes("this.tweens."), false);
@@ -25,6 +25,27 @@ test("Starter market scene remains a composition root instead of a drawing monol
   assert.equal(source.includes("new StarterMarketEnvironmentView"), true);
   assert.equal(source.includes("new BeverageCoolerView"), true);
   assert.equal(source.includes("new RestockActorView"), true);
+  assert.equal(source.includes("CheckoutWorkflow"), false);
+  assert.equal(source.includes("CheckoutStationView"), false);
+});
+
+test("Checkout scene composes checkout modules without importing restock rules", () => {
+  const source = read("src/game/presentation/scenes/CheckoutMarketScene.ts");
+  assert.equal(source.includes("this.add."), false);
+  assert.equal(source.includes("this.tweens."), false);
+  assert.equal(source.includes("new StarterMarketEnvironmentView"), true);
+  assert.equal(source.includes("new CheckoutStationView"), true);
+  assert.equal(source.includes("new CheckoutSceneController"), true);
+  assert.equal(source.includes("RestockWorkflow"), false);
+  assert.equal(source.includes("RestockSceneController"), false);
+  assert.equal(source.includes("BeverageCoolerView"), false);
+});
+
+test("Phaser factory selects a scene from the validated level mode", () => {
+  const source = read("src/game/infrastructure/phaser/createPhaserGame.ts");
+  assert.equal(source.includes('presentation.mode === "restock"'), true);
+  assert.equal(source.includes("new StarterMarketScene"), true);
+  assert.equal(source.includes("new CheckoutMarketScene"), true);
 });
 
 test("Legacy scene delegates to the project presentation scene", () => {

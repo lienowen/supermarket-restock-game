@@ -7,6 +7,9 @@ const {
   validateStarterMarketPresentationContext
 } = require("../.test-dist/src/game/presentation/context/StarterMarketPresentationContext.js");
 const {
+  CheckoutTargetResolver
+} = require("../.test-dist/src/game/presentation/interactions/CheckoutTargetResolver.js");
+const {
   RestockTargetResolver
 } = require("../.test-dist/src/game/presentation/interactions/RestockTargetResolver.js");
 
@@ -31,42 +34,55 @@ const resolver = new RestockTargetResolver({
   coolerTargetWidth: STARTER_MARKET_PRESENTATION.visual.cooler.activeStockBounds.width
 });
 
-test("Day 1 and Day 2 contexts are internally consistent", () => {
-  const dayOne = createStarterMarketPresentationContext("starter-shift-001");
-  const dayTwo = createStarterMarketPresentationContext("starter-shift-002");
+test("Restock and checkout contexts are internally consistent", () => {
+  const dayOne = createStarterMarketPresentationContext("starter-level-001");
+  const dayTwoRestock = createStarterMarketPresentationContext("starter-level-002");
+  const dayTwoCheckout = createStarterMarketPresentationContext("starter-level-003");
 
   assert.deepEqual(validateStarterMarketPresentationContext(dayOne), []);
-  assert.deepEqual(validateStarterMarketPresentationContext(dayTwo), []);
-  assert.equal(dayOne.runtime.slotCount, dayOne.visual.cooler.rowYs.length);
-  assert.equal(dayTwo.runtime.slotCount, dayTwo.visual.cooler.rowYs.length);
-  assert.equal(dayOne.runtime.store.worldLayoutId, dayOne.layout.id);
-  assert.equal(dayTwo.runtime.store.worldLayoutId, dayTwo.layout.id);
+  assert.deepEqual(validateStarterMarketPresentationContext(dayTwoRestock), []);
+  assert.deepEqual(validateStarterMarketPresentationContext(dayTwoCheckout), []);
+  assert.equal(dayOne.mode, "restock");
+  assert.equal(dayTwoRestock.mode, "restock");
+  assert.equal(dayTwoCheckout.mode, "checkout");
+  assert.equal(dayTwoCheckout.runtime.fixture.id, "checkout-a");
+  assert.equal(dayTwoCheckout.runtime.customerCount, 6);
+  assert.deepEqual(
+    dayTwoCheckout.levelAssets.customers.map((asset) => asset.key),
+    ["customer-a-carry-basket", "customer-b-carry-basket"]
+  );
 });
 
-test("Both days use the same scene, world layout, fixture, and presentation modules", () => {
-  const dayOne = createStarterMarketPresentationContext("starter-shift-001");
-  const dayTwo = createStarterMarketPresentationContext("starter-shift-002");
+test("All levels share the same world, registry, and scene boundary", () => {
+  const levelOne = createStarterMarketPresentationContext("starter-level-001");
+  const levelTwo = createStarterMarketPresentationContext("starter-level-002");
+  const levelThree = createStarterMarketPresentationContext("starter-level-003");
 
-  assert.equal(dayOne.scene.key, "starter-market-shift");
-  assert.equal(dayTwo.scene.key, dayOne.scene.key);
-  assert.equal(dayTwo.layout, dayOne.layout);
-  assert.equal(dayTwo.visual, dayOne.visual);
-  assert.equal(dayTwo.assets, dayOne.assets);
-  assert.equal(dayTwo.runtime.store.id, dayOne.runtime.store.id);
-  assert.equal(dayTwo.runtime.fixture.id, dayOne.runtime.fixture.id);
+  assert.equal(levelOne.scene.key, "starter-market-shift");
+  assert.equal(levelTwo.scene.key, levelOne.scene.key);
+  assert.equal(levelThree.scene.key, levelOne.scene.key);
+  assert.equal(levelTwo.layout, levelOne.layout);
+  assert.equal(levelThree.layout, levelOne.layout);
+  assert.equal(levelTwo.visual, levelOne.visual);
+  assert.equal(levelThree.visual, levelOne.visual);
+  assert.equal(levelTwo.assets, levelOne.assets);
+  assert.equal(levelThree.assets, levelOne.assets);
+  assert.equal(levelThree.world.checkout.x, 470);
+  assert.equal(levelThree.world.checkoutService.x, 520);
 });
 
-test("Campaign order supplies day labels while shift content supplies task differences", () => {
-  const dayOne = createStarterMarketPresentationContext("starter-shift-001");
-  const dayTwo = createStarterMarketPresentationContext("starter-shift-002");
+test("Campaign order supplies labels while level mode supplies task differences", () => {
+  const levelOne = createStarterMarketPresentationContext("starter-level-001");
+  const levelTwo = createStarterMarketPresentationContext("starter-level-002");
+  const levelThree = createStarterMarketPresentationContext("starter-level-003");
 
-  assert.equal(dayOne.labels.day, "DAY 1");
-  assert.equal(dayTwo.labels.day, "DAY 2");
-  assert.equal(dayOne.runtime.product.id, "cola-bottle");
-  assert.equal(dayTwo.runtime.product.id, "water-bottle");
-  assert.equal(dayOne.runtime.mission.id, "restock-cola-cooler");
-  assert.equal(dayTwo.runtime.mission.id, "restock-water-promotion");
-  assert.notEqual(dayOne.productAssets.restockProductKey, dayTwo.productAssets.restockProductKey);
+  assert.equal(levelOne.labels.day, "DAY 1");
+  assert.equal(levelTwo.labels.day, "DAY 2");
+  assert.equal(levelThree.labels.day, "DAY 2");
+  assert.equal(levelOne.runtime.product.id, "cola-bottle");
+  assert.equal(levelTwo.runtime.product.id, "water-bottle");
+  assert.equal(levelThree.runtime.mission.id, "assist-checkout-rush");
+  assert.notEqual(levelOne.productAssets.restockProductKey, levelTwo.productAssets.restockProductKey);
 });
 
 test("Restock target resolver maps workflow phases without knowing day or Phaser", () => {
@@ -85,6 +101,33 @@ test("Restock target resolver maps workflow phases without knowing day or Phaser
   });
 });
 
+test("Checkout target resolver exposes one service point until completion", () => {
+  const checkout = createStarterMarketPresentationContext("starter-level-003");
+  const checkoutResolver = new CheckoutTargetResolver(checkout.world.checkoutService);
+
+  assert.deepEqual(checkoutResolver.resolve({
+    step: "open",
+    customersServed: 0,
+    totalCustomers: 6,
+    coins: 320,
+    stars: 0,
+    reputation: 0
+  }), {
+    x: 520,
+    y: 680,
+    width: 260,
+    height: 190
+  });
+  assert.equal(checkoutResolver.resolve({
+    step: "complete",
+    customersServed: 6,
+    totalCustomers: 6,
+    coins: 400,
+    stars: 1,
+    reputation: 5
+  }), undefined);
+});
+
 test("Each restock step targets the next independent cooler row", () => {
   STARTER_MARKET_PRESENTATION.visual.cooler.rowYs.forEach((rowY, rowIndex) => {
     const target = resolver.resolve(snapshot("restock", rowIndex));
@@ -93,6 +136,6 @@ test("Each restock step targets the next independent cooler row", () => {
   });
 });
 
-test("Completed work exposes no active world target", () => {
+test("Completed restock work exposes no active world target", () => {
   assert.equal(resolver.resolve(snapshot("complete", 6)), undefined);
 });

@@ -7,7 +7,8 @@ const DIST_DIR = resolve("dist");
 const OUTPUT_DIR = resolve("ui-audit");
 const PORT = 4173;
 const BASE_URL = `http://127.0.0.1:${PORT}/?test=1`;
-const DAY_TWO_URL = `http://127.0.0.1:${PORT}/?test=1&shift=starter-shift-002`;
+const DAY_TWO_URL = `http://127.0.0.1:${PORT}/?test=1&level=starter-level-002`;
+const CHECKOUT_URL = `http://127.0.0.1:${PORT}/?test=1&level=starter-level-003`;
 const GAME_CANVAS_SELECTOR = "#app > canvas:not(#mobile-game-backdrop)";
 const GAME_SCENE_KEY = "starter-market-shift";
 const GAME_WIDTH = 1600;
@@ -55,7 +56,8 @@ const report = {
     rowRestock: false,
     completionReward: false,
     crazyGamesSdkLifecycle: false,
-    dayTwoSharedScene: false
+    dayTwoSharedScene: false,
+    checkoutLevel: false
   }
 };
 
@@ -182,10 +184,11 @@ try {
       "loadingStart",
       "loadingStop",
       "gameplayStart",
-      "progress:50",
+      "progress:33",
       "gameplayStop"
     ])
   );
+  await page.close();
 
   const dayTwoPage = await context.newPage();
   attachRuntimeListeners(dayTwoPage, report);
@@ -195,6 +198,8 @@ try {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
     return {
       sceneKey: scene?.sys?.settings?.key,
+      levelId: document.body.dataset.activeLevel,
+      mode: document.body.dataset.activeMode,
       shiftId: document.body.dataset.activeShift,
       day: document.body.dataset.activeDay,
       productId: scene?.controller?.config?.runtime?.product?.id,
@@ -207,6 +212,8 @@ try {
   recordSnapshot(report, "day2-runtime", dayTwoRuntime);
   report.regressions.dayTwoSharedScene = (
     dayTwoRuntime.sceneKey === GAME_SCENE_KEY &&
+    dayTwoRuntime.levelId === "starter-level-002" &&
+    dayTwoRuntime.mode === "restock" &&
     dayTwoRuntime.shiftId === "starter-shift-002" &&
     dayTwoRuntime.day === "2" &&
     dayTwoRuntime.productId === "water-bottle" &&
@@ -217,11 +224,66 @@ try {
       step: "collect",
       stockedRows: 0,
       totalRows: 6,
-      coins: 100,
+      coins: 200,
       stars: 0
     })
   );
-  await capture(dayTwoPage, report, "06-day2-initial.png", "Day 2 water promotion using the shared scene");
+  await capture(dayTwoPage, report, "06-day2-initial.png", "Day 2 water promotion using the shared restock scene");
+  await dayTwoPage.close();
+
+  const checkoutPage = await context.newPage();
+  attachRuntimeListeners(checkoutPage, report);
+  await checkoutPage.goto(CHECKOUT_URL, { waitUntil: "networkidle", timeout: 90000 });
+  await waitForGame(checkoutPage, "starter-shift-002", "2");
+  const checkoutInitial = await readSnapshot(checkoutPage);
+  recordSnapshot(report, "checkout-initial", checkoutInitial);
+  await capture(checkoutPage, report, "07-checkout-initial.png", "Day 2 checkout rush with six waiting customers");
+
+  await clickGame(checkoutPage, 520, 680);
+  await waitForSnapshot(checkoutPage, { step: "serve" });
+  await checkoutPage.waitForTimeout(320);
+
+  for (let customer = 0; customer < 6; customer += 1) {
+    await clickGame(checkoutPage, 520, 680);
+    await waitForSnapshot(checkoutPage, { customersServed: customer + 1 });
+    await checkoutPage.waitForTimeout(930);
+  }
+
+  const checkoutComplete = await waitForSnapshot(checkoutPage, {
+    step: "complete",
+    customersServed: 6,
+    coins: 400,
+    stars: 1,
+    reputation: 5
+  });
+  recordSnapshot(report, "checkout-complete", checkoutComplete);
+  await checkoutPage.waitForTimeout(550);
+  await capture(checkoutPage, report, "08-checkout-complete.png", "Checkout rush cleared with campaign reward");
+
+  const checkoutMetadata = await checkoutPage.evaluate((sceneKey) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+    return {
+      sceneKey: scene?.sys?.settings?.key,
+      levelId: document.body.dataset.activeLevel,
+      mode: document.body.dataset.activeMode,
+      missionId: scene?.controller?.config?.runtime?.mission?.id
+    };
+  }, GAME_SCENE_KEY);
+  report.regressions.checkoutLevel = (
+    checkoutMetadata.sceneKey === GAME_SCENE_KEY &&
+    checkoutMetadata.levelId === "starter-level-003" &&
+    checkoutMetadata.mode === "checkout" &&
+    checkoutMetadata.missionId === "assist-checkout-rush" &&
+    matches(checkoutInitial, {
+      step: "open",
+      customersServed: 0,
+      totalCustomers: 6,
+      coins: 320,
+      stars: 0
+    }) &&
+    checkoutComplete?.reputation === 5
+  );
+  await checkoutPage.close();
 
   const issueCount = report.consoleErrors.length + report.pageErrors.length + report.failedRequests.length + report.badResponses.length;
   const failed = Object.entries(report.regressions).filter(([, value]) => !value).map(([key]) => key);
