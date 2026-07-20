@@ -34,12 +34,12 @@ export const STARTER_MARKET_VISUAL_SPEC = {
   actor: {
     spawn: { x: 890, y: 625 },
     coolerPosition: { x: 1080, y: 630 },
-    pushSize: { width: 180, height: 280 },
-    carrySize: { width: 172, height: 270 },
-    idleSize: { width: 165, height: 260 },
+    pushSize: { width: 162, height: 252 },
+    carrySize: { width: 158, height: 248 },
+    idleSize: { width: 150, height: 238 },
     navigationBounds: { x: 470, y: 430, width: 750, height: 340 },
     safeBounds: { x: 470, y: 430, width: 750, height: 340 },
-    shadowOffset: { x: 0, y: 92 }
+    shadowOffset: { x: 0, y: 84 }
   },
   backroom: {
     centre: { x: 750, y: 390 },
