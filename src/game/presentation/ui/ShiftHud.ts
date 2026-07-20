@@ -19,6 +19,7 @@ export interface ShiftHudSnapshot {
   readonly step: string;
   readonly stockedRows: number;
   readonly totalRows: number;
+  readonly progressUnit?: string;
   readonly coins: number;
   readonly stars: number;
 }
@@ -152,7 +153,9 @@ export class ShiftHud {
 
   update(snapshot: ShiftHudSnapshot, copy: ShiftHudCopy): void {
     this.objectiveText.setText(copy.objective);
-    this.progressText.setText(`${snapshot.stockedRows}/${snapshot.totalRows} ROWS`);
+    this.progressText.setText(
+      `${snapshot.stockedRows}/${snapshot.totalRows} ${snapshot.progressUnit ?? "ROWS"}`
+    );
     this.instructionText.setText(copy.instruction);
     this.actionLabel.setText(copy.actionLabel);
     this.coinText.setText(String(snapshot.coins));
