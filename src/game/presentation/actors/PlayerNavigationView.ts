@@ -166,7 +166,7 @@ export class PlayerNavigationView {
       from: 0,
       to: 1,
       duration,
-      ease: "Sine.InOut",
+      ease: "Linear",
       onUpdate: (tween) => {
         const progress = Number(tween.getValue() ?? 0);
         this.controller.setPosition({
