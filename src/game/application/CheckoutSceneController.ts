@@ -26,6 +26,8 @@ export interface CheckoutSceneCopy {
 export interface CheckoutSceneControllerConfig {
   readonly runtime: CheckoutLevelRuntimeContent;
   readonly initialCoins: number;
+  readonly initialStars?: number;
+  readonly initialReputation?: number;
 }
 
 type SnapshotListener = (
@@ -44,6 +46,8 @@ export class CheckoutSceneController {
       checkoutId: runtime.fixture.id,
       customerCount: runtime.customerCount,
       initialCoins: config.initialCoins,
+      initialStars: config.initialStars,
+      initialReputation: config.initialReputation,
       coinsPerCustomer: runtime.reward.coinsPerCustomer,
       completionCoins: runtime.reward.completionCoins,
       completionStars: runtime.reward.totalStars,
