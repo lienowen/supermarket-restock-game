@@ -6,8 +6,10 @@ import {
   type CheckoutSceneSnapshot,
   type CheckoutSceneStep
 } from "../../application/CheckoutSceneController";
+import type { NavigationPoint } from "../../application/PlayerNavigationController";
 import { resolveLevelProgression } from "../../application/LevelProgression";
 import { navigateToLevel } from "../../infrastructure/browser/BrowserLevelNavigator";
+import { PlayerNavigationView } from "../actors/PlayerNavigationView";
 import { CheckoutStationView } from "../checkout/CheckoutStationView";
 import type { CheckoutStarterMarketPresentationContext } from "../context/StarterMarketPresentationContext";
 import { playRestockCompletionFeedback } from "../effects/RestockCompletionFeedback";
@@ -27,6 +29,7 @@ export class CheckoutMarketScene extends Phaser.Scene {
   private readonly disposers: Array<() => void> = [];
   private hud?: ShiftHud;
   private station?: CheckoutStationView;
+  private player?: PlayerNavigationView;
   private target?: InteractionTargetView;
   private completionOverlay?: LevelCompleteOverlay;
   private previousStep?: CheckoutSceneStep;
@@ -68,13 +71,22 @@ export class CheckoutMarketScene extends Phaser.Scene {
     this.station = new CheckoutStationView(this, {
       checkoutPosition: context.world.checkout,
       queueStart: context.world.customerQueueStart,
-      workerAssetKey: context.levelAssets.worker.key,
       customerAssetKeys: context.levelAssets.customers.map((asset) => asset.key),
       customerCount: context.runtime.customerCount,
       scanDurationMs: context.campaignLevel.level.tuning.scanDurationMs,
       queueAdvanceDurationMs: context.campaignLevel.level.tuning.queueAdvanceDurationMs,
       panelColor: context.palette.hud,
       accentColor: context.palette.gold
+    });
+    this.player = new PlayerNavigationView(this, {
+      start: context.world.workerStart,
+      bounds: context.visual.actor.navigationBounds,
+      speed: context.campaignLevel.level.navigation.moveSpeed,
+      assetKey: context.levelAssets.worker.key,
+      displaySize: context.visual.actor.idleSize,
+      shadowOffset: context.visual.actor.shadowOffset,
+      name: "checkout-worker",
+      baseDepth: 34
     });
     this.target = new InteractionTargetView(
       this,
@@ -116,8 +128,22 @@ export class CheckoutMarketScene extends Phaser.Scene {
     });
   }
 
+  update(_time: number, delta: number): void {
+    this.player?.update(delta);
+    this.syncTarget(this.controller.snapshot());
+  }
+
+  isInteractionReady(): boolean {
+    return this.canInteract(this.controller.snapshot());
+  }
+
+  playerPosition(): NavigationPoint | undefined {
+    return this.player?.position();
+  }
+
   private performCurrentAction(): void {
-    if (!this.interactionGate.isReady()) return;
+    const snapshot = this.controller.snapshot();
+    if (!this.canInteract(snapshot)) return;
     const action = this.controller.actionForCurrentStep();
     if (!action) return;
 
@@ -205,15 +231,26 @@ export class CheckoutMarketScene extends Phaser.Scene {
   }
 
   private syncTarget(snapshot: CheckoutSceneSnapshot): void {
-    this.target?.sync(
-      this.targetResolver.resolve(snapshot),
-      this.interactionGate.isReady()
+    const enabled = this.canInteract(snapshot);
+    this.target?.sync(this.targetResolver.resolve(snapshot), enabled);
+    this.hud?.setActionEnabled(enabled);
+  }
+
+  private canInteract(snapshot: CheckoutSceneSnapshot): boolean {
+    return Boolean(
+      snapshot.step !== "complete" &&
+      this.interactionGate.isReady() &&
+      this.player?.isNear(
+        this.context.world.checkoutService,
+        this.context.campaignLevel.level.navigation.interactionRadius
+      )
     );
   }
 
   private dispose(): void {
     this.disposers.splice(0).forEach((dispose) => dispose());
     this.completionOverlay?.destroy();
+    this.player?.destroy();
     this.station?.destroy();
     this.target?.destroy();
     this.interactionGate.destroy();
