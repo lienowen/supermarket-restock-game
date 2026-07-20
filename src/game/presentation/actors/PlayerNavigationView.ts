@@ -30,7 +30,7 @@ type NavigationKeys = {
 export class PlayerNavigationView {
   readonly controller: PlayerNavigationController;
 
-  private readonly walkZone: Phaser.GameObjects.Zone;
+  private readonly walkArea: Phaser.GameObjects.Rectangle;
   private readonly shadow: Phaser.GameObjects.Ellipse;
   private readonly actor: Phaser.GameObjects.Image;
   private readonly keys?: NavigationKeys;
@@ -47,16 +47,18 @@ export class PlayerNavigationView {
     });
 
     scene.input.topOnly = false;
-    this.walkZone = scene.add.zone(
+    this.walkArea = scene.add.rectangle(
       config.bounds.x + config.bounds.width / 2,
       config.bounds.y + config.bounds.height / 2,
       config.bounds.width,
-      config.bounds.height
+      config.bounds.height,
+      0xffffff,
+      0.001
     )
-      .setName(`${config.name}-walk-zone`)
+      .setName(`${config.name}-walk-area`)
       .setDepth(8)
       .setInteractive({ useHandCursor: true });
-    this.walkZone.on("pointerdown", this.handleWalkZonePointerDown, this);
+    this.walkArea.on("pointerdown", this.handleWalkAreaPointerDown, this);
 
     this.shadow = scene.add.ellipse(
       config.start.x + config.shadowOffset.x,
@@ -137,13 +139,13 @@ export class PlayerNavigationView {
   }
 
   destroy(): void {
-    this.walkZone.off("pointerdown", this.handleWalkZonePointerDown, this);
-    this.walkZone.destroy();
+    this.walkArea.off("pointerdown", this.handleWalkAreaPointerDown, this);
+    this.walkArea.destroy();
     this.actor.destroy();
     this.shadow.destroy();
   }
 
-  private handleWalkZonePointerDown(pointer: Phaser.Input.Pointer): void {
+  private handleWalkAreaPointerDown(pointer: Phaser.Input.Pointer): void {
     if (!this.enabled) return;
     this.controller.setDestination({ x: pointer.worldX, y: pointer.worldY });
   }
