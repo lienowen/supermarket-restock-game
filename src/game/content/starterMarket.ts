@@ -59,10 +59,15 @@ export const ASSIST_CHECKOUT_RUSH_MISSION: MissionDefinition = {
 };
 
 const SHARED_ENVIRONMENT_ASSET_KEY = "environment-starter-market-salesfloor-prototype";
+const SHARED_NAVIGATION = {
+  moveSpeed: 360,
+  interactionRadius: 145
+} as const;
 
 const SHARED_RESTOCK_ASSETS = {
   environmentAssetKey: SHARED_ENVIRONMENT_ASSET_KEY,
   fixtureAssetKey: "fixture-beverage-cooler-a",
+  workerIdleAssetKey: "worker-a-idle",
   workerPushAssetKey: "worker-a-push-cart",
   workerCarryAssetKey: "worker-a-carry-medium",
   cartAssetKey: "equipment-restock-cart-a-empty",
@@ -80,6 +85,7 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     shiftId: "starter-shift-001",
     missionId: "restock-cola-cooler",
     title: "First Delivery",
+    navigation: SHARED_NAVIGATION,
     assetBindings: {
       ...SHARED_RESTOCK_ASSETS,
       caseAssetKey: "prop-cola-case-closed",
@@ -88,9 +94,7 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     tuning: {
       initialCoins: 100,
       slotCount: 6,
-      progressRewardRatio: 0.6,
-      travelDurationMs: 1150,
-      travelLockBufferMs: 200
+      progressRewardRatio: 0.6
     }
   },
   {
@@ -99,6 +103,10 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     shiftId: "starter-shift-002",
     missionId: "restock-water-promotion",
     title: "Promotion Restock",
+    navigation: {
+      moveSpeed: 385,
+      interactionRadius: 145
+    },
     assetBindings: {
       ...SHARED_RESTOCK_ASSETS,
       caseAssetKey: "prop-water-case-closed",
@@ -107,9 +115,7 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     tuning: {
       initialCoins: 200,
       slotCount: 6,
-      progressRewardRatio: 0.5,
-      travelDurationMs: 1000,
-      travelLockBufferMs: 180
+      progressRewardRatio: 0.5
     }
   },
   {
@@ -118,6 +124,10 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     shiftId: "starter-shift-002",
     missionId: "assist-checkout-rush",
     title: "Checkout Rush",
+    navigation: {
+      moveSpeed: 400,
+      interactionRadius: 155
+    },
     assetBindings: {
       environmentAssetKey: SHARED_ENVIRONMENT_ASSET_KEY,
       workerAssetKey: "worker-a-idle",
