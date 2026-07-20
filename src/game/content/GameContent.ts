@@ -80,9 +80,39 @@ export interface ShiftDefinition {
   readonly unlockIds?: readonly string[];
 }
 
+export interface LevelAssetBindingsDefinition {
+  readonly environmentAssetKey: string;
+  readonly fixtureAssetKey: string;
+  readonly workerPushAssetKey: string;
+  readonly workerCarryAssetKey: string;
+  readonly cartAssetKey: string;
+  readonly caseAssetKey: string;
+  readonly productAssetKey: string;
+  readonly ambientProductAssetKeys: readonly string[];
+}
+
+export interface RestockLevelTuningDefinition {
+  readonly initialCoins: number;
+  readonly slotCount?: number;
+  readonly progressRewardRatio?: number;
+  readonly travelDurationMs: number;
+  readonly travelLockBufferMs?: number;
+}
+
+export interface LevelDefinition {
+  readonly id: string;
+  readonly mode: "restock";
+  readonly shiftId: string;
+  readonly missionId: string;
+  readonly title: string;
+  readonly assetBindings: LevelAssetBindingsDefinition;
+  readonly tuning: RestockLevelTuningDefinition;
+}
+
 export interface CampaignDefinition {
   readonly id: string;
   readonly shiftIds: readonly string[];
+  readonly levelIds: readonly string[];
 }
 
 export interface GameContentCatalogue {
@@ -91,5 +121,6 @@ export interface GameContentCatalogue {
   readonly missions: readonly MissionDefinition[];
   readonly stores: readonly StoreDefinition[];
   readonly shifts: readonly ShiftDefinition[];
+  readonly levels: readonly LevelDefinition[];
   readonly campaigns: readonly CampaignDefinition[];
 }
