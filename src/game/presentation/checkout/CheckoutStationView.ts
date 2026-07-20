@@ -95,7 +95,7 @@ export class CheckoutStationView {
       const position = this.queuePosition(index);
       const customer = this.createCustomer(index)
         .setPosition(position.x, position.y)
-        .setDepth(34 - index)
+        .setDepth(this.queueDepth(position.y))
         .setName(`checkout-customer-${index + 1}`);
       this.customers.push(customer);
       this.objects.push(customer);
@@ -251,7 +251,7 @@ export class CheckoutStationView {
       const queueIndex = index - servedCount;
       const position = this.queuePosition(queueIndex);
       const scale = this.queueScale(queueIndex);
-      customer.setVisible(true).setAlpha(1);
+      customer.setVisible(true).setAlpha(1).setDepth(this.queueDepth(position.y));
 
       if (!animate) {
         customer.setPosition(position.x, position.y).setScale(scale);
@@ -271,13 +271,21 @@ export class CheckoutStationView {
   }
 
   private queueScale(index: number): number {
-    return Math.max(0.68, 0.9 - index * 0.045);
+    const row = Math.floor(index / 2);
+    const column = index % 2;
+    return Math.max(0.64, 0.84 - row * 0.065 - column * 0.025);
   }
 
   private queuePosition(index: number): PresentationPoint {
+    const column = index % 2;
+    const row = Math.floor(index / 2);
     return {
-      x: this.config.queueStart.x + index * 128,
-      y: this.config.queueStart.y - index * 12
+      x: this.config.queueStart.x + column * 122 + row * 24,
+      y: this.config.queueStart.y - row * 108 - column * 26
     };
+  }
+
+  private queueDepth(y: number): number {
+    return 31 + y / 1000;
   }
 }
