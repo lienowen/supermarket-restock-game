@@ -46,6 +46,7 @@ export class PlayerNavigationView {
       speed: config.speed
     });
 
+    scene.input.topOnly = false;
     this.walkZone = scene.add.zone(
       config.bounds.x + config.bounds.width / 2,
       config.bounds.y + config.bounds.height / 2,
