@@ -21,63 +21,62 @@ export const STARTER_MARKET_VISUAL_SPEC = {
   },
   camera: {
     mode: "fixed-third-person",
-    vanishingPoint: { x: 800, y: 298 },
-    horizonY: 298,
-    foregroundStartY: 565
+    vanishingPoint: { x: 800, y: 300 },
+    horizonY: 300,
+    foregroundStartY: 560
   },
   composition: {
-    produceZone: { x: 0, y: 155, width: 545, height: 745 },
-    backroomZone: { x: 545, y: 170, width: 430, height: 500 },
-    beverageZone: { x: 975, y: 120, width: 625, height: 780 },
-    centreDepthAxis: { x: 625, y: 170, width: 350, height: 620 }
+    produceZone: { x: 0, y: 150, width: 500, height: 750 },
+    backroomZone: { x: 500, y: 165, width: 500, height: 515 },
+    beverageZone: { x: 1000, y: 145, width: 600, height: 755 },
+    centreDepthAxis: { x: 650, y: 170, width: 320, height: 610 }
   },
   actor: {
     spawn: { x: 890, y: 625 },
-    coolerPosition: { x: 1055, y: 625 },
-    pushSize: { width: 250, height: 375 },
-    carrySize: { width: 220, height: 330 },
-    idleSize: { width: 205, height: 308 },
-    navigationBounds: { x: 480, y: 430, width: 700, height: 340 },
-    safeBounds: { x: 480, y: 430, width: 700, height: 340 },
-    shadowOffset: { x: 8, y: 86 }
+    coolerPosition: { x: 1080, y: 630 },
+    pushSize: { width: 180, height: 280 },
+    carrySize: { width: 172, height: 270 },
+    idleSize: { width: 165, height: 260 },
+    navigationBounds: { x: 470, y: 430, width: 750, height: 340 },
+    safeBounds: { x: 470, y: 430, width: 750, height: 340 },
+    shadowOffset: { x: 0, y: 92 }
   },
   backroom: {
-    centre: { x: 760, y: 382 },
-    opening: { x: 562, y: 190, width: 396, height: 380 },
-    sign: { x: 635, y: 157, width: 250, height: 52 }
+    centre: { x: 750, y: 390 },
+    opening: { x: 555, y: 190, width: 390, height: 390 },
+    sign: { x: 645, y: 166, width: 210, height: 46 }
   },
   produce: {
-    sign: { x: 73, y: 144, width: 370, height: 66 },
+    sign: { x: 60, y: 150, width: 350, height: 58 },
     displayCentres: [
-      { x: 175, y: 395 },
-      { x: 190, y: 550 },
-      { x: 210, y: 725 }
+      { x: 185, y: 430 },
+      { x: 210, y: 610 }
     ]
   },
   cooler: {
-    centre: { x: 1325, y: 495 },
-    displaySize: { width: 535, height: 640 },
-    sign: { x: 1110, y: 86, width: 430, height: 62 },
-    rowYs: [286, 364, 442, 520, 598, 676],
-    activeStockBounds: { x: 1230, y: 250, width: 190, height: 465 },
-    ambientLeftXs: [1110, 1140, 1170, 1200],
-    ambientRightXs: [1450, 1480, 1510, 1540],
-    restockStartX: 1262,
-    restockStepX: 26,
-    restockItemCount: 6
+    centre: { x: 1325, y: 505 },
+    displaySize: { width: 440, height: 610 },
+    sign: { x: 1140, y: 150, width: 370, height: 58 },
+    rowYs: [300, 375, 450, 525, 600, 675],
+    activeStockBounds: { x: 1215, y: 260, width: 220, height: 455 },
+    ambientLeftXs: [1169, 1211, 1253],
+    ambientRightXs: [1397, 1439, 1481],
+    restockStartX: 1249,
+    restockStepX: 38,
+    restockItemCount: 5
   },
   hud: {
-    dayPanel: { x: 20, y: 20, width: 150, height: 84 },
-    walletPanel: { x: 1340, y: 17, width: 240, height: 62 },
-    objectivePanel: { x: 1230, y: 156, width: 350, height: 112 },
-    instructionPanel: { x: 170, y: 817, width: 1260, height: 66 },
-    worldSafeArea: { x: 170, y: 80, width: 1060, height: 737 },
-    departmentSignSafeArea: { x: 1080, y: 80, width: 480, height: 72 }
+    dayPanel: { x: 20, y: 18, width: 225, height: 70 },
+    walletPanel: { x: 1360, y: 18, width: 220, height: 58 },
+    objectivePanel: { x: 520, y: 18, width: 560, height: 78 },
+    instructionPanel: { x: 250, y: 822, width: 1100, height: 58 },
+    worldSafeArea: { x: 150, y: 105, width: 1300, height: 705 },
+    departmentSignSafeArea: { x: 1110, y: 110, width: 430, height: 70 }
   },
   targeting: {
-    color: 0xf1c441,
+    color: 0xffc94f,
     singleActiveTarget: true,
-    arrowOffsetY: 25
+    arrowOffsetY: 18
   },
   lighting: {
     environment: "warm-store",
@@ -85,7 +84,7 @@ export const STARTER_MARKET_VISUAL_SPEC = {
     direction: "upper-left"
   },
   language: "en",
-  realism: "semi-realistic-to-realistic"
+  realism: "stylized-cartoon-3d"
 } as const;
 
 const intersects = (a: VisualRect, b: VisualRect): boolean => (
