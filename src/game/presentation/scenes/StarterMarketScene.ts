@@ -6,7 +6,6 @@ import {
   type RestockSceneSnapshot,
   type RestockSceneStep
 } from "../../application/RestockSceneController";
-import { RETAINED_RUNTIME_ASSET_LIST } from "../assets/RetainedAssetManifest";
 import { RestockActorView } from "../actors/RestockActorView";
 import {
   STARTER_MARKET_PRESENTATION,
@@ -38,7 +37,7 @@ export class StarterMarketScene extends Phaser.Scene {
     super(context.scene.key);
     this.controller = new RestockSceneController({
       runtime: context.runtime,
-      initialCoins: 100,
+      initialCoins: context.campaignLevel.level.tuning.initialCoins,
       sourceLocationId: "staff-backroom",
       destinationLocationId: "beverage-restock-zone"
     });
@@ -53,7 +52,7 @@ export class StarterMarketScene extends Phaser.Scene {
   }
 
   preload(): void {
-    RETAINED_RUNTIME_ASSET_LIST.forEach((asset) => this.load.image(asset.key, asset.path));
+    this.context.levelAssets.preload.forEach((asset) => this.load.image(asset.key, asset.path));
   }
 
   create(): void {
@@ -62,6 +61,7 @@ export class StarterMarketScene extends Phaser.Scene {
     document.body.dataset.gameArchitecture = context.scene.architecture;
     document.body.dataset.activeShift = context.runtime.shift.id;
     document.body.dataset.activeDay = String(context.campaignShift.dayNumber);
+    document.body.dataset.activeLevel = context.campaignLevel.level.id;
     this.cameras.main.setBackgroundColor("#171712");
 
     new StarterMarketEnvironmentView(this, context).create();
@@ -79,7 +79,7 @@ export class StarterMarketScene extends Phaser.Scene {
     this.hud = new ShiftHud(
       this,
       {
-        dayLabel: context.labels.day,
+        dayLabel: `${context.labels.day} · ${context.labels.level}`,
         timeLabel: `${context.runtime.shift.startTime} AM`,
         initialObjective: context.runtime.mission.title,
         palette: context.palette
@@ -100,6 +100,7 @@ export class StarterMarketScene extends Phaser.Scene {
       version: context.scene.architecture,
       campaign: context.campaignShift.campaignId,
       day: String(context.campaignShift.dayNumber),
+      level: context.campaignLevel.level.id,
       shift: context.runtime.shift.id,
       task: context.runtime.mission.id
     });
@@ -129,13 +130,9 @@ export class StarterMarketScene extends Phaser.Scene {
       restockStartX: context.visual.cooler.restockStartX,
       restockStepX: context.visual.cooler.restockStepX,
       restockItemCount: context.visual.cooler.restockItemCount,
-      coolerAssetKey: context.assets.fixtures.beverageCooler.key,
-      ambientProductKeys: [
-        context.assets.products.colaBottle.key,
-        context.assets.products.milkBottle.key,
-        context.assets.products.waterBottle.key
-      ],
-      restockProductKey: context.productAssets.restockProductKey
+      coolerAssetKey: context.levelAssets.fixture.key,
+      ambientProductKeys: context.levelAssets.ambientProducts.map((asset) => asset.key),
+      restockProductKey: context.levelAssets.product.key
     });
     cooler.create();
     return cooler;
@@ -143,16 +140,19 @@ export class StarterMarketScene extends Phaser.Scene {
 
   private createActors(): RestockActorView {
     const context = this.context;
+    const tuning = context.campaignLevel.level.tuning;
     return new RestockActorView(this, {
       workerStart: context.world.workerStart,
       workerDestination: context.world.workerCooler,
       caseStart: context.world.backroomBox,
       cartStart: context.world.cartStart,
       cartDestination: context.world.cartCooler,
-      workerPushAssetKey: context.assets.characters.workerPush.key,
-      workerCarryAssetKey: context.assets.characters.workerCarry.key,
-      cartAssetKey: context.assets.props.cart.key,
-      caseAssetKey: context.assets.props.colaCase.key,
+      workerPushAssetKey: context.levelAssets.workerPush.key,
+      workerCarryAssetKey: context.levelAssets.workerCarry.key,
+      cartAssetKey: context.levelAssets.cart.key,
+      caseAssetKey: context.levelAssets.case.key,
+      travelDurationMs: tuning.travelDurationMs,
+      travelLockBufferMs: tuning.travelLockBufferMs ?? 200,
       pushSize: context.visual.actor.pushSize,
       carrySize: context.visual.actor.carrySize,
       shadowOffset: context.visual.actor.shadowOffset
@@ -188,7 +188,7 @@ export class StarterMarketScene extends Phaser.Scene {
         sparkleOriginY: 490
       });
       crazyGamesPlatform.reportProgress(
-        Math.round((context.campaignShift.dayNumber / context.campaignTotalShifts) * 100)
+        Math.round((context.campaignLevel.levelNumber / context.campaignTotalLevels) * 100)
       );
       crazyGamesPlatform.gameplayStop();
     }
