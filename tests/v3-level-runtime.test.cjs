@@ -34,13 +34,16 @@ test("Main campaign resolves ordered dynamic level definitions", () => {
   assert.equal(campaign.levels[2].previousLevelId, "starter-level-002");
 });
 
-test("Each level owns mode-specific tuning instead of scene constants", () => {
+test("Each level owns navigation and mode-specific tuning instead of scene constants", () => {
   const levelOne = campaign.levels[0];
   const levelTwo = campaign.levels[1];
   const levelThree = campaign.levels[2];
 
-  assert.equal(levelOne.level.tuning.travelDurationMs, 1150);
-  assert.equal(levelTwo.level.tuning.travelDurationMs, 1000);
+  assert.equal(levelOne.level.navigation.moveSpeed, 360);
+  assert.equal(levelTwo.level.navigation.moveSpeed, 385);
+  assert.equal(levelThree.level.navigation.moveSpeed, 400);
+  assert.equal(levelOne.level.navigation.interactionRadius, 145);
+  assert.equal(levelThree.level.navigation.interactionRadius, 155);
   assert.equal(levelThree.level.tuning.scanDurationMs, 520);
   assert.equal(levelThree.level.tuning.queueAdvanceDurationMs, 360);
   assert.equal(levelOne.runtime.reward.completionCoins, 40);
@@ -65,6 +68,7 @@ test("All level assets resolve through the canonical catalogue", () => {
     levelOne.assetBindings.environmentAssetKey,
     levelThree.assetBindings.environmentAssetKey
   );
+  assert.equal(levelOne.assetBindings.workerIdleAssetKey, "worker-a-idle");
   assert.equal(levelOne.assetBindings.fixtureAssetKey, levelTwo.assetBindings.fixtureAssetKey);
   assert.notEqual(levelOne.assetBindings.productAssetKey, levelTwo.assetBindings.productAssetKey);
   assert.deepEqual(levelThree.assetBindings.customerAssetKeys, [
