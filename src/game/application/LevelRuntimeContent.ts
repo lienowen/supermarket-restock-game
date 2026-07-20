@@ -7,9 +7,17 @@ import type {
   StoreDefinition
 } from "../content/GameContent";
 import {
+  resolveCheckoutLevelRuntime,
+  type CheckoutLevelRuntimeContent
+} from "./CheckoutLevelRuntimeContent";
+import {
   resolveRestockShiftRuntime,
   type RestockShiftRuntimeContent
 } from "./ShiftRuntimeContent";
+
+export type PlayableLevelRuntimeContent =
+  | RestockShiftRuntimeContent
+  | CheckoutLevelRuntimeContent;
 
 export interface CampaignLevelRuntime {
   readonly campaignId: string;
@@ -20,7 +28,7 @@ export interface CampaignLevelRuntime {
   readonly shift: ShiftDefinition;
   readonly store: StoreDefinition;
   readonly mission: MissionDefinition;
-  readonly runtime: RestockShiftRuntimeContent;
+  readonly runtime: PlayableLevelRuntimeContent;
   readonly previousLevelId?: string;
   readonly nextLevelId?: string;
 }
@@ -62,11 +70,15 @@ export function resolveLevelCampaignRuntime(
       throw new Error(`Level ${level.id} mission ${mission.id} does not belong to shift ${shift.id}`);
     }
 
-    const runtime = resolveRestockShiftRuntime(catalogue, shift.id, {
-      missionId: mission.id,
-      slotCount: level.tuning.slotCount,
-      progressRewardRatio: level.tuning.progressRewardRatio
-    });
+    const runtime: PlayableLevelRuntimeContent = level.mode === "restock"
+      ? resolveRestockShiftRuntime(catalogue, shift.id, {
+          missionId: mission.id,
+          slotCount: level.tuning.slotCount,
+          progressRewardRatio: level.tuning.progressRewardRatio
+        })
+      : resolveCheckoutLevelRuntime(catalogue, shift.id, mission.id, {
+          serviceRewardRatio: level.tuning.serviceRewardRatio
+        });
 
     return Object.freeze({
       campaignId: campaign.id,
@@ -120,6 +132,14 @@ export function selectCampaignLevel(
 }
 
 export function levelAssetKeys(level: LevelDefinition): readonly string[] {
+  if (level.mode === "checkout") {
+    return Object.freeze([
+      level.assetBindings.environmentAssetKey,
+      level.assetBindings.workerAssetKey,
+      ...level.assetBindings.customerAssetKeys
+    ]);
+  }
+
   const bindings = level.assetBindings;
   return Object.freeze([
     bindings.environmentAssetKey,
@@ -153,16 +173,39 @@ export function validateLevelCampaignRuntime(
       errors.push(`Level ${level.id} mission does not belong to shift ${shift.id}`);
     }
 
-    if (entry.runtime.product.assetKey !== level.assetBindings.productAssetKey) {
-      errors.push(`Level ${level.id} product asset does not match product catalogue`);
-    }
-
     if (!Number.isFinite(level.tuning.initialCoins) || level.tuning.initialCoins < 0) {
       errors.push(`Level ${level.id} initial coins must be zero or greater`);
     }
 
-    if (!Number.isFinite(level.tuning.travelDurationMs) || level.tuning.travelDurationMs <= 0) {
-      errors.push(`Level ${level.id} travel duration must be positive`);
+    if (level.mode === "restock") {
+      if (!("product" in entry.runtime)) {
+        errors.push(`Level ${level.id} did not resolve a restock runtime`);
+        return;
+      }
+      if (entry.runtime.product.assetKey !== level.assetBindings.productAssetKey) {
+        errors.push(`Level ${level.id} product asset does not match product catalogue`);
+      }
+      if (!Number.isFinite(level.tuning.travelDurationMs) || level.tuning.travelDurationMs <= 0) {
+        errors.push(`Level ${level.id} travel duration must be positive`);
+      }
+      return;
+    }
+
+    if (!("customerCount" in entry.runtime)) {
+      errors.push(`Level ${level.id} did not resolve a checkout runtime`);
+      return;
+    }
+    if (level.assetBindings.customerAssetKeys.length === 0) {
+      errors.push(`Level ${level.id} requires at least one customer asset`);
+    }
+    if (!Number.isFinite(level.tuning.scanDurationMs) || level.tuning.scanDurationMs <= 0) {
+      errors.push(`Level ${level.id} scan duration must be positive`);
+    }
+    if (
+      !Number.isFinite(level.tuning.queueAdvanceDurationMs) ||
+      level.tuning.queueAdvanceDurationMs <= 0
+    ) {
+      errors.push(`Level ${level.id} queue advance duration must be positive`);
     }
   });
 
