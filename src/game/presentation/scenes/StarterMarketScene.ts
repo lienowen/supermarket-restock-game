@@ -4,6 +4,7 @@ import type {
   CampaignEconomy,
   CampaignSession
 } from "../../application/CampaignSession";
+import type { NavigationPoint } from "../../application/PlayerNavigationController";
 import { resolveLevelProgression } from "../../application/LevelProgression";
 import {
   RestockSceneController,
@@ -129,8 +130,17 @@ export class StarterMarketScene extends Phaser.Scene {
     });
   }
 
+  update(_time: number, delta: number): void {
+    this.actors?.update(delta);
+    this.syncTarget(this.controller.snapshot());
+  }
+
   isInteractionReady(): boolean {
-    return this.interactionGate.isReady();
+    return this.canInteract(this.controller.snapshot());
+  }
+
+  playerPosition(): NavigationPoint | undefined {
+    return this.actors?.position();
   }
 
   private createCooler(): BeverageCoolerView {
@@ -163,19 +173,19 @@ export class StarterMarketScene extends Phaser.Scene {
 
   private createActors(): RestockActorView {
     const context = this.context;
-    const tuning = context.campaignLevel.level.tuning;
     return new RestockActorView(this, {
       workerStart: context.world.workerStart,
-      workerDestination: context.world.workerCooler,
+      navigationBounds: context.visual.actor.navigationBounds,
+      moveSpeed: context.campaignLevel.level.navigation.moveSpeed,
       caseStart: context.world.backroomBox,
       cartStart: context.world.cartStart,
       cartDestination: context.world.cartCooler,
+      workerIdleAssetKey: context.levelAssets.workerIdle.key,
       workerPushAssetKey: context.levelAssets.workerPush.key,
       workerCarryAssetKey: context.levelAssets.workerCarry.key,
       cartAssetKey: context.levelAssets.cart.key,
       caseAssetKey: context.levelAssets.case.key,
-      travelDurationMs: tuning.travelDurationMs,
-      travelLockBufferMs: tuning.travelLockBufferMs ?? 200,
+      idleSize: context.visual.actor.idleSize,
       pushSize: context.visual.actor.pushSize,
       carrySize: context.visual.actor.carrySize,
       shadowOffset: context.visual.actor.shadowOffset
@@ -183,7 +193,8 @@ export class StarterMarketScene extends Phaser.Scene {
   }
 
   private performCurrentAction(): void {
-    if (!this.interactionGate.isReady()) return;
+    const snapshot = this.controller.snapshot();
+    if (!this.canInteract(snapshot)) return;
     const action = this.controller.actionForCurrentStep();
     if (action) this.controller.dispatch(action);
   }
@@ -191,10 +202,7 @@ export class StarterMarketScene extends Phaser.Scene {
   private sync(snapshot: RestockSceneSnapshot, copy: RestockSceneCopy): void {
     const context = this.context;
     this.hud?.update(snapshot, copy);
-    this.actors?.sync(snapshot, {
-      onTravelStart: (maxDurationMs) => this.interactionGate.lockFor(maxDurationMs),
-      onTravelComplete: () => this.interactionGate.unlock()
-    });
+    this.actors?.sync(snapshot);
     this.cooler?.sync(snapshot.stockedRows);
     this.syncTarget(snapshot);
 
@@ -258,15 +266,37 @@ export class StarterMarketScene extends Phaser.Scene {
   }
 
   private syncTarget(snapshot: RestockSceneSnapshot): void {
-    this.target?.sync(
-      this.targetResolver.resolve(snapshot),
-      this.interactionGate.isReady()
+    const enabled = this.canInteract(snapshot);
+    this.target?.sync(this.targetResolver.resolve(snapshot), enabled);
+    this.hud?.setActionEnabled(enabled);
+  }
+
+  private canInteract(snapshot: RestockSceneSnapshot): boolean {
+    const point = this.interactionPoint(snapshot);
+    return Boolean(
+      point &&
+      this.interactionGate.isReady() &&
+      this.actors?.isNear(point, this.context.campaignLevel.level.navigation.interactionRadius)
     );
+  }
+
+  private interactionPoint(snapshot: RestockSceneSnapshot): NavigationPoint | undefined {
+    const { world } = this.context;
+    switch (snapshot.step) {
+      case "collect": return world.backroomBox;
+      case "load":
+      case "push": return world.cartStart;
+      case "park":
+      case "open":
+      case "restock": return world.cartCooler;
+      case "complete": return undefined;
+    }
   }
 
   private dispose(): void {
     this.disposers.splice(0).forEach((dispose) => dispose());
     this.completionOverlay?.destroy();
+    this.actors?.destroy();
     this.target?.destroy();
     this.interactionGate.destroy();
   }
