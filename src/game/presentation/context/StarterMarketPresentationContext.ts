@@ -51,6 +51,7 @@ interface BaseLevelAssets {
 
 export interface RestockStarterMarketLevelAssets extends BaseLevelAssets {
   readonly fixture: AssetDescriptor;
+  readonly workerIdle: AssetDescriptor;
   readonly workerPush: AssetDescriptor;
   readonly workerCarry: AssetDescriptor;
   readonly cart: AssetDescriptor;
@@ -167,6 +168,7 @@ const resolveRestockLevelAssets = (
     preload: registry.resolve(levelAssetKeys(level)),
     environment: registry.require(bindings.environmentAssetKey),
     fixture: registry.require(bindings.fixtureAssetKey),
+    workerIdle: registry.require(bindings.workerIdleAssetKey),
     workerPush: registry.require(bindings.workerPushAssetKey),
     workerCarry: registry.require(bindings.workerCarryAssetKey),
     cart: registry.require(bindings.cartAssetKey),

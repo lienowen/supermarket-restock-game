@@ -144,6 +144,7 @@ export function levelAssetKeys(level: LevelDefinition): readonly string[] {
   return Object.freeze([
     bindings.environmentAssetKey,
     bindings.fixtureAssetKey,
+    bindings.workerIdleAssetKey,
     bindings.workerPushAssetKey,
     bindings.workerCarryAssetKey,
     bindings.cartAssetKey,
@@ -168,13 +169,20 @@ export function validateLevelCampaignRuntime(
     if (entry.levelNumber !== index + 1 || entry.levelLabel !== `LEVEL ${index + 1}`) {
       errors.push(`Level ${level.id} has an invalid campaign position`);
     }
-
     if (!shift.missionIds.includes(mission.id)) {
       errors.push(`Level ${level.id} mission does not belong to shift ${shift.id}`);
     }
-
     if (!Number.isFinite(level.tuning.initialCoins) || level.tuning.initialCoins < 0) {
       errors.push(`Level ${level.id} initial coins must be zero or greater`);
+    }
+    if (!Number.isFinite(level.navigation.moveSpeed) || level.navigation.moveSpeed <= 0) {
+      errors.push(`Level ${level.id} movement speed must be positive`);
+    }
+    if (
+      !Number.isFinite(level.navigation.interactionRadius) ||
+      level.navigation.interactionRadius <= 0
+    ) {
+      errors.push(`Level ${level.id} interaction radius must be positive`);
     }
 
     if (level.mode === "restock") {
@@ -184,9 +192,6 @@ export function validateLevelCampaignRuntime(
       }
       if (entry.runtime.product.assetKey !== level.assetBindings.productAssetKey) {
         errors.push(`Level ${level.id} product asset does not match product catalogue`);
-      }
-      if (!Number.isFinite(level.tuning.travelDurationMs) || level.tuning.travelDurationMs <= 0) {
-        errors.push(`Level ${level.id} travel duration must be positive`);
       }
       return;
     }

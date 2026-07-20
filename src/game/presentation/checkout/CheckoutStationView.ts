@@ -5,7 +5,6 @@ import type { PresentationPoint } from "../context/StarterMarketPresentationCont
 export interface CheckoutStationViewConfig {
   readonly checkoutPosition: PresentationPoint;
   readonly queueStart: PresentationPoint;
-  readonly workerAssetKey: string;
   readonly customerAssetKeys: readonly string[];
   readonly customerCount: number;
   readonly scanDurationMs: number;
@@ -79,13 +78,6 @@ export class CheckoutStationView {
       }
     ).setOrigin(0.5).setDepth(29);
     this.objects.push(this.registerText);
-
-    const worker = scene.add.image(
-      checkoutPosition.x - 145,
-      checkoutPosition.y - 115,
-      config.workerAssetKey
-    ).setDisplaySize(155, 232).setDepth(27).setName("checkout-worker");
-    this.objects.push(worker);
 
     for (let index = 0; index < config.customerCount; index += 1) {
       const texture = config.customerAssetKeys[index % config.customerAssetKeys.length];

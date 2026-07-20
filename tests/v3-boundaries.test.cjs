@@ -16,6 +16,21 @@ test("Legacy bootstrap is only a compatibility export", () => {
   assert.equal(source.includes("createPhaserGame as bootstrapImmersiveGame"), true);
 });
 
+test("Player navigation rules remain independent from Phaser and mission modes", () => {
+  const source = read("src/game/application/PlayerNavigationController.ts");
+  assert.equal(source.includes('from "phaser"'), false);
+  assert.equal(source.includes("RestockWorkflow"), false);
+  assert.equal(source.includes("CheckoutWorkflow"), false);
+  assert.equal(source.includes("Phaser."), false);
+});
+
+test("Restock actor presentation composes the shared navigation view", () => {
+  const source = read("src/game/presentation/actors/RestockActorView.ts");
+  assert.equal(source.includes("new PlayerNavigationView"), true);
+  assert.equal(source.includes("this.scene.tweens.add"), false);
+  assert.equal(source.includes("travelDurationMs"), false);
+});
+
 test("Restock scene remains a composition root instead of a drawing monolith", () => {
   const source = read("src/game/presentation/scenes/StarterMarketScene.ts");
   assert.equal(source.includes("this.add."), false);
@@ -27,14 +42,16 @@ test("Restock scene remains a composition root instead of a drawing monolith", (
   assert.equal(source.includes("new RestockActorView"), true);
   assert.equal(source.includes("CheckoutWorkflow"), false);
   assert.equal(source.includes("CheckoutStationView"), false);
+  assert.equal(source.includes("interactionRadius"), true);
 });
 
-test("Checkout scene composes checkout modules without importing restock rules", () => {
+test("Checkout scene composes checkout and shared navigation modules without restock rules", () => {
   const source = read("src/game/presentation/scenes/CheckoutMarketScene.ts");
   assert.equal(source.includes("this.add."), false);
   assert.equal(source.includes("this.tweens."), false);
   assert.equal(source.includes("new StarterMarketEnvironmentView"), true);
   assert.equal(source.includes("new CheckoutStationView"), true);
+  assert.equal(source.includes("new PlayerNavigationView"), true);
   assert.equal(source.includes("new CheckoutSceneController"), true);
   assert.equal(source.includes("RestockWorkflow"), false);
   assert.equal(source.includes("RestockSceneController"), false);

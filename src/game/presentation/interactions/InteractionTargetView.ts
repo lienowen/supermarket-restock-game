@@ -56,13 +56,15 @@ export class InteractionTargetView {
       .setPosition(bounds.x, bounds.y)
       .setSize(bounds.width, bounds.height)
       .setDisplaySize(bounds.width, bounds.height)
-      .disableInteractive();
-    this.arrow.setVisible(true).setPosition(
-      bounds.x,
-      bounds.y - bounds.height / 2 - Number(this.arrow.getData("arrowOffsetY"))
-    );
-
-    if (enabled) this.target.setInteractive({ useHandCursor: true });
+      .setData("actionEnabled", enabled)
+      .setStrokeStyle(4, this.target.fillColor, enabled ? 0.96 : 0.58)
+      .setInteractive({ useHandCursor: true });
+    this.arrow.setVisible(true)
+      .setAlpha(enabled ? 1 : 0.68)
+      .setPosition(
+        bounds.x,
+        bounds.y - bounds.height / 2 - Number(this.arrow.getData("arrowOffsetY"))
+      );
   }
 
   destroy(): void {

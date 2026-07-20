@@ -48,6 +48,7 @@ const report = {
     architectureV3: false,
     englishHud: false,
     initialState: false,
+    movementRequired: false,
     collectCase: false,
     loadCart: false,
     cartTravel: false,
@@ -110,7 +111,8 @@ try {
   report.regressions.englishHud = runtime.language === "en";
 
   const initial = await readSnapshot(dayOnePage);
-  recordSnapshot(report, "day1-initial", initial);
+  const initiallyReady = await interactionReady(dayOnePage);
+  recordSnapshot(report, "day1-initial", { ...initial, interactionReady: initiallyReady });
   report.regressions.initialState = matches(initial, {
     step: "collect",
     stockedRows: 0,
@@ -118,7 +120,8 @@ try {
     coins: 100,
     stars: 0
   });
-  await capture(dayOnePage, report, "01-day1-initial.png", "Day 1 cola restock task");
+  report.regressions.movementRequired = initiallyReady === false;
+  await capture(dayOnePage, report, "01-day1-initial.png", "Day 1 starts outside the first interaction radius");
 
   const dayOneComplete = await completeRestockLevel(dayOnePage, report, {
     prefix: "day1",
@@ -173,7 +176,8 @@ try {
       missionId: scene?.controller?.config?.runtime?.mission?.id,
       startTime: scene?.controller?.config?.runtime?.shift?.startTime,
       rewardCoins: scene?.controller?.config?.runtime?.reward?.totalCoins,
-      initialSnapshot: scene?.controller?.snapshot?.()
+      initialSnapshot: scene?.controller?.snapshot?.(),
+      initialPosition: scene?.playerPosition?.()
     };
   }, GAME_SCENE_KEY);
   recordSnapshot(report, "day2-runtime", dayTwoRuntime);
@@ -195,7 +199,7 @@ try {
       stars: 1
     })
   );
-  await capture(dayTwoPage, report, "06-day2-initial.png", "Day 2 inherits Day 1 economy");
+  await capture(dayTwoPage, report, "06-day2-initial.png", "Day 2 inherits economy and resets player position");
 
   const dayTwoComplete = await completeRestockLevel(dayTwoPage, report, {
     prefix: "day2"
@@ -210,17 +214,23 @@ try {
   await checkoutPage.goto(CHECKOUT_URL, { waitUntil: "networkidle", timeout: 90000 });
   await waitForGame(checkoutPage, "starter-shift-002", "2");
   const checkoutInitial = await readSnapshot(checkoutPage);
-  recordSnapshot(report, "checkout-initial", checkoutInitial);
-  await capture(checkoutPage, report, "08-checkout-initial.png", "Checkout inherits two restock rewards");
+  const checkoutInitiallyReady = await interactionReady(checkoutPage);
+  recordSnapshot(report, "checkout-initial", {
+    ...checkoutInitial,
+    interactionReady: checkoutInitiallyReady
+  });
+  await capture(checkoutPage, report, "08-checkout-initial.png", "Checkout starts away from the register");
 
+  await movePlayerByTap(checkoutPage, { x: 670, y: 680 });
+  await waitForInteractionReady(checkoutPage);
   await clickGame(checkoutPage, 520, 680);
   await waitForSnapshot(checkoutPage, { step: "serve" });
   await checkoutPage.waitForTimeout(320);
 
   for (let customer = 0; customer < 6; customer += 1) {
+    await waitForInteractionReady(checkoutPage);
     await clickGame(checkoutPage, 520, 680);
     await waitForSnapshot(checkoutPage, { customersServed: customer + 1 });
-    await checkoutPage.waitForTimeout(930);
   }
 
   const checkoutComplete = await waitForSnapshot(checkoutPage, {
@@ -248,7 +258,8 @@ try {
     checkoutMetadata.sceneKey === GAME_SCENE_KEY &&
     checkoutMetadata.levelId === "starter-level-003" &&
     checkoutMetadata.mode === "checkout" &&
-    checkoutMetadata.missionId === "assist-checkout-rush"
+    checkoutMetadata.missionId === "assist-checkout-rush" &&
+    checkoutInitiallyReady === false
   );
   report.regressions.campaignEconomyCarry = (
     matches(dayTwoComplete, { coins: 320, stars: 2 }) &&
@@ -286,23 +297,30 @@ console.log(JSON.stringify({ regressions: report.regressions, fatalError: report
 if (thrownError) throw thrownError;
 
 async function completeRestockLevel(page, auditReport, options) {
+  await movePlayerByTap(page, { x: 650, y: 510 });
+  await waitForInteractionReady(page);
   await clickGame(page, 770, 510);
   const collected = await waitForSnapshot(page, { step: "load", boxCollected: true });
   recordSnapshot(auditReport, `${options.prefix}-case-collected`, collected);
   auditReport.regressions.collectCase = true;
 
-  await clickGame(page, 860, 730);
+  await movePlayerByTap(page, { x: 690, y: 730 });
+  await waitForInteractionReady(page);
+  await clickGame(page, 825, 730);
   const loaded = await waitForSnapshot(page, { step: "push", boxLoaded: true });
   recordSnapshot(auditReport, `${options.prefix}-cart-loaded`, loaded);
   auditReport.regressions.loadCart = true;
 
-  await clickGame(page, 860, 730);
+  await waitForInteractionReady(page);
+  await clickGame(page, 825, 730);
   const travelling = await waitForSnapshot(page, { step: "park" });
-  recordSnapshot(auditReport, `${options.prefix}-cart-travelling`, travelling);
+  recordSnapshot(auditReport, `${options.prefix}-cart-push-ready`, travelling);
+
+  await movePlayerByTap(page, { x: 980, y: 725 });
   await waitForInteractionReady(page);
   auditReport.regressions.cartTravel = true;
   if (options.captureTravel) {
-    await capture(page, auditReport, options.captureTravel, "Employee and loaded cart beside the beverage cooler");
+    await capture(page, auditReport, options.captureTravel, "Player pushed the loaded cart to the cooler");
   }
 
   await clickGame(page, 1120, 725);
@@ -310,6 +328,7 @@ async function completeRestockLevel(page, auditReport, options) {
   recordSnapshot(auditReport, `${options.prefix}-cart-parked`, parked);
   auditReport.regressions.parkCart = true;
 
+  await waitForInteractionReady(page);
   await clickGame(page, 1138, 641);
   const opened = await waitForSnapshot(page, { step: "restock", boxOpened: true });
   recordSnapshot(auditReport, `${options.prefix}-case-opened`, opened);
@@ -319,6 +338,7 @@ async function completeRestockLevel(page, auditReport, options) {
   }
 
   for (let row = 0; row < 6; row += 1) {
+    await waitForInteractionReady(page);
     await clickGame(page, 1325, 286 + row * 78);
     await waitForSnapshot(page, { stockedRows: row + 1 });
     if (row === 2 && options.captureMidway) {
@@ -374,6 +394,13 @@ async function readSnapshot(page) {
   }, GAME_SCENE_KEY);
 }
 
+async function interactionReady(page) {
+  return page.evaluate((sceneKey) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+    return Boolean(scene?.isInteractionReady?.());
+  }, GAME_SCENE_KEY);
+}
+
 async function waitForSnapshot(page, expected) {
   await page.waitForFunction(({ sceneKey, target }) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
@@ -389,6 +416,16 @@ async function waitForInteractionReady(page) {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
     return Boolean(scene?.isInteractionReady?.());
   }, GAME_SCENE_KEY, { timeout: 10000 });
+}
+
+async function movePlayerByTap(page, point) {
+  await clickGame(page, point.x, point.y);
+  await page.waitForFunction(({ sceneKey, target }) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+    const position = scene?.playerPosition?.();
+    if (!position) return false;
+    return Math.hypot(position.x - target.x, position.y - target.y) <= 8;
+  }, { sceneKey: GAME_SCENE_KEY, target: point }, { timeout: 10000 });
 }
 
 function recordSnapshot(auditReport, label, snapshot) {

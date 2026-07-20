@@ -30,6 +30,7 @@
     "src/game/application/CheckoutSceneController.ts",
     "src/game/application/LevelProgression.ts",
     "src/game/application/LevelRuntimeContent.ts",
+    "src/game/application/PlayerNavigationController.ts",
     "src/game/application/ShiftRuntimeContent.ts",
     "src/game/application/RestockSceneController.ts",
     "src/game/missions/MissionTracker.ts",
