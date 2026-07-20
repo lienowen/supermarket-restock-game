@@ -1,11 +1,13 @@
 import Phaser from "phaser";
 import { crazyGamesPlatform } from "../../../platform/crazyGamesPlatform";
+import { resolveLevelProgression } from "../../application/LevelProgression";
 import {
   RestockSceneController,
   type RestockSceneCopy,
   type RestockSceneSnapshot,
   type RestockSceneStep
 } from "../../application/RestockSceneController";
+import { navigateToLevel } from "../../infrastructure/browser/BrowserLevelNavigator";
 import { RestockActorView } from "../actors/RestockActorView";
 import {
   STARTER_MARKET_PRESENTATION,
@@ -16,6 +18,7 @@ import { BeverageCoolerView } from "../fixtures/BeverageCoolerView";
 import { InteractionGate } from "../interactions/InteractionGate";
 import { InteractionTargetView } from "../interactions/InteractionTargetView";
 import { RestockTargetResolver } from "../interactions/RestockTargetResolver";
+import { LevelCompleteOverlay } from "../ui/LevelCompleteOverlay";
 import { ShiftHud } from "../ui/ShiftHud";
 import { StarterMarketEnvironmentView } from "../world/StarterMarketEnvironmentView";
 
@@ -29,6 +32,7 @@ export class StarterMarketScene extends Phaser.Scene {
   private actors?: RestockActorView;
   private cooler?: BeverageCoolerView;
   private target?: InteractionTargetView;
+  private completionOverlay?: LevelCompleteOverlay;
   private previousStep?: RestockSceneStep;
 
   constructor(
@@ -183,10 +187,33 @@ export class StarterMarketScene extends Phaser.Scene {
         hudColor: context.palette.hud,
         accentColor: context.palette.gold,
         centreX: context.world.width / 2,
-        centreY: 430,
+        centreY: 400,
         sparkleOriginX: context.world.beverageCooler.x,
         sparkleOriginY: 490
       });
+
+      const progression = resolveLevelProgression(
+        context.campaignLevel.level.id,
+        context.campaignLevel.nextLevelId
+      );
+      this.completionOverlay = new LevelCompleteOverlay(
+        this,
+        {
+          worldWidth: context.world.width,
+          worldHeight: context.world.height,
+          centreX: context.world.width / 2,
+          centreY: 505,
+          statusLabel: progression.statusLabel,
+          levelTitle: context.labels.levelTitle,
+          rewardLabel: `+${context.runtime.reward.totalStars} STAR   +${context.runtime.reward.totalCoins} COINS`,
+          actionLabel: progression.actionLabel,
+          panelColor: context.palette.hud,
+          accentColor: context.palette.gold
+        },
+        () => navigateToLevel(progression.targetLevelId)
+      );
+      this.completionOverlay.show();
+
       crazyGamesPlatform.reportProgress(
         Math.round((context.campaignLevel.levelNumber / context.campaignTotalLevels) * 100)
       );
@@ -205,6 +232,7 @@ export class StarterMarketScene extends Phaser.Scene {
 
   private dispose(): void {
     this.disposers.splice(0).forEach((dispose) => dispose());
+    this.completionOverlay?.destroy();
     this.target?.destroy();
     this.interactionGate.destroy();
   }
