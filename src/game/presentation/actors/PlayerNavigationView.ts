@@ -90,6 +90,7 @@ export class PlayerNavigationView {
     }
 
     window.addEventListener("mousedown", this.handleWindowMouseDown, true);
+    window.addEventListener("click", this.handleWindowClick, true);
     window.addEventListener("touchstart", this.handleWindowTouchStart, { capture: true, passive: true });
     this.syncVisual();
   }
@@ -189,6 +190,7 @@ export class PlayerNavigationView {
   destroy(): void {
     this.stopDestinationTween();
     window.removeEventListener("mousedown", this.handleWindowMouseDown, true);
+    window.removeEventListener("click", this.handleWindowClick, true);
     window.removeEventListener("touchstart", this.handleWindowTouchStart, true);
     this.walkArea.off("pointerdown", this.handleWalkAreaPointerDown, this);
     this.walkArea.destroy();
@@ -204,6 +206,10 @@ export class PlayerNavigationView {
     this.setDestinationFromClient(event.clientX, event.clientY);
   };
 
+  private readonly handleWindowClick = (event: MouseEvent): void => {
+    this.setDestinationFromClient(event.clientX, event.clientY);
+  };
+
   private readonly handleWindowTouchStart = (event: TouchEvent): void => {
     const touch = event.changedTouches[0];
     if (touch) this.setDestinationFromClient(touch.clientX, touch.clientY);
@@ -211,18 +217,21 @@ export class PlayerNavigationView {
 
   private setDestinationFromClient(clientX: number, clientY: number): void {
     if (!this.enabled) return;
-    const canvas = this.scene.game.canvas;
-    const rectangle = canvas.getBoundingClientRect();
-    if (rectangle.width <= 0 || rectangle.height <= 0) return;
-    if (
-      clientX < rectangle.left ||
-      clientX > rectangle.right ||
-      clientY < rectangle.top ||
-      clientY > rectangle.bottom
-    ) return;
 
-    const x = (clientX - rectangle.left) * (this.scene.scale.gameSize.width / rectangle.width);
-    const y = (clientY - rectangle.top) * (this.scene.scale.gameSize.height / rectangle.height);
+    const canvas = this.scene.game.canvas;
+    const canvasRect = canvas.getBoundingClientRect();
+    const appRect = document.getElementById("app")?.getBoundingClientRect();
+    const rectangle = this.contains(canvasRect, clientX, clientY)
+      ? canvasRect
+      : appRect && this.contains(appRect, clientX, clientY)
+        ? appRect
+        : undefined;
+    if (!rectangle || rectangle.width <= 0 || rectangle.height <= 0) return;
+
+    const logicalWidth = Number(this.scene.game.config.width) || this.scene.scale.gameSize.width;
+    const logicalHeight = Number(this.scene.game.config.height) || this.scene.scale.gameSize.height;
+    const x = (clientX - rectangle.left) * (logicalWidth / rectangle.width);
+    const y = (clientY - rectangle.top) * (logicalHeight / rectangle.height);
     const { bounds } = this.config;
     if (
       x < bounds.x ||
@@ -231,6 +240,17 @@ export class PlayerNavigationView {
       y > bounds.y + bounds.height
     ) return;
     this.setDestination({ x, y });
+  }
+
+  private contains(rectangle: DOMRect, clientX: number, clientY: number): boolean {
+    return (
+      rectangle.width > 0 &&
+      rectangle.height > 0 &&
+      clientX >= rectangle.left &&
+      clientX <= rectangle.right &&
+      clientY >= rectangle.top &&
+      clientY <= rectangle.bottom
+    );
   }
 
   private stopDestinationTween(): void {
