@@ -2,7 +2,8 @@ import Phaser from "phaser";
 import {
   PlayerNavigationController,
   type NavigationBounds,
-  type NavigationPoint
+  type NavigationPoint,
+  type PlayerNavigationSnapshot
 } from "../../application/PlayerNavigationController";
 
 export interface PlayerNavigationViewConfig {
@@ -87,9 +88,7 @@ export class PlayerNavigationView {
       }) as NavigationKeys;
     }
 
-    const canvas = scene.game.canvas;
-    canvas.addEventListener("mousedown", this.handleCanvasMouseDown, true);
-    canvas.addEventListener("touchstart", this.handleCanvasTouchStart, { capture: true, passive: true });
+    window.addEventListener("pointerdown", this.handleWindowPointerDown, true);
     this.syncVisual();
   }
 
@@ -105,8 +104,12 @@ export class PlayerNavigationView {
     if (moved) this.syncVisual();
   }
 
+  snapshot(): PlayerNavigationSnapshot {
+    return this.controller.snapshot();
+  }
+
   position(): NavigationPoint {
-    return this.controller.snapshot().position;
+    return this.snapshot().position;
   }
 
   isNear(point: NavigationPoint, radius: number): boolean {
@@ -142,11 +145,9 @@ export class PlayerNavigationView {
   }
 
   destroy(): void {
+    window.removeEventListener("pointerdown", this.handleWindowPointerDown, true);
     this.walkArea.off("pointerdown", this.handleWalkAreaPointerDown, this);
     this.walkArea.destroy();
-    const canvas = this.scene.game.canvas;
-    canvas.removeEventListener("mousedown", this.handleCanvasMouseDown, true);
-    canvas.removeEventListener("touchstart", this.handleCanvasTouchStart, true);
     this.actor.destroy();
     this.shadow.destroy();
   }
@@ -156,13 +157,8 @@ export class PlayerNavigationView {
     this.controller.setDestination({ x: pointer.x, y: pointer.y });
   }
 
-  private readonly handleCanvasMouseDown = (event: MouseEvent): void => {
+  private readonly handleWindowPointerDown = (event: PointerEvent): void => {
     this.setDestinationFromClient(event.clientX, event.clientY);
-  };
-
-  private readonly handleCanvasTouchStart = (event: TouchEvent): void => {
-    const touch = event.changedTouches[0];
-    if (touch) this.setDestinationFromClient(touch.clientX, touch.clientY);
   };
 
   private setDestinationFromClient(clientX: number, clientY: number): void {
@@ -170,6 +166,12 @@ export class PlayerNavigationView {
     const canvas = this.scene.game.canvas;
     const rectangle = canvas.getBoundingClientRect();
     if (rectangle.width <= 0 || rectangle.height <= 0) return;
+    if (
+      clientX < rectangle.left ||
+      clientX > rectangle.right ||
+      clientY < rectangle.top ||
+      clientY > rectangle.bottom
+    ) return;
 
     const x = (clientX - rectangle.left) * (this.scene.scale.gameSize.width / rectangle.width);
     const y = (clientY - rectangle.top) * (this.scene.scale.gameSize.height / rectangle.height);
@@ -195,7 +197,7 @@ export class PlayerNavigationView {
   }
 
   private syncVisual(): void {
-    const { position } = this.controller.snapshot();
+    const { position } = this.snapshot();
     const depth = (this.config.baseDepth ?? 24) + position.y / 1000;
     this.actor.setPosition(position.x, position.y).setDepth(depth);
     this.shadow.setPosition(
