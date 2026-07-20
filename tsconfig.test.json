@@ -25,6 +25,7 @@
     "src/game/content/GameContent.ts",
     "src/game/content/starterMarket.ts",
     "src/game/application/CampaignRuntime.ts",
+    "src/game/application/CampaignSession.ts",
     "src/game/application/CheckoutLevelRuntimeContent.ts",
     "src/game/application/CheckoutSceneController.ts",
     "src/game/application/LevelProgression.ts",
