@@ -125,7 +125,7 @@ export const RESTOCK_VISUAL_PRESET: RestockLevelVisualPreset = Object.freeze({
     backgroundY: 493,
     frameSize: Object.freeze({ width: 520, height: 620 }),
     displaySize: Object.freeze({ width: 900, height: 1080 }),
-    rowYs: Object.freeze([300, 375, 450, 525, 600, 675]),
+    rowYs: Object.freeze([400, 455, 510, 565, 620, 675]),
     activeStockWidth: 236,
     restockItemCount: 5
   }),
@@ -158,16 +158,16 @@ export const CHECKOUT_VISUAL_PRESET: CheckoutLevelVisualPreset = Object.freeze({
     servedExitOffset: Object.freeze({ x: 230, y: -38 })
   }),
   queue: Object.freeze({
-    customerSize: Object.freeze({ width: 250, height: 235 }),
-    columns: 1,
-    columnGap: 0,
-    rowGap: 82,
-    rowDriftX: -22,
-    alternatingYOffset: 0,
-    baseScale: 0.94,
-    rowScaleStep: 0.04,
-    columnScaleStep: 0,
-    minimumScale: 0.72
+    customerSize: Object.freeze({ width: 400, height: 380 }),
+    columns: 2,
+    columnGap: -125,
+    rowGap: 110,
+    rowDriftX: -28,
+    alternatingYOffset: -40,
+    baseScale: 1,
+    rowScaleStep: 0.08,
+    columnScaleStep: 0.05,
+    minimumScale: 0.76
   }),
   sign: Object.freeze({
     centre: Object.freeze({ x: 1280, y: 184 }),
