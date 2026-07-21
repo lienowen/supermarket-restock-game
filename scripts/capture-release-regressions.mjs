@@ -167,14 +167,14 @@ try {
 
   const checkoutPage = await openLevel(context, report, LEVELS.checkout);
   const checkoutInitial = await readSnapshot(checkoutPage);
-  await capture(checkoutPage, report, "04-level3-checkout-initial.png", "Production checkout and customer queue");
-  await movePlayerByTap(checkoutPage, { x: 670, y: 680 });
+  await capture(checkoutPage, report, "04-level3-checkout-initial.png", "Right-side checkout and left customer queue");
+  await movePlayerByTap(checkoutPage, { x: 900, y: 690 });
   await waitForInteractionReady(checkoutPage);
-  await clickGame(checkoutPage, 520, 680);
+  await clickGame(checkoutPage, 1035, 690);
   await waitForSnapshot(checkoutPage, { step: "serve" });
   for (let customer = 0; customer < 6; customer += 1) {
     await waitForInteractionReady(checkoutPage);
-    await clickGame(checkoutPage, 520, 680);
+    await clickGame(checkoutPage, 1035, 690);
     await waitForSnapshot(checkoutPage, { customersServed: customer + 1 });
   }
   const checkoutComplete = await waitForSnapshot(checkoutPage, {
