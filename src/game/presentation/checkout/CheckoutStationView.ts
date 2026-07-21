@@ -30,17 +30,17 @@ export class CheckoutStationView {
     this.createDepartmentSign();
 
     const shadow = scene.add.ellipse(
-      checkoutPosition.x + 6,
-      checkoutPosition.y + 50,
-      430,
-      62,
+      checkoutPosition.x + 10,
+      checkoutPosition.y + 28,
+      470,
+      66,
       0x1b2c26,
-      0.2
+      0.22
     ).setDepth(19);
 
     const counter = scene.add.image(
       checkoutPosition.x,
-      checkoutPosition.y + 42,
+      checkoutPosition.y + 34,
       "fixture-checkout-a"
     )
       .setOrigin(0.5, 0.96)
@@ -48,53 +48,34 @@ export class CheckoutStationView {
       .setDepth(25)
       .setName("checkout-counter-production");
 
-    const posTerminal = scene.add.image(
-      checkoutPosition.x + 92,
-      checkoutPosition.y - 92,
-      "equipment-pos-terminal"
-    )
-      .setOrigin(0.5, 0.96)
-      .setDisplaySize(304, 309)
-      .setDepth(29);
-
-    const scanner = scene.add.image(
-      checkoutPosition.x - 38,
-      checkoutPosition.y - 72,
-      "equipment-checkout-scanner"
-    )
-      .setOrigin(0.5, 0.96)
-      .setDisplaySize(240, 253)
-      .setAngle(-14)
-      .setDepth(30);
-
     this.scanBeam = scene.add.rectangle(
-      checkoutPosition.x - 28,
-      checkoutPosition.y - 58,
-      92,
-      8,
+      checkoutPosition.x - 92,
+      checkoutPosition.y - 74,
+      116,
+      9,
       0xff3c31,
       0
     ).setDepth(31);
 
     this.registerText = scene.add.text(
-      checkoutPosition.x + 93,
-      checkoutPosition.y - 150,
+      checkoutPosition.x + 75,
+      checkoutPosition.y - 154,
       "CLOSED",
       {
         fontFamily: "Arial",
-        fontSize: "15px",
+        fontSize: "16px",
         color: "#ffd95e",
         fontStyle: "bold",
         align: "center",
         backgroundColor: "#10211d",
-        padding: { x: 10, y: 6 }
+        padding: { x: 12, y: 7 }
       }
     ).setOrigin(0.5).setDepth(31);
 
     this.laneLight = scene.add.circle(
-      checkoutPosition.x - 160,
-      checkoutPosition.y - 126,
-      12,
+      checkoutPosition.x - 158,
+      checkoutPosition.y - 124,
+      13,
       0xc95b4f,
       1
     ).setStrokeStyle(3, 0xffffff, 0.45).setDepth(31);
@@ -102,8 +83,6 @@ export class CheckoutStationView {
     this.objects.push(
       shadow,
       counter,
-      posTerminal,
-      scanner,
       this.scanBeam,
       this.registerText,
       this.laneLight
@@ -115,7 +94,7 @@ export class CheckoutStationView {
       if (!assetKey) throw new Error("Checkout station requires customer assets");
       const customer = scene.add.image(position.x, position.y, assetKey)
         .setOrigin(0.5, 0.96)
-        .setDisplaySize(500, 400)
+        .setDisplaySize(420, 360)
         .setDepth(this.queueDepth(position.y))
         .setName(`checkout-customer-${index + 1}`);
       this.customers.push(customer);
@@ -148,8 +127,8 @@ export class CheckoutStationView {
     if (servedCustomer) {
       this.scene.tweens.add({
         targets: servedCustomer,
-        x: this.config.checkoutPosition.x - 40,
-        y: this.config.checkoutPosition.y - 80,
+        x: this.config.checkoutPosition.x - 140,
+        y: this.config.checkoutPosition.y - 55,
         alpha: 0,
         scaleX: 0.78,
         scaleY: 0.78,
@@ -174,13 +153,13 @@ export class CheckoutStationView {
 
   private createDepartmentSign(): void {
     const { scene } = this;
-    const x = 1285;
+    const x = 1270;
     const y = 190;
     const sign = scene.add.graphics().setDepth(4);
     sign.fillStyle(0x276f42, 1);
-    sign.fillRoundedRect(x - 210, y - 30, 420, 60, 18);
+    sign.fillRoundedRect(x - 215, y - 30, 430, 60, 18);
     sign.lineStyle(3, 0x9dd6ac, 0.5);
-    sign.strokeRoundedRect(x - 210, y - 30, 420, 60, 18);
+    sign.strokeRoundedRect(x - 215, y - 30, 430, 60, 18);
     const title = scene.add.text(x, y - 8, "CHECKOUT", {
       fontFamily: "Arial",
       fontSize: "23px",
@@ -197,7 +176,7 @@ export class CheckoutStationView {
   }
 
   private playScanBeam(): void {
-    this.scanBeam.setAlpha(0.9).setScale(0.25, 1);
+    this.scanBeam.setAlpha(0.92).setScale(0.25, 1);
     this.scene.tweens.add({
       targets: this.scanBeam,
       alpha: 0,
@@ -233,17 +212,17 @@ export class CheckoutStationView {
   }
 
   private queueScale(index: number): number {
-    const row = Math.floor(index / 2);
-    const column = index % 2;
-    return Math.max(0.66, 0.88 - row * 0.075 - column * 0.025);
+    const row = Math.floor(index / 3);
+    const column = index % 3;
+    return Math.max(0.72, 0.94 - row * 0.11 - column * 0.025);
   }
 
   private queuePosition(index: number): PresentationPoint {
-    const column = index % 2;
-    const row = Math.floor(index / 2);
+    const column = index % 3;
+    const row = Math.floor(index / 3);
     return {
-      x: this.config.queueStart.x + 178 + column * 126 + row * 26,
-      y: this.config.queueStart.y - 5 - row * 92 + column * 22
+      x: this.config.queueStart.x + column * 170 + row * 34,
+      y: this.config.queueStart.y - row * 188 + (column % 2) * 14
     };
   }
 
