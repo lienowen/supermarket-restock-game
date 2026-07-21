@@ -1,8 +1,14 @@
 import type { VisualPoint, VisualSize } from "./StarterMarketVisualSpec";
 
 export type MarketLevelMode = "restock" | "checkout" | "clean" | "find-items";
+export type MarketVisualPresetId =
+  | "restock-standard-v1"
+  | "checkout-standard-v1"
+  | "clean-standard-v1"
+  | "find-items-standard-v1";
 
 interface BaseMarketLevelVisualPreset {
+  readonly id: MarketVisualPresetId;
   readonly mode: MarketLevelMode;
   readonly actor: {
     readonly idleSize: VisualSize;
@@ -11,6 +17,7 @@ interface BaseMarketLevelVisualPreset {
 }
 
 export interface RestockLevelVisualPreset extends BaseMarketLevelVisualPreset {
+  readonly id: "restock-standard-v1";
   readonly mode: "restock";
   readonly actor: BaseMarketLevelVisualPreset["actor"] & {
     readonly pushSize: VisualSize;
@@ -32,6 +39,7 @@ export interface RestockLevelVisualPreset extends BaseMarketLevelVisualPreset {
 }
 
 export interface CheckoutLevelVisualPreset extends BaseMarketLevelVisualPreset {
+  readonly id: "checkout-standard-v1";
   readonly mode: "checkout";
   readonly workerStartOffset: VisualPoint;
   readonly station: {
@@ -63,6 +71,7 @@ export interface CheckoutLevelVisualPreset extends BaseMarketLevelVisualPreset {
 }
 
 export interface CleanLevelVisualPreset extends BaseMarketLevelVisualPreset {
+  readonly id: "clean-standard-v1";
   readonly mode: "clean";
   readonly fixture: { readonly position: VisualPoint; readonly size: VisualSize };
   readonly cartSize: VisualSize;
@@ -71,6 +80,7 @@ export interface CleanLevelVisualPreset extends BaseMarketLevelVisualPreset {
 }
 
 export interface FindItemsLevelVisualPreset extends BaseMarketLevelVisualPreset {
+  readonly id: "find-items-standard-v1";
   readonly mode: "find-items";
   readonly fixture: { readonly position: VisualPoint; readonly size: VisualSize };
   readonly basket: { readonly position: VisualPoint; readonly size: VisualSize };
@@ -89,6 +99,7 @@ const SHARED_ACTOR = Object.freeze({
 });
 
 export const RESTOCK_VISUAL_PRESET: RestockLevelVisualPreset = Object.freeze({
+  id: "restock-standard-v1",
   mode: "restock",
   actor: Object.freeze({
     ...SHARED_ACTOR,
@@ -111,6 +122,7 @@ export const RESTOCK_VISUAL_PRESET: RestockLevelVisualPreset = Object.freeze({
 });
 
 export const CHECKOUT_VISUAL_PRESET: CheckoutLevelVisualPreset = Object.freeze({
+  id: "checkout-standard-v1",
   mode: "checkout",
   actor: SHARED_ACTOR,
   workerStartOffset: Object.freeze({ x: -95, y: -105 }),
@@ -143,6 +155,7 @@ export const CHECKOUT_VISUAL_PRESET: CheckoutLevelVisualPreset = Object.freeze({
 });
 
 export const CLEAN_VISUAL_PRESET: CleanLevelVisualPreset = Object.freeze({
+  id: "clean-standard-v1",
   mode: "clean",
   actor: SHARED_ACTOR,
   fixture: Object.freeze({
@@ -155,6 +168,7 @@ export const CLEAN_VISUAL_PRESET: CleanLevelVisualPreset = Object.freeze({
 });
 
 export const FIND_ITEMS_VISUAL_PRESET: FindItemsLevelVisualPreset = Object.freeze({
+  id: "find-items-standard-v1",
   mode: "find-items",
   actor: SHARED_ACTOR,
   fixture: Object.freeze({
@@ -172,15 +186,37 @@ export const FIND_ITEMS_VISUAL_PRESET: FindItemsLevelVisualPreset = Object.freez
   })
 });
 
-export function resolveMarketLevelVisualPreset(mode: "restock"): RestockLevelVisualPreset;
-export function resolveMarketLevelVisualPreset(mode: "checkout"): CheckoutLevelVisualPreset;
-export function resolveMarketLevelVisualPreset(mode: "clean"): CleanLevelVisualPreset;
-export function resolveMarketLevelVisualPreset(mode: "find-items"): FindItemsLevelVisualPreset;
-export function resolveMarketLevelVisualPreset(mode: MarketLevelMode): MarketLevelVisualPreset {
-  switch (mode) {
-    case "restock": return RESTOCK_VISUAL_PRESET;
-    case "checkout": return CHECKOUT_VISUAL_PRESET;
-    case "clean": return CLEAN_VISUAL_PRESET;
-    case "find-items": return FIND_ITEMS_VISUAL_PRESET;
+const PRESETS: Readonly<Record<MarketVisualPresetId, MarketLevelVisualPreset>> = Object.freeze({
+  [RESTOCK_VISUAL_PRESET.id]: RESTOCK_VISUAL_PRESET,
+  [CHECKOUT_VISUAL_PRESET.id]: CHECKOUT_VISUAL_PRESET,
+  [CLEAN_VISUAL_PRESET.id]: CLEAN_VISUAL_PRESET,
+  [FIND_ITEMS_VISUAL_PRESET.id]: FIND_ITEMS_VISUAL_PRESET
+});
+
+export function resolveMarketLevelVisualPreset(
+  presetId: string,
+  expectedMode: "restock"
+): RestockLevelVisualPreset;
+export function resolveMarketLevelVisualPreset(
+  presetId: string,
+  expectedMode: "checkout"
+): CheckoutLevelVisualPreset;
+export function resolveMarketLevelVisualPreset(
+  presetId: string,
+  expectedMode: "clean"
+): CleanLevelVisualPreset;
+export function resolveMarketLevelVisualPreset(
+  presetId: string,
+  expectedMode: "find-items"
+): FindItemsLevelVisualPreset;
+export function resolveMarketLevelVisualPreset(
+  presetId: string,
+  expectedMode: MarketLevelMode
+): MarketLevelVisualPreset {
+  const preset = PRESETS[presetId as MarketVisualPresetId];
+  if (!preset) throw new Error(`Unknown market visual preset: ${presetId}`);
+  if (preset.mode !== expectedMode) {
+    throw new Error(`Visual preset ${presetId} belongs to ${preset.mode}, not ${expectedMode}`);
   }
+  return preset;
 }
