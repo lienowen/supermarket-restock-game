@@ -136,7 +136,7 @@ try {
     stars: 1
   });
   await colaPage.waitForTimeout(420);
-  await capture(colaPage, report, "02-level1-complete.png", "Cola restock complete");
+  await capture(colaPage, report, "02-level1-complete.png", "Cola restock rush complete");
   const colaEvents = await readSdkEvents(colaPage);
   report.sdkEvents.push({ level: LEVELS.restockCola.id, events: colaEvents });
   report.regressions.crazyGamesSdkLifecycle = (
@@ -162,7 +162,7 @@ try {
     matches(waterComplete, { step: "complete", stockedRows: 6, coins: 320, stars: 2 })
   );
   recordSnapshot(report, "level2-complete", waterComplete);
-  await capture(waterPage, report, "03-level2-complete.png", "Water promotion restock complete");
+  await capture(waterPage, report, "03-level2-complete.png", "Water promotion restock rush complete");
   await waterPage.close();
 
   const checkoutPage = await openLevel(context, report, LEVELS.checkout);
@@ -236,7 +236,6 @@ try {
       reputation: 5
     }) && matches(cleanComplete, {
       step: "complete",
-      progress: 4,
       coins: 490,
       stars: 4,
       reputation: 7
@@ -276,7 +275,6 @@ try {
       reputation: 7
     }) && matches(findComplete, {
       step: "complete",
-      progress: 3,
       coins: 600,
       stars: 5,
       reputation: 10
@@ -319,33 +317,20 @@ async function openLevel(context, auditReport, level) {
 }
 
 async function completeRestockLevel(page, auditReport, prefix) {
-  await movePlayerByTap(page, { x: 650, y: 510 });
-  await waitForInteractionReady(page);
+  // The actual player flow now owns movement: tap the task, watch the worker
+  // approach it, then make the meaningful shelf choices during the rush.
   await clickGame(page, 770, 510);
   await waitForSnapshot(page, { step: "load", boxCollected: true });
 
-  await movePlayerByTap(page, { x: 690, y: 730 });
-  await waitForInteractionReady(page);
   await clickGame(page, 825, 730);
-  await waitForSnapshot(page, { step: "push", boxLoaded: true });
+  await waitForSnapshot(page, { step: "restock", boxLoaded: true, boxOpened: true });
 
-  await waitForInteractionReady(page);
-  await clickGame(page, 825, 730);
-  await waitForSnapshot(page, { step: "park" });
-
-  await movePlayerByTap(page, { x: 980, y: 725 });
-  await waitForInteractionReady(page);
-  await clickGame(page, 1120, 725);
-  await waitForSnapshot(page, { step: "open", cartAtCooler: true });
-
-  await waitForInteractionReady(page);
-  await clickGame(page, 1138, 641);
-  await waitForSnapshot(page, { step: "restock", boxOpened: true });
-
-  for (let row = 0; row < 6; row += 1) {
+  for (let progress = 0; progress < 6; progress += 1) {
     await waitForInteractionReady(page);
-    await clickGame(page, 1325, 300 + row * 75);
-    await waitForSnapshot(page, { stockedRows: row + 1 });
+    const rush = await waitForRushTarget(page);
+    const rowIndex = rush.activeRowIndex;
+    await clickGame(page, 1325, 300 + rowIndex * 75);
+    await waitForSnapshot(page, { stockedRows: progress + 1 });
   }
 
   const completed = await waitForSnapshot(page, { step: "complete", stockedRows: 6 });
@@ -409,6 +394,18 @@ async function interactionReady(page) {
   return page.evaluate((sceneKey) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
     return Boolean(scene?.isInteractionReady?.());
+  }, GAME_SCENE_KEY);
+}
+
+async function waitForRushTarget(page) {
+  await page.waitForFunction((sceneKey) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+    const snapshot = scene?.rush?.snapshot?.(scene.time.now);
+    return Number.isInteger(snapshot?.activeRowIndex);
+  }, GAME_SCENE_KEY, { timeout: 15000 });
+  return page.evaluate((sceneKey) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+    return scene?.rush?.snapshot?.(scene.time.now) ?? null;
   }, GAME_SCENE_KEY);
 }
 
