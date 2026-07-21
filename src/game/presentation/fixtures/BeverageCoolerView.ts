@@ -41,6 +41,7 @@ export class BeverageCoolerView {
   create(): void {
     const { scene, config } = this;
     const productionBaseY = config.baseY + config.frameHeight / 2;
+    const rowHeight = this.rowHeight();
 
     scene.add.ellipse(
       config.centreX + 12,
@@ -64,7 +65,7 @@ export class BeverageCoolerView {
         config.centreX,
         y,
         config.frameWidth * 0.52,
-        65,
+        rowHeight,
         0x102126,
         0.8
       ).setStrokeStyle(2, 0x5c7479, 0.58).setDepth(3);
@@ -72,7 +73,7 @@ export class BeverageCoolerView {
 
       const shelfLine = scene.add.rectangle(
         config.centreX,
-        y + 31,
+        y + rowHeight / 2 - 2,
         config.frameWidth * 0.52,
         4,
         0x9eafb1,
@@ -80,26 +81,28 @@ export class BeverageCoolerView {
       ).setDepth(4);
       shelfLine.setName(`beverage-cooler-empty-shelf-${rowIndex}`);
 
-      const plate = this.createRowPlate(y);
+      const plate = this.createRowPlate(y, rowHeight);
       this.rowPlates.push(plate);
-      this.rows.push(this.createRestockRow(y, rowIndex));
+      this.rows.push(this.createRestockRow(y, rowIndex, rowHeight));
     });
 
+    const firstRow = config.rowYs[0];
+    const lastRow = config.rowYs[config.rowYs.length - 1];
     const glass = scene.add.graphics().setDepth(7);
     glass.fillStyle(0xcfeeff, 0.045);
     glass.fillRoundedRect(
       config.centreX - config.frameWidth * 0.25,
-      config.rowYs[0] - 42,
+      firstRow - rowHeight / 2 - 5,
       config.frameWidth * 0.5,
-      config.rowYs[config.rowYs.length - 1] - config.rowYs[0] + 84,
+      lastRow - firstRow + rowHeight + 10,
       14
     );
     glass.lineStyle(3, 0xffffff, 0.08);
     glass.lineBetween(
       config.centreX - config.frameWidth * 0.19,
-      config.rowYs[0] - 30,
+      firstRow - rowHeight / 2,
       config.centreX - config.frameWidth * 0.08,
-      config.rowYs[config.rowYs.length - 1] + 30
+      lastRow + rowHeight / 2
     );
   }
 
@@ -144,40 +147,47 @@ export class BeverageCoolerView {
       const productKey = config.ambientProductKeys[index % config.ambientProductKeys.length];
       const row = index % 3;
       const sideOffset = index < config.ambientPositions.length / 2 ? -1 : 1;
-      scene.add.image(x, 345 + row * 128, productKey)
+      scene.add.image(x, 420 + row * 105, productKey)
         .setOrigin(0.5, 0.96)
-        .setDisplaySize(76, 102)
-        .setAlpha(0.78)
+        .setDisplaySize(66, 88)
+        .setAlpha(0.74)
         .setDepth(2)
         .setAngle(sideOffset * (2 + row));
     });
   }
 
-  private createRowPlate(y: number): Phaser.GameObjects.Graphics {
+  private createRowPlate(y: number, rowHeight: number): Phaser.GameObjects.Graphics {
     const { scene, config } = this;
     const width = config.frameWidth * 0.54;
+    const height = rowHeight + 8;
     const plate = scene.add.graphics().setDepth(6).setAlpha(0);
     plate.fillStyle(0xffd95e, 0.12);
-    plate.fillRoundedRect(config.centreX - width / 2, y - 37, width, 74, 11);
+    plate.fillRoundedRect(config.centreX - width / 2, y - height / 2, width, height, 11);
     plate.lineStyle(4, 0xffd95e, 0.92);
-    plate.strokeRoundedRect(config.centreX - width / 2, y - 37, width, 74, 11);
+    plate.strokeRoundedRect(config.centreX - width / 2, y - height / 2, width, height, 11);
     return plate;
   }
 
-  private createRestockRow(y: number, rowIndex: number): Phaser.GameObjects.Container {
+  private createRestockRow(
+    y: number,
+    rowIndex: number,
+    rowHeight: number
+  ): Phaser.GameObjects.Container {
     const count = Math.min(5, Math.max(4, this.config.restockItemCount));
-    const spacing = 46;
+    const spacing = 42;
     const startX = this.config.centreX - ((count - 1) * spacing) / 2;
+    const bottleHeight = Phaser.Math.Clamp(rowHeight * 1.55, 76, 92);
+    const bottleWidth = bottleHeight * 0.72;
     const objects: Phaser.GameObjects.GameObject[] = [];
 
     for (let index = 0; index < count; index += 1) {
       const bottle = this.scene.add.image(
         startX + index * spacing,
-        y + 29,
+        y + rowHeight / 2 - 2,
         this.config.restockProductKey
       )
         .setOrigin(0.5, 0.96)
-        .setDisplaySize(92, 118)
+        .setDisplaySize(bottleWidth, bottleHeight)
         .setDepth(5);
       objects.push(bottle);
     }
@@ -186,6 +196,15 @@ export class BeverageCoolerView {
       .setAlpha(0.09)
       .setDepth(5)
       .setName(`beverage-cooler-row-${rowIndex}`);
+  }
+
+  private rowHeight(): number {
+    const spacings = this.config.rowYs
+      .slice(1)
+      .map((y, index) => y - this.config.rowYs[index])
+      .filter((spacing) => spacing > 0);
+    const minimumSpacing = spacings.length > 0 ? Math.min(...spacings) : 60;
+    return Phaser.Math.Clamp(minimumSpacing * 0.82, 44, 62);
   }
 
   private playRowSparkles(y: number): void {
