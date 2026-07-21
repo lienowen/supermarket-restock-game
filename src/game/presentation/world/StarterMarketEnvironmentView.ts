@@ -86,28 +86,23 @@ export class StarterMarketEnvironmentView {
     scene.add.rectangle(x, 432, 382, 394, 0xf3eadc, 1).setDepth(-8);
     scene.add.rectangle(x, 438, 356, 374, 0x2a2b25, 0.14).setDepth(-7);
 
-    const rack = scene.add.image(x, 560, "fixture-backroom-rack-a")
+    scene.add.image(x, 590, "fixture-backroom-rack-a")
       .setOrigin(0.5, 0.96)
-      .setDisplaySize(360, 360)
+      .setDisplaySize(860, 760)
       .setDepth(-4)
       .setName("production-backroom-rack");
-    rack.setTint(0xfff9ee);
 
     this.createDepartmentSign(x, 190, 230, context.labels.backroom, undefined);
-
-    scene.add.rectangle(x - 112, 300, 130, 9, 0xffd36a, 0.14).setDepth(-3);
-    scene.add.rectangle(x + 88, 300, 86, 9, 0xffd36a, 0.1).setDepth(-3);
   }
 
   private createProduceDepartment(): void {
     const { scene, context } = this;
 
-    const produce = scene.add.image(255, 708, "fixture-produce-display-a")
+    scene.add.image(255, 735, "fixture-produce-display-a")
       .setOrigin(0.5, 0.96)
-      .setDisplaySize(510, 510)
+      .setDisplaySize(1000, 760)
       .setDepth(1)
       .setName("production-produce-display");
-    produce.setTint(0xfffbf4);
 
     this.createDepartmentSign(
       242,
