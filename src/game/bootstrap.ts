@@ -6,6 +6,7 @@ import { validateCampaignRuntime } from "./application/CampaignRuntime";
 import { validateGameplayRuntime } from "./application/GameplayModeRegistry";
 import { validateLevelCampaignRuntime } from "./application/LevelRuntimeContent";
 import { PROJECT_CONFIG } from "./config/project";
+import { validateLevelDefinitions } from "./content/validation/LevelConfigValidator";
 import { validateProductionAssetPlan } from "./presentation/assets/ProductionAssetPlan";
 import { validateProductAssetMappings } from "./presentation/assets/ProductAssetResolver";
 import {
@@ -36,6 +37,7 @@ function validateProjectContracts(): void {
   const errors = [
     ...validateAssetCatalogue(STARTER_ASSET_CATALOGUE),
     ...STARTER_RUNTIME_ASSET_REGISTRY.validateKeys(configuredAssetKeys),
+    ...validateLevelDefinitions(MAIN_LEVEL_CAMPAIGN_RUNTIME.levels.map((entry) => entry.level)),
     ...validateWorldLayout(STARTER_MARKET_LAYOUT),
     ...validateStarterMarketVisualSpec().errors,
     ...validateProductionAssetPlan(),
