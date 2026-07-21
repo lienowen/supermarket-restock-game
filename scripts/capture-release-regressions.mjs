@@ -317,8 +317,6 @@ async function openLevel(context, auditReport, level) {
 }
 
 async function completeRestockLevel(page, auditReport, prefix) {
-  // Use the persistent task button for the setup tutorial. It proves the
-  // player can always recover even when the world target is partially hidden.
   await clickGame(page, 1228, 850);
   await waitForSnapshot(page, { step: "load", boxCollected: true });
 
@@ -327,10 +325,24 @@ async function completeRestockLevel(page, auditReport, prefix) {
 
   for (let progress = 0; progress < 6; progress += 1) {
     await waitForInteractionReady(page);
-    const rush = await waitForRushTarget(page);
-    const rowIndex = rush.activeRowIndex;
+    const beforeRush = await waitForRushTarget(page);
+    const rowIndex = beforeRush.activeRowIndex;
     await clickGame(page, 1325, 400 + rowIndex * 55);
-    await waitForSnapshot(page, { stockedRows: progress + 1 });
+    await page.waitForTimeout(240);
+    const afterController = await readSnapshot(page);
+    const afterRush = await readRushState(page);
+    recordSnapshot(auditReport, `${prefix}-rush-click-${progress + 1}`, {
+      selectedRowIndex: rowIndex,
+      beforeRush,
+      afterRush,
+      controller: afterController
+    });
+    if (afterController?.stockedRows !== progress + 1) {
+      throw new Error(
+        `Rush click ${progress + 1} did not stock a row: ` +
+        JSON.stringify({ rowIndex, beforeRush, afterRush, afterController })
+      );
+    }
   }
 
   const completed = await waitForSnapshot(page, { step: "complete", stockedRows: 6 });
@@ -386,6 +398,13 @@ async function readSnapshot(page) {
   }, GAME_SCENE_KEY);
 }
 
+async function readRushState(page) {
+  return page.evaluate((sceneKey) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+    return scene?.rush?.snapshot?.(scene.time.now) ?? null;
+  }, GAME_SCENE_KEY);
+}
+
 async function readSdkEvents(page) {
   return page.evaluate(() => [...(window.__CRAZY_GAMES_TEST_EVENTS__ ?? [])]);
 }
@@ -403,10 +422,7 @@ async function waitForRushTarget(page) {
     const snapshot = scene?.rush?.snapshot?.(scene.time.now);
     return Number.isInteger(snapshot?.activeRowIndex);
   }, GAME_SCENE_KEY, { timeout: 15000 });
-  return page.evaluate((sceneKey) => {
-    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
-    return scene?.rush?.snapshot?.(scene.time.now) ?? null;
-  }, GAME_SCENE_KEY);
+  return readRushState(page);
 }
 
 async function waitForSnapshot(page, expected) {
