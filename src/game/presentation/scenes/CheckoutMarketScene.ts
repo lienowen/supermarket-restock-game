@@ -19,6 +19,8 @@ import { InteractionTargetView } from "../interactions/InteractionTargetView";
 import { CheckoutTargetResolver } from "../interactions/CheckoutTargetResolver";
 import { LevelCompleteOverlay } from "../ui/LevelCompleteOverlay";
 import { ShiftHud } from "../ui/ShiftHud";
+import { resolveLevelVisualPreset } from "../visual/LevelVisualPresetResolver";
+import type { CheckoutLevelVisualPreset } from "../visual/MarketLevelVisualPreset";
 import { StarterMarketEnvironmentView } from "../world/StarterMarketEnvironmentView";
 import type { SceneCampaignSessionContext } from "./StarterMarketScene";
 
@@ -27,6 +29,7 @@ export class CheckoutMarketScene extends Phaser.Scene {
 
   private readonly interactionGate = new InteractionGate();
   private readonly targetResolver: CheckoutTargetResolver;
+  private readonly visualPreset: CheckoutLevelVisualPreset;
   private readonly disposers: Array<() => void> = [];
   private hud?: ShiftHud;
   private station?: CheckoutStationView;
@@ -40,6 +43,7 @@ export class CheckoutMarketScene extends Phaser.Scene {
     private readonly campaignSession?: SceneCampaignSessionContext
   ) {
     super(context.scene.key);
+    this.visualPreset = resolveLevelVisualPreset(context.campaignLevel.level);
     const initialEconomy = campaignSession?.initialEconomy ?? {
       coins: context.campaignLevel.level.tuning.initialCoins,
       stars: 0,
@@ -60,6 +64,7 @@ export class CheckoutMarketScene extends Phaser.Scene {
 
   create(): void {
     const context = this.context;
+    const visual = this.visualPreset;
     document.body.dataset.gameScene = context.scene.datasetName;
     document.body.dataset.gameArchitecture = context.scene.architecture;
     document.body.dataset.activeShift = context.runtime.shift.id;
@@ -77,18 +82,19 @@ export class CheckoutMarketScene extends Phaser.Scene {
       scanDurationMs: context.campaignLevel.level.tuning.scanDurationMs,
       queueAdvanceDurationMs: context.campaignLevel.level.tuning.queueAdvanceDurationMs,
       panelColor: context.palette.hud,
-      accentColor: context.palette.gold
+      accentColor: context.palette.gold,
+      visual
     });
     this.player = new PlayerNavigationView(this, {
       start: {
-        x: context.world.checkout.x + 20,
-        y: context.world.checkout.y - 180
+        x: context.world.checkout.x + visual.workerStartOffset.x,
+        y: context.world.checkout.y + visual.workerStartOffset.y
       },
       bounds: context.visual.actor.navigationBounds,
       speed: context.campaignLevel.level.navigation.moveSpeed,
       assetKey: context.levelAssets.worker.key,
-      displaySize: context.visual.actor.idleSize,
-      shadowOffset: context.visual.actor.shadowOffset,
+      displaySize: visual.actor.idleSize,
+      shadowOffset: visual.actor.shadowOffset,
       name: "checkout-worker",
       baseDepth: 24
     });
