@@ -48,9 +48,15 @@ interface GameplayModeAdapter {
   readonly validate: GameplayRuntimeValidator;
 }
 
+const defineAdapter = (
+  resolve: GameplayRuntimeResolver,
+  validate: GameplayRuntimeValidator
+): GameplayModeAdapter => Object.freeze({ resolve, validate });
+
 const GAMEPLAY_MODE_ADAPTERS: Readonly<Record<LevelDefinition["mode"], GameplayModeAdapter>> = Object.freeze({
-  restock: Object.freeze({
-    resolve: ({ catalogue, level, shift, mission }) => {
+  restock: defineAdapter(
+    (context: GameplayRuntimeResolverContext) => {
+      const { catalogue, level, shift, mission } = context;
       if (level.mode !== "restock") throw new Error("Restock resolver received a different mode");
       return resolveRestockShiftRuntime(catalogue, shift.id, {
         missionId: mission.id,
@@ -58,27 +64,29 @@ const GAMEPLAY_MODE_ADAPTERS: Readonly<Record<LevelDefinition["mode"], GameplayM
         progressRewardRatio: level.tuning.progressRewardRatio
       });
     },
-    validate: (runtime) => (
+    (runtime: PlayableLevelRuntimeContent) => (
       "product" in runtime
         ? validateRestockShiftRuntime(runtime)
         : Object.freeze(["Restock mode resolved the wrong runtime type"])
     )
-  }),
-  checkout: Object.freeze({
-    resolve: ({ catalogue, level, shift, mission }) => {
+  ),
+  checkout: defineAdapter(
+    (context: GameplayRuntimeResolverContext) => {
+      const { catalogue, level, shift, mission } = context;
       if (level.mode !== "checkout") throw new Error("Checkout resolver received a different mode");
       return resolveCheckoutLevelRuntime(catalogue, shift.id, mission.id, {
         serviceRewardRatio: level.tuning.serviceRewardRatio
       });
     },
-    validate: (runtime) => (
+    (runtime: PlayableLevelRuntimeContent) => (
       "customerCount" in runtime
         ? validateCheckoutLevelRuntime(runtime)
         : Object.freeze(["Checkout mode resolved the wrong runtime type"])
     )
-  }),
-  clean: Object.freeze({
-    resolve: ({ catalogue, level, shift, mission }) => {
+  ),
+  clean: defineAdapter(
+    (context: GameplayRuntimeResolverContext) => {
+      const { catalogue, level, shift, mission } = context;
       if (level.mode !== "clean") throw new Error("Clean resolver received a different mode");
       return resolveCleanLevelRuntime(catalogue, shift.id, mission.id, {
         cleanDurationMs: level.tuning.cleanDurationMs,
@@ -86,14 +94,15 @@ const GAMEPLAY_MODE_ADAPTERS: Readonly<Record<LevelDefinition["mode"], GameplayM
         spotPositions: level.tuning.spotPositions
       });
     },
-    validate: (runtime) => (
+    (runtime: PlayableLevelRuntimeContent) => (
       "mode" in runtime && runtime.mode === "clean"
         ? validateUtilityLevelRuntime(runtime)
         : Object.freeze(["Clean mode resolved the wrong runtime type"])
     )
-  }),
-  "find-items": Object.freeze({
-    resolve: ({ catalogue, level, shift, mission }) => {
+  ),
+  "find-items": defineAdapter(
+    (context: GameplayRuntimeResolverContext) => {
+      const { catalogue, level, shift, mission } = context;
       if (level.mode !== "find-items") throw new Error("Find-items resolver received a different mode");
       return resolveFindItemsLevelRuntime(catalogue, shift.id, mission.id, {
         itemTargets: level.tuning.itemTargets,
@@ -101,12 +110,12 @@ const GAMEPLAY_MODE_ADAPTERS: Readonly<Record<LevelDefinition["mode"], GameplayM
         mistakePenaltySeconds: level.tuning.mistakePenaltySeconds
       });
     },
-    validate: (runtime) => (
+    (runtime: PlayableLevelRuntimeContent) => (
       "mode" in runtime && runtime.mode === "find-items"
         ? validateUtilityLevelRuntime(runtime)
         : Object.freeze(["Find-items mode resolved the wrong runtime type"])
     )
-  })
+  )
 });
 
 export function resolveGameplayRuntime(
@@ -126,7 +135,7 @@ export function validateGameplayRuntime(
 ): readonly string[] {
   const adapter = GAMEPLAY_MODE_ADAPTERS[level.mode];
   if (!adapter) return Object.freeze([`No gameplay runtime validator registered for ${level.mode}`]);
-  return adapter.validate(runtime).map((error) => `Level ${level.id}: ${error}`);
+  return Object.freeze(adapter.validate(runtime).map((error) => `Level ${level.id}: ${error}`));
 }
 
 export function registeredGameplayModes(): readonly LevelDefinition["mode"][] {
