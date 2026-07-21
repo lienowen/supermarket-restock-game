@@ -1,6 +1,6 @@
 import { resolveGlobalAssetPack } from "../../assets/GlobalAssetPackRegistry";
 import { registeredGameplayModes } from "../../application/GameplayModeRegistry";
-import { resolveLevelVisualPreset } from "../../presentation/visual/LevelVisualPresetRegistry";
+import { resolveLevelVisualPreset } from "../../presentation/visual/LevelVisualPresetResolver";
 import { EMPTY_RULE_COMPONENT_REGISTRY } from "../../rules/RuleComponentRegistry";
 import {
   CURRENT_LEVEL_SCHEMA_VERSION,
