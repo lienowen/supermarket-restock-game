@@ -1,4 +1,13 @@
-import type { AssetDescriptor } from "../../assets/AssetDescriptor";
+import {
+  resolveCheckoutLevelAssets,
+  resolveCleanLevelAssets,
+  resolveFindItemsLevelAssets,
+  resolveRestockLevelAssets,
+  type ResolvedCheckoutLevelAssets,
+  type ResolvedCleanLevelAssets,
+  type ResolvedFindItemsLevelAssets,
+  type ResolvedRestockLevelAssets
+} from "../../assets/LevelAssetResolver";
 import {
   STARTER_RUNTIME_ASSET_REGISTRY,
   type RuntimeAssetRegistry
@@ -10,7 +19,6 @@ import {
 } from "../../application/CampaignRuntime";
 import type { CheckoutLevelRuntimeContent } from "../../application/CheckoutLevelRuntimeContent";
 import {
-  levelAssetKeys,
   resolveLevelCampaignRuntime,
   selectCampaignLevel,
   type CampaignLevelRuntime
@@ -50,41 +58,10 @@ export interface StarterMarketWorldPresentation {
   readonly customerQueueStart: PresentationPoint;
 }
 
-interface BaseLevelAssets {
-  readonly preload: readonly AssetDescriptor[];
-  readonly environment: AssetDescriptor;
-}
-
-export interface RestockStarterMarketLevelAssets extends BaseLevelAssets {
-  readonly fixture: AssetDescriptor;
-  readonly workerIdle: AssetDescriptor;
-  readonly workerPush: AssetDescriptor;
-  readonly workerCarry: AssetDescriptor;
-  readonly cart: AssetDescriptor;
-  readonly case: AssetDescriptor;
-  readonly product: AssetDescriptor;
-  readonly ambientProducts: readonly AssetDescriptor[];
-}
-
-export interface CheckoutStarterMarketLevelAssets extends BaseLevelAssets {
-  readonly worker: AssetDescriptor;
-  readonly customers: readonly AssetDescriptor[];
-}
-
-export interface CleanStarterMarketLevelAssets extends BaseLevelAssets {
-  readonly worker: AssetDescriptor;
-  readonly workerMop: AssetDescriptor;
-  readonly cleaningFixture: AssetDescriptor;
-  readonly cleaningCart: AssetDescriptor;
-  readonly wetFloorSign: AssetDescriptor;
-}
-
-export interface FindItemsStarterMarketLevelAssets extends BaseLevelAssets {
-  readonly worker: AssetDescriptor;
-  readonly workerThinking: AssetDescriptor;
-  readonly fixture: AssetDescriptor;
-  readonly items: readonly AssetDescriptor[];
-}
+export type RestockStarterMarketLevelAssets = ResolvedRestockLevelAssets;
+export type CheckoutStarterMarketLevelAssets = ResolvedCheckoutLevelAssets;
+export type CleanStarterMarketLevelAssets = ResolvedCleanLevelAssets;
+export type FindItemsStarterMarketLevelAssets = ResolvedFindItemsLevelAssets;
 
 interface BaseStarterMarketPresentationContext {
   readonly campaignShift: CampaignShiftRuntime;
@@ -198,77 +175,6 @@ export const MAIN_LEVEL_CAMPAIGN_RUNTIME = resolveLevelCampaignRuntime(
   "main-campaign"
 );
 
-const preloadFor = (level: CampaignLevelRuntime["level"]): readonly AssetDescriptor[] => (
-  STARTER_RUNTIME_ASSET_REGISTRY.resolve(levelAssetKeys(level))
-);
-
-const resolveRestockLevelAssets = (
-  level: RestockLevelDefinition
-): RestockStarterMarketLevelAssets => {
-  const bindings = level.assetBindings;
-  const registry = STARTER_RUNTIME_ASSET_REGISTRY;
-  return Object.freeze({
-    preload: preloadFor(level),
-    environment: registry.require(bindings.environmentAssetKey),
-    fixture: registry.require(bindings.fixtureAssetKey),
-    workerIdle: registry.require(bindings.workerIdleAssetKey),
-    workerPush: registry.require(bindings.workerPushAssetKey),
-    workerCarry: registry.require(bindings.workerCarryAssetKey),
-    cart: registry.require(bindings.cartAssetKey),
-    case: registry.require(bindings.caseAssetKey),
-    product: registry.require(bindings.productAssetKey),
-    ambientProducts: Object.freeze(
-      bindings.ambientProductAssetKeys.map((assetKey) => registry.require(assetKey))
-    )
-  });
-};
-
-const resolveCheckoutLevelAssets = (
-  level: CheckoutLevelDefinition
-): CheckoutStarterMarketLevelAssets => {
-  const bindings = level.assetBindings;
-  const registry = STARTER_RUNTIME_ASSET_REGISTRY;
-  return Object.freeze({
-    preload: preloadFor(level),
-    environment: registry.require(bindings.environmentAssetKey),
-    worker: registry.require(bindings.workerAssetKey),
-    customers: Object.freeze(
-      bindings.customerAssetKeys.map((assetKey) => registry.require(assetKey))
-    )
-  });
-};
-
-const resolveCleanLevelAssets = (
-  level: CleanLevelDefinition
-): CleanStarterMarketLevelAssets => {
-  const bindings = level.assetBindings;
-  const registry = STARTER_RUNTIME_ASSET_REGISTRY;
-  return Object.freeze({
-    preload: preloadFor(level),
-    environment: registry.require(bindings.environmentAssetKey),
-    worker: registry.require(bindings.workerAssetKey),
-    workerMop: registry.require(bindings.workerMopAssetKey),
-    cleaningFixture: registry.require(bindings.cleaningFixtureAssetKey),
-    cleaningCart: registry.require(bindings.cleaningCartAssetKey),
-    wetFloorSign: registry.require(bindings.wetFloorSignAssetKey)
-  });
-};
-
-const resolveFindItemsLevelAssets = (
-  level: FindItemsLevelDefinition
-): FindItemsStarterMarketLevelAssets => {
-  const bindings = level.assetBindings;
-  const registry = STARTER_RUNTIME_ASSET_REGISTRY;
-  return Object.freeze({
-    preload: preloadFor(level),
-    environment: registry.require(bindings.environmentAssetKey),
-    worker: registry.require(bindings.workerAssetKey),
-    workerThinking: registry.require(bindings.workerThinkingAssetKey),
-    fixture: registry.require(bindings.fixtureAssetKey),
-    items: Object.freeze(bindings.itemAssetKeys.map((assetKey) => registry.require(assetKey)))
-  });
-};
-
 const commonContext = (
   campaignLevel: CampaignLevelRuntime,
   campaignShift: CampaignShiftRuntime,
@@ -336,53 +242,80 @@ export function createStarterMarketPresentationContext(
       if (!("product" in campaignLevel.runtime)) {
         throw new Error(`Restock level ${campaignLevel.level.id} resolved the wrong runtime type`);
       }
-      const levelAssets = resolveRestockLevelAssets(campaignLevel.level);
+      const level = campaignLevel.level;
+      const runtime = campaignLevel.runtime;
+      const levelAssets = resolveRestockLevelAssets(
+        STARTER_RUNTIME_ASSET_REGISTRY,
+        level,
+        runtime
+      );
       return Object.freeze({
         ...commonContext(
           campaignLevel,
           campaignShift,
-          `${campaignLevel.runtime.product.name.toUpperCase()} SECTION READY`
+          `${runtime.product.name.toUpperCase()} SECTION READY`
         ),
         mode: "restock" as const,
         campaignLevel: campaignLevel as RestockStarterMarketPresentationContext["campaignLevel"],
-        runtime: campaignLevel.runtime,
+        runtime,
         levelAssets,
         productAssets: Object.freeze({ restockProductKey: levelAssets.product.key })
       });
     }
-    case "checkout":
+    case "checkout": {
       if (!("customerCount" in campaignLevel.runtime)) {
         throw new Error(`Checkout level ${campaignLevel.level.id} resolved the wrong runtime type`);
       }
+      const level = campaignLevel.level;
+      const runtime = campaignLevel.runtime;
       return Object.freeze({
         ...commonContext(campaignLevel, campaignShift, "CHECKOUT RUSH CLEARED"),
         mode: "checkout" as const,
         campaignLevel: campaignLevel as CheckoutStarterMarketPresentationContext["campaignLevel"],
-        runtime: campaignLevel.runtime,
-        levelAssets: resolveCheckoutLevelAssets(campaignLevel.level)
+        runtime,
+        levelAssets: resolveCheckoutLevelAssets(
+          STARTER_RUNTIME_ASSET_REGISTRY,
+          level,
+          runtime
+        )
       });
-    case "clean":
+    }
+    case "clean": {
       if (!("spotCount" in campaignLevel.runtime)) {
         throw new Error(`Clean level ${campaignLevel.level.id} resolved the wrong runtime type`);
       }
+      const level = campaignLevel.level;
+      const runtime = campaignLevel.runtime;
       return Object.freeze({
         ...commonContext(campaignLevel, campaignShift, "STORE FLOOR SPOTLESS"),
         mode: "clean" as const,
         campaignLevel: campaignLevel as CleanStarterMarketPresentationContext["campaignLevel"],
-        runtime: campaignLevel.runtime,
-        levelAssets: resolveCleanLevelAssets(campaignLevel.level)
+        runtime,
+        levelAssets: resolveCleanLevelAssets(
+          STARTER_RUNTIME_ASSET_REGISTRY,
+          level,
+          runtime
+        )
       });
-    case "find-items":
+    }
+    case "find-items": {
       if (!("products" in campaignLevel.runtime)) {
         throw new Error(`Find-items level ${campaignLevel.level.id} resolved the wrong runtime type`);
       }
+      const level = campaignLevel.level;
+      const runtime = campaignLevel.runtime;
       return Object.freeze({
         ...commonContext(campaignLevel, campaignShift, "ORDER COMPLETE"),
         mode: "find-items" as const,
         campaignLevel: campaignLevel as FindItemsStarterMarketPresentationContext["campaignLevel"],
-        runtime: campaignLevel.runtime,
-        levelAssets: resolveFindItemsLevelAssets(campaignLevel.level)
+        runtime,
+        levelAssets: resolveFindItemsLevelAssets(
+          STARTER_RUNTIME_ASSET_REGISTRY,
+          level,
+          runtime
+        )
       });
+    }
   }
 }
 
@@ -415,6 +348,9 @@ export function validateStarterMarketPresentationContext(
   if (context.campaignTotalLevels !== MAIN_LEVEL_CAMPAIGN_RUNTIME.levels.length) {
     errors.push("Presentation level count must match the level campaign runtime");
   }
+  if (context.levelAssets.preload.length === 0) {
+    errors.push("Presentation must preload assets resolved from its global asset pack");
+  }
 
   switch (context.mode) {
     case "restock":
@@ -422,12 +358,18 @@ export function validateStarterMarketPresentationContext(
         errors.push("Content fixture slot count must match the visual cooler row count");
       }
       if (context.levelAssets.product.key !== context.runtime.product.assetKey) {
-        errors.push("Level product asset must match the product catalogue");
+        errors.push("Restock product must come from the global product catalogue");
+      }
+      if (context.levelAssets.fixture.key !== context.runtime.fixture.assetKey) {
+        errors.push("Restock fixture must come from the global fixture catalogue");
       }
       break;
     case "checkout":
       if (context.levelAssets.customers.length === 0) {
-        errors.push("Checkout presentation requires customer assets");
+        errors.push("Checkout global asset pack requires customer assets");
+      }
+      if (context.levelAssets.fixture.key !== context.runtime.fixture.assetKey) {
+        errors.push("Checkout fixture must come from the global fixture catalogue");
       }
       break;
     case "clean":
@@ -437,7 +379,10 @@ export function validateStarterMarketPresentationContext(
       break;
     case "find-items":
       if (context.levelAssets.items.length !== context.runtime.products.length) {
-        errors.push("Find-items presentation products must match item assets");
+        errors.push("Find-items products must resolve from the global product catalogue");
+      }
+      if (context.levelAssets.fixture.key !== context.runtime.fixture.assetKey) {
+        errors.push("Find-items fixture must resolve from the global fixture catalogue");
       }
       break;
   }
