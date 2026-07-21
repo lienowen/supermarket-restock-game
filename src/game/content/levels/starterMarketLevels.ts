@@ -26,7 +26,7 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     shiftId: "starter-shift-001",
     missionId: "restock-cola-cooler",
     title: "First Delivery",
-    randomSeed: "starter-level-001-v1",
+    randomSeed: "starter-level-001-v2-rush",
     navigation: SHARED_NAVIGATION,
     presentation: {
       assetPackId: "market-restock-v1",
@@ -36,7 +36,15 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     tuning: {
       initialCoins: 100,
       slotCount: 6,
-      progressRewardRatio: 0.6
+      progressRewardRatio: 0.6,
+      rush: {
+        targetDurationMs: 3200,
+        minimumTargetDurationMs: 1500,
+        speedUpPerSuccessMs: 240,
+        streakWindowMs: 1900,
+        goldTimeMs: 26000,
+        silverTimeMs: 41000
+      }
     }
   },
   {
@@ -46,7 +54,7 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     shiftId: "starter-shift-002",
     missionId: "restock-water-promotion",
     title: "Promotion Restock",
-    randomSeed: "starter-level-002-v1",
+    randomSeed: "starter-level-002-v2-rush",
     navigation: { moveSpeed: 560, interactionRadius: 155 },
     presentation: {
       assetPackId: "market-restock-v1",
@@ -56,7 +64,15 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     tuning: {
       initialCoins: 200,
       slotCount: 6,
-      progressRewardRatio: 0.5
+      progressRewardRatio: 0.5,
+      rush: {
+        targetDurationMs: 2600,
+        minimumTargetDurationMs: 1150,
+        speedUpPerSuccessMs: 220,
+        streakWindowMs: 1550,
+        goldTimeMs: 21000,
+        silverTimeMs: 34000
+      }
     }
   },
   {
