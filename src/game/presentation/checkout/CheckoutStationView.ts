@@ -31,7 +31,7 @@ export class CheckoutStationView {
 
     const shadow = scene.add.ellipse(
       checkoutPosition.x + 6,
-      checkoutPosition.y + 60,
+      checkoutPosition.y + 50,
       430,
       62,
       0x1b2c26,
@@ -44,7 +44,7 @@ export class CheckoutStationView {
       "fixture-checkout-a"
     )
       .setOrigin(0.5, 0.96)
-      .setDisplaySize(430, 350)
+      .setDisplaySize(1000, 900)
       .setDepth(25)
       .setName("checkout-counter-production");
 
@@ -54,7 +54,7 @@ export class CheckoutStationView {
       "equipment-pos-terminal"
     )
       .setOrigin(0.5, 0.96)
-      .setDisplaySize(116, 116)
+      .setDisplaySize(304, 309)
       .setDepth(29);
 
     const scanner = scene.add.image(
@@ -63,7 +63,7 @@ export class CheckoutStationView {
       "equipment-checkout-scanner"
     )
       .setOrigin(0.5, 0.96)
-      .setDisplaySize(72, 82)
+      .setDisplaySize(240, 253)
       .setAngle(-14)
       .setDepth(30);
 
@@ -115,7 +115,7 @@ export class CheckoutStationView {
       if (!assetKey) throw new Error("Checkout station requires customer assets");
       const customer = scene.add.image(position.x, position.y, assetKey)
         .setOrigin(0.5, 0.96)
-        .setDisplaySize(150, 225)
+        .setDisplaySize(500, 400)
         .setDepth(this.queueDepth(position.y))
         .setName(`checkout-customer-${index + 1}`);
       this.customers.push(customer);
