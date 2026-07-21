@@ -131,12 +131,29 @@ export function selectCampaignLevel(
   throw new Error(`Level or shift ${requestedId} does not belong to campaign ${runtime.campaign.id}`);
 }
 
+const SHARED_STORE_ASSET_KEYS = [
+  "fixture-produce-display-a",
+  "fixture-backroom-rack-a"
+] as const;
+
+const SHARED_WORKER_ASSET_KEYS = [
+  "worker-a-walk-01",
+  "worker-a-walk-02"
+] as const;
+
 export function levelAssetKeys(level: LevelDefinition): readonly string[] {
   if (level.mode === "checkout") {
     return Object.freeze([
       level.assetBindings.environmentAssetKey,
       level.assetBindings.workerAssetKey,
-      ...level.assetBindings.customerAssetKeys
+      ...level.assetBindings.customerAssetKeys,
+      ...SHARED_STORE_ASSET_KEYS,
+      ...SHARED_WORKER_ASSET_KEYS,
+      "worker-a-scan-register",
+      "fixture-checkout-a",
+      "equipment-checkout-scanner",
+      "equipment-pos-terminal",
+      "equipment-shopping-basket"
     ]);
   }
 
@@ -150,7 +167,13 @@ export function levelAssetKeys(level: LevelDefinition): readonly string[] {
     bindings.cartAssetKey,
     bindings.caseAssetKey,
     bindings.productAssetKey,
-    ...bindings.ambientProductAssetKeys
+    ...bindings.ambientProductAssetKeys,
+    ...SHARED_STORE_ASSET_KEYS,
+    ...SHARED_WORKER_ASSET_KEYS,
+    "worker-a-open-case",
+    "worker-a-place-middle",
+    "equipment-restock-cart-a-loaded",
+    "prop-cola-case-open"
   ]);
 }
 
