@@ -317,12 +317,12 @@ async function openLevel(context, auditReport, level) {
 }
 
 async function completeRestockLevel(page, auditReport, prefix) {
-  // The actual player flow now owns movement: tap the task, watch the worker
-  // approach it, then make the meaningful shelf choices during the rush.
-  await clickGame(page, 770, 510);
+  // Use the persistent task button for the setup tutorial. It proves the
+  // player can always recover even when the world target is partially hidden.
+  await clickGame(page, 1228, 850);
   await waitForSnapshot(page, { step: "load", boxCollected: true });
 
-  await clickGame(page, 825, 730);
+  await clickGame(page, 1228, 850);
   await waitForSnapshot(page, { step: "restock", boxLoaded: true, boxOpened: true });
 
   for (let progress = 0; progress < 6; progress += 1) {
