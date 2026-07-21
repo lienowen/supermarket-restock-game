@@ -7,6 +7,10 @@ import type {
 import type { NavigationPoint } from "../../application/PlayerNavigationController";
 import { resolveLevelProgression } from "../../application/LevelProgression";
 import {
+  RestockRushController,
+  type RestockRushSnapshot
+} from "../../application/RestockRushController";
+import {
   RestockSceneController,
   type RestockSceneAction,
   type RestockSceneCopy,
@@ -27,6 +31,7 @@ import { InteractionGate } from "../interactions/InteractionGate";
 import { InteractionTargetView } from "../interactions/InteractionTargetView";
 import { RestockTargetResolver } from "../interactions/RestockTargetResolver";
 import { LevelCompleteOverlay } from "../ui/LevelCompleteOverlay";
+import { RestockRushMeter } from "../ui/RestockRushMeter";
 import { ShiftHud } from "../ui/ShiftHud";
 import { resolveLevelVisualPreset } from "../visual/LevelVisualPresetResolver";
 import type { RestockLevelVisualPreset } from "../visual/MarketLevelVisualPreset";
@@ -44,17 +49,17 @@ export class StarterMarketScene extends Phaser.Scene {
   private readonly interactionGate = new InteractionGate();
   private readonly targetResolver: RestockTargetResolver;
   private readonly visualPreset: RestockLevelVisualPreset;
+  private readonly rush: RestockRushController;
   private readonly disposers: Array<() => void> = [];
   private hud?: ShiftHud;
   private actors?: RestockActorView;
   private cooler?: BeverageCoolerView;
   private target?: InteractionTargetView;
+  private rushMeter?: RestockRushMeter;
   private completionOverlay?: LevelCompleteOverlay;
   private previousStep?: RestockSceneStep;
   private previousProgress = -1;
   private pendingAction = false;
-  private restockStreak = 0;
-  private lastRestockAt = Number.NEGATIVE_INFINITY;
 
   constructor(
     private readonly context: RestockStarterMarketPresentationContext = STARTER_MARKET_PRESENTATION,
@@ -82,6 +87,11 @@ export class StarterMarketScene extends Phaser.Scene {
       coolerRowYs: this.visualPreset.cooler.rowYs,
       coolerTargetWidth: this.visualPreset.cooler.activeStockWidth
     });
+    this.rush = new RestockRushController({
+      rowCount: this.visualPreset.cooler.rowYs.length,
+      randomSeed: context.campaignLevel.level.randomSeed,
+      ...(context.campaignLevel.level.tuning.rush ?? {})
+    });
   }
 
   preload(): void {
@@ -100,6 +110,11 @@ export class StarterMarketScene extends Phaser.Scene {
 
     new StarterMarketEnvironmentView(this, context).create();
     this.cooler = this.createCooler();
+    this.rushMeter = new RestockRushMeter(this, {
+      x: context.world.beverageCooler.x,
+      y: 770,
+      accentColor: context.palette.gold
+    });
     this.actors = this.createActors();
     this.target = new InteractionTargetView(
       this,
@@ -145,11 +160,16 @@ export class StarterMarketScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     this.actors?.update(delta);
     this.advancePendingAction();
-    this.syncTarget(this.controller.snapshot());
+    const snapshot = this.controller.snapshot();
+    if (snapshot.step === "restock") this.updateRush();
+    this.syncTarget(snapshot);
   }
 
   isInteractionReady(): boolean {
-    return this.canInteract(this.controller.snapshot());
+    const snapshot = this.controller.snapshot();
+    return snapshot.step === "restock"
+      ? this.interactionGate.isReady()
+      : this.canInteract(snapshot);
   }
 
   playerPosition(): NavigationPoint | undefined {
@@ -179,7 +199,8 @@ export class StarterMarketScene extends Phaser.Scene {
       restockItemCount: preset.restockItemCount,
       coolerAssetKey: context.levelAssets.fixture.key,
       ambientProductKeys: context.levelAssets.ambientProducts.map((asset) => asset.key),
-      restockProductKey: context.levelAssets.product.key
+      restockProductKey: context.levelAssets.product.key,
+      onRowSelected: (rowIndex) => this.selectRushRow(rowIndex)
     });
     cooler.create();
     return cooler;
@@ -220,6 +241,7 @@ export class StarterMarketScene extends Phaser.Scene {
 
   private requestCurrentAction(): void {
     const snapshot = this.controller.snapshot();
+    if (snapshot.step === "restock") return;
     const point = this.interactionPoint(snapshot);
     if (!point || !this.actors || !this.interactionGate.isReady()) return;
 
@@ -255,25 +277,19 @@ export class StarterMarketScene extends Phaser.Scene {
     const snapshot = this.controller.snapshot();
     if (!this.canInteract(snapshot)) return;
     const action = this.controller.actionForCurrentStep();
-    if (!action || !this.dispatchSceneAction(action)) return;
+    if (!action || action === "RESTOCK_ROW" || !this.dispatchSceneAction(action)) return;
 
     switch (action) {
       case "PICK_BOX":
-        // Keep the pace moving: after the pickup, walk toward the cart while the
-        // player reads the next instruction. The next action still requires intent.
         this.actors?.setDestination(this.context.world.cartStart);
         return;
       case "LOAD_CART":
-        // Loading and starting the delivery are one meaningful player decision.
-        // The low-value PUSH step is automatic, then arrival performs park/open.
         if (this.dispatchSceneAction("PUSH_CART", false)) {
           this.pendingAction = true;
           this.actors?.setDestination(this.context.world.cartCooler);
         }
         return;
       case "PARK_CART":
-        // Opening a delivered case has no strategic choice, so do it immediately
-        // and put the player into the satisfying rapid-restock phase.
         this.dispatchSceneAction("OPEN_BOX", false);
         return;
       case "PUSH_CART":
@@ -281,6 +297,59 @@ export class StarterMarketScene extends Phaser.Scene {
       case "RESTOCK_ROW":
         return;
     }
+  }
+
+  private selectRushRow(rowIndex: number): void {
+    const sceneSnapshot = this.controller.snapshot();
+    if (
+      sceneSnapshot.step !== "restock" ||
+      !this.cooler ||
+      !this.interactionGate.isReady()
+    ) return;
+
+    const result = this.rush.selectRow(rowIndex, this.time.now);
+    const rowCentre = this.cooler.rowCentre(rowIndex);
+    if (!result.correct) {
+      this.cooler.showMistake(rowIndex);
+      this.rushMeter?.showMistake("WRONG SHELF");
+      playActionFeedback(this, rowCentre, "mistake");
+      this.cameras.main.shake(90, 0.0025);
+      this.syncRushPresentation(result.snapshot);
+      return;
+    }
+
+    if (!this.dispatchSceneAction("RESTOCK_ROW", false)) return;
+    const streak = result.snapshot.currentStreak;
+    playActionFeedback(this, rowCentre, "restock", {
+      label: streak > 1 ? `FAST STOCK x${streak}` : "STOCKED!",
+      emphasis: 1 + Math.min(0.4, Math.max(0, streak - 1) * 0.09)
+    });
+    this.cameras.main.shake(55, 0.0014);
+    this.syncRushPresentation(result.snapshot);
+  }
+
+  private updateRush(): void {
+    const now = this.time.now;
+    const expiredRow = this.rush.snapshot(now).activeRowIndex;
+    const result = this.rush.tick(now);
+    if (result.event === "timeout" && expiredRow !== undefined && this.cooler) {
+      const rowCentre = this.cooler.rowCentre(expiredRow);
+      this.cooler.showMistake(expiredRow);
+      this.rushMeter?.showMistake("TOO SLOW");
+      playActionFeedback(this, rowCentre, "mistake", { label: "TOO SLOW" });
+      this.cameras.main.shake(80, 0.002);
+    }
+    this.syncRushPresentation(result.snapshot);
+  }
+
+  private syncRushPresentation(snapshot: RestockRushSnapshot): void {
+    this.cooler?.syncRush({
+      filledRowIndexes: snapshot.filledRowIndexes,
+      activeRowIndex: snapshot.activeRowIndex,
+      remainingRatio: snapshot.remainingRatio,
+      interactionEnabled: !snapshot.complete && this.interactionGate.isReady()
+    });
+    this.rushMeter?.sync(snapshot);
   }
 
   private dispatchSceneAction(action: RestockSceneAction, feedback = true): boolean {
@@ -295,28 +364,8 @@ export class StarterMarketScene extends Phaser.Scene {
 
     if (!feedback) return true;
     const position = this.actors?.position();
-    if (!position) return true;
-
-    if (action === "RESTOCK_ROW") {
-      const streak = this.nextRestockStreak();
-      playActionFeedback(this, position, "restock", {
-        label: streak > 1 ? `FAST STOCK x${streak}` : "STOCKED!",
-        emphasis: 1 + Math.min(0.35, Math.max(0, streak - 1) * 0.08)
-      });
-      return true;
-    }
-
-    playActionFeedback(this, position, "interact");
+    if (position) playActionFeedback(this, position, "interact");
     return true;
-  }
-
-  private nextRestockStreak(): number {
-    const now = this.time.now;
-    this.restockStreak = now - this.lastRestockAt <= 1450
-      ? this.restockStreak + 1
-      : 1;
-    this.lastRestockAt = now;
-    return this.restockStreak;
   }
 
   private cancelPendingAction(): void {
@@ -329,7 +378,17 @@ export class StarterMarketScene extends Phaser.Scene {
     const context = this.context;
     this.hud?.update(snapshot, copy);
     this.actors?.sync(snapshot);
-    this.cooler?.sync(snapshot.stockedRows);
+
+    if (snapshot.step === "restock") {
+      const rushSnapshot = this.previousStep === "restock"
+        ? this.rush.snapshot(this.time.now)
+        : this.rush.start(this.time.now);
+      this.syncRushPresentation(rushSnapshot);
+    } else if (snapshot.step === "complete" && this.rush.snapshot(this.time.now).started) {
+      this.syncRushPresentation(this.rush.snapshot(this.time.now));
+    } else {
+      this.cooler?.sync(snapshot.stockedRows);
+    }
     this.syncTarget(snapshot);
 
     if (snapshot.stockedRows !== this.previousProgress) {
@@ -346,6 +405,7 @@ export class StarterMarketScene extends Phaser.Scene {
 
     if (snapshot.step === "complete" && this.previousStep !== "complete") {
       this.pendingAction = false;
+      const rushPerformance = this.rush.snapshot(this.time.now);
       const completedEconomy = {
         coins: snapshot.coins,
         stars: snapshot.stars,
@@ -379,6 +439,8 @@ export class StarterMarketScene extends Phaser.Scene {
         context.campaignLevel.nextLevelId,
         this.campaignSession?.firstLevelId ?? context.campaignLevel.level.id
       );
+      const grade = rushPerformance.grade ?? "BRONZE";
+      const seconds = (rushPerformance.elapsedMs / 1000).toFixed(1);
       this.completionOverlay = new LevelCompleteOverlay(
         this,
         {
@@ -388,7 +450,9 @@ export class StarterMarketScene extends Phaser.Scene {
           centreY: 505,
           statusLabel: progression.statusLabel,
           levelTitle: context.labels.levelTitle,
-          rewardLabel: `+${context.runtime.reward.totalStars} STAR   +${context.runtime.reward.totalCoins} COINS`,
+          rewardLabel:
+            `${grade} RUSH  •  BEST STREAK x${rushPerformance.bestStreak}  •  ${seconds}s\n` +
+            `+${context.runtime.reward.totalStars} STAR   +${context.runtime.reward.totalCoins} COINS`,
           actionLabel: progression.actionLabel,
           panelColor: context.palette.hud,
           accentColor: context.palette.gold
@@ -412,7 +476,8 @@ export class StarterMarketScene extends Phaser.Scene {
   }
 
   private syncTarget(snapshot: RestockSceneSnapshot): void {
-    const bounds = this.targetResolver.resolve(snapshot);
+    const rushMode = snapshot.step === "restock" || snapshot.step === "complete";
+    const bounds = rushMode ? undefined : this.targetResolver.resolve(snapshot);
     const ready = this.canInteract(snapshot);
     this.target?.sync(bounds, ready || this.pendingAction);
     this.hud?.setActionEnabled(Boolean(bounds) && this.interactionGate.isReady());
@@ -434,8 +499,8 @@ export class StarterMarketScene extends Phaser.Scene {
       case "load":
       case "push": return world.cartStart;
       case "park":
-      case "open":
-      case "restock": return world.cartCooler;
+      case "open": return world.cartCooler;
+      case "restock":
       case "complete": return undefined;
     }
   }
@@ -444,6 +509,8 @@ export class StarterMarketScene extends Phaser.Scene {
     this.disposers.splice(0).forEach((dispose) => dispose());
     this.completionOverlay?.destroy();
     this.actors?.destroy();
+    this.cooler?.destroy();
+    this.rushMeter?.destroy();
     this.target?.destroy();
     this.interactionGate.destroy();
   }
