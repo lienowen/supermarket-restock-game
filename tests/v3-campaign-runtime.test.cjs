@@ -13,29 +13,33 @@ const {
 
 const campaign = resolveCampaignRuntime(STARTER_MARKET_CONTENT, "main-campaign");
 
-test("Main campaign contains Day 1 and Day 2 in one ordered sequence", () => {
+test("Main campaign contains all configured shifts in one ordered sequence", () => {
   assert.deepEqual(validateCampaignRuntime(campaign), []);
   assert.deepEqual(
     campaign.shifts.map((entry) => entry.shift.id),
-    ["starter-shift-001", "starter-shift-002"]
+    [
+      "starter-shift-001",
+      "starter-shift-002",
+      "starter-shift-003",
+      "starter-shift-004"
+    ]
   );
   assert.deepEqual(
     campaign.shifts.map((entry) => entry.dayLabel),
-    ["DAY 1", "DAY 2"]
+    ["DAY 1", "DAY 2", "DAY 3", "DAY 4"]
   );
 });
 
-test("Day 1 and Day 2 share the same store and project systems", () => {
-  const dayOne = resolveCampaignShift(campaign, "starter-shift-001");
-  const dayTwo = resolveCampaignShift(campaign, "starter-shift-002");
-
-  assert.equal(dayOne.store.id, "starter-market");
-  assert.equal(dayTwo.store.id, dayOne.store.id);
-  assert.equal(dayOne.nextShiftId, dayTwo.shift.id);
-  assert.equal(dayTwo.previousShiftId, dayOne.shift.id);
+test("Every campaign shift shares the same store and project systems", () => {
+  const shifts = campaign.shifts.map((entry) => resolveCampaignShift(campaign, entry.shift.id));
+  assert.deepEqual(new Set(shifts.map((entry) => entry.store.id)), new Set(["starter-market"]));
+  shifts.forEach((entry, index) => {
+    assert.equal(entry.previousShiftId, campaign.shifts[index - 1]?.shift.id);
+    assert.equal(entry.nextShiftId, campaign.shifts[index + 1]?.shift.id);
+  });
 });
 
-test("Day 2 is content composition, not a separate architecture", () => {
+test("A shift composes missions without creating a separate architecture", () => {
   const dayTwo = resolveCampaignShift(campaign, "starter-shift-002");
 
   assert.deepEqual(dayTwo.shift.missionIds, [
@@ -48,11 +52,11 @@ test("Day 2 is content composition, not a separate architecture", () => {
   );
 });
 
-test("Campaign selector defaults to Day 1 and can select Day 2 by shift ID", () => {
+test("Campaign selector defaults to the first shift and accepts configured IDs", () => {
   assert.equal(selectCampaignShift(campaign).shift.id, "starter-shift-001");
   assert.equal(
-    selectCampaignShift(campaign, "starter-shift-002").shift.id,
-    "starter-shift-002"
+    selectCampaignShift(campaign, "starter-shift-004").shift.id,
+    "starter-shift-004"
   );
   assert.throws(
     () => selectCampaignShift(campaign, "isolated-day-two"),
