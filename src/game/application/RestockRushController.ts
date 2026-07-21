@@ -13,6 +13,7 @@ export interface RestockRushConfig {
   readonly streakWindowMs?: number;
   readonly goldTimeMs?: number;
   readonly silverTimeMs?: number;
+  readonly timingScale?: number;
 }
 
 export interface RestockRushSnapshot {
@@ -113,13 +114,17 @@ export class RestockRushController {
       throw new Error("Restock rush requires a random seed");
     }
 
-    this.baseTargetDurationMs = requirePositive(config.targetDurationMs ?? 3000, "Target duration");
+    const timingScale = requirePositive(config.timingScale ?? 1, "Timing scale");
+    this.baseTargetDurationMs = requirePositive(config.targetDurationMs ?? 3000, "Target duration") * timingScale;
     this.minimumTargetDurationMs = requirePositive(
       config.minimumTargetDurationMs ?? 1350,
       "Minimum target duration"
-    );
-    this.speedUpPerSuccessMs = requirePositive(config.speedUpPerSuccessMs ?? 220, "Speed-up per success");
-    this.introGraceMs = requireNonNegative(config.introGraceMs ?? 0, "Intro grace");
+    ) * timingScale;
+    this.speedUpPerSuccessMs = requirePositive(
+      config.speedUpPerSuccessMs ?? 220,
+      "Speed-up per success"
+    ) * timingScale;
+    this.introGraceMs = requireNonNegative(config.introGraceMs ?? 0, "Intro grace") * timingScale;
     if (this.minimumTargetDurationMs > this.baseTargetDurationMs) {
       throw new Error("Minimum target duration cannot exceed the starting target duration");
     }
@@ -127,9 +132,9 @@ export class RestockRushController {
     this.currentTargetDurationMs = this.baseTargetDurationMs + this.introGraceMs;
     this.queue = shuffledRows(config.rowCount, config.randomSeed);
     this.pace = new RestockPaceTracker({
-      streakWindowMs: config.streakWindowMs,
-      goldTimeMs: config.goldTimeMs,
-      silverTimeMs: config.silverTimeMs
+      streakWindowMs: (config.streakWindowMs ?? 1450) * timingScale,
+      goldTimeMs: (config.goldTimeMs ?? 30000) * timingScale,
+      silverTimeMs: (config.silverTimeMs ?? 45000) * timingScale
     });
   }
 
