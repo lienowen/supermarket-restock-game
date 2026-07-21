@@ -137,6 +137,7 @@ export class StarterMarketScene extends Phaser.Scene {
       () => this.requestCurrentAction()
     );
 
+    this.input.on("pointerdown", this.handleRushPointerDown, this);
     this.disposers.push(
       this.interactionGate.subscribe(() => this.syncTarget(this.controller.snapshot())),
       this.controller.subscribe((snapshot, copy) => this.sync(snapshot, copy))
@@ -297,6 +298,31 @@ export class StarterMarketScene extends Phaser.Scene {
         return;
     }
   }
+
+  private readonly handleRushPointerDown = (pointer: Phaser.Input.Pointer): void => {
+    if (
+      this.controller.snapshot().step !== "restock" ||
+      !this.interactionGate.isReady()
+    ) return;
+
+    const x = Number.isFinite(pointer.worldX) ? pointer.worldX : pointer.x;
+    const y = Number.isFinite(pointer.worldY) ? pointer.worldY : pointer.y;
+    const centreX = this.context.world.beverageCooler.x;
+    const halfWidth = Math.max(155, this.visualPreset.cooler.activeStockWidth * 0.72);
+    if (Math.abs(x - centreX) > halfWidth) return;
+
+    let nearestRow = -1;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+    this.visualPreset.cooler.rowYs.forEach((rowY, index) => {
+      const distance = Math.abs(y - rowY);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestRow = index;
+      }
+    });
+    if (nearestRow < 0 || nearestDistance > 34) return;
+    this.selectRushRow(nearestRow);
+  };
 
   private selectRushRow(rowIndex: number): void {
     const sceneSnapshot = this.controller.snapshot();
@@ -506,6 +532,7 @@ export class StarterMarketScene extends Phaser.Scene {
 
   private dispose(): void {
     this.disposers.splice(0).forEach((dispose) => dispose());
+    this.input.off("pointerdown", this.handleRushPointerDown, this);
     this.completionOverlay?.destroy();
     this.actors?.destroy();
     this.cooler?.destroy();
