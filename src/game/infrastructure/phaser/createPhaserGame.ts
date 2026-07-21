@@ -11,6 +11,7 @@ import {
   StarterMarketScene,
   type SceneCampaignSessionContext
 } from "../../presentation/scenes/StarterMarketScene";
+import { UtilityTaskScene } from "../../presentation/scenes/UtilityTaskScene";
 import { installSafeInteractiveGuard } from "./SafeInteractiveGuard";
 
 export interface PhaserGameFactoryOptions {
@@ -64,9 +65,17 @@ export async function createPhaserGame(
   document.body.dataset.activeLevel = presentation.campaignLevel.level.id;
   document.body.dataset.activeMode = presentation.mode;
 
-  const activeScene = presentation.mode === "restock"
-    ? new StarterMarketScene(presentation, campaignSession)
-    : new CheckoutMarketScene(presentation, campaignSession);
+  const activeScene = (() => {
+    switch (presentation.mode) {
+      case "restock":
+        return new StarterMarketScene(presentation, campaignSession);
+      case "checkout":
+        return new CheckoutMarketScene(presentation, campaignSession);
+      case "clean":
+      case "find-items":
+        return new UtilityTaskScene(presentation, campaignSession);
+    }
+  })();
 
   const game = new Phaser.Game({
     type: Phaser.AUTO,
