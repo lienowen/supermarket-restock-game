@@ -30,6 +30,7 @@ const run = spawnSync(
     "tests/v3-checkout-runtime.test.cjs",
     "tests/v3-shift-runtime.test.cjs",
     "tests/v3-presentation-context.test.cjs",
+    "tests/v3-foundation-contracts.test.cjs",
     "tests/v3-boundaries.test.cjs"
   ],
   { stdio: "inherit" }
