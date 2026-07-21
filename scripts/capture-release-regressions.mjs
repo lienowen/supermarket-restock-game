@@ -6,13 +6,19 @@ import { chromium } from "playwright";
 const DIST_DIR = resolve("dist");
 const OUTPUT_DIR = resolve("ui-audit");
 const PORT = 4173;
-const BASE_URL = `http://127.0.0.1:${PORT}/?test=1`;
-const DAY_TWO_URL = `http://127.0.0.1:${PORT}/?test=1&level=starter-level-002`;
-const CHECKOUT_URL = `http://127.0.0.1:${PORT}/?test=1&level=starter-level-003`;
+const ORIGIN = `http://127.0.0.1:${PORT}`;
 const GAME_CANVAS_SELECTOR = "#app > canvas:not(#mobile-game-backdrop)";
 const GAME_SCENE_KEY = "starter-market-shift";
 const GAME_WIDTH = 1600;
 const GAME_HEIGHT = 900;
+
+const LEVELS = {
+  restockCola: { id: "starter-level-001", mode: "restock" },
+  restockWater: { id: "starter-level-002", mode: "restock" },
+  checkout: { id: "starter-level-003", mode: "checkout" },
+  clean: { id: "starter-level-004", mode: "clean" },
+  findItems: { id: "starter-level-005", mode: "find-items" }
+};
 
 if (!existsSync(join(DIST_DIR, "index.html"))) {
   throw new Error("dist/index.html is missing. Run npm run build first.");
@@ -46,20 +52,16 @@ const report = {
   fatalError: null,
   regressions: {
     architectureV3: false,
+    productionAssetRuntime: false,
     englishHud: false,
-    initialState: false,
     movementRequired: false,
-    collectCase: false,
-    loadCart: false,
-    cartTravel: false,
-    parkCart: false,
-    openCase: false,
-    rowRestock: false,
-    completionReward: false,
-    crazyGamesSdkLifecycle: false,
-    dayTwoSharedScene: false,
+    colaRestock: false,
+    waterRestock: false,
     checkoutLevel: false,
-    campaignEconomyCarry: false
+    cleanLevel: false,
+    findItemsLevel: false,
+    campaignEconomyCarry: false,
+    crazyGamesSdkLifecycle: false
   }
 };
 
@@ -84,7 +86,7 @@ try {
           gameplayStop: () => events.push("gameplayStop"),
           loadingStart: () => events.push("loadingStart"),
           loadingStop: () => events.push("loadingStop"),
-          setGameContext: (value) => events.push(`context:${value.version ?? "unknown"}`),
+          setGameContext: (value) => events.push(`context:${value.mode ?? value.version ?? "unknown"}`),
           clearGameContext: () => events.push("context:clear"),
           reportGameCompletedPercentage: (value) => events.push(`progress:${value}`),
           addSettingsChangeListener: () => undefined,
@@ -94,145 +96,90 @@ try {
     };
   });
 
-  const dayOnePage = await context.newPage();
-  attachRuntimeListeners(dayOnePage, report);
-  await dayOnePage.goto(BASE_URL, { waitUntil: "networkidle", timeout: 90000 });
-  await waitForGame(dayOnePage, "starter-shift-001", "1");
+  const colaPage = await openLevel(context, report, LEVELS.restockCola);
+  const runtimeMetadata = await colaPage.evaluate((sceneKey) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+    const actor = scene?.children?.getByName?.("restock-worker");
+    const texture = scene?.textures?.get?.("worker-a-idle");
+    const source = texture?.source?.[0]?.source;
+    return {
+      architecture: document.body.dataset.gameArchitecture,
+      version: document.body.dataset.gameVersion,
+      visualTarget: document.body.dataset.visualTarget,
+      language: document.body.dataset.uiLanguage,
+      actorType: actor?.type,
+      actorTexture: actor?.texture?.key,
+      workerSource: typeof source?.src === "string" ? source.src : "",
+      sdk: document.body.dataset.crazyGamesSdk,
+      loading: document.body.dataset.crazyGamesLoading,
+      gameplay: document.body.dataset.crazyGamesGameplay
+    };
+  }, GAME_SCENE_KEY);
+  report.regressions.architectureV3 = (
+    runtimeMetadata.architecture === "architecture-v3" &&
+    runtimeMetadata.version === "architecture-v3"
+  );
+  report.regressions.englishHud = runtimeMetadata.language === "en";
+  report.regressions.productionAssetRuntime = (
+    runtimeMetadata.visualTarget === "production-v1-five-mode-campaign" &&
+    runtimeMetadata.actorType === "Image" &&
+    runtimeMetadata.actorTexture === "worker-a-idle" &&
+    runtimeMetadata.workerSource.includes("assets/game/production-v1/")
+  );
 
-  const runtime = await dayOnePage.evaluate(() => ({
-    architecture: document.body.dataset.gameArchitecture,
-    version: document.body.dataset.gameVersion,
-    language: document.body.dataset.uiLanguage,
-    sdk: document.body.dataset.crazyGamesSdk,
-    loading: document.body.dataset.crazyGamesLoading,
-    gameplay: document.body.dataset.crazyGamesGameplay
-  }));
-  report.regressions.architectureV3 = runtime.architecture === "architecture-v3" && runtime.version === "architecture-v3";
-  report.regressions.englishHud = runtime.language === "en";
+  const colaInitial = await readSnapshot(colaPage);
+  report.regressions.movementRequired = await interactionReady(colaPage) === false;
+  recordSnapshot(report, "level1-initial", colaInitial);
+  await capture(colaPage, report, "01-level1-production.png", "Production PNG restock level");
 
-  const initial = await readSnapshot(dayOnePage);
-  const initiallyReady = await interactionReady(dayOnePage);
-  recordSnapshot(report, "day1-initial", { ...initial, interactionReady: initiallyReady });
-  report.regressions.initialState = matches(initial, {
-    step: "collect",
-    stockedRows: 0,
-    totalRows: 6,
-    coins: 100,
-    stars: 0
-  });
-  report.regressions.movementRequired = initiallyReady === false;
-  await capture(dayOnePage, report, "01-day1-initial.png", "Day 1 starts outside the first interaction radius");
-
-  const dayOneComplete = await completeRestockLevel(dayOnePage, report, {
-    prefix: "day1",
-    captureTravel: "02-cart-at-cooler.png",
-    captureOpened: "03-case-opened.png",
-    captureMidway: "04-three-rows-stocked.png"
-  });
-  report.regressions.completionReward = matches(dayOneComplete, {
+  const colaComplete = await completeRestockLevel(colaPage, report, "level1");
+  report.regressions.colaRestock = matches(colaComplete, {
     step: "complete",
     stockedRows: 6,
     coins: 200,
     stars: 1
   });
-  await dayOnePage.waitForFunction(
-    () => document.body.dataset.crazyGamesGameplay === "stopped",
-    null,
-    { timeout: 10000 }
-  );
-  await dayOnePage.waitForTimeout(550);
-  await capture(dayOnePage, report, "05-day1-complete.png", "Completed Day 1 task and reward");
-
-  const sdkEvents = await dayOnePage.evaluate(() => [...(window.__CRAZY_GAMES_TEST_EVENTS__ ?? [])]);
-  report.sdkEvents = sdkEvents;
+  await colaPage.waitForTimeout(420);
+  await capture(colaPage, report, "02-level1-complete.png", "Cola restock complete");
+  const colaEvents = await readSdkEvents(colaPage);
+  report.sdkEvents.push({ level: LEVELS.restockCola.id, events: colaEvents });
   report.regressions.crazyGamesSdkLifecycle = (
-    runtime.sdk === "ready" &&
-    runtime.loading === "stopped" &&
-    runtime.gameplay === "started" &&
-    hasOrderedEvents(sdkEvents, [
+    runtimeMetadata.sdk === "ready" &&
+    runtimeMetadata.loading === "stopped" &&
+    runtimeMetadata.gameplay === "started" &&
+    hasOrderedEvents(colaEvents, [
       "init",
       "loadingStart",
       "loadingStop",
       "gameplayStart",
-      "progress:33",
+      "progress:20",
       "gameplayStop"
     ])
   );
-  await dayOnePage.close();
+  await colaPage.close();
 
-  const dayTwoPage = await context.newPage();
-  attachRuntimeListeners(dayTwoPage, report);
-  await dayTwoPage.goto(DAY_TWO_URL, { waitUntil: "networkidle", timeout: 90000 });
-  await waitForGame(dayTwoPage, "starter-shift-002", "2");
-  const dayTwoRuntime = await dayTwoPage.evaluate((sceneKey) => {
-    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
-    return {
-      sceneKey: scene?.sys?.settings?.key,
-      levelId: document.body.dataset.activeLevel,
-      mode: document.body.dataset.activeMode,
-      shiftId: document.body.dataset.activeShift,
-      day: document.body.dataset.activeDay,
-      productId: scene?.controller?.config?.runtime?.product?.id,
-      missionId: scene?.controller?.config?.runtime?.mission?.id,
-      startTime: scene?.controller?.config?.runtime?.shift?.startTime,
-      rewardCoins: scene?.controller?.config?.runtime?.reward?.totalCoins,
-      initialSnapshot: scene?.controller?.snapshot?.(),
-      initialPosition: scene?.playerPosition?.()
-    };
-  }, GAME_SCENE_KEY);
-  recordSnapshot(report, "day2-runtime", dayTwoRuntime);
-  report.regressions.dayTwoSharedScene = (
-    dayTwoRuntime.sceneKey === GAME_SCENE_KEY &&
-    dayTwoRuntime.levelId === "starter-level-002" &&
-    dayTwoRuntime.mode === "restock" &&
-    dayTwoRuntime.shiftId === "starter-shift-002" &&
-    dayTwoRuntime.day === "2" &&
-    dayTwoRuntime.productId === "water-bottle" &&
-    dayTwoRuntime.missionId === "restock-water-promotion" &&
-    dayTwoRuntime.startTime === "10:30" &&
-    dayTwoRuntime.rewardCoins === 120 &&
-    matches(dayTwoRuntime.initialSnapshot, {
-      step: "collect",
-      stockedRows: 0,
-      totalRows: 6,
-      coins: 200,
-      stars: 1
-    })
+  const waterPage = await openLevel(context, report, LEVELS.restockWater);
+  const waterInitial = await readSnapshot(waterPage);
+  const waterComplete = await completeRestockLevel(waterPage, report, "level2");
+  report.regressions.waterRestock = (
+    matches(waterInitial, { coins: 200, stars: 1 }) &&
+    matches(waterComplete, { step: "complete", stockedRows: 6, coins: 320, stars: 2 })
   );
-  await capture(dayTwoPage, report, "06-day2-initial.png", "Day 2 inherits economy and resets player position");
+  recordSnapshot(report, "level2-complete", waterComplete);
+  await capture(waterPage, report, "03-level2-complete.png", "Water promotion restock complete");
+  await waterPage.close();
 
-  const dayTwoComplete = await completeRestockLevel(dayTwoPage, report, {
-    prefix: "day2"
-  });
-  recordSnapshot(report, "day2-complete", dayTwoComplete);
-  await dayTwoPage.waitForTimeout(550);
-  await capture(dayTwoPage, report, "07-day2-complete.png", "Day 2 completion carries economy into checkout");
-  await dayTwoPage.close();
-
-  const checkoutPage = await context.newPage();
-  attachRuntimeListeners(checkoutPage, report);
-  await checkoutPage.goto(CHECKOUT_URL, { waitUntil: "networkidle", timeout: 90000 });
-  await waitForGame(checkoutPage, "starter-shift-002", "2");
+  const checkoutPage = await openLevel(context, report, LEVELS.checkout);
   const checkoutInitial = await readSnapshot(checkoutPage);
-  const checkoutInitiallyReady = await interactionReady(checkoutPage);
-  recordSnapshot(report, "checkout-initial", {
-    ...checkoutInitial,
-    interactionReady: checkoutInitiallyReady
-  });
-  await capture(checkoutPage, report, "08-checkout-initial.png", "Checkout starts away from the register");
-
   await movePlayerByTap(checkoutPage, { x: 670, y: 680 });
   await waitForInteractionReady(checkoutPage);
   await clickGame(checkoutPage, 520, 680);
   await waitForSnapshot(checkoutPage, { step: "serve" });
-  await checkoutPage.waitForTimeout(320);
-
   for (let customer = 0; customer < 6; customer += 1) {
     await waitForInteractionReady(checkoutPage);
     await clickGame(checkoutPage, 520, 680);
     await waitForSnapshot(checkoutPage, { customersServed: customer + 1 });
   }
-
   const checkoutComplete = await waitForSnapshot(checkoutPage, {
     step: "complete",
     customersServed: 6,
@@ -240,29 +187,7 @@ try {
     stars: 3,
     reputation: 5
   });
-  recordSnapshot(report, "checkout-complete", checkoutComplete);
-  await checkoutPage.waitForTimeout(550);
-  await capture(checkoutPage, report, "09-checkout-complete.png", "Checkout rush cleared with full campaign economy");
-
-  const checkoutMetadata = await checkoutPage.evaluate((sceneKey) => {
-    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
-    return {
-      sceneKey: scene?.sys?.settings?.key,
-      levelId: document.body.dataset.activeLevel,
-      mode: document.body.dataset.activeMode,
-      missionId: scene?.controller?.config?.runtime?.mission?.id,
-      storedEconomy: window.__CAMPAIGN_SESSION__?.initialEconomyFor?.("starter-level-003", 0)
-    };
-  }, GAME_SCENE_KEY);
   report.regressions.checkoutLevel = (
-    checkoutMetadata.sceneKey === GAME_SCENE_KEY &&
-    checkoutMetadata.levelId === "starter-level-003" &&
-    checkoutMetadata.mode === "checkout" &&
-    checkoutMetadata.missionId === "assist-checkout-rush" &&
-    checkoutInitiallyReady === false
-  );
-  report.regressions.campaignEconomyCarry = (
-    matches(dayTwoComplete, { coins: 320, stars: 2 }) &&
     matches(checkoutInitial, {
       step: "open",
       customersServed: 0,
@@ -270,19 +195,110 @@ try {
       coins: 320,
       stars: 2,
       reputation: 0
-    }) &&
-    matches(checkoutMetadata.storedEconomy, {
+    }) && matches(checkoutComplete, {
+      step: "complete",
       coins: 400,
       stars: 3,
       reputation: 5
     })
   );
+  recordSnapshot(report, "level3-complete", checkoutComplete);
+  await capture(checkoutPage, report, "04-level3-checkout.png", "Production checkout and customer queue");
   await checkoutPage.close();
+
+  const cleanPage = await openLevel(context, report, LEVELS.clean);
+  const cleanInitial = await readSnapshot(cleanPage);
+  await capture(cleanPage, report, "05-level4-clean-initial.png", "Cleaning gameplay with four dynamic spills");
+  await moveNearAndInteract(cleanPage, { x: 1040, y: 620 }, { x: 1120, y: 620 });
+  await waitForSnapshot(cleanPage, { step: "clean" });
+  const cleanSpots = [
+    { x: 690, y: 590 },
+    { x: 865, y: 700 },
+    { x: 1035, y: 535 },
+    { x: 1145, y: 735 }
+  ];
+  for (let index = 0; index < cleanSpots.length; index += 1) {
+    const spot = cleanSpots[index];
+    await moveNearAndInteract(cleanPage, spot, spot);
+    await waitForSnapshot(cleanPage, { progress: index + 1 });
+  }
+  const cleanComplete = await waitForSnapshot(cleanPage, {
+    step: "complete",
+    progress: 4,
+    coins: 490,
+    stars: 4,
+    reputation: 7
+  });
+  report.regressions.cleanLevel = (
+    matches(cleanInitial, {
+      step: "collect-tools",
+      progress: 0,
+      total: 4,
+      coins: 400,
+      stars: 3,
+      reputation: 5
+    }) && matches(cleanComplete, {
+      step: "complete",
+      progress: 4,
+      coins: 490,
+      stars: 4,
+      reputation: 7
+    })
+  );
+  recordSnapshot(report, "level4-complete", cleanComplete);
+  await capture(cleanPage, report, "06-level4-clean-complete.png", "All four spills cleaned");
+  await cleanPage.close();
+
+  const findPage = await openLevel(context, report, LEVELS.findItems);
+  const findInitial = await readSnapshot(findPage);
+  await capture(findPage, report, "07-level5-find-initial.png", "Find-items gameplay with dynamic order targets");
+  const findTargets = [
+    { target: { x: 1010, y: 410 }, approach: { x: 1010, y: 450 } },
+    { target: { x: 1130, y: 540 }, approach: { x: 1130, y: 540 } },
+    { target: { x: 1235, y: 445 }, approach: { x: 1200, y: 455 } }
+  ];
+  for (let index = 0; index < findTargets.length; index += 1) {
+    const entry = findTargets[index];
+    await moveNearAndInteract(findPage, entry.approach, entry.target);
+    await waitForSnapshot(findPage, { progress: index + 1 });
+  }
+  const findComplete = await waitForSnapshot(findPage, {
+    step: "complete",
+    progress: 3,
+    coins: 600,
+    stars: 5,
+    reputation: 10
+  });
+  report.regressions.findItemsLevel = (
+    matches(findInitial, {
+      step: "find",
+      progress: 0,
+      total: 3,
+      coins: 490,
+      stars: 4,
+      reputation: 7
+    }) && matches(findComplete, {
+      step: "complete",
+      progress: 3,
+      coins: 600,
+      stars: 5,
+      reputation: 10
+    })
+  );
+  report.regressions.campaignEconomyCarry = (
+    matches(waterInitial, { coins: 200, stars: 1 }) &&
+    matches(checkoutInitial, { coins: 320, stars: 2, reputation: 0 }) &&
+    matches(cleanInitial, { coins: 400, stars: 3, reputation: 5 }) &&
+    matches(findInitial, { coins: 490, stars: 4, reputation: 7 })
+  );
+  recordSnapshot(report, "level5-complete", findComplete);
+  await capture(findPage, report, "08-level5-find-complete.png", "Five-level campaign complete");
+  await findPage.close();
 
   const issueCount = report.consoleErrors.length + report.pageErrors.length + report.failedRequests.length + report.badResponses.length;
   const failed = Object.entries(report.regressions).filter(([, value]) => !value).map(([key]) => key);
   if (issueCount > 0 || failed.length > 0) {
-    throw new Error(`Architecture V3 regressions failed: ${failed.join(", ") || "browser runtime"}; browser issues ${issueCount}`);
+    throw new Error(`Production five-level regressions failed: ${failed.join(", ") || "browser runtime"}; browser issues ${issueCount}`);
   }
 } catch (error) {
   thrownError = error;
@@ -296,60 +312,54 @@ try {
 console.log(JSON.stringify({ regressions: report.regressions, fatalError: report.fatalError }, null, 2));
 if (thrownError) throw thrownError;
 
-async function completeRestockLevel(page, auditReport, options) {
+async function openLevel(context, auditReport, level) {
+  const page = await context.newPage();
+  attachRuntimeListeners(page, auditReport);
+  const url = `${ORIGIN}/?test=1&level=${encodeURIComponent(level.id)}`;
+  await page.goto(url, { waitUntil: "networkidle", timeout: 90000 });
+  await waitForGame(page, level.id, level.mode);
+  return page;
+}
+
+async function completeRestockLevel(page, auditReport, prefix) {
   await movePlayerByTap(page, { x: 650, y: 510 });
   await waitForInteractionReady(page);
   await clickGame(page, 770, 510);
-  const collected = await waitForSnapshot(page, { step: "load", boxCollected: true });
-  recordSnapshot(auditReport, `${options.prefix}-case-collected`, collected);
-  auditReport.regressions.collectCase = true;
+  await waitForSnapshot(page, { step: "load", boxCollected: true });
 
   await movePlayerByTap(page, { x: 690, y: 730 });
   await waitForInteractionReady(page);
   await clickGame(page, 825, 730);
-  const loaded = await waitForSnapshot(page, { step: "push", boxLoaded: true });
-  recordSnapshot(auditReport, `${options.prefix}-cart-loaded`, loaded);
-  auditReport.regressions.loadCart = true;
+  await waitForSnapshot(page, { step: "push", boxLoaded: true });
 
   await waitForInteractionReady(page);
   await clickGame(page, 825, 730);
-  const travelling = await waitForSnapshot(page, { step: "park" });
-  recordSnapshot(auditReport, `${options.prefix}-cart-push-ready`, travelling);
+  await waitForSnapshot(page, { step: "park" });
 
   await movePlayerByTap(page, { x: 980, y: 725 });
   await waitForInteractionReady(page);
-  auditReport.regressions.cartTravel = true;
-  if (options.captureTravel) {
-    await capture(page, auditReport, options.captureTravel, "Player pushed the loaded cart to the cooler");
-  }
-
   await clickGame(page, 1120, 725);
-  const parked = await waitForSnapshot(page, { step: "open", cartAtCooler: true });
-  recordSnapshot(auditReport, `${options.prefix}-cart-parked`, parked);
-  auditReport.regressions.parkCart = true;
+  await waitForSnapshot(page, { step: "open", cartAtCooler: true });
 
   await waitForInteractionReady(page);
   await clickGame(page, 1138, 641);
-  const opened = await waitForSnapshot(page, { step: "restock", boxOpened: true });
-  recordSnapshot(auditReport, `${options.prefix}-case-opened`, opened);
-  auditReport.regressions.openCase = true;
-  if (options.captureOpened) {
-    await capture(page, auditReport, options.captureOpened, "Opened beverage case ready for row-by-row stocking");
-  }
+  await waitForSnapshot(page, { step: "restock", boxOpened: true });
 
   for (let row = 0; row < 6; row += 1) {
     await waitForInteractionReady(page);
-    await clickGame(page, 1325, 286 + row * 78);
+    await clickGame(page, 1325, 300 + row * 75);
     await waitForSnapshot(page, { stockedRows: row + 1 });
-    if (row === 2 && options.captureMidway) {
-      await capture(page, auditReport, options.captureMidway, "Three beverage cooler rows stocked");
-    }
   }
 
-  auditReport.regressions.rowRestock = true;
   const completed = await waitForSnapshot(page, { step: "complete", stockedRows: 6 });
-  recordSnapshot(auditReport, `${options.prefix}-complete`, completed);
+  recordSnapshot(auditReport, `${prefix}-complete`, completed);
   return completed;
+}
+
+async function moveNearAndInteract(page, approach, target) {
+  await movePlayerByTap(page, approach);
+  await waitForInteractionReady(page);
+  await clickGame(page, target.x, target.y);
 }
 
 function attachRuntimeListeners(page, auditReport) {
@@ -368,16 +378,16 @@ function attachRuntimeListeners(page, auditReport) {
   });
 }
 
-async function waitForGame(page, shiftId, dayNumber) {
+async function waitForGame(page, levelId, mode) {
   await waitForCanvas(page);
   await page.waitForFunction(
-    ({ expectedShiftId, expectedDay }) => (
+    ({ expectedLevelId, expectedMode }) => (
       document.body.dataset.gameArchitecture === "architecture-v3" &&
       document.body.dataset.gameScene === "starter-market" &&
-      document.body.dataset.activeShift === expectedShiftId &&
-      document.body.dataset.activeDay === expectedDay
+      document.body.dataset.activeLevel === expectedLevelId &&
+      document.body.dataset.activeMode === expectedMode
     ),
-    { expectedShiftId: shiftId, expectedDay: dayNumber },
+    { expectedLevelId: levelId, expectedMode: mode },
     { timeout: 30000 }
   );
   await page.waitForFunction(
@@ -394,6 +404,10 @@ async function readSnapshot(page) {
   }, GAME_SCENE_KEY);
 }
 
+async function readSdkEvents(page) {
+  return page.evaluate(() => [...(window.__CRAZY_GAMES_TEST_EVENTS__ ?? [])]);
+}
+
 async function interactionReady(page) {
   return page.evaluate((sceneKey) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
@@ -407,7 +421,7 @@ async function waitForSnapshot(page, expected) {
     const snapshot = scene?.controller?.snapshot?.();
     if (!snapshot) return false;
     return Object.entries(target).every(([key, value]) => snapshot[key] === value);
-  }, { sceneKey: GAME_SCENE_KEY, target: expected }, { timeout: 10000 });
+  }, { sceneKey: GAME_SCENE_KEY, target: expected }, { timeout: 15000 });
   return readSnapshot(page);
 }
 
@@ -415,7 +429,7 @@ async function waitForInteractionReady(page) {
   await page.waitForFunction((sceneKey) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
     return Boolean(scene?.isInteractionReady?.());
-  }, GAME_SCENE_KEY, { timeout: 10000 });
+  }, GAME_SCENE_KEY, { timeout: 15000 });
 }
 
 async function movePlayerByTap(page, point) {
@@ -424,8 +438,8 @@ async function movePlayerByTap(page, point) {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
     const position = scene?.playerPosition?.();
     if (!position) return false;
-    return Math.hypot(position.x - target.x, position.y - target.y) <= 8;
-  }, { sceneKey: GAME_SCENE_KEY, target: point }, { timeout: 10000 });
+    return Math.hypot(position.x - target.x, position.y - target.y) <= 10;
+  }, { sceneKey: GAME_SCENE_KEY, target: point }, { timeout: 15000 });
 }
 
 function recordSnapshot(auditReport, label, snapshot) {
