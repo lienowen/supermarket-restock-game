@@ -26,6 +26,9 @@ export function resolveLevelVisualPreset(
 export function resolveLevelVisualPreset(
   level: FindItemsLevelDefinition
 ): FindItemsLevelVisualPreset;
+export function resolveLevelVisualPreset(
+  level: LevelDefinition
+): MarketLevelVisualPreset;
 export function resolveLevelVisualPreset(level: LevelDefinition): MarketLevelVisualPreset {
   switch (level.mode) {
     case "restock":
