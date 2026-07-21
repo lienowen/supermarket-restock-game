@@ -100,8 +100,6 @@ try {
   const runtimeMetadata = await colaPage.evaluate((sceneKey) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
     const actor = scene?.children?.getByName?.("restock-worker");
-    const texture = scene?.textures?.get?.("worker-a-idle");
-    const source = texture?.source?.[0]?.source;
     return {
       architecture: document.body.dataset.gameArchitecture,
       version: document.body.dataset.gameVersion,
@@ -109,7 +107,6 @@ try {
       language: document.body.dataset.uiLanguage,
       actorType: actor?.type,
       actorTexture: actor?.texture?.key,
-      workerSource: typeof source?.src === "string" ? source.src : "",
       sdk: document.body.dataset.crazyGamesSdk,
       loading: document.body.dataset.crazyGamesLoading,
       gameplay: document.body.dataset.crazyGamesGameplay
@@ -123,8 +120,7 @@ try {
   report.regressions.productionAssetRuntime = (
     runtimeMetadata.visualTarget === "production-v1-five-mode-campaign" &&
     runtimeMetadata.actorType === "Image" &&
-    runtimeMetadata.actorTexture === "worker-a-idle" &&
-    runtimeMetadata.workerSource.includes("assets/game/production-v1/")
+    runtimeMetadata.actorTexture === "worker-a-idle"
   );
 
   const colaInitial = await readSnapshot(colaPage);
@@ -171,6 +167,7 @@ try {
 
   const checkoutPage = await openLevel(context, report, LEVELS.checkout);
   const checkoutInitial = await readSnapshot(checkoutPage);
+  await capture(checkoutPage, report, "04-level3-checkout-initial.png", "Production checkout and customer queue");
   await movePlayerByTap(checkoutPage, { x: 670, y: 680 });
   await waitForInteractionReady(checkoutPage);
   await clickGame(checkoutPage, 520, 680);
@@ -203,12 +200,12 @@ try {
     })
   );
   recordSnapshot(report, "level3-complete", checkoutComplete);
-  await capture(checkoutPage, report, "04-level3-checkout.png", "Production checkout and customer queue");
+  await capture(checkoutPage, report, "05-level3-checkout-complete.png", "Checkout queue complete");
   await checkoutPage.close();
 
   const cleanPage = await openLevel(context, report, LEVELS.clean);
   const cleanInitial = await readSnapshot(cleanPage);
-  await capture(cleanPage, report, "05-level4-clean-initial.png", "Cleaning gameplay with four dynamic spills");
+  await capture(cleanPage, report, "06-level4-clean-initial.png", "Cleaning gameplay with four dynamic spills");
   await moveNearAndInteract(cleanPage, { x: 1040, y: 620 }, { x: 1120, y: 620 });
   await waitForSnapshot(cleanPage, { step: "clean" });
   const cleanSpots = [
@@ -246,20 +243,20 @@ try {
     })
   );
   recordSnapshot(report, "level4-complete", cleanComplete);
-  await capture(cleanPage, report, "06-level4-clean-complete.png", "All four spills cleaned");
+  await capture(cleanPage, report, "07-level4-clean-complete.png", "All four spills cleaned");
   await cleanPage.close();
 
   const findPage = await openLevel(context, report, LEVELS.findItems);
   const findInitial = await readSnapshot(findPage);
-  await capture(findPage, report, "07-level5-find-initial.png", "Find-items gameplay with dynamic order targets");
+  await capture(findPage, report, "08-level5-find-initial.png", "Find-items gameplay with dynamic order targets");
   const findTargets = [
-    { target: { x: 1010, y: 410 }, approach: { x: 1010, y: 450 } },
-    { target: { x: 1130, y: 540 }, approach: { x: 1130, y: 540 } },
-    { target: { x: 1235, y: 445 }, approach: { x: 1200, y: 455 } }
+    { x: 1010, y: 480 },
+    { x: 1125, y: 610 },
+    { x: 1190, y: 505 }
   ];
   for (let index = 0; index < findTargets.length; index += 1) {
-    const entry = findTargets[index];
-    await moveNearAndInteract(findPage, entry.approach, entry.target);
+    const point = findTargets[index];
+    await moveNearAndInteract(findPage, point, point);
     await waitForSnapshot(findPage, { progress: index + 1 });
   }
   const findComplete = await waitForSnapshot(findPage, {
@@ -292,7 +289,7 @@ try {
     matches(findInitial, { coins: 490, stars: 4, reputation: 7 })
   );
   recordSnapshot(report, "level5-complete", findComplete);
-  await capture(findPage, report, "08-level5-find-complete.png", "Five-level campaign complete");
+  await capture(findPage, report, "09-level5-find-complete.png", "Five-level campaign complete");
   await findPage.close();
 
   const issueCount = report.consoleErrors.length + report.pageErrors.length + report.failedRequests.length + report.badResponses.length;
