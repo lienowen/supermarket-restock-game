@@ -87,6 +87,7 @@ export interface ShiftDefinition {
   readonly unlockIds?: readonly string[];
 }
 
+/** Compatibility-only legacy binding types. New levels use presentation.assetPackId. */
 export interface RestockLevelAssetBindingsDefinition {
   readonly environmentAssetKey: string;
   readonly fixtureAssetKey: string;
@@ -99,7 +100,6 @@ export interface RestockLevelAssetBindingsDefinition {
   readonly ambientProductAssetKeys: readonly string[];
 }
 
-/** Compatibility name retained for existing imports. */
 export type LevelAssetBindingsDefinition = RestockLevelAssetBindingsDefinition;
 
 export interface CheckoutLevelAssetBindingsDefinition {
@@ -167,6 +167,7 @@ export interface FindItemsLevelTuningDefinition {
 }
 
 export interface LevelPresentationDefinition {
+  readonly assetPackId: string;
   readonly visualPresetId: string;
 }
 
@@ -181,25 +182,21 @@ interface BaseLevelDefinition {
 
 export interface RestockLevelDefinition extends BaseLevelDefinition {
   readonly mode: "restock";
-  readonly assetBindings: RestockLevelAssetBindingsDefinition;
   readonly tuning: RestockLevelTuningDefinition;
 }
 
 export interface CheckoutLevelDefinition extends BaseLevelDefinition {
   readonly mode: "checkout";
-  readonly assetBindings: CheckoutLevelAssetBindingsDefinition;
   readonly tuning: CheckoutLevelTuningDefinition;
 }
 
 export interface CleanLevelDefinition extends BaseLevelDefinition {
   readonly mode: "clean";
-  readonly assetBindings: CleanLevelAssetBindingsDefinition;
   readonly tuning: CleanLevelTuningDefinition;
 }
 
 export interface FindItemsLevelDefinition extends BaseLevelDefinition {
   readonly mode: "find-items";
-  readonly assetBindings: FindItemsLevelAssetBindingsDefinition;
   readonly tuning: FindItemsLevelTuningDefinition;
 }
 
