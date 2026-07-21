@@ -31,6 +31,7 @@ export interface RestockActorViewConfig {
   readonly cartSize: VisualSize;
   readonly caseSize: VisualSize;
   readonly shadowOffset: NavigationPoint;
+  readonly onManualNavigation?: () => void;
 }
 
 export class RestockActorView {
@@ -52,7 +53,8 @@ export class RestockActorView {
       displaySize: config.idleSize,
       shadowOffset: config.shadowOffset,
       name: "restock-worker",
-      baseDepth: 24
+      baseDepth: 24,
+      onManualNavigation: config.onManualNavigation
     });
     this.cartShadow = scene.add.ellipse(
       config.cartStart.x,
