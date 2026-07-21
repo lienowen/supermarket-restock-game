@@ -1,17 +1,13 @@
 import Phaser from "phaser";
 import { crazyGamesPlatform } from "../../../platform/crazyGamesPlatform";
 import { CampaignSession } from "../../application/CampaignSession";
-import { BrowserCampaignSessionStore } from "../browser/BrowserCampaignSessionStore";
 import {
   createStarterMarketPresentationContext,
   MAIN_LEVEL_CAMPAIGN_RUNTIME
 } from "../../presentation/context/StarterMarketPresentationContext";
-import { CheckoutMarketScene } from "../../presentation/scenes/CheckoutMarketScene";
-import {
-  StarterMarketScene,
-  type SceneCampaignSessionContext
-} from "../../presentation/scenes/StarterMarketScene";
-import { UtilityTaskScene } from "../../presentation/scenes/UtilityTaskScene";
+import type { SceneCampaignSessionContext } from "../../presentation/scenes/StarterMarketScene";
+import { BrowserCampaignSessionStore } from "../browser/BrowserCampaignSessionStore";
+import { createGameplayScene } from "./GameplaySceneRegistry";
 import { installSafeInteractiveGuard } from "./SafeInteractiveGuard";
 
 export interface PhaserGameFactoryOptions {
@@ -65,17 +61,7 @@ export async function createPhaserGame(
   document.body.dataset.activeLevel = presentation.campaignLevel.level.id;
   document.body.dataset.activeMode = presentation.mode;
 
-  const activeScene = (() => {
-    switch (presentation.mode) {
-      case "restock":
-        return new StarterMarketScene(presentation, campaignSession);
-      case "checkout":
-        return new CheckoutMarketScene(presentation, campaignSession);
-      case "clean":
-      case "find-items":
-        return new UtilityTaskScene(presentation, campaignSession);
-    }
-  })();
+  const activeScene = createGameplayScene(presentation, campaignSession);
 
   const game = new Phaser.Game({
     type: Phaser.AUTO,
