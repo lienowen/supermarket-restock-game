@@ -1,8 +1,6 @@
 import type Phaser from "phaser";
 import { validateAssetCatalogue } from "./assets/AssetDescriptor";
-import {
-  STARTER_RUNTIME_ASSET_REGISTRY
-} from "./assets/RuntimeAssetRegistry";
+import { STARTER_RUNTIME_ASSET_REGISTRY } from "./assets/RuntimeAssetRegistry";
 import { STARTER_ASSET_CATALOGUE } from "./assets/starterAssetCatalogue";
 import { validateCampaignRuntime } from "./application/CampaignRuntime";
 import { validateCheckoutLevelRuntime } from "./application/CheckoutLevelRuntimeContent";
@@ -11,6 +9,7 @@ import {
   validateLevelCampaignRuntime
 } from "./application/LevelRuntimeContent";
 import { validateRestockShiftRuntime } from "./application/ShiftRuntimeContent";
+import { validateUtilityLevelRuntime } from "./application/UtilityLevelRuntimeContent";
 import { PROJECT_CONFIG } from "./config/project";
 import { validateProductionAssetPlan } from "./presentation/assets/ProductionAssetPlan";
 import { validateProductAssetMappings } from "./presentation/assets/ProductAssetResolver";
@@ -35,11 +34,23 @@ function validateProjectContracts(): void {
   const configuredAssetKeys = MAIN_LEVEL_CAMPAIGN_RUNTIME.levels.flatMap((entry) => (
     levelAssetKeys(entry.level)
   ));
-  const gameplayRuntimeErrors = MAIN_LEVEL_CAMPAIGN_RUNTIME.levels.flatMap((entry) => (
-    "product" in entry.runtime
-      ? validateRestockShiftRuntime(entry.runtime)
-      : validateCheckoutLevelRuntime(entry.runtime)
-  ));
+  const gameplayRuntimeErrors = MAIN_LEVEL_CAMPAIGN_RUNTIME.levels.flatMap((entry) => {
+    switch (entry.level.mode) {
+      case "restock":
+        return "product" in entry.runtime
+          ? validateRestockShiftRuntime(entry.runtime)
+          : [`Level ${entry.level.id} resolved the wrong restock runtime`];
+      case "checkout":
+        return "customerCount" in entry.runtime
+          ? validateCheckoutLevelRuntime(entry.runtime)
+          : [`Level ${entry.level.id} resolved the wrong checkout runtime`];
+      case "clean":
+      case "find-items":
+        return "mode" in entry.runtime
+          ? validateUtilityLevelRuntime(entry.runtime)
+          : [`Level ${entry.level.id} resolved the wrong utility runtime`];
+    }
+  });
 
   const errors = [
     ...validateAssetCatalogue(STARTER_ASSET_CATALOGUE),
@@ -65,7 +76,7 @@ export async function bootstrapGame(): Promise<Phaser.Game> {
   document.body.dataset.uiLanguage = PROJECT_CONFIG.language;
   document.body.dataset.gameArchitecture = PROJECT_CONFIG.version;
   document.body.dataset.gameVersion = PROJECT_CONFIG.version;
-  document.body.dataset.visualTarget = "locked-starter-market";
+  document.body.dataset.visualTarget = "production-v1-five-mode-campaign";
   document.body.dataset.activeCampaign = MAIN_CAMPAIGN_RUNTIME.campaign.id;
   return createPhaserGame();
 }
