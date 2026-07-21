@@ -19,6 +19,11 @@ import { InteractionGate } from "../interactions/InteractionGate";
 import { InteractionTargetView } from "../interactions/InteractionTargetView";
 import { LevelCompleteOverlay } from "../ui/LevelCompleteOverlay";
 import { ShiftHud } from "../ui/ShiftHud";
+import { resolveLevelVisualPreset } from "../visual/LevelVisualPresetResolver";
+import type {
+  CleanLevelVisualPreset,
+  FindItemsLevelVisualPreset
+} from "../visual/MarketLevelVisualPreset";
 import { StarterMarketEnvironmentView } from "../world/StarterMarketEnvironmentView";
 import type { SceneCampaignSessionContext } from "./StarterMarketScene";
 
@@ -26,12 +31,14 @@ export type UtilityPresentationContext =
   | CleanStarterMarketPresentationContext
   | FindItemsStarterMarketPresentationContext;
 
+type UtilityVisualPreset = CleanLevelVisualPreset | FindItemsLevelVisualPreset;
 type UtilityProgressObject = Phaser.GameObjects.Image | Phaser.GameObjects.Ellipse;
 
 export class UtilityTaskScene extends Phaser.Scene {
   readonly controller: UtilityTaskSceneController;
 
   private readonly interactionGate = new InteractionGate();
+  private readonly visualPreset: UtilityVisualPreset;
   private readonly disposers: Array<() => void> = [];
   private player?: PlayerNavigationView;
   private target?: InteractionTargetView;
@@ -47,6 +54,9 @@ export class UtilityTaskScene extends Phaser.Scene {
     private readonly campaignSession?: SceneCampaignSessionContext
   ) {
     super(context.scene.key);
+    this.visualPreset = context.mode === "clean"
+      ? resolveLevelVisualPreset(context.campaignLevel.level)
+      : resolveLevelVisualPreset(context.campaignLevel.level);
     const initialEconomy = campaignSession?.initialEconomy ?? {
       coins: context.campaignLevel.level.tuning.initialCoins,
       stars: 0,
@@ -70,8 +80,11 @@ export class UtilityTaskScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor("#171712");
 
     new StarterMarketEnvironmentView(this, context).create();
-    if (context.mode === "clean") this.createCleanTask(context);
-    else this.createFindItemsTask(context);
+    if (context.mode === "clean") {
+      this.createCleanTask(context, this.visualPreset as CleanLevelVisualPreset);
+    } else {
+      this.createFindItemsTask(context, this.visualPreset as FindItemsLevelVisualPreset);
+    }
 
     this.player = new PlayerNavigationView(this, {
       start: context.world.workerStart,
@@ -79,8 +92,8 @@ export class UtilityTaskScene extends Phaser.Scene {
       speed: context.campaignLevel.level.navigation.moveSpeed,
       assetKey: context.levelAssets.worker.key,
       walkAssetKeys: ["worker-a-walk-01", "worker-a-walk-02"],
-      displaySize: context.visual.actor.idleSize,
-      shadowOffset: context.visual.actor.shadowOffset,
+      displaySize: this.visualPreset.actor.idleSize,
+      shadowOffset: this.visualPreset.actor.shadowOffset,
       name: `${context.mode}-worker`,
       baseDepth: 24
     });
@@ -138,10 +151,17 @@ export class UtilityTaskScene extends Phaser.Scene {
     return this.player?.position();
   }
 
-  private createCleanTask(context: CleanStarterMarketPresentationContext): void {
-    const fixture = this.add.image(1325, 820, context.levelAssets.cleaningFixture.key)
+  private createCleanTask(
+    context: CleanStarterMarketPresentationContext,
+    visual: CleanLevelVisualPreset
+  ): void {
+    const fixture = this.add.image(
+      visual.fixture.position.x,
+      visual.fixture.position.y,
+      context.levelAssets.cleaningFixture.key
+    )
       .setOrigin(0.5, 0.96)
-      .setDisplaySize(900, 900)
+      .setDisplaySize(visual.fixture.size.width, visual.fixture.size.height)
       .setDepth(2);
     const cart = this.add.image(
       context.runtime.toolPoint.x,
@@ -149,7 +169,7 @@ export class UtilityTaskScene extends Phaser.Scene {
       context.levelAssets.cleaningCart.key
     )
       .setOrigin(0.5, 0.96)
-      .setDisplaySize(500, 500)
+      .setDisplaySize(visual.cartSize.width, visual.cartSize.height)
       .setDepth(20);
     const sign = this.add.image(
       context.runtime.toolPoint.x - 145,
@@ -157,7 +177,7 @@ export class UtilityTaskScene extends Phaser.Scene {
       context.levelAssets.wetFloorSign.key
     )
       .setOrigin(0.5, 0.96)
-      .setDisplaySize(380, 375)
+      .setDisplaySize(visual.signSize.width, visual.signSize.height)
       .setDepth(20);
     this.taskObjects.push(fixture, cart, sign);
 
@@ -165,8 +185,8 @@ export class UtilityTaskScene extends Phaser.Scene {
       const spill = this.add.ellipse(
         point.x,
         point.y,
-        130 + (index % 2) * 26,
-        58 + (index % 3) * 8,
+        visual.spillBaseSize.width + (index % 2) * 26,
+        visual.spillBaseSize.height + (index % 3) * 8,
         0x7f99a3,
         0.48
       )
@@ -177,25 +197,33 @@ export class UtilityTaskScene extends Phaser.Scene {
     });
   }
 
-  private createFindItemsTask(context: FindItemsStarterMarketPresentationContext): void {
-    const fixture = this.add.image(1160, 820, context.levelAssets.fixture.key)
+  private createFindItemsTask(
+    context: FindItemsStarterMarketPresentationContext,
+    visual: FindItemsLevelVisualPreset
+  ): void {
+    const fixture = this.add.image(
+      visual.fixture.position.x,
+      visual.fixture.position.y,
+      context.levelAssets.fixture.key
+    )
       .setOrigin(0.5, 0.96)
-      .setDisplaySize(1000, 900)
+      .setDisplaySize(visual.fixture.size.width, visual.fixture.size.height)
       .setDepth(2);
-    const basket = this.add.image(850, 735, "equipment-shopping-basket")
+    const basket = this.add.image(
+      visual.basket.position.x,
+      visual.basket.position.y,
+      "equipment-shopping-basket"
+    )
       .setOrigin(0.5, 0.96)
-      .setDisplaySize(350, 240)
+      .setDisplaySize(visual.basket.size.width, visual.basket.size.height)
       .setDepth(19);
     this.taskObjects.push(fixture, basket);
 
     context.runtime.itemTargets.forEach((target, index) => {
       const asset = context.levelAssets.items[index];
       if (!asset) throw new Error(`Missing find-items asset at index ${index}`);
-      const dimensions = target.productId === "apple"
-        ? { width: 160, height: 180 }
-        : target.productId === "milk-bottle"
-          ? { width: 200, height: 230 }
-          : { width: 160, height: 222 };
+      const dimensions = visual.itemSizes[target.productId];
+      if (!dimensions) throw new Error(`Missing find-items visual size for ${target.productId}`);
       const item = this.add.image(target.x, target.y, asset.key)
         .setOrigin(0.5, 0.96)
         .setDisplaySize(dimensions.width, dimensions.height)
