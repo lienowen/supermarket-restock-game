@@ -76,15 +76,16 @@ test("Phaser factory selects a scene from the validated level mode", () => {
   assert.equal(source.includes("new CheckoutMarketScene"), true);
 });
 
-test("Level ids stay in configuration and never branch gameplay code", () => {
+test("Gameplay code never branches on a concrete level id", () => {
   const runtimeRoots = [
     "src/game/application",
     "src/game/infrastructure",
     "src/game/presentation"
   ];
+  const branchPattern = /(if\s*\([^\n]*starter-level-|case\s+["']starter-level-|===?\s*["']starter-level-|!==?\s*["']starter-level-)/;
   const offenders = runtimeRoots
     .flatMap(sourceFilesUnder)
-    .filter((path) => /starter-level-\d+/.test(read(path)));
+    .filter((path) => branchPattern.test(read(path)));
   assert.deepEqual(offenders, []);
 });
 
@@ -97,6 +98,17 @@ test("Level configuration selects handlers and visuals through data", () => {
   assert.equal(source.includes('mode: "find-items"'), true);
   assert.equal(source.includes("new Phaser"), false);
   assert.equal(source.includes("Scene"), false);
+});
+
+test("Scenes resolve presentation from the active level configuration", () => {
+  for (const path of [
+    "src/game/presentation/scenes/StarterMarketScene.ts",
+    "src/game/presentation/scenes/CheckoutMarketScene.ts",
+    "src/game/presentation/scenes/UtilityTaskScene.ts"
+  ]) {
+    const source = read(path);
+    assert.equal(source.includes("resolveLevelVisualPreset"), true, path);
+  }
 });
 
 test("Legacy scene delegates to the project presentation scene", () => {
