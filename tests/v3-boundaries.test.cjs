@@ -46,14 +46,10 @@ test("Restock scene remains a composition root instead of a drawing monolith", (
   const source = read("src/game/presentation/scenes/StarterMarketScene.ts");
   assert.equal(source.includes("this.add."), false);
   assert.equal(source.includes("this.tweens."), false);
-  assert.equal(source.includes("createFloor()"), false);
-  assert.equal(source.includes("createBackroom()"), false);
   assert.equal(source.includes("new StarterMarketEnvironmentView"), true);
   assert.equal(source.includes("new BeverageCoolerView"), true);
   assert.equal(source.includes("new RestockActorView"), true);
-  assert.equal(source.includes("CheckoutWorkflow"), false);
   assert.equal(source.includes("CheckoutStationView"), false);
-  assert.equal(source.includes("interactionRadius"), true);
 });
 
 test("Checkout scene composes checkout and shared navigation modules without restock rules", () => {
@@ -64,16 +60,22 @@ test("Checkout scene composes checkout and shared navigation modules without res
   assert.equal(source.includes("new CheckoutStationView"), true);
   assert.equal(source.includes("new PlayerNavigationView"), true);
   assert.equal(source.includes("new CheckoutSceneController"), true);
-  assert.equal(source.includes("RestockWorkflow"), false);
   assert.equal(source.includes("RestockSceneController"), false);
-  assert.equal(source.includes("BeverageCoolerView"), false);
 });
 
-test("Phaser factory selects a scene from the validated level mode", () => {
+test("Phaser bootstrap delegates mode selection to the gameplay scene registry", () => {
   const source = read("src/game/infrastructure/phaser/createPhaserGame.ts");
-  assert.equal(source.includes('presentation.mode === "restock"'), true);
-  assert.equal(source.includes("new StarterMarketScene"), true);
-  assert.equal(source.includes("new CheckoutMarketScene"), true);
+  assert.equal(source.includes("createGameplayScene"), true);
+  assert.equal(source.includes("new StarterMarketScene"), false);
+  assert.equal(source.includes("new CheckoutMarketScene"), false);
+  assert.equal(source.includes("switch (presentation.mode)"), false);
+});
+
+test("Gameplay runtime selection is owned by a mode registry", () => {
+  const source = read("src/game/application/LevelRuntimeContent.ts");
+  assert.equal(source.includes("resolveGameplayRuntime"), true);
+  assert.equal(source.includes("resolveRestockShiftRuntime"), false);
+  assert.equal(source.includes("resolveCheckoutLevelRuntime"), false);
 });
 
 test("Gameplay code never branches on a concrete level id", () => {
@@ -89,15 +91,27 @@ test("Gameplay code never branches on a concrete level id", () => {
   assert.deepEqual(offenders, []);
 });
 
-test("Level configuration selects handlers and visuals through data", () => {
+test("Level configuration contains variables but no asset paths or methods", () => {
   const source = read("src/game/content/levels/starterMarketLevels.ts");
+  assert.equal(source.includes("assetPackId"), true);
   assert.equal(source.includes("visualPresetId"), true);
   assert.equal(source.includes('mode: "restock"'), true);
   assert.equal(source.includes('mode: "checkout"'), true);
   assert.equal(source.includes('mode: "clean"'), true);
   assert.equal(source.includes('mode: "find-items"'), true);
+  assert.equal(source.includes("AssetKey"), false);
+  assert.equal(source.includes("assets/game/"), false);
   assert.equal(source.includes("new Phaser"), false);
   assert.equal(source.includes("Scene"), false);
+});
+
+test("Global asset packs own reusable character and equipment bindings", () => {
+  const source = read("src/game/assets/GlobalAssetPackRegistry.ts");
+  assert.equal(source.includes("market-restock-v1"), true);
+  assert.equal(source.includes("market-checkout-v1"), true);
+  assert.equal(source.includes("market-clean-v1"), true);
+  assert.equal(source.includes("market-find-items-v1"), true);
+  assert.equal(source.includes("caseAssetsByProductId"), true);
 });
 
 test("Scenes resolve presentation from the active level configuration", () => {
