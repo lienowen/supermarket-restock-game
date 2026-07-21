@@ -329,7 +329,7 @@ async function completeRestockLevel(page, auditReport, prefix) {
     await waitForInteractionReady(page);
     const rush = await waitForRushTarget(page);
     const rowIndex = rush.activeRowIndex;
-    await clickGame(page, 1325, 300 + rowIndex * 75);
+    await clickGame(page, 1325, 400 + rowIndex * 55);
     await waitForSnapshot(page, { stockedRows: progress + 1 });
   }
 
