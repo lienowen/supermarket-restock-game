@@ -1,3 +1,5 @@
+import { STARTER_MARKET_LAYOUT } from "../../world/starterMarketLayout";
+
 export interface VisualPoint {
   readonly x: number;
   readonly y: number;
@@ -14,10 +16,28 @@ export interface VisualTargetValidationResult {
   readonly errors: readonly string[];
 }
 
+const requireZoneBounds = (zoneId: string): VisualRect => {
+  const zone = STARTER_MARKET_LAYOUT.zones.find((entry) => entry.id === zoneId);
+  if (!zone) throw new Error(`Missing visual composition zone: ${zoneId}`);
+  return Object.freeze({ ...zone.bounds });
+};
+
+const requireSpawn = (spawnId: string): VisualPoint => {
+  const spawn = STARTER_MARKET_LAYOUT.spawns.find((entry) => entry.id === spawnId);
+  if (!spawn) throw new Error(`Missing visual actor spawn: ${spawnId}`);
+  return Object.freeze({ ...spawn.position });
+};
+
+const [logicalWidth, logicalHeight] = STARTER_MARKET_LAYOUT.logicalSize;
+
+/**
+ * Presentation-only values. World zones, logical size and actor spawn are read
+ * from STARTER_MARKET_LAYOUT so layout coordinates have one canonical owner.
+ */
 export const STARTER_MARKET_VISUAL_SPEC = {
   logicalSize: {
-    width: 1600,
-    height: 900
+    width: logicalWidth,
+    height: logicalHeight
   },
   camera: {
     mode: "fixed-third-person",
@@ -26,13 +46,13 @@ export const STARTER_MARKET_VISUAL_SPEC = {
     foregroundStartY: 560
   },
   composition: {
-    produceZone: { x: 0, y: 150, width: 500, height: 750 },
-    backroomZone: { x: 500, y: 165, width: 500, height: 515 },
-    beverageZone: { x: 1000, y: 145, width: 600, height: 755 },
+    produceZone: requireZoneBounds("produce-zone"),
+    backroomZone: requireZoneBounds("staff-backroom"),
+    beverageZone: requireZoneBounds("beverage-zone"),
     centreDepthAxis: { x: 650, y: 170, width: 320, height: 610 }
   },
   actor: {
-    spawn: { x: 890, y: 625 },
+    spawn: requireSpawn("worker-a-spawn"),
     coolerPosition: { x: 1080, y: 700 },
     pushSize: { width: 480, height: 430 },
     carrySize: { width: 500, height: 420 },
