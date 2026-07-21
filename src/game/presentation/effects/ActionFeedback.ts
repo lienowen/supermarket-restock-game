@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import type { NavigationPoint } from "../../application/PlayerNavigationController";
 
-export type ActionFeedbackKind = "interact" | "restock" | "scan";
+export type ActionFeedbackKind = "interact" | "restock" | "scan" | "mistake";
 
 export interface ActionFeedbackOptions {
   readonly label?: string;
@@ -11,13 +11,15 @@ export interface ActionFeedbackOptions {
 const COPY: Record<ActionFeedbackKind, string> = {
   interact: "DONE!",
   restock: "STOCKED!",
-  scan: "BEEP!"
+  scan: "BEEP!",
+  mistake: "WRONG SHELF"
 };
 
 const COLORS: Record<ActionFeedbackKind, number> = {
   interact: 0xffc94f,
   restock: 0x62c77d,
-  scan: 0x67d7e5
+  scan: 0x67d7e5,
+  mistake: 0xe45d52
 };
 
 export function playActionFeedback(
@@ -53,7 +55,7 @@ export function playActionFeedback(
     targets: ring,
     radius: 74 * emphasis,
     alpha: 0,
-    duration: 360,
+    duration: kind === "mistake" ? 240 : 360,
     ease: "Quad.Out",
     onComplete: () => ring.destroy()
   });
@@ -63,8 +65,8 @@ export function playActionFeedback(
     scaleX: emphasis,
     scaleY: emphasis,
     alpha: { from: 1, to: 0 },
-    duration: 620,
-    hold: 170,
+    duration: kind === "mistake" ? 460 : 620,
+    hold: kind === "mistake" ? 40 : 170,
     ease: "Back.Out",
     onComplete: () => label.destroy()
   });
@@ -76,7 +78,7 @@ export function playActionFeedback(
       alpha: 0,
       scaleX: 0.4,
       scaleY: 0.4,
-      duration: 420,
+      duration: kind === "mistake" ? 280 : 420,
       ease: "Quad.Out",
       onComplete: () => particle.destroy()
     });
