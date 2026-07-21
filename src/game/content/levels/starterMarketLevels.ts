@@ -1,9 +1,14 @@
-import type { LevelDefinition } from "../GameContent";
+import {
+  CURRENT_LEVEL_SCHEMA_VERSION,
+  type LevelDefinition
+} from "../GameContent";
 
 const SHARED_NAVIGATION = Object.freeze({
   moveSpeed: 360,
   interactionRadius: 145
 });
+
+const NO_RULE_OVERRIDES = Object.freeze([]);
 
 /**
  * Pure level data. A level never owns methods or asset paths.
@@ -11,19 +16,23 @@ const SHARED_NAVIGATION = Object.freeze({
  * - assetPackId chooses globally registered assets
  * - visualPresetId chooses a globally registered composition
  * - mission/tuning/navigation provide the changing values
+ * - rules references typed reusable components; algorithms remain in code
  */
 export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
   {
+    schemaVersion: CURRENT_LEVEL_SCHEMA_VERSION,
     id: "starter-level-001",
     mode: "restock",
     shiftId: "starter-shift-001",
     missionId: "restock-cola-cooler",
     title: "First Delivery",
+    randomSeed: "starter-level-001-v1",
     navigation: SHARED_NAVIGATION,
     presentation: {
       assetPackId: "market-restock-v1",
       visualPresetId: "restock-standard-v1"
     },
+    rules: NO_RULE_OVERRIDES,
     tuning: {
       initialCoins: 100,
       slotCount: 6,
@@ -31,16 +40,19 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     }
   },
   {
+    schemaVersion: CURRENT_LEVEL_SCHEMA_VERSION,
     id: "starter-level-002",
     mode: "restock",
     shiftId: "starter-shift-002",
     missionId: "restock-water-promotion",
     title: "Promotion Restock",
+    randomSeed: "starter-level-002-v1",
     navigation: { moveSpeed: 385, interactionRadius: 145 },
     presentation: {
       assetPackId: "market-restock-v1",
       visualPresetId: "restock-standard-v1"
     },
+    rules: NO_RULE_OVERRIDES,
     tuning: {
       initialCoins: 200,
       slotCount: 6,
@@ -48,16 +60,19 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     }
   },
   {
+    schemaVersion: CURRENT_LEVEL_SCHEMA_VERSION,
     id: "starter-level-003",
     mode: "checkout",
     shiftId: "starter-shift-002",
     missionId: "assist-checkout-rush",
     title: "Checkout Rush",
+    randomSeed: "starter-level-003-v1",
     navigation: { moveSpeed: 400, interactionRadius: 155 },
     presentation: {
       assetPackId: "market-checkout-v1",
       visualPresetId: "checkout-standard-v1"
     },
+    rules: NO_RULE_OVERRIDES,
     tuning: {
       initialCoins: 320,
       serviceRewardRatio: 0.75,
@@ -66,16 +81,19 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     }
   },
   {
+    schemaVersion: CURRENT_LEVEL_SCHEMA_VERSION,
     id: "starter-level-004",
     mode: "clean",
     shiftId: "starter-shift-003",
     missionId: "clean-store-floor",
     title: "Spill Patrol",
+    randomSeed: "starter-level-004-v1",
     navigation: { moveSpeed: 405, interactionRadius: 150 },
     presentation: {
       assetPackId: "market-clean-v1",
       visualPresetId: "clean-standard-v1"
     },
+    rules: NO_RULE_OVERRIDES,
     tuning: {
       initialCoins: 400,
       cleanDurationMs: 850,
@@ -89,16 +107,19 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     }
   },
   {
+    schemaVersion: CURRENT_LEVEL_SCHEMA_VERSION,
     id: "starter-level-005",
     mode: "find-items",
     shiftId: "starter-shift-004",
     missionId: "find-order-items",
     title: "Order Hunt",
+    randomSeed: "starter-level-005-v1",
     navigation: { moveSpeed: 420, interactionRadius: 165 },
     presentation: {
       assetPackId: "market-find-items-v1",
       visualPresetId: "find-items-standard-v1"
     },
+    rules: NO_RULE_OVERRIDES,
     tuning: {
       initialCoins: 490,
       timeLimitSeconds: 60,
