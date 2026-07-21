@@ -134,10 +134,20 @@ export interface LevelNavigationDefinition {
   readonly interactionRadius: number;
 }
 
+export interface RestockRushTuningDefinition {
+  readonly targetDurationMs?: number;
+  readonly minimumTargetDurationMs?: number;
+  readonly speedUpPerSuccessMs?: number;
+  readonly streakWindowMs?: number;
+  readonly goldTimeMs?: number;
+  readonly silverTimeMs?: number;
+}
+
 export interface RestockLevelTuningDefinition {
   readonly initialCoins: number;
   readonly slotCount?: number;
   readonly progressRewardRatio?: number;
+  readonly rush?: RestockRushTuningDefinition;
 }
 
 export interface CheckoutLevelTuningDefinition {
