@@ -155,19 +155,19 @@ export const CHECKOUT_VISUAL_PRESET: CheckoutLevelVisualPreset = Object.freeze({
     laneLightOffset: Object.freeze({ x: -138, y: -112 }),
     scanBeamOffset: Object.freeze({ x: -72, y: -65 }),
     scanBeamSize: Object.freeze({ width: 124, height: 8 }),
-    servedExitOffset: Object.freeze({ x: 215, y: -42 })
+    servedExitOffset: Object.freeze({ x: 230, y: -38 })
   }),
   queue: Object.freeze({
-    customerSize: Object.freeze({ width: 340, height: 310 }),
+    customerSize: Object.freeze({ width: 250, height: 235 }),
     columns: 1,
     columnGap: 0,
-    rowGap: 116,
-    rowDriftX: -38,
+    rowGap: 82,
+    rowDriftX: -22,
     alternatingYOffset: 0,
-    baseScale: 1,
-    rowScaleStep: 0.065,
+    baseScale: 0.94,
+    rowScaleStep: 0.04,
     columnScaleStep: 0,
-    minimumScale: 0.7
+    minimumScale: 0.72
   }),
   sign: Object.freeze({
     centre: Object.freeze({ x: 1280, y: 184 }),
