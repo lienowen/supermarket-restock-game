@@ -1,7 +1,7 @@
 import { resolveGlobalAssetPack } from "../../assets/GlobalAssetPackRegistry";
 import { registeredGameplayModes } from "../../application/GameplayModeRegistry";
 import { resolveLevelVisualPreset } from "../../presentation/visual/LevelVisualPresetResolver";
-import { EMPTY_RULE_COMPONENT_REGISTRY } from "../../rules/RuleComponentRegistry";
+import { STANDARD_MARKET_RULE_REGISTRY } from "../../rules/StandardMarketRuleComponents";
 import {
   CURRENT_LEVEL_SCHEMA_VERSION,
   type LevelDefinition
@@ -44,7 +44,7 @@ export function validateLevelDefinitions(
       errors.push(`${prefix}: ${asErrorMessage(error)}`);
     }
 
-    EMPTY_RULE_COMPONENT_REGISTRY.validate(level.rules).forEach((error) => (
+    STANDARD_MARKET_RULE_REGISTRY.validate(level.rules).forEach((error) => (
       errors.push(`${prefix}: ${error}`)
     ));
 
