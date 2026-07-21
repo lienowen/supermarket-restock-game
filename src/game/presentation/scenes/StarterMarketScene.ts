@@ -8,6 +8,7 @@ import type { NavigationPoint } from "../../application/PlayerNavigationControll
 import { resolveLevelProgression } from "../../application/LevelProgression";
 import {
   RestockSceneController,
+  type RestockSceneAction,
   type RestockSceneCopy,
   type RestockSceneSnapshot,
   type RestockSceneStep
@@ -51,6 +52,9 @@ export class StarterMarketScene extends Phaser.Scene {
   private completionOverlay?: LevelCompleteOverlay;
   private previousStep?: RestockSceneStep;
   private previousProgress = -1;
+  private pendingAction = false;
+  private restockStreak = 0;
+  private lastRestockAt = Number.NEGATIVE_INFINITY;
 
   constructor(
     private readonly context: RestockStarterMarketPresentationContext = STARTER_MARKET_PRESENTATION,
@@ -104,7 +108,7 @@ export class StarterMarketScene extends Phaser.Scene {
         arrowOffsetY: context.visual.targeting.arrowOffsetY,
         name: "starter-market-interaction-target"
       },
-      () => this.performCurrentAction()
+      () => this.requestCurrentAction()
     );
     this.hud = new ShiftHud(
       this,
@@ -115,7 +119,7 @@ export class StarterMarketScene extends Phaser.Scene {
         modeLabel: "RESTOCK",
         palette: context.palette
       },
-      () => this.performCurrentAction()
+      () => this.requestCurrentAction()
     );
 
     this.disposers.push(
@@ -140,6 +144,7 @@ export class StarterMarketScene extends Phaser.Scene {
 
   update(_time: number, delta: number): void {
     this.actors?.update(delta);
+    this.advancePendingAction();
     this.syncTarget(this.controller.snapshot());
   }
 
@@ -208,18 +213,79 @@ export class StarterMarketScene extends Phaser.Scene {
       carrySize: preset.actor.carrySize,
       cartSize: preset.props.cartSize,
       caseSize: preset.props.caseSize,
-      shadowOffset: preset.actor.shadowOffset
+      shadowOffset: preset.actor.shadowOffset,
+      onManualNavigation: () => this.cancelPendingAction()
     });
+  }
+
+  private requestCurrentAction(): void {
+    const snapshot = this.controller.snapshot();
+    const point = this.interactionPoint(snapshot);
+    if (!point || !this.actors || !this.interactionGate.isReady()) return;
+
+    if (this.canInteract(snapshot)) {
+      this.pendingAction = false;
+      this.performCurrentAction();
+      return;
+    }
+
+    this.pendingAction = true;
+    this.actors.setDestination(point);
+    this.syncTarget(snapshot);
+  }
+
+  private advancePendingAction(): void {
+    if (!this.pendingAction || !this.actors) return;
+    const snapshot = this.controller.snapshot();
+    const point = this.interactionPoint(snapshot);
+    if (!point) {
+      this.cancelPendingAction();
+      return;
+    }
+
+    const configuredRadius = this.context.campaignLevel.level.navigation.interactionRadius;
+    const arrivalRadius = Math.min(72, Math.max(42, configuredRadius * 0.5));
+    if (!this.interactionGate.isReady() || !this.actors.isNear(point, arrivalRadius)) return;
+
+    this.pendingAction = false;
+    this.performCurrentAction();
   }
 
   private performCurrentAction(): void {
     const snapshot = this.controller.snapshot();
     if (!this.canInteract(snapshot)) return;
     const action = this.controller.actionForCurrentStep();
-    if (!action) return;
+    if (!action || !this.dispatchSceneAction(action)) return;
 
+    switch (action) {
+      case "PICK_BOX":
+        // Keep the pace moving: after the pickup, walk toward the cart while the
+        // player reads the next instruction. The next action still requires intent.
+        this.actors?.setDestination(this.context.world.cartStart);
+        return;
+      case "LOAD_CART":
+        // Loading and starting the delivery are one meaningful player decision.
+        // The low-value PUSH step is automatic, then arrival performs park/open.
+        if (this.dispatchSceneAction("PUSH_CART", false)) {
+          this.pendingAction = true;
+          this.actors?.setDestination(this.context.world.cartCooler);
+        }
+        return;
+      case "PARK_CART":
+        // Opening a delivered case has no strategic choice, so do it immediately
+        // and put the player into the satisfying rapid-restock phase.
+        this.dispatchSceneAction("OPEN_BOX", false);
+        return;
+      case "PUSH_CART":
+      case "OPEN_BOX":
+      case "RESTOCK_ROW":
+        return;
+    }
+  }
+
+  private dispatchSceneAction(action: RestockSceneAction, feedback = true): boolean {
     const accepted = this.controller.dispatch(action);
-    if (!accepted) return;
+    if (!accepted) return false;
 
     gameDomainEvents.emit("task.action-accepted", {
       levelId: this.context.campaignLevel.level.id,
@@ -227,14 +293,36 @@ export class StarterMarketScene extends Phaser.Scene {
       action
     });
 
+    if (!feedback) return true;
     const position = this.actors?.position();
-    if (position) {
-      playActionFeedback(
-        this,
-        position,
-        action === "RESTOCK_ROW" ? "restock" : "interact"
-      );
+    if (!position) return true;
+
+    if (action === "RESTOCK_ROW") {
+      const streak = this.nextRestockStreak();
+      playActionFeedback(this, position, "restock", {
+        label: streak > 1 ? `FAST STOCK x${streak}` : "STOCKED!",
+        emphasis: 1 + Math.min(0.35, Math.max(0, streak - 1) * 0.08)
+      });
+      return true;
     }
+
+    playActionFeedback(this, position, "interact");
+    return true;
+  }
+
+  private nextRestockStreak(): number {
+    const now = this.time.now;
+    this.restockStreak = now - this.lastRestockAt <= 1450
+      ? this.restockStreak + 1
+      : 1;
+    this.lastRestockAt = now;
+    return this.restockStreak;
+  }
+
+  private cancelPendingAction(): void {
+    if (!this.pendingAction) return;
+    this.pendingAction = false;
+    this.syncTarget(this.controller.snapshot());
   }
 
   private sync(snapshot: RestockSceneSnapshot, copy: RestockSceneCopy): void {
@@ -257,6 +345,7 @@ export class StarterMarketScene extends Phaser.Scene {
     }
 
     if (snapshot.step === "complete" && this.previousStep !== "complete") {
+      this.pendingAction = false;
       const completedEconomy = {
         coins: snapshot.coins,
         stars: snapshot.stars,
@@ -323,9 +412,10 @@ export class StarterMarketScene extends Phaser.Scene {
   }
 
   private syncTarget(snapshot: RestockSceneSnapshot): void {
-    const enabled = this.canInteract(snapshot);
-    this.target?.sync(this.targetResolver.resolve(snapshot), enabled);
-    this.hud?.setActionEnabled(enabled);
+    const bounds = this.targetResolver.resolve(snapshot);
+    const ready = this.canInteract(snapshot);
+    this.target?.sync(bounds, ready || this.pendingAction);
+    this.hud?.setActionEnabled(Boolean(bounds) && this.interactionGate.isReady());
   }
 
   private canInteract(snapshot: RestockSceneSnapshot): boolean {
