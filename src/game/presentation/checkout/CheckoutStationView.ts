@@ -16,9 +16,15 @@ export interface CheckoutStationViewConfig {
   readonly visual: CheckoutLevelVisualPreset;
 }
 
+interface ImageScale {
+  readonly x: number;
+  readonly y: number;
+}
+
 export class CheckoutStationView {
   private readonly objects: Phaser.GameObjects.GameObject[] = [];
   private readonly customers: Phaser.GameObjects.Image[] = [];
+  private readonly customerBaseScales: ImageScale[] = [];
   private readonly beltItems: Phaser.GameObjects.Arc[] = [];
   private readonly registerText: Phaser.GameObjects.Text;
   private readonly waitingText: Phaser.GameObjects.Text;
@@ -119,7 +125,7 @@ export class CheckoutStationView {
     this.waitingText = scene.add.text(
       config.queueStart.x - 6,
       config.queueStart.y + 78,
-      "6 WAITING",
+      `${config.customerCount} WAITING`,
       {
         fontFamily: "Arial",
         fontSize: "12px",
@@ -150,6 +156,7 @@ export class CheckoutStationView {
         .setDisplaySize(visual.queue.customerSize.width, visual.queue.customerSize.height)
         .setDepth(this.queueDepth(position.y))
         .setName(`checkout-customer-${index + 1}`);
+      this.customerBaseScales.push(Object.freeze({ x: customer.scaleX, y: customer.scaleY }));
       this.customers.push(customer);
       this.objects.push(customer);
     }
@@ -181,15 +188,16 @@ export class CheckoutStationView {
     this.playScanBeam();
     const servedIndex = snapshot.customersServed - 1;
     const servedCustomer = this.customers[servedIndex];
-    if (servedCustomer) {
+    const baseScale = this.customerBaseScales[servedIndex];
+    if (servedCustomer && baseScale) {
       servedCustomer.clearTint();
       this.scene.tweens.add({
         targets: servedCustomer,
         x: this.config.checkoutPosition.x + this.config.visual.station.servedExitOffset.x,
         y: this.config.checkoutPosition.y + this.config.visual.station.servedExitOffset.y,
         alpha: 0,
-        scaleX: 0.78,
-        scaleY: 0.78,
+        scaleX: baseScale.x * 0.78,
+        scaleY: baseScale.y * 0.78,
         duration: this.config.scanDurationMs,
         ease: "Sine.InOut",
         onComplete: () => servedCustomer.setVisible(false)
@@ -207,6 +215,7 @@ export class CheckoutStationView {
     this.objects.forEach((object) => object.destroy());
     this.objects.length = 0;
     this.customers.length = 0;
+    this.customerBaseScales.length = 0;
     this.beltItems.length = 0;
   }
 
@@ -277,15 +286,19 @@ export class CheckoutStationView {
   private layoutQueue(servedCount: number, animate: boolean): void {
     this.customers.forEach((customer, index) => {
       if (index < servedCount) return;
+      const baseScale = this.customerBaseScales[index];
+      if (!baseScale) return;
       const queueIndex = index - servedCount;
       const position = this.queuePosition(queueIndex);
-      const scale = this.queueScale(queueIndex) * (queueIndex === 0 ? 1.05 : 1);
+      const scaleFactor = this.queueScale(queueIndex) * (queueIndex === 0 ? 1.05 : 1);
+      const scaleX = baseScale.x * scaleFactor;
+      const scaleY = baseScale.y * scaleFactor;
       customer.setVisible(true).setAlpha(queueIndex === 0 ? 1 : 0.92).setDepth(this.queueDepth(position.y));
       if (queueIndex === 0) customer.setTint(0xfff3cf);
       else customer.clearTint();
 
       if (!animate) {
-        customer.setPosition(position.x, position.y).setScale(scale);
+        customer.setPosition(position.x, position.y).setScale(scaleX, scaleY);
         return;
       }
 
@@ -293,8 +306,8 @@ export class CheckoutStationView {
         targets: customer,
         x: position.x,
         y: position.y,
-        scaleX: scale,
-        scaleY: scale,
+        scaleX,
+        scaleY,
         duration: this.config.queueAdvanceDurationMs,
         ease: "Sine.Out"
       });
