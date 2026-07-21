@@ -19,6 +19,7 @@ function requiredAmount(objective: MissionObjectiveDefinition): number {
     case "transfer-product": return objective.amount;
     case "operate-checkout": return objective.customerCount;
     case "clean-zone": return objective.amount;
+    case "find-items": return objective.productIds.length;
   }
 }
 
