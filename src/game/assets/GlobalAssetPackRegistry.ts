@@ -176,6 +176,10 @@ export function resolveGlobalAssetPack(
 export function resolveGlobalAssetPack(
   assetPackId: string,
   expectedMode: GameplayMode
+): GlobalAssetPack;
+export function resolveGlobalAssetPack(
+  assetPackId: string,
+  expectedMode: GameplayMode
 ): GlobalAssetPack {
   const pack = GLOBAL_ASSET_PACKS[assetPackId as GlobalAssetPackId];
   if (!pack) throw new Error(`Unknown global asset pack: ${assetPackId}`);
