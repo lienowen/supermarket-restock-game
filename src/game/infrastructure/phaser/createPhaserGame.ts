@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { crazyGamesPlatform } from "../../../platform/crazyGamesPlatform";
 import { CampaignSession } from "../../application/CampaignSession";
+import { gameDomainEvents } from "../../events/GameDomainEvents";
 import {
   createStarterMarketPresentationContext,
   MAIN_LEVEL_CAMPAIGN_RUNTIME
@@ -45,7 +46,8 @@ export async function createPhaserGame(
         reputation: 0
       }
     },
-    new BrowserCampaignSessionStore()
+    new BrowserCampaignSessionStore(),
+    gameDomainEvents
   );
   const campaignSession: SceneCampaignSessionContext = Object.freeze({
     session,
