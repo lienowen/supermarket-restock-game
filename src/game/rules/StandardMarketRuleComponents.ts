@@ -7,6 +7,7 @@ import type {
   BehaviorComponent,
   ConditionComponent,
   ModifierComponent,
+  RuleExecutionContext,
   RuleParams
 } from "./RuleProtocol";
 
@@ -51,22 +52,22 @@ const validateNumber = (
 export const PROGRESS_AT_LEAST_CONDITION: ConditionComponent<StandardMarketRuleState> = Object.freeze({
   kind: "condition",
   type: "progress.at-least",
-  validate: (params) => validateNumber(params, "ratio", { min: 0, max: 1 }),
-  evaluate: ({ state }, params) => {
+  validate: (params: RuleParams) => validateNumber(params, "ratio", { min: 0, max: 1 }),
+  evaluate: (context: RuleExecutionContext<StandardMarketRuleState>, params: RuleParams) => {
     const ratio = requiredNumber(params, "ratio", { min: 0, max: 1 });
-    if (state.total <= 0) return ratio <= 0;
-    return state.progress / state.total >= ratio;
+    if (context.state.total <= 0) return ratio <= 0;
+    return context.state.progress / context.state.total >= ratio;
   }
 });
 
 export const GRANT_COINS_ACTION: ActionComponent<StandardMarketRuleState> = Object.freeze({
   kind: "action",
   type: "economy.grant-coins",
-  validate: (params) => validateNumber(params, "amount", { min: 0 }),
-  execute: ({ state, emit }, params) => {
+  validate: (params: RuleParams) => validateNumber(params, "amount", { min: 0 }),
+  execute: (context: RuleExecutionContext<StandardMarketRuleState>, params: RuleParams) => {
     const amount = Math.floor(requiredNumber(params, "amount", { min: 0 }));
-    const next = Object.freeze({ ...state, coins: state.coins + amount });
-    emit({ type: "economy.coins-granted", payload: { amount, coins: next.coins } });
+    const next = Object.freeze({ ...context.state, coins: context.state.coins + amount });
+    context.emit({ type: "economy.coins-granted", payload: { amount, coins: next.coins } });
     return next;
   }
 });
@@ -74,8 +75,12 @@ export const GRANT_COINS_ACTION: ActionComponent<StandardMarketRuleState> = Obje
 export const MULTIPLY_NUMBER_MODIFIER: ModifierComponent<unknown, StandardMarketRuleState> = Object.freeze({
   kind: "modifier",
   type: "number.multiply",
-  validate: (params) => validateNumber(params, "multiplier", { min: 0 }),
-  apply: (value, _context, params) => {
+  validate: (params: RuleParams) => validateNumber(params, "multiplier", { min: 0 }),
+  apply: (
+    value: unknown,
+    _context: RuleExecutionContext<StandardMarketRuleState>,
+    params: RuleParams
+  ) => {
     if (typeof value !== "number" || !Number.isFinite(value)) {
       throw new Error("number.multiply requires a finite numeric value");
     }
@@ -86,14 +91,18 @@ export const MULTIPLY_NUMBER_MODIFIER: ModifierComponent<unknown, StandardMarket
 export const COUNTDOWN_BEHAVIOR: BehaviorComponent<StandardMarketRuleState> = Object.freeze({
   kind: "behavior",
   type: "timer.countdown",
-  validate: (params) => validateNumber(params, "rate", { min: 0 }),
-  tick: ({ state, emit }, params, deltaMs) => {
+  validate: (params: RuleParams) => validateNumber(params, "rate", { min: 0 }),
+  tick: (
+    context: RuleExecutionContext<StandardMarketRuleState>,
+    params: RuleParams,
+    deltaMs: number
+  ) => {
     const rate = requiredNumber(params, "rate", { min: 0 });
-    const remainingMs = Math.max(0, state.remainingMs - Math.max(0, deltaMs) * rate);
-    if (state.remainingMs > 0 && remainingMs === 0) {
-      emit({ type: "timer.expired" });
+    const remainingMs = Math.max(0, context.state.remainingMs - Math.max(0, deltaMs) * rate);
+    if (context.state.remainingMs > 0 && remainingMs === 0) {
+      context.emit({ type: "timer.expired" });
     }
-    return Object.freeze({ ...state, remainingMs });
+    return Object.freeze({ ...context.state, remainingMs });
   }
 });
 
