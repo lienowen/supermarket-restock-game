@@ -139,9 +139,9 @@ export class UtilityTaskScene extends Phaser.Scene {
   }
 
   private createCleanTask(context: CleanStarterMarketPresentationContext): void {
-    const fixture = this.add.image(1325, 630, context.levelAssets.cleaningFixture.key)
+    const fixture = this.add.image(1325, 820, context.levelAssets.cleaningFixture.key)
       .setOrigin(0.5, 0.96)
-      .setDisplaySize(420, 420)
+      .setDisplaySize(900, 900)
       .setDepth(2);
     const cart = this.add.image(
       context.runtime.toolPoint.x,
@@ -149,15 +149,15 @@ export class UtilityTaskScene extends Phaser.Scene {
       context.levelAssets.cleaningCart.key
     )
       .setOrigin(0.5, 0.96)
-      .setDisplaySize(175, 175)
+      .setDisplaySize(500, 500)
       .setDepth(20);
     const sign = this.add.image(
-      context.runtime.toolPoint.x - 125,
-      context.runtime.toolPoint.y + 25,
+      context.runtime.toolPoint.x - 145,
+      context.runtime.toolPoint.y + 18,
       context.levelAssets.wetFloorSign.key
     )
       .setOrigin(0.5, 0.96)
-      .setDisplaySize(105, 105)
+      .setDisplaySize(380, 375)
       .setDepth(20);
     this.taskObjects.push(fixture, cart, sign);
 
@@ -178,22 +178,27 @@ export class UtilityTaskScene extends Phaser.Scene {
   }
 
   private createFindItemsTask(context: FindItemsStarterMarketPresentationContext): void {
-    const fixture = this.add.image(1160, 660, context.levelAssets.fixture.key)
+    const fixture = this.add.image(1160, 820, context.levelAssets.fixture.key)
       .setOrigin(0.5, 0.96)
-      .setDisplaySize(520, 520)
+      .setDisplaySize(1000, 900)
       .setDepth(2);
     const basket = this.add.image(850, 735, "equipment-shopping-basket")
       .setOrigin(0.5, 0.96)
-      .setDisplaySize(125, 125)
+      .setDisplaySize(350, 240)
       .setDepth(19);
     this.taskObjects.push(fixture, basket);
 
     context.runtime.itemTargets.forEach((target, index) => {
       const asset = context.levelAssets.items[index];
       if (!asset) throw new Error(`Missing find-items asset at index ${index}`);
+      const dimensions = target.productId === "apple"
+        ? { width: 160, height: 180 }
+        : target.productId === "milk-bottle"
+          ? { width: 200, height: 230 }
+          : { width: 160, height: 222 };
       const item = this.add.image(target.x, target.y, asset.key)
         .setOrigin(0.5, 0.96)
-        .setDisplaySize(index === 1 ? 74 : 80, index === 1 ? 74 : 116)
+        .setDisplaySize(dimensions.width, dimensions.height)
         .setDepth(12)
         .setName(`find-item-${target.productId}`);
       this.progressObjects.push(item);
@@ -336,8 +341,8 @@ export class UtilityTaskScene extends Phaser.Scene {
     return {
       x: point.x,
       y: point.y,
-      width: this.context.mode === "clean" && snapshot.step === "clean" ? 150 : 118,
-      height: this.context.mode === "clean" && snapshot.step === "clean" ? 82 : 122
+      width: this.context.mode === "clean" && snapshot.step === "clean" ? 150 : 132,
+      height: this.context.mode === "clean" && snapshot.step === "clean" ? 82 : 142
     };
   }
 
