@@ -9,6 +9,7 @@ export interface RestockRushConfig {
   readonly targetDurationMs?: number;
   readonly minimumTargetDurationMs?: number;
   readonly speedUpPerSuccessMs?: number;
+  readonly introGraceMs?: number;
   readonly streakWindowMs?: number;
   readonly goldTimeMs?: number;
   readonly silverTimeMs?: number;
@@ -46,6 +47,13 @@ export interface RestockRushSelectionResult {
 const requirePositive = (value: number, label: string): number => {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be a positive finite number`);
+  }
+  return value;
+};
+
+const requireNonNegative = (value: number, label: string): number => {
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error(`${label} must be a finite number zero or greater`);
   }
   return value;
 };
@@ -88,11 +96,13 @@ export class RestockRushController {
   private readonly baseTargetDurationMs: number;
   private readonly minimumTargetDurationMs: number;
   private readonly speedUpPerSuccessMs: number;
+  private readonly introGraceMs: number;
   private readonly pace: RestockPaceTracker;
   private readonly queue: number[];
   private readonly filledRows = new Set<number>();
   private deadlineMs?: number;
   private currentTargetDurationMs: number;
+  private introWindowActive = true;
   private mistakes = 0;
 
   constructor(readonly config: RestockRushConfig) {
@@ -109,11 +119,12 @@ export class RestockRushController {
       "Minimum target duration"
     );
     this.speedUpPerSuccessMs = requirePositive(config.speedUpPerSuccessMs ?? 220, "Speed-up per success");
+    this.introGraceMs = requireNonNegative(config.introGraceMs ?? 0, "Intro grace");
     if (this.minimumTargetDurationMs > this.baseTargetDurationMs) {
       throw new Error("Minimum target duration cannot exceed the starting target duration");
     }
 
-    this.currentTargetDurationMs = this.baseTargetDurationMs;
+    this.currentTargetDurationMs = this.baseTargetDurationMs + this.introGraceMs;
     this.queue = shuffledRows(config.rowCount, config.randomSeed);
     this.pace = new RestockPaceTracker({
       streakWindowMs: config.streakWindowMs,
@@ -143,6 +154,7 @@ export class RestockRushController {
 
     this.mistakes += 1;
     this.pace.breakStreak(now);
+    this.consumeIntroWindow();
     this.rotateTarget();
     this.resetDeadline(now);
     return Object.freeze({ event: "timeout", snapshot: this.snapshot(now) });
@@ -168,6 +180,7 @@ export class RestockRushController {
     if (rowIndex !== expectedRowIndex) {
       this.mistakes += 1;
       this.pace.breakStreak(now);
+      this.consumeIntroWindow();
       this.rotateTarget();
       this.resetDeadline(now);
       return Object.freeze({
@@ -181,15 +194,13 @@ export class RestockRushController {
     this.queue.shift();
     this.filledRows.add(rowIndex);
     this.pace.recordStock(now);
+    this.introWindowActive = false;
 
     if (this.queue.length === 0) {
       this.deadlineMs = undefined;
       this.pace.complete(now);
     } else {
-      this.currentTargetDurationMs = Math.max(
-        this.minimumTargetDurationMs,
-        this.baseTargetDurationMs - this.filledRows.size * this.speedUpPerSuccessMs
-      );
+      this.updateNormalTargetDuration();
       this.resetDeadline(now);
     }
 
@@ -225,6 +236,19 @@ export class RestockRushController {
       elapsedMs: pace.elapsedMs,
       grade: pace.grade
     });
+  }
+
+  private consumeIntroWindow(): void {
+    if (!this.introWindowActive) return;
+    this.introWindowActive = false;
+    this.updateNormalTargetDuration();
+  }
+
+  private updateNormalTargetDuration(): void {
+    this.currentTargetDurationMs = Math.max(
+      this.minimumTargetDurationMs,
+      this.baseTargetDurationMs - this.filledRows.size * this.speedUpPerSuccessMs
+    );
   }
 
   private rotateTarget(): void {
