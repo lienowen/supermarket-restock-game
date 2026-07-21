@@ -68,6 +68,14 @@ export class RestockPaceTracker {
     return this.snapshot(now);
   }
 
+  breakStreak(nowMs: number): RestockPaceSnapshot {
+    const now = requireTimestamp(nowMs);
+    this.startedAtMs ??= now;
+    this.currentStreak = 0;
+    this.lastStockAtMs = undefined;
+    return this.snapshot(now);
+  }
+
   complete(nowMs: number): RestockPaceSnapshot {
     const now = requireTimestamp(nowMs);
     this.startedAtMs ??= now;
