@@ -180,7 +180,7 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     shiftId: "starter-shift-004",
     missionId: "find-order-items",
     title: "Order Hunt",
-    navigation: { moveSpeed: 420, interactionRadius: 235 },
+    navigation: { moveSpeed: 420, interactionRadius: 165 },
     assetBindings: {
       environmentAssetKey: SHARED_ENVIRONMENT_ASSET_KEY,
       workerAssetKey: "worker-a-idle",
