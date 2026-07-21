@@ -15,15 +15,15 @@ export interface RestockActorViewConfig {
   readonly cartStart: NavigationPoint;
   readonly cartDestination: NavigationPoint;
   readonly workerIdleAssetKey: string;
-  readonly workerWalkAssetKeys: readonly [string, string];
+  readonly workerWalkAssetKeys?: readonly [string, string];
   readonly workerPushAssetKey: string;
   readonly workerCarryAssetKey: string;
-  readonly workerOpenAssetKey: string;
-  readonly workerStockAssetKey: string;
+  readonly workerOpenAssetKey?: string;
+  readonly workerStockAssetKey?: string;
   readonly cartAssetKey: string;
-  readonly cartLoadedAssetKey: string;
+  readonly cartLoadedAssetKey?: string;
   readonly caseAssetKey: string;
-  readonly caseOpenAssetKey: string;
+  readonly caseOpenAssetKey?: string;
   readonly idleSize: { readonly width: number; readonly height: number };
   readonly pushSize: { readonly width: number; readonly height: number };
   readonly carrySize: { readonly width: number; readonly height: number };
@@ -45,7 +45,7 @@ export class RestockActorView {
       bounds: config.navigationBounds,
       speed: config.moveSpeed,
       assetKey: config.workerIdleAssetKey,
-      walkAssetKeys: config.workerWalkAssetKeys,
+      walkAssetKeys: config.workerWalkAssetKeys ?? ["worker-a-walk-01", "worker-a-walk-02"],
       displaySize: config.idleSize,
       shadowOffset: config.shadowOffset,
       name: "restock-worker",
@@ -132,13 +132,14 @@ export class RestockActorView {
       .setVisible(true)
       .setPosition(config.caseStart.x, config.caseStart.y)
       .setDisplaySize(150, 132)
-      .setAngle(0);
+      .setAngle(0)
+      .setAlpha(1);
   }
 
   private showLoadState(): void {
     const { config } = this;
     this.setWorker(config.workerCarryAssetKey, config.carrySize);
-    this.cart.setTexture(config.cartLoadedAssetKey)
+    this.cart.setTexture(config.cartLoadedAssetKey ?? "equipment-restock-cart-a-loaded")
       .setDisplaySize(250, 205)
       .setPosition(config.cartStart.x + 72, config.cartStart.y + 8)
       .setVisible(true);
@@ -156,10 +157,14 @@ export class RestockActorView {
 
   private showOpenState(snapshot: RestockSceneSnapshot): void {
     const { config } = this;
-    this.setWorker(config.workerOpenAssetKey, config.idleSize);
+    this.setWorker(config.workerOpenAssetKey ?? "worker-a-open-case", config.idleSize);
     this.cart.setVisible(false);
     this.cartShadow.setVisible(false);
-    this.caseBox.setTexture(snapshot.boxOpened ? config.caseOpenAssetKey : config.caseAssetKey)
+    this.caseBox.setTexture(
+      snapshot.boxOpened
+        ? config.caseOpenAssetKey ?? this.openCaseKey()
+        : config.caseAssetKey
+    )
       .setVisible(true)
       .setPosition(config.cartDestination.x + 24, config.cartDestination.y - 72)
       .setDisplaySize(142, 124)
@@ -168,10 +173,10 @@ export class RestockActorView {
 
   private showStockState(snapshot: RestockSceneSnapshot): void {
     const { config } = this;
-    this.setWorker(config.workerStockAssetKey, config.idleSize);
+    this.setWorker(config.workerStockAssetKey ?? "worker-a-place-middle", config.idleSize);
     this.cart.setVisible(false);
     this.cartShadow.setVisible(false);
-    this.caseBox.setTexture(config.caseOpenAssetKey)
+    this.caseBox.setTexture(config.caseOpenAssetKey ?? this.openCaseKey())
       .setVisible(true)
       .setPosition(config.cartDestination.x + 28, config.cartDestination.y - 70)
       .setDisplaySize(140, 122)
@@ -185,6 +190,12 @@ export class RestockActorView {
     this.cart.setVisible(false);
     this.cartShadow.setVisible(false);
     this.caseBox.setVisible(false).setAlpha(1);
+  }
+
+  private openCaseKey(): string {
+    return this.config.caseAssetKey === "prop-cola-case-closed"
+      ? "prop-cola-case-open"
+      : this.config.caseAssetKey;
   }
 
   private setWorker(
