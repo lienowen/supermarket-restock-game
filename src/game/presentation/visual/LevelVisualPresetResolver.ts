@@ -27,8 +27,14 @@ export function resolveLevelVisualPreset(
   level: FindItemsLevelDefinition
 ): FindItemsLevelVisualPreset;
 export function resolveLevelVisualPreset(level: LevelDefinition): MarketLevelVisualPreset {
-  return resolveMarketLevelVisualPreset(
-    level.presentation.visualPresetId,
-    level.mode
-  );
+  switch (level.mode) {
+    case "restock":
+      return resolveMarketLevelVisualPreset(level.presentation.visualPresetId, "restock");
+    case "checkout":
+      return resolveMarketLevelVisualPreset(level.presentation.visualPresetId, "checkout");
+    case "clean":
+      return resolveMarketLevelVisualPreset(level.presentation.visualPresetId, "clean");
+    case "find-items":
+      return resolveMarketLevelVisualPreset(level.presentation.visualPresetId, "find-items");
+  }
 }
