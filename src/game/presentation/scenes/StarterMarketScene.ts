@@ -294,7 +294,6 @@ export class StarterMarketScene extends Phaser.Scene {
         return;
       case "PUSH_CART":
       case "OPEN_BOX":
-      case "RESTOCK_ROW":
         return;
     }
   }
