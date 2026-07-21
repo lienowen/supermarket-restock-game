@@ -3,7 +3,9 @@ export type ProductCategory =
   | "produce"
   | "snack"
   | "frozen"
-  | "household";
+  | "household"
+  | "dairy"
+  | "pantry";
 
 export interface ProductDefinition {
   readonly id: string;
@@ -46,6 +48,11 @@ export type MissionObjectiveDefinition =
       readonly type: "clean-zone";
       readonly zoneId: string;
       readonly amount: number;
+    }
+  | {
+      readonly type: "find-items";
+      readonly fixtureId: string;
+      readonly productIds: readonly string[];
     };
 
 export interface MissionRewardDefinition {
@@ -101,6 +108,23 @@ export interface CheckoutLevelAssetBindingsDefinition {
   readonly customerAssetKeys: readonly string[];
 }
 
+export interface CleanLevelAssetBindingsDefinition {
+  readonly environmentAssetKey: string;
+  readonly workerAssetKey: string;
+  readonly workerMopAssetKey: string;
+  readonly cleaningFixtureAssetKey: string;
+  readonly cleaningCartAssetKey: string;
+  readonly wetFloorSignAssetKey: string;
+}
+
+export interface FindItemsLevelAssetBindingsDefinition {
+  readonly environmentAssetKey: string;
+  readonly workerAssetKey: string;
+  readonly workerThinkingAssetKey: string;
+  readonly fixtureAssetKey: string;
+  readonly itemAssetKeys: readonly string[];
+}
+
 export interface LevelNavigationDefinition {
   readonly moveSpeed: number;
   readonly interactionRadius: number;
@@ -117,6 +141,29 @@ export interface CheckoutLevelTuningDefinition {
   readonly serviceRewardRatio?: number;
   readonly scanDurationMs: number;
   readonly queueAdvanceDurationMs: number;
+}
+
+export interface WorldPointDefinition {
+  readonly x: number;
+  readonly y: number;
+}
+
+export interface CleanLevelTuningDefinition {
+  readonly initialCoins: number;
+  readonly cleanDurationMs: number;
+  readonly toolPoint: WorldPointDefinition;
+  readonly spotPositions: readonly WorldPointDefinition[];
+}
+
+export interface FindItemTargetDefinition extends WorldPointDefinition {
+  readonly productId: string;
+}
+
+export interface FindItemsLevelTuningDefinition {
+  readonly initialCoins: number;
+  readonly timeLimitSeconds: number;
+  readonly mistakePenaltySeconds: number;
+  readonly itemTargets: readonly FindItemTargetDefinition[];
 }
 
 interface BaseLevelDefinition {
@@ -139,7 +186,23 @@ export interface CheckoutLevelDefinition extends BaseLevelDefinition {
   readonly tuning: CheckoutLevelTuningDefinition;
 }
 
-export type LevelDefinition = RestockLevelDefinition | CheckoutLevelDefinition;
+export interface CleanLevelDefinition extends BaseLevelDefinition {
+  readonly mode: "clean";
+  readonly assetBindings: CleanLevelAssetBindingsDefinition;
+  readonly tuning: CleanLevelTuningDefinition;
+}
+
+export interface FindItemsLevelDefinition extends BaseLevelDefinition {
+  readonly mode: "find-items";
+  readonly assetBindings: FindItemsLevelAssetBindingsDefinition;
+  readonly tuning: FindItemsLevelTuningDefinition;
+}
+
+export type LevelDefinition =
+  | RestockLevelDefinition
+  | CheckoutLevelDefinition
+  | CleanLevelDefinition
+  | FindItemsLevelDefinition;
 
 export interface CampaignDefinition {
   readonly id: string;
