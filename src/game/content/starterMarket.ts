@@ -180,7 +180,7 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     shiftId: "starter-shift-004",
     missionId: "find-order-items",
     title: "Order Hunt",
-    navigation: { moveSpeed: 420, interactionRadius: 145 },
+    navigation: { moveSpeed: 420, interactionRadius: 235 },
     assetBindings: {
       environmentAssetKey: SHARED_ENVIRONMENT_ASSET_KEY,
       workerAssetKey: "worker-a-idle",
@@ -197,9 +197,9 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
       timeLimitSeconds: 60,
       mistakePenaltySeconds: 5,
       itemTargets: [
-        { productId: "milk-bottle", x: 1010, y: 410 },
-        { productId: "apple", x: 1130, y: 540 },
-        { productId: "cereal-box", x: 1235, y: 445 }
+        { productId: "milk-bottle", x: 1010, y: 480 },
+        { productId: "apple", x: 1125, y: 610 },
+        { productId: "cereal-box", x: 1190, y: 505 }
       ]
     }
   }
