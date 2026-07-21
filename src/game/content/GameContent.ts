@@ -138,6 +138,7 @@ export interface RestockRushTuningDefinition {
   readonly targetDurationMs?: number;
   readonly minimumTargetDurationMs?: number;
   readonly speedUpPerSuccessMs?: number;
+  readonly introGraceMs?: number;
   readonly streakWindowMs?: number;
   readonly goldTimeMs?: number;
   readonly silverTimeMs?: number;
