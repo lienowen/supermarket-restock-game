@@ -26,7 +26,7 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     shiftId: "starter-shift-001",
     missionId: "restock-cola-cooler",
     title: "First Delivery",
-    randomSeed: "starter-level-001-v2-rush",
+    randomSeed: "starter-level-001-v1",
     navigation: SHARED_NAVIGATION,
     presentation: {
       assetPackId: "market-restock-v1",
@@ -54,7 +54,7 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     shiftId: "starter-shift-002",
     missionId: "restock-water-promotion",
     title: "Promotion Restock",
-    randomSeed: "starter-level-002-v2-rush",
+    randomSeed: "starter-level-002-v1",
     navigation: { moveSpeed: 560, interactionRadius: 155 },
     presentation: {
       assetPackId: "market-restock-v1",
