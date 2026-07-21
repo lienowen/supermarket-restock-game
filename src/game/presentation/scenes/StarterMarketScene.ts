@@ -12,6 +12,7 @@ import {
   type RestockSceneSnapshot,
   type RestockSceneStep
 } from "../../application/RestockSceneController";
+import { gameDomainEvents } from "../../events/GameDomainEvents";
 import { navigateToLevel } from "../../infrastructure/browser/BrowserLevelNavigator";
 import { RestockActorView } from "../actors/RestockActorView";
 import {
@@ -49,6 +50,7 @@ export class StarterMarketScene extends Phaser.Scene {
   private target?: InteractionTargetView;
   private completionOverlay?: LevelCompleteOverlay;
   private previousStep?: RestockSceneStep;
+  private previousProgress = -1;
 
   constructor(
     private readonly context: RestockStarterMarketPresentationContext = STARTER_MARKET_PRESENTATION,
@@ -110,6 +112,7 @@ export class StarterMarketScene extends Phaser.Scene {
         dayLabel: `${context.labels.day} · ${context.labels.level}`,
         timeLabel: `${context.runtime.shift.startTime} AM`,
         initialObjective: context.runtime.mission.title,
+        modeLabel: "RESTOCK",
         palette: context.palette
       },
       () => this.performCurrentAction()
@@ -188,10 +191,18 @@ export class StarterMarketScene extends Phaser.Scene {
       cartStart: context.world.cartStart,
       cartDestination: context.world.cartCooler,
       workerIdleAssetKey: context.levelAssets.workerIdle.key,
+      workerWalkAssetKeys: [
+        context.levelAssets.workerWalk[0].key,
+        context.levelAssets.workerWalk[1].key
+      ],
       workerPushAssetKey: context.levelAssets.workerPush.key,
       workerCarryAssetKey: context.levelAssets.workerCarry.key,
+      workerOpenAssetKey: context.levelAssets.workerOpen.key,
+      workerStockAssetKey: context.levelAssets.workerStock.key,
       cartAssetKey: context.levelAssets.cart.key,
+      cartLoadedAssetKey: context.levelAssets.cartLoaded.key,
       caseAssetKey: context.levelAssets.case.key,
+      caseOpenAssetKey: context.levelAssets.caseOpen.key,
       idleSize: preset.actor.idleSize,
       pushSize: preset.actor.pushSize,
       carrySize: preset.actor.carrySize,
@@ -209,6 +220,13 @@ export class StarterMarketScene extends Phaser.Scene {
 
     const accepted = this.controller.dispatch(action);
     if (!accepted) return;
+
+    gameDomainEvents.emit("task.action-accepted", {
+      levelId: this.context.campaignLevel.level.id,
+      mode: this.context.mode,
+      action
+    });
+
     const position = this.actors?.position();
     if (position) {
       playActionFeedback(
@@ -226,7 +244,30 @@ export class StarterMarketScene extends Phaser.Scene {
     this.cooler?.sync(snapshot.stockedRows);
     this.syncTarget(snapshot);
 
+    if (snapshot.stockedRows !== this.previousProgress) {
+      if (this.previousProgress >= 0) {
+        gameDomainEvents.emit("task.progressed", {
+          levelId: context.campaignLevel.level.id,
+          mode: context.mode,
+          progress: snapshot.stockedRows,
+          total: snapshot.totalRows
+        });
+      }
+      this.previousProgress = snapshot.stockedRows;
+    }
+
     if (snapshot.step === "complete" && this.previousStep !== "complete") {
+      const completedEconomy = {
+        coins: snapshot.coins,
+        stars: snapshot.stars,
+        reputation: this.campaignSession?.initialEconomy.reputation ?? 0
+      };
+      gameDomainEvents.emit("task.completed", {
+        levelId: context.campaignLevel.level.id,
+        mode: context.mode,
+        economy: completedEconomy
+      });
+
       playRestockCompletionFeedback(this, {
         title: context.labels.completionTitle,
         coins: context.runtime.reward.totalCoins,
@@ -242,11 +283,7 @@ export class StarterMarketScene extends Phaser.Scene {
       this.campaignSession?.session.completeLevel(
         context.campaignLevel.level.id,
         context.campaignLevel.nextLevelId,
-        {
-          coins: snapshot.coins,
-          stars: snapshot.stars,
-          reputation: this.campaignSession.initialEconomy.reputation
-        }
+        completedEconomy
       );
       const progression = resolveLevelProgression(
         context.campaignLevel.level.id,
