@@ -17,6 +17,10 @@ const {
   STARTER_MARKET_LAYOUT
 } = require("../.test-dist/src/game/world/starterMarketLayout.js");
 
+const assetsByStatus = (status) => (
+  STARTER_ASSET_CATALOGUE.assets.filter((asset) => asset.status === status)
+);
+
 test("Starter market world layout matches the approved 16:9 composition", () => {
   assert.deepEqual(validateWorldLayout(STARTER_MARKET_LAYOUT), []);
   assert.deepEqual(STARTER_MARKET_LAYOUT.logicalSize, [1600, 900]);
@@ -56,7 +60,7 @@ test("Beverage cooler exposes six independent product rows", () => {
   assert.ok(rows.every((row) => row.category === "product"));
 });
 
-test("Worker assets are action-oriented rather than day-oriented", () => {
+test("Worker assets are action-oriented rather than level-oriented", () => {
   const workerAssets = STARTER_ASSET_CATALOGUE.assets.filter((asset) =>
     asset.key.startsWith("worker-a-")
   );
@@ -69,14 +73,29 @@ test("Worker assets are action-oriented rather than day-oriented", () => {
     "open-case",
     "place-low",
     "place-middle",
-    "place-high"
+    "place-high",
+    "scan-register",
+    "mop-floor",
+    "thinking"
   ].forEach((state) => assert.equal(states.has(state), true));
 
+  assert.ok(workerAssets.every((asset) => !asset.key.toLowerCase().includes("level")));
   assert.ok(workerAssets.every((asset) => !asset.key.toLowerCase().includes("day")));
 });
 
-test("Retained assets are explicitly prototypes, never mislabeled as final art", () => {
-  const prototypes = STARTER_ASSET_CATALOGUE.assets.filter((asset) => asset.status === "prototype");
-  assert.ok(prototypes.length >= 15);
+test("Asset lifecycle status reflects the current mixed production pipeline", () => {
+  const production = assetsByStatus("production");
+  const prototypes = assetsByStatus("prototype");
+  const deprecated = assetsByStatus("deprecated");
+
+  assert.ok(production.length > 0);
+  assert.ok(prototypes.length > 0);
+  assert.ok(production.every((asset) => asset.path.startsWith("assets/game/")));
   assert.ok(prototypes.every((asset) => asset.path.startsWith("assets/game/")));
+  assert.ok(deprecated.every((asset) => Boolean(asset.replacementKey)));
+
+  const productionCategories = new Set(production.map((asset) => asset.category));
+  ["character", "fixture", "equipment", "product", "prop"].forEach((category) => (
+    assert.equal(productionCategories.has(category), true)
+  ));
 });
