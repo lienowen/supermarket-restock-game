@@ -3,6 +3,11 @@ import type { NavigationPoint } from "../../application/PlayerNavigationControll
 
 export type ActionFeedbackKind = "interact" | "restock" | "scan";
 
+export interface ActionFeedbackOptions {
+  readonly label?: string;
+  readonly emphasis?: number;
+}
+
 const COPY: Record<ActionFeedbackKind, string> = {
   interact: "DONE!",
   restock: "STOCKED!",
@@ -18,32 +23,35 @@ const COLORS: Record<ActionFeedbackKind, number> = {
 export function playActionFeedback(
   scene: Phaser.Scene,
   position: NavigationPoint,
-  kind: ActionFeedbackKind
+  kind: ActionFeedbackKind,
+  options: ActionFeedbackOptions = {}
 ): void {
   const color = COLORS[kind];
+  const emphasis = Phaser.Math.Clamp(options.emphasis ?? 1, 1, 1.5);
   const ring = scene.add.circle(position.x, position.y - 54, 26, color, 0.12)
     .setStrokeStyle(5, color, 0.95)
     .setDepth(150);
-  const label = scene.add.text(position.x, position.y - 132, COPY[kind], {
+  const label = scene.add.text(position.x, position.y - 132, options.label ?? COPY[kind], {
     fontFamily: "Arial",
-    fontSize: kind === "scan" ? "23px" : "20px",
+    fontSize: kind === "scan" ? "23px" : `${Math.round(20 * emphasis)}px`,
     color: `#${color.toString(16).padStart(6, "0")}`,
     fontStyle: "bold",
     stroke: "#17332a",
     strokeThickness: 6
   }).setOrigin(0.5).setDepth(151).setScale(0.72);
 
-  const particles = Array.from({ length: 6 }, (_, index) => {
-    const angle = (Math.PI * 2 * index) / 6;
+  const particleCount = Math.round(6 * emphasis);
+  const particles = Array.from({ length: particleCount }, (_, index) => {
+    const angle = (Math.PI * 2 * index) / particleCount;
     return scene.add.circle(position.x, position.y - 54, 5, color, 0.9)
       .setDepth(149)
-      .setData("targetX", position.x + Math.cos(angle) * 74)
-      .setData("targetY", position.y - 54 + Math.sin(angle) * 48);
+      .setData("targetX", position.x + Math.cos(angle) * 74 * emphasis)
+      .setData("targetY", position.y - 54 + Math.sin(angle) * 48 * emphasis);
   });
 
   scene.tweens.add({
     targets: ring,
-    radius: 74,
+    radius: 74 * emphasis,
     alpha: 0,
     duration: 360,
     ease: "Quad.Out",
@@ -51,9 +59,9 @@ export function playActionFeedback(
   });
   scene.tweens.add({
     targets: label,
-    y: position.y - 160,
-    scaleX: 1,
-    scaleY: 1,
+    y: position.y - 160 - (emphasis - 1) * 30,
+    scaleX: emphasis,
+    scaleY: emphasis,
     alpha: { from: 1, to: 0 },
     duration: 620,
     hold: 170,
