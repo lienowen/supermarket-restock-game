@@ -80,18 +80,6 @@ export class BeverageCoolerView {
         .setStrokeStyle(2, 0x5c7479, 0.58)
         .setDepth(9)
         .setName(`beverage-cooler-row-target-${rowIndex}`);
-      mask.on(
-        "pointerdown",
-        (
-          _pointer: Phaser.Input.Pointer,
-          _localX: number,
-          _localY: number,
-          event: Phaser.Types.Input.EventData
-        ) => {
-          event.stopPropagation();
-          config.onRowSelected?.(rowIndex);
-        }
-      );
       this.rowMasks.push(mask);
 
       const shelfLine = scene.add.rectangle(
