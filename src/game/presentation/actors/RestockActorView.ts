@@ -15,10 +15,15 @@ export interface RestockActorViewConfig {
   readonly cartStart: NavigationPoint;
   readonly cartDestination: NavigationPoint;
   readonly workerIdleAssetKey: string;
+  readonly workerWalkAssetKeys: readonly [string, string];
   readonly workerPushAssetKey: string;
   readonly workerCarryAssetKey: string;
+  readonly workerOpenAssetKey: string;
+  readonly workerStockAssetKey: string;
   readonly cartAssetKey: string;
+  readonly cartLoadedAssetKey: string;
   readonly caseAssetKey: string;
+  readonly caseOpenAssetKey: string;
   readonly idleSize: { readonly width: number; readonly height: number };
   readonly pushSize: { readonly width: number; readonly height: number };
   readonly carrySize: { readonly width: number; readonly height: number };
@@ -40,6 +45,7 @@ export class RestockActorView {
       bounds: config.navigationBounds,
       speed: config.moveSpeed,
       assetKey: config.workerIdleAssetKey,
+      walkAssetKeys: config.workerWalkAssetKeys,
       displaySize: config.idleSize,
       shadowOffset: config.shadowOffset,
       name: "restock-worker",
@@ -47,19 +53,21 @@ export class RestockActorView {
     });
     this.cartShadow = scene.add.ellipse(
       config.cartStart.x,
-      config.cartStart.y + 52,
-      225,
-      45,
+      config.cartStart.y + 46,
+      190,
+      38,
       0x000000,
-      0.24
+      0.2
     ).setDepth(20).setVisible(false);
     this.cart = scene.add.image(config.cartStart.x, config.cartStart.y, config.cartAssetKey)
-      .setDisplaySize(270, 205)
+      .setOrigin(0.5, 0.96)
+      .setDisplaySize(250, 205)
       .setDepth(22)
       .setVisible(false)
       .setName("restock-cart");
     this.caseBox = scene.add.image(config.caseStart.x, config.caseStart.y, config.caseAssetKey)
-      .setDisplaySize(132, 98)
+      .setOrigin(0.5, 0.96)
+      .setDisplaySize(150, 132)
       .setDepth(23)
       .setName("restock-case");
   }
@@ -97,9 +105,13 @@ export class RestockActorView {
         this.showPushState();
         return;
       case "open":
+        this.showOpenState(snapshot);
+        return;
       case "restock":
+        this.showStockState(snapshot);
+        return;
       case "complete":
-        this.showCoolerState(snapshot);
+        this.showCompleteState();
         return;
     }
   }
@@ -113,50 +125,74 @@ export class RestockActorView {
 
   private showCollectState(): void {
     const { config } = this;
-    this.navigation.setTexture(config.workerIdleAssetKey);
-    this.navigation.setDisplaySize(config.idleSize.width, config.idleSize.height);
-    this.navigation.setVisible(true);
+    this.setWorker(config.workerIdleAssetKey, config.idleSize);
     this.cart.setVisible(false);
     this.cartShadow.setVisible(false);
-    this.caseBox.setVisible(true)
+    this.caseBox.setTexture(config.caseAssetKey)
+      .setVisible(true)
       .setPosition(config.caseStart.x, config.caseStart.y)
-      .setDisplaySize(132, 98)
+      .setDisplaySize(150, 132)
       .setAngle(0);
   }
 
   private showLoadState(): void {
     const { config } = this;
-    this.navigation.setTexture(config.workerCarryAssetKey);
-    this.navigation.setDisplaySize(config.carrySize.width, config.carrySize.height);
-    this.navigation.setVisible(true);
-    this.cart.setTexture(config.cartAssetKey)
-      .setDisplaySize(270, 205)
-      .setPosition(config.cartStart.x + 70, config.cartStart.y + 8)
+    this.setWorker(config.workerCarryAssetKey, config.carrySize);
+    this.cart.setTexture(config.cartLoadedAssetKey)
+      .setDisplaySize(250, 205)
+      .setPosition(config.cartStart.x + 72, config.cartStart.y + 8)
       .setVisible(true);
-    this.cartShadow.setPosition(config.cartStart.x + 70, config.cartStart.y + 60).setVisible(true);
+    this.cartShadow.setPosition(config.cartStart.x + 72, config.cartStart.y + 52).setVisible(true);
     this.caseBox.setVisible(false);
   }
 
   private showPushState(): void {
     const { config } = this;
-    this.navigation.setTexture(config.workerPushAssetKey);
-    this.navigation.setDisplaySize(config.pushSize.width, config.pushSize.height);
-    this.navigation.setVisible(true);
+    this.setWorker(config.workerPushAssetKey, config.pushSize);
     this.cart.setVisible(false);
     this.cartShadow.setVisible(false);
     this.caseBox.setVisible(false);
   }
 
-  private showCoolerState(snapshot: RestockSceneSnapshot): void {
+  private showOpenState(snapshot: RestockSceneSnapshot): void {
     const { config } = this;
-    this.navigation.setTexture(config.workerIdleAssetKey);
-    this.navigation.setDisplaySize(config.idleSize.width, config.idleSize.height);
-    this.navigation.setVisible(true);
+    this.setWorker(config.workerOpenAssetKey, config.idleSize);
     this.cart.setVisible(false);
     this.cartShadow.setVisible(false);
-    this.caseBox.setVisible(snapshot.step !== "complete")
-      .setPosition(config.cartDestination.x + 18, config.cartDestination.y - 84)
-      .setDisplaySize(112, 82)
-      .setAngle(snapshot.boxOpened ? -8 : 0);
+    this.caseBox.setTexture(snapshot.boxOpened ? config.caseOpenAssetKey : config.caseAssetKey)
+      .setVisible(true)
+      .setPosition(config.cartDestination.x + 24, config.cartDestination.y - 72)
+      .setDisplaySize(142, 124)
+      .setAngle(snapshot.boxOpened ? -4 : 0);
+  }
+
+  private showStockState(snapshot: RestockSceneSnapshot): void {
+    const { config } = this;
+    this.setWorker(config.workerStockAssetKey, config.idleSize);
+    this.cart.setVisible(false);
+    this.cartShadow.setVisible(false);
+    this.caseBox.setTexture(config.caseOpenAssetKey)
+      .setVisible(true)
+      .setPosition(config.cartDestination.x + 28, config.cartDestination.y - 70)
+      .setDisplaySize(140, 122)
+      .setAngle(-4)
+      .setAlpha(Math.max(0.55, 1 - snapshot.stockedRows * 0.07));
+  }
+
+  private showCompleteState(): void {
+    const { config } = this;
+    this.setWorker(config.workerIdleAssetKey, config.idleSize);
+    this.cart.setVisible(false);
+    this.cartShadow.setVisible(false);
+    this.caseBox.setVisible(false).setAlpha(1);
+  }
+
+  private setWorker(
+    assetKey: string,
+    size: { readonly width: number; readonly height: number }
+  ): void {
+    this.navigation.setTexture(assetKey);
+    this.navigation.setDisplaySize(size.width, size.height);
+    this.navigation.setVisible(true);
   }
 }
