@@ -7,25 +7,12 @@ import type {
   StoreDefinition
 } from "../content/GameContent";
 import {
-  resolveCheckoutLevelRuntime,
-  type CheckoutLevelRuntimeContent
-} from "./CheckoutLevelRuntimeContent";
-import {
-  resolveRestockShiftRuntime,
-  type RestockShiftRuntimeContent
-} from "./ShiftRuntimeContent";
-import {
-  resolveCleanLevelRuntime,
-  resolveFindItemsLevelRuntime,
-  type CleanLevelRuntimeContent,
-  type FindItemsLevelRuntimeContent
-} from "./UtilityLevelRuntimeContent";
+  registeredGameplayModes,
+  resolveGameplayRuntime,
+  type PlayableLevelRuntimeContent
+} from "./GameplayModeRegistry";
 
-export type PlayableLevelRuntimeContent =
-  | RestockShiftRuntimeContent
-  | CheckoutLevelRuntimeContent
-  | CleanLevelRuntimeContent
-  | FindItemsLevelRuntimeContent;
+export type { PlayableLevelRuntimeContent } from "./GameplayModeRegistry";
 
 export interface CampaignLevelRuntime {
   readonly campaignId: string;
@@ -56,38 +43,6 @@ const findRequired = <T extends { readonly id: string }>(
   return value;
 };
 
-const resolvePlayableRuntime = (
-  catalogue: GameContentCatalogue,
-  level: LevelDefinition,
-  shift: ShiftDefinition,
-  mission: MissionDefinition
-): PlayableLevelRuntimeContent => {
-  switch (level.mode) {
-    case "restock":
-      return resolveRestockShiftRuntime(catalogue, shift.id, {
-        missionId: mission.id,
-        slotCount: level.tuning.slotCount,
-        progressRewardRatio: level.tuning.progressRewardRatio
-      });
-    case "checkout":
-      return resolveCheckoutLevelRuntime(catalogue, shift.id, mission.id, {
-        serviceRewardRatio: level.tuning.serviceRewardRatio
-      });
-    case "clean":
-      return resolveCleanLevelRuntime(catalogue, shift.id, mission.id, {
-        cleanDurationMs: level.tuning.cleanDurationMs,
-        toolPoint: level.tuning.toolPoint,
-        spotPositions: level.tuning.spotPositions
-      });
-    case "find-items":
-      return resolveFindItemsLevelRuntime(catalogue, shift.id, mission.id, {
-        itemTargets: level.tuning.itemTargets,
-        timeLimitSeconds: level.tuning.timeLimitSeconds,
-        mistakePenaltySeconds: level.tuning.mistakePenaltySeconds
-      });
-  }
-};
-
 export function resolveLevelCampaignRuntime(
   catalogue: GameContentCatalogue,
   campaignId: string
@@ -110,7 +65,7 @@ export function resolveLevelCampaignRuntime(
       throw new Error(`Level ${level.id} mission ${mission.id} does not belong to shift ${shift.id}`);
     }
 
-    const runtime = resolvePlayableRuntime(catalogue, level, shift, mission);
+    const runtime = resolveGameplayRuntime(catalogue, level, shift, mission);
 
     return Object.freeze({
       campaignId: campaign.id,
@@ -163,80 +118,11 @@ export function selectCampaignLevel(
   throw new Error(`Level or shift ${requestedId} does not belong to campaign ${runtime.campaign.id}`);
 }
 
-const SHARED_STORE_ASSET_KEYS = [
-  "fixture-produce-display-a",
-  "fixture-backroom-rack-a"
-] as const;
-
-const SHARED_WORKER_ASSET_KEYS = [
-  "worker-a-walk-01",
-  "worker-a-walk-02"
-] as const;
-
-export function levelAssetKeys(level: LevelDefinition): readonly string[] {
-  switch (level.mode) {
-    case "checkout":
-      return Object.freeze([
-        level.assetBindings.environmentAssetKey,
-        level.assetBindings.workerAssetKey,
-        ...level.assetBindings.customerAssetKeys,
-        ...SHARED_STORE_ASSET_KEYS,
-        ...SHARED_WORKER_ASSET_KEYS,
-        "worker-a-scan-register",
-        "fixture-checkout-a",
-        "equipment-checkout-scanner",
-        "equipment-pos-terminal",
-        "equipment-shopping-basket"
-      ]);
-    case "clean":
-      return Object.freeze([
-        level.assetBindings.environmentAssetKey,
-        level.assetBindings.workerAssetKey,
-        level.assetBindings.workerMopAssetKey,
-        level.assetBindings.cleaningFixtureAssetKey,
-        level.assetBindings.cleaningCartAssetKey,
-        level.assetBindings.wetFloorSignAssetKey,
-        ...SHARED_STORE_ASSET_KEYS,
-        ...SHARED_WORKER_ASSET_KEYS
-      ]);
-    case "find-items":
-      return Object.freeze([
-        level.assetBindings.environmentAssetKey,
-        level.assetBindings.workerAssetKey,
-        level.assetBindings.workerThinkingAssetKey,
-        level.assetBindings.fixtureAssetKey,
-        ...level.assetBindings.itemAssetKeys,
-        "equipment-shopping-basket",
-        ...SHARED_STORE_ASSET_KEYS,
-        ...SHARED_WORKER_ASSET_KEYS
-      ]);
-    case "restock": {
-      const bindings = level.assetBindings;
-      return Object.freeze([
-        bindings.environmentAssetKey,
-        bindings.fixtureAssetKey,
-        bindings.workerIdleAssetKey,
-        bindings.workerPushAssetKey,
-        bindings.workerCarryAssetKey,
-        bindings.cartAssetKey,
-        bindings.caseAssetKey,
-        bindings.productAssetKey,
-        ...bindings.ambientProductAssetKeys,
-        ...SHARED_STORE_ASSET_KEYS,
-        ...SHARED_WORKER_ASSET_KEYS,
-        "worker-a-open-case",
-        "worker-a-place-middle",
-        "equipment-restock-cart-a-loaded",
-        "prop-cola-case-open"
-      ]);
-    }
-  }
-}
-
 export function validateLevelCampaignRuntime(
   runtime: LevelCampaignRuntime
 ): readonly string[] {
   const errors: string[] = [];
+  const registeredModes = new Set(registeredGameplayModes());
 
   if (runtime.levels.length !== runtime.campaign.levelIds.length) {
     errors.push("Level campaign runtime count does not match campaign configuration");
@@ -250,6 +136,15 @@ export function validateLevelCampaignRuntime(
     }
     if (!shift.missionIds.includes(mission.id)) {
       errors.push(`Level ${level.id} mission does not belong to shift ${shift.id}`);
+    }
+    if (!registeredModes.has(level.mode)) {
+      errors.push(`Level ${level.id} mode ${level.mode} has no registered gameplay resolver`);
+    }
+    if (!level.presentation.assetPackId.trim()) {
+      errors.push(`Level ${level.id} requires a global asset pack id`);
+    }
+    if (!level.presentation.visualPresetId.trim()) {
+      errors.push(`Level ${level.id} requires a visual preset id`);
     }
     if (!Number.isFinite(level.tuning.initialCoins) || level.tuning.initialCoins < 0) {
       errors.push(`Level ${level.id} initial coins must be zero or greater`);
@@ -268,16 +163,11 @@ export function validateLevelCampaignRuntime(
       case "restock":
         if (!("product" in entry.runtime)) {
           errors.push(`Level ${level.id} did not resolve a restock runtime`);
-        } else if (entry.runtime.product.assetKey !== level.assetBindings.productAssetKey) {
-          errors.push(`Level ${level.id} product asset does not match product catalogue`);
         }
         return;
       case "checkout":
         if (!("customerCount" in entry.runtime)) {
           errors.push(`Level ${level.id} did not resolve a checkout runtime`);
-        }
-        if (level.assetBindings.customerAssetKeys.length === 0) {
-          errors.push(`Level ${level.id} requires at least one customer asset`);
         }
         if (!Number.isFinite(level.tuning.scanDurationMs) || level.tuning.scanDurationMs <= 0) {
           errors.push(`Level ${level.id} scan duration must be positive`);
