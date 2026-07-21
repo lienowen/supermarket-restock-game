@@ -41,6 +41,7 @@
     "src/game/events/GameDomainEvents.ts",
     "src/game/rules/RuleProtocol.ts",
     "src/game/rules/RuleComponentRegistry.ts",
+    "src/game/rules/StandardMarketRuleComponents.ts",
     "src/game/simulation/DeterministicRandom.ts",
     "src/game/missions/MissionTracker.ts",
     "src/game/systems/checkout/CheckoutWorkflow.ts",
