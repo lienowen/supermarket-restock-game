@@ -6,10 +6,13 @@ const npx = process.platform === "win32" ? "npx.cmd" : "npx";
 const compile = spawnSync(
   npx,
   ["--no-install", "tsc", "-p", "tsconfig.test.json"],
-  { stdio: "inherit" }
+  { encoding: "utf8" }
 );
 
-if (compile.status !== 0) process.exit(compile.status ?? 1);
+if (compile.status !== 0) {
+  printFailure("Test compilation failed", compile);
+  process.exit(compile.status ?? 1);
+}
 
 mkdirSync(resolve(".test-dist"), { recursive: true });
 writeFileSync(resolve(".test-dist/package.json"), '{"type":"commonjs"}\n', "utf8");
@@ -35,7 +38,21 @@ const run = spawnSync(
     "tests/v3-standard-market-rules.test.cjs",
     "tests/v3-boundaries.test.cjs"
   ],
-  { stdio: "inherit" }
+  { encoding: "utf8" }
 );
 
-process.exit(run.status ?? 1);
+if (run.status !== 0) {
+  printFailure("Domain and architecture tests failed", run);
+  process.exit(run.status ?? 1);
+}
+
+process.stdout.write(run.stdout ?? "");
+process.stderr.write(run.stderr ?? "");
+process.exit(0);
+
+function printFailure(title, result) {
+  const output = `${result.stdout ?? ""}\n${result.stderr ?? ""}`.trim();
+  const lines = output.split(/\r?\n/);
+  const tail = lines.slice(-180).join("\n");
+  console.error(`${title}:\n${tail}`);
+}
