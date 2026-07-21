@@ -57,7 +57,6 @@ export class BeverageCoolerView {
       .setDepth(0)
       .setName("beverage-cooler-production");
 
-    this.createDepartmentSign();
     this.createAmbientStock();
 
     config.rowYs.forEach((y, rowIndex) => {
@@ -137,32 +136,6 @@ export class BeverageCoolerView {
       });
     }
     this.previousStockedRows = stockedRows;
-  }
-
-  private createDepartmentSign(): void {
-    const { scene, config } = this;
-    const width = 370;
-    const centreY = 184;
-    const shadow = scene.add.graphics().setDepth(3);
-    shadow.fillStyle(0x07130f, 0.28);
-    shadow.fillRoundedRect(config.centreX - width / 2 + 4, centreY - 27, width, 58, 17);
-    const sign = scene.add.graphics().setDepth(4);
-    sign.fillStyle(0x276f42, 1);
-    sign.fillRoundedRect(config.centreX - width / 2, centreY - 31, width, 62, 17);
-    sign.lineStyle(3, 0x8fcaa1, 0.54);
-    sign.strokeRoundedRect(config.centreX - width / 2, centreY - 31, width, 62, 17);
-    scene.add.text(config.centreX, centreY - 9, config.departmentLabel, {
-      fontFamily: "Arial",
-      fontSize: "22px",
-      color: "#ffffff",
-      fontStyle: "bold"
-    }).setOrigin(0.5).setDepth(5);
-    scene.add.text(config.centreX, centreY + 17, config.subtitleLabel, {
-      fontFamily: "Arial",
-      fontSize: "12px",
-      color: "#d9f0df",
-      letterSpacing: 2
-    }).setOrigin(0.5).setDepth(5);
   }
 
   private createAmbientStock(): void {
