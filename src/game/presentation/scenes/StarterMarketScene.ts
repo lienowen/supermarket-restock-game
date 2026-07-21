@@ -26,6 +26,7 @@ import { InteractionTargetView } from "../interactions/InteractionTargetView";
 import { RestockTargetResolver } from "../interactions/RestockTargetResolver";
 import { LevelCompleteOverlay } from "../ui/LevelCompleteOverlay";
 import { ShiftHud } from "../ui/ShiftHud";
+import { RESTOCK_VISUAL_PRESET } from "../visual/MarketLevelVisualPreset";
 import { StarterMarketEnvironmentView } from "../world/StarterMarketEnvironmentView";
 
 export interface SceneCampaignSessionContext {
@@ -68,9 +69,9 @@ export class StarterMarketScene extends Phaser.Scene {
       backroomBox: context.world.backroomBox,
       cartStart: context.world.cartStart,
       cartDestination: context.world.cartCooler,
-      coolerCentreX: context.visual.cooler.centre.x,
-      coolerRowYs: context.visual.cooler.rowYs,
-      coolerTargetWidth: context.visual.cooler.activeStockBounds.width
+      coolerCentreX: context.world.beverageCooler.x,
+      coolerRowYs: RESTOCK_VISUAL_PRESET.cooler.rowYs,
+      coolerTargetWidth: RESTOCK_VISUAL_PRESET.cooler.activeStockWidth
     });
   }
 
@@ -146,24 +147,25 @@ export class StarterMarketScene extends Phaser.Scene {
 
   private createCooler(): BeverageCoolerView {
     const context = this.context;
+    const preset = RESTOCK_VISUAL_PRESET.cooler;
     const cooler = new BeverageCoolerView(this, {
       centreX: context.world.beverageCooler.x,
-      baseY: 495,
-      backgroundY: 487,
-      frameWidth: 555,
-      frameHeight: 660,
-      displayWidth: context.visual.cooler.displaySize.width,
-      displayHeight: context.visual.cooler.displaySize.height,
+      baseY: preset.baseY,
+      backgroundY: preset.backgroundY,
+      frameWidth: preset.frameSize.width,
+      frameHeight: preset.frameSize.height,
+      displayWidth: preset.displaySize.width,
+      displayHeight: preset.displaySize.height,
       departmentLabel: context.labels.beverageDepartment,
       subtitleLabel: context.labels.beverageSubtitle,
-      rowYs: context.visual.cooler.rowYs,
+      rowYs: preset.rowYs,
       ambientPositions: [
         ...context.visual.cooler.ambientLeftXs,
         ...context.visual.cooler.ambientRightXs
       ],
       restockStartX: context.visual.cooler.restockStartX,
       restockStepX: context.visual.cooler.restockStepX,
-      restockItemCount: context.visual.cooler.restockItemCount,
+      restockItemCount: preset.restockItemCount,
       coolerAssetKey: context.levelAssets.fixture.key,
       ambientProductKeys: context.levelAssets.ambientProducts.map((asset) => asset.key),
       restockProductKey: context.levelAssets.product.key
@@ -174,6 +176,7 @@ export class StarterMarketScene extends Phaser.Scene {
 
   private createActors(): RestockActorView {
     const context = this.context;
+    const preset = RESTOCK_VISUAL_PRESET;
     return new RestockActorView(this, {
       workerStart: context.world.workerStart,
       navigationBounds: context.visual.actor.navigationBounds,
@@ -186,10 +189,12 @@ export class StarterMarketScene extends Phaser.Scene {
       workerCarryAssetKey: context.levelAssets.workerCarry.key,
       cartAssetKey: context.levelAssets.cart.key,
       caseAssetKey: context.levelAssets.case.key,
-      idleSize: context.visual.actor.idleSize,
-      pushSize: context.visual.actor.pushSize,
-      carrySize: context.visual.actor.carrySize,
-      shadowOffset: context.visual.actor.shadowOffset
+      idleSize: preset.actor.idleSize,
+      pushSize: preset.actor.pushSize,
+      carrySize: preset.actor.carrySize,
+      cartSize: preset.props.cartSize,
+      caseSize: preset.props.caseSize,
+      shadowOffset: preset.actor.shadowOffset
     });
   }
 
