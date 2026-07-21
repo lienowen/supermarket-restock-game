@@ -141,32 +141,32 @@ function createCopy(runtime: RestockShiftRuntimeContent): Record<RestockSceneSte
   return {
     collect: {
       objective,
-      instruction: `Pick up the ${product.toLowerCase()} case from the backroom pallet.`,
+      instruction: `Tap the highlighted ${product.toLowerCase()} case. Your worker will walk there automatically.`,
       actionLabel: "PICK UP CASE"
     },
     load: {
       objective,
-      instruction: "Load the case onto the restock cart.",
-      actionLabel: "LOAD CART"
+      instruction: `Load the case, then deliver it straight to the highlighted ${fixture}.`,
+      actionLabel: "LOAD & DELIVER"
     },
     push: {
       objective,
-      instruction: "Push the cart through the staff aisle.",
-      actionLabel: "PUSH CART"
+      instruction: `Delivering the ${product.toLowerCase()} case to the ${fixture}.`,
+      actionLabel: "DELIVERING..."
     },
     park: {
       objective,
-      instruction: `Park the cart beside the highlighted ${fixture} bay.`,
-      actionLabel: "PARK CART"
+      instruction: `Arriving at the ${fixture}. The case will open automatically.`,
+      actionLabel: "FINISH DELIVERY"
     },
     open: {
       objective,
-      instruction: "Open the case before stocking the shelf.",
-      actionLabel: "OPEN CASE"
+      instruction: "Opening the case for a fast shelf refill.",
+      actionLabel: "OPENING..."
     },
     restock: {
       objective,
-      instruction: `Fill the highlighted ${fixture} row from left to right.`,
+      instruction: `Tap each highlighted row quickly to build a FAST STOCK streak.`,
       actionLabel: "RESTOCK ROW"
     },
     complete: {
