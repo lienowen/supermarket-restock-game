@@ -35,11 +35,30 @@ test("Player navigation rules remain independent from Phaser and mission modes",
   assert.equal(source.includes("Phaser."), false);
 });
 
+test("Pointer input has one owner instead of duplicate window and Phaser handlers", () => {
+  const source = read("src/game/presentation/actors/PlayerNavigationView.ts");
+  assert.equal(source.includes("scene.input.topOnly = true"), true);
+  assert.equal(source.includes('window.addEventListener("mousedown"'), false);
+  assert.equal(source.includes('window.addEventListener("click"'), false);
+  assert.equal(source.includes('window.addEventListener("touchstart"'), false);
+  assert.equal(source.includes("handleWalkAreaPointerDown"), true);
+});
+
 test("Restock actor presentation composes the shared navigation view", () => {
   const source = read("src/game/presentation/actors/RestockActorView.ts");
   assert.equal(source.includes("new PlayerNavigationView"), true);
   assert.equal(source.includes("this.scene.tweens.add"), false);
   assert.equal(source.includes("travelDurationMs"), false);
+  assert.equal(source.includes("onManualNavigation"), true);
+});
+
+test("Restock scene auto-approaches targets and removes low-value delivery clicks", () => {
+  const source = read("src/game/presentation/scenes/StarterMarketScene.ts");
+  assert.equal(source.includes("requestCurrentAction"), true);
+  assert.equal(source.includes("advancePendingAction"), true);
+  assert.equal(source.includes('this.dispatchSceneAction("PUSH_CART", false)'), true);
+  assert.equal(source.includes('this.dispatchSceneAction("OPEN_BOX", false)'), true);
+  assert.equal(source.includes("FAST STOCK x"), true);
 });
 
 test("Restock scene remains a composition root instead of a drawing monolith", () => {
