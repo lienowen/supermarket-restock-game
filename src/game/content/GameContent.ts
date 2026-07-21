@@ -166,12 +166,17 @@ export interface FindItemsLevelTuningDefinition {
   readonly itemTargets: readonly FindItemTargetDefinition[];
 }
 
+export interface LevelPresentationDefinition {
+  readonly visualPresetId: string;
+}
+
 interface BaseLevelDefinition {
   readonly id: string;
   readonly shiftId: string;
   readonly missionId: string;
   readonly title: string;
   readonly navigation: LevelNavigationDefinition;
+  readonly presentation: LevelPresentationDefinition;
 }
 
 export interface RestockLevelDefinition extends BaseLevelDefinition {
