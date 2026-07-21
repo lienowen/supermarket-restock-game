@@ -3,13 +3,8 @@ import { validateAssetCatalogue } from "./assets/AssetDescriptor";
 import { STARTER_RUNTIME_ASSET_REGISTRY } from "./assets/RuntimeAssetRegistry";
 import { STARTER_ASSET_CATALOGUE } from "./assets/starterAssetCatalogue";
 import { validateCampaignRuntime } from "./application/CampaignRuntime";
-import { validateCheckoutLevelRuntime } from "./application/CheckoutLevelRuntimeContent";
-import {
-  levelAssetKeys,
-  validateLevelCampaignRuntime
-} from "./application/LevelRuntimeContent";
-import { validateRestockShiftRuntime } from "./application/ShiftRuntimeContent";
-import { validateUtilityLevelRuntime } from "./application/UtilityLevelRuntimeContent";
+import { validateGameplayRuntime } from "./application/GameplayModeRegistry";
+import { validateLevelCampaignRuntime } from "./application/LevelRuntimeContent";
 import { PROJECT_CONFIG } from "./config/project";
 import { validateProductionAssetPlan } from "./presentation/assets/ProductionAssetPlan";
 import { validateProductAssetMappings } from "./presentation/assets/ProductAssetResolver";
@@ -31,26 +26,12 @@ function validateProjectContracts(): void {
   const productIds = MAIN_LEVEL_CAMPAIGN_RUNTIME.levels.flatMap((entry) => (
     "product" in entry.runtime ? [entry.runtime.product.id] : []
   ));
-  const configuredAssetKeys = MAIN_LEVEL_CAMPAIGN_RUNTIME.levels.flatMap((entry) => (
-    levelAssetKeys(entry.level)
+  const configuredAssetKeys = presentationContexts.flatMap((context) => (
+    context.levelAssets.preload.map((asset) => asset.key)
   ));
-  const gameplayRuntimeErrors = MAIN_LEVEL_CAMPAIGN_RUNTIME.levels.flatMap((entry) => {
-    switch (entry.level.mode) {
-      case "restock":
-        return "product" in entry.runtime
-          ? validateRestockShiftRuntime(entry.runtime)
-          : [`Level ${entry.level.id} resolved the wrong restock runtime`];
-      case "checkout":
-        return "customerCount" in entry.runtime
-          ? validateCheckoutLevelRuntime(entry.runtime)
-          : [`Level ${entry.level.id} resolved the wrong checkout runtime`];
-      case "clean":
-      case "find-items":
-        return "mode" in entry.runtime
-          ? validateUtilityLevelRuntime(entry.runtime)
-          : [`Level ${entry.level.id} resolved the wrong utility runtime`];
-    }
-  });
+  const gameplayRuntimeErrors = MAIN_LEVEL_CAMPAIGN_RUNTIME.levels.flatMap((entry) => (
+    validateGameplayRuntime(entry.level, entry.runtime)
+  ));
 
   const errors = [
     ...validateAssetCatalogue(STARTER_ASSET_CATALOGUE),
