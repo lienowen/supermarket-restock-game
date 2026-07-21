@@ -14,10 +14,18 @@ import {
   resolveRestockShiftRuntime,
   type RestockShiftRuntimeContent
 } from "./ShiftRuntimeContent";
+import {
+  resolveCleanLevelRuntime,
+  resolveFindItemsLevelRuntime,
+  type CleanLevelRuntimeContent,
+  type FindItemsLevelRuntimeContent
+} from "./UtilityLevelRuntimeContent";
 
 export type PlayableLevelRuntimeContent =
   | RestockShiftRuntimeContent
-  | CheckoutLevelRuntimeContent;
+  | CheckoutLevelRuntimeContent
+  | CleanLevelRuntimeContent
+  | FindItemsLevelRuntimeContent;
 
 export interface CampaignLevelRuntime {
   readonly campaignId: string;
@@ -48,6 +56,38 @@ const findRequired = <T extends { readonly id: string }>(
   return value;
 };
 
+const resolvePlayableRuntime = (
+  catalogue: GameContentCatalogue,
+  level: LevelDefinition,
+  shift: ShiftDefinition,
+  mission: MissionDefinition
+): PlayableLevelRuntimeContent => {
+  switch (level.mode) {
+    case "restock":
+      return resolveRestockShiftRuntime(catalogue, shift.id, {
+        missionId: mission.id,
+        slotCount: level.tuning.slotCount,
+        progressRewardRatio: level.tuning.progressRewardRatio
+      });
+    case "checkout":
+      return resolveCheckoutLevelRuntime(catalogue, shift.id, mission.id, {
+        serviceRewardRatio: level.tuning.serviceRewardRatio
+      });
+    case "clean":
+      return resolveCleanLevelRuntime(catalogue, shift.id, mission.id, {
+        cleanDurationMs: level.tuning.cleanDurationMs,
+        toolPoint: level.tuning.toolPoint,
+        spotPositions: level.tuning.spotPositions
+      });
+    case "find-items":
+      return resolveFindItemsLevelRuntime(catalogue, shift.id, mission.id, {
+        itemTargets: level.tuning.itemTargets,
+        timeLimitSeconds: level.tuning.timeLimitSeconds,
+        mistakePenaltySeconds: level.tuning.mistakePenaltySeconds
+      });
+  }
+};
+
 export function resolveLevelCampaignRuntime(
   catalogue: GameContentCatalogue,
   campaignId: string
@@ -70,15 +110,7 @@ export function resolveLevelCampaignRuntime(
       throw new Error(`Level ${level.id} mission ${mission.id} does not belong to shift ${shift.id}`);
     }
 
-    const runtime: PlayableLevelRuntimeContent = level.mode === "restock"
-      ? resolveRestockShiftRuntime(catalogue, shift.id, {
-          missionId: mission.id,
-          slotCount: level.tuning.slotCount,
-          progressRewardRatio: level.tuning.progressRewardRatio
-        })
-      : resolveCheckoutLevelRuntime(catalogue, shift.id, mission.id, {
-          serviceRewardRatio: level.tuning.serviceRewardRatio
-        });
+    const runtime = resolvePlayableRuntime(catalogue, level, shift, mission);
 
     return Object.freeze({
       campaignId: campaign.id,
@@ -142,39 +174,63 @@ const SHARED_WORKER_ASSET_KEYS = [
 ] as const;
 
 export function levelAssetKeys(level: LevelDefinition): readonly string[] {
-  if (level.mode === "checkout") {
-    return Object.freeze([
-      level.assetBindings.environmentAssetKey,
-      level.assetBindings.workerAssetKey,
-      ...level.assetBindings.customerAssetKeys,
-      ...SHARED_STORE_ASSET_KEYS,
-      ...SHARED_WORKER_ASSET_KEYS,
-      "worker-a-scan-register",
-      "fixture-checkout-a",
-      "equipment-checkout-scanner",
-      "equipment-pos-terminal",
-      "equipment-shopping-basket"
-    ]);
+  switch (level.mode) {
+    case "checkout":
+      return Object.freeze([
+        level.assetBindings.environmentAssetKey,
+        level.assetBindings.workerAssetKey,
+        ...level.assetBindings.customerAssetKeys,
+        ...SHARED_STORE_ASSET_KEYS,
+        ...SHARED_WORKER_ASSET_KEYS,
+        "worker-a-scan-register",
+        "fixture-checkout-a",
+        "equipment-checkout-scanner",
+        "equipment-pos-terminal",
+        "equipment-shopping-basket"
+      ]);
+    case "clean":
+      return Object.freeze([
+        level.assetBindings.environmentAssetKey,
+        level.assetBindings.workerAssetKey,
+        level.assetBindings.workerMopAssetKey,
+        level.assetBindings.cleaningFixtureAssetKey,
+        level.assetBindings.cleaningCartAssetKey,
+        level.assetBindings.wetFloorSignAssetKey,
+        ...SHARED_STORE_ASSET_KEYS,
+        ...SHARED_WORKER_ASSET_KEYS
+      ]);
+    case "find-items":
+      return Object.freeze([
+        level.assetBindings.environmentAssetKey,
+        level.assetBindings.workerAssetKey,
+        level.assetBindings.workerThinkingAssetKey,
+        level.assetBindings.fixtureAssetKey,
+        ...level.assetBindings.itemAssetKeys,
+        "equipment-shopping-basket",
+        ...SHARED_STORE_ASSET_KEYS,
+        ...SHARED_WORKER_ASSET_KEYS
+      ]);
+    case "restock": {
+      const bindings = level.assetBindings;
+      return Object.freeze([
+        bindings.environmentAssetKey,
+        bindings.fixtureAssetKey,
+        bindings.workerIdleAssetKey,
+        bindings.workerPushAssetKey,
+        bindings.workerCarryAssetKey,
+        bindings.cartAssetKey,
+        bindings.caseAssetKey,
+        bindings.productAssetKey,
+        ...bindings.ambientProductAssetKeys,
+        ...SHARED_STORE_ASSET_KEYS,
+        ...SHARED_WORKER_ASSET_KEYS,
+        "worker-a-open-case",
+        "worker-a-place-middle",
+        "equipment-restock-cart-a-loaded",
+        "prop-cola-case-open"
+      ]);
+    }
   }
-
-  const bindings = level.assetBindings;
-  return Object.freeze([
-    bindings.environmentAssetKey,
-    bindings.fixtureAssetKey,
-    bindings.workerIdleAssetKey,
-    bindings.workerPushAssetKey,
-    bindings.workerCarryAssetKey,
-    bindings.cartAssetKey,
-    bindings.caseAssetKey,
-    bindings.productAssetKey,
-    ...bindings.ambientProductAssetKeys,
-    ...SHARED_STORE_ASSET_KEYS,
-    ...SHARED_WORKER_ASSET_KEYS,
-    "worker-a-open-case",
-    "worker-a-place-middle",
-    "equipment-restock-cart-a-loaded",
-    "prop-cola-case-open"
-  ]);
 }
 
 export function validateLevelCampaignRuntime(
@@ -208,32 +264,41 @@ export function validateLevelCampaignRuntime(
       errors.push(`Level ${level.id} interaction radius must be positive`);
     }
 
-    if (level.mode === "restock") {
-      if (!("product" in entry.runtime)) {
-        errors.push(`Level ${level.id} did not resolve a restock runtime`);
+    switch (level.mode) {
+      case "restock":
+        if (!("product" in entry.runtime)) {
+          errors.push(`Level ${level.id} did not resolve a restock runtime`);
+        } else if (entry.runtime.product.assetKey !== level.assetBindings.productAssetKey) {
+          errors.push(`Level ${level.id} product asset does not match product catalogue`);
+        }
         return;
-      }
-      if (entry.runtime.product.assetKey !== level.assetBindings.productAssetKey) {
-        errors.push(`Level ${level.id} product asset does not match product catalogue`);
-      }
-      return;
-    }
-
-    if (!("customerCount" in entry.runtime)) {
-      errors.push(`Level ${level.id} did not resolve a checkout runtime`);
-      return;
-    }
-    if (level.assetBindings.customerAssetKeys.length === 0) {
-      errors.push(`Level ${level.id} requires at least one customer asset`);
-    }
-    if (!Number.isFinite(level.tuning.scanDurationMs) || level.tuning.scanDurationMs <= 0) {
-      errors.push(`Level ${level.id} scan duration must be positive`);
-    }
-    if (
-      !Number.isFinite(level.tuning.queueAdvanceDurationMs) ||
-      level.tuning.queueAdvanceDurationMs <= 0
-    ) {
-      errors.push(`Level ${level.id} queue advance duration must be positive`);
+      case "checkout":
+        if (!("customerCount" in entry.runtime)) {
+          errors.push(`Level ${level.id} did not resolve a checkout runtime`);
+        }
+        if (level.assetBindings.customerAssetKeys.length === 0) {
+          errors.push(`Level ${level.id} requires at least one customer asset`);
+        }
+        if (!Number.isFinite(level.tuning.scanDurationMs) || level.tuning.scanDurationMs <= 0) {
+          errors.push(`Level ${level.id} scan duration must be positive`);
+        }
+        return;
+      case "clean":
+        if (!("spotCount" in entry.runtime)) {
+          errors.push(`Level ${level.id} did not resolve a clean runtime`);
+        }
+        if (level.tuning.spotPositions.length === 0) {
+          errors.push(`Level ${level.id} requires clean spot positions`);
+        }
+        return;
+      case "find-items":
+        if (!("products" in entry.runtime)) {
+          errors.push(`Level ${level.id} did not resolve a find-items runtime`);
+        }
+        if (level.tuning.itemTargets.length === 0) {
+          errors.push(`Level ${level.id} requires item targets`);
+        }
+        return;
     }
   });
 
