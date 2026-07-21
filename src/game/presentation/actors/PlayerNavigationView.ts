@@ -16,6 +16,7 @@ export interface PlayerNavigationViewConfig {
   readonly shadowOffset: NavigationPoint;
   readonly name: string;
   readonly baseDepth?: number;
+  readonly onManualNavigation?: () => void;
 }
 
 type NavigationKeys = {
@@ -57,7 +58,9 @@ export class PlayerNavigationView {
     });
     this.currentPoseKey = config.assetKey;
 
-    scene.input.topOnly = false;
+    // One pointer event should have exactly one owner. Higher-depth gameplay targets
+    // and HUD buttons win over the floor instead of also issuing a walk command.
+    scene.input.topOnly = true;
     this.walkArea = scene.add.rectangle(
       config.bounds.x + config.bounds.width / 2,
       config.bounds.y + config.bounds.height / 2,
@@ -100,9 +103,6 @@ export class PlayerNavigationView {
       }) as NavigationKeys;
     }
 
-    window.addEventListener("mousedown", this.handleWindowMouseDown, true);
-    window.addEventListener("click", this.handleWindowClick, true);
-    window.addEventListener("touchstart", this.handleWindowTouchStart, { capture: true, passive: true });
     this.syncVisual();
   }
 
@@ -112,6 +112,9 @@ export class PlayerNavigationView {
     const horizontal = this.axis(this.keys?.left, this.keys?.a, this.keys?.right, this.keys?.d);
     const vertical = this.axis(this.keys?.up, this.keys?.w, this.keys?.down, this.keys?.s);
     if (horizontal !== 0 || vertical !== 0) {
+      if (!this.moving || this.destinationFrame !== undefined) {
+        this.config.onManualNavigation?.();
+      }
       this.stopDestinationMovement();
       this.setMoving(true);
       if (this.controller.moveDirection(horizontal, vertical, deltaMs)) this.syncVisual();
@@ -215,9 +218,6 @@ export class PlayerNavigationView {
 
   destroy(): void {
     this.stopDestinationMovement();
-    window.removeEventListener("mousedown", this.handleWindowMouseDown, true);
-    window.removeEventListener("click", this.handleWindowClick, true);
-    window.removeEventListener("touchstart", this.handleWindowTouchStart, true);
     this.walkArea.off("pointerdown", this.handleWalkAreaPointerDown, this);
     this.walkArea.destroy();
     this.actor.destroy();
@@ -255,58 +255,8 @@ export class PlayerNavigationView {
   }
 
   private handleWalkAreaPointerDown(pointer: Phaser.Input.Pointer): void {
+    this.config.onManualNavigation?.();
     this.setDestination({ x: pointer.x, y: pointer.y });
-  }
-
-  private readonly handleWindowMouseDown = (event: MouseEvent): void => {
-    this.setDestinationFromClient(event.clientX, event.clientY);
-  };
-
-  private readonly handleWindowClick = (event: MouseEvent): void => {
-    this.setDestinationFromClient(event.clientX, event.clientY);
-  };
-
-  private readonly handleWindowTouchStart = (event: TouchEvent): void => {
-    const touch = event.changedTouches[0];
-    if (touch) this.setDestinationFromClient(touch.clientX, touch.clientY);
-  };
-
-  private setDestinationFromClient(clientX: number, clientY: number): void {
-    if (!this.enabled) return;
-
-    const canvas = this.scene.game.canvas;
-    const canvasRect = canvas.getBoundingClientRect();
-    const appRect = document.getElementById("app")?.getBoundingClientRect();
-    const rectangle = this.contains(canvasRect, clientX, clientY)
-      ? canvasRect
-      : appRect && this.contains(appRect, clientX, clientY)
-        ? appRect
-        : undefined;
-    if (!rectangle || rectangle.width <= 0 || rectangle.height <= 0) return;
-
-    const logicalWidth = Number(this.scene.game.config.width) || this.scene.scale.gameSize.width;
-    const logicalHeight = Number(this.scene.game.config.height) || this.scene.scale.gameSize.height;
-    const x = (clientX - rectangle.left) * (logicalWidth / rectangle.width);
-    const y = (clientY - rectangle.top) * (logicalHeight / rectangle.height);
-    const { bounds } = this.config;
-    if (
-      x < bounds.x ||
-      x > bounds.x + bounds.width ||
-      y < bounds.y ||
-      y > bounds.y + bounds.height
-    ) return;
-    this.setDestination({ x, y });
-  }
-
-  private contains(rectangle: DOMRect, clientX: number, clientY: number): boolean {
-    return (
-      rectangle.width > 0 &&
-      rectangle.height > 0 &&
-      clientX >= rectangle.left &&
-      clientX <= rectangle.right &&
-      clientY >= rectangle.top &&
-      clientY <= rectangle.bottom
-    );
   }
 
   private stopDestinationMovement(): void {
