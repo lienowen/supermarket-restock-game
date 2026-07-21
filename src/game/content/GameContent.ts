@@ -1,3 +1,7 @@
+import type { RuleReferenceDefinition } from "../rules/RuleProtocol";
+
+export const CURRENT_LEVEL_SCHEMA_VERSION = 1 as const;
+
 export type ProductCategory =
   | "beverage"
   | "produce"
@@ -172,12 +176,15 @@ export interface LevelPresentationDefinition {
 }
 
 interface BaseLevelDefinition {
+  readonly schemaVersion: typeof CURRENT_LEVEL_SCHEMA_VERSION;
   readonly id: string;
   readonly shiftId: string;
   readonly missionId: string;
   readonly title: string;
+  readonly randomSeed: string;
   readonly navigation: LevelNavigationDefinition;
   readonly presentation: LevelPresentationDefinition;
+  readonly rules: readonly RuleReferenceDefinition[];
 }
 
 export interface RestockLevelDefinition extends BaseLevelDefinition {
