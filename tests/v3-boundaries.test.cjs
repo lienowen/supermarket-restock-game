@@ -1,8 +1,19 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { readFileSync } = require("node:fs");
+const { readFileSync, readdirSync, statSync } = require("node:fs");
+const { join } = require("node:path");
 
 const read = (path) => readFileSync(path, "utf8");
+
+const sourceFilesUnder = (root) => {
+  const result = [];
+  for (const entry of readdirSync(root)) {
+    const path = join(root, entry);
+    if (statSync(path).isDirectory()) result.push(...sourceFilesUnder(path));
+    else if (path.endsWith(".ts")) result.push(path);
+  }
+  return result;
+};
 
 test("Project bootstrap owns runtime creation without importing game-v2", () => {
   const source = read("src/game/bootstrap.ts");
@@ -63,6 +74,29 @@ test("Phaser factory selects a scene from the validated level mode", () => {
   assert.equal(source.includes('presentation.mode === "restock"'), true);
   assert.equal(source.includes("new StarterMarketScene"), true);
   assert.equal(source.includes("new CheckoutMarketScene"), true);
+});
+
+test("Level ids stay in configuration and never branch gameplay code", () => {
+  const runtimeRoots = [
+    "src/game/application",
+    "src/game/infrastructure",
+    "src/game/presentation"
+  ];
+  const offenders = runtimeRoots
+    .flatMap(sourceFilesUnder)
+    .filter((path) => /starter-level-\d+/.test(read(path)));
+  assert.deepEqual(offenders, []);
+});
+
+test("Level configuration selects handlers and visuals through data", () => {
+  const source = read("src/game/content/levels/starterMarketLevels.ts");
+  assert.equal(source.includes("visualPresetId"), true);
+  assert.equal(source.includes('mode: "restock"'), true);
+  assert.equal(source.includes('mode: "checkout"'), true);
+  assert.equal(source.includes('mode: "clean"'), true);
+  assert.equal(source.includes('mode: "find-items"'), true);
+  assert.equal(source.includes("new Phaser"), false);
+  assert.equal(source.includes("Scene"), false);
 });
 
 test("Legacy scene delegates to the project presentation scene", () => {
