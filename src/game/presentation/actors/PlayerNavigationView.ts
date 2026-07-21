@@ -11,6 +11,7 @@ export interface PlayerNavigationViewConfig {
   readonly bounds: NavigationBounds;
   readonly speed: number;
   readonly assetKey: string;
+  readonly walkAssetKeys?: readonly [string, string];
   readonly displaySize: { readonly width: number; readonly height: number };
   readonly shadowOffset: NavigationPoint;
   readonly name: string;
@@ -28,27 +29,19 @@ type NavigationKeys = {
   readonly d: Phaser.Input.Keyboard.Key;
 };
 
-type CartoonActorParts = {
-  readonly leftArm: Phaser.GameObjects.Rectangle;
-  readonly rightArm: Phaser.GameObjects.Rectangle;
-  readonly leftHand: Phaser.GameObjects.Arc;
-  readonly rightHand: Phaser.GameObjects.Arc;
-  readonly carriedBox: Phaser.GameObjects.Container;
-};
-
-const ACTOR_BASE_WIDTH = 150;
-const ACTOR_BASE_HEIGHT = 260;
-
 export class PlayerNavigationView {
   readonly controller: PlayerNavigationController;
 
   private readonly walkArea: Phaser.GameObjects.Rectangle;
   private readonly shadow: Phaser.GameObjects.Ellipse;
-  private readonly actor: Phaser.GameObjects.Container;
-  private readonly actorParts: CartoonActorParts;
+  private readonly actor: Phaser.GameObjects.Image;
   private readonly keys?: NavigationKeys;
   private destinationFrame?: number;
   private enabled = true;
+  private currentPoseKey: string;
+  private walkElapsedMs = 0;
+  private walkFrame = 0;
+  private moving = false;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -59,6 +52,7 @@ export class PlayerNavigationView {
       bounds: config.bounds,
       speed: config.speed
     });
+    this.currentPoseKey = config.assetKey;
 
     scene.input.topOnly = false;
     this.walkArea = scene.add.rectangle(
@@ -77,20 +71,17 @@ export class PlayerNavigationView {
     this.shadow = scene.add.ellipse(
       config.start.x + config.shadowOffset.x,
       config.start.y + config.shadowOffset.y,
-      150,
-      34,
+      Math.max(88, config.displaySize.width * 0.62),
+      Math.max(20, config.displaySize.height * 0.105),
       0x18261f,
-      0.24
+      0.22
     ).setDepth((config.baseDepth ?? 24) - 1);
 
-    const cartoonActor = this.createCartoonActor();
-    this.actor = cartoonActor.container
-      .setPosition(config.start.x, config.start.y)
+    this.actor = scene.add.image(config.start.x, config.start.y, config.assetKey)
+      .setOrigin(0.5, 0.96)
+      .setDisplaySize(config.displaySize.width, config.displaySize.height)
       .setDepth(config.baseDepth ?? 24)
       .setName(config.name);
-    this.actorParts = cartoonActor.parts;
-    this.setDisplaySize(config.displaySize.width, config.displaySize.height);
-    this.applyPose(config.assetKey);
 
     const keyboard = scene.input.keyboard;
     if (keyboard) {
@@ -119,8 +110,13 @@ export class PlayerNavigationView {
     const vertical = this.axis(this.keys?.up, this.keys?.w, this.keys?.down, this.keys?.s);
     if (horizontal !== 0 || vertical !== 0) {
       this.stopDestinationMovement();
+      this.setMoving(true);
       if (this.controller.moveDirection(horizontal, vertical, deltaMs)) this.syncVisual();
+      this.updateWalkFrame(deltaMs);
+      return;
     }
+
+    if (this.destinationFrame === undefined) this.setMoving(false);
   }
 
   snapshot(): PlayerNavigationSnapshot {
@@ -157,11 +153,14 @@ export class PlayerNavigationView {
       return;
     }
 
+    this.setMoving(true);
     const duration = Math.max(1, (distance / this.config.speed) * 1000);
     const startedAt = performance.now();
+    let previousAt = startedAt;
     const animate = (now: number): void => {
       if (!this.enabled) {
         this.destinationFrame = undefined;
+        this.setMoving(false);
         return;
       }
 
@@ -170,11 +169,14 @@ export class PlayerNavigationView {
         x: Phaser.Math.Linear(start.x, destination.x, progress),
         y: Phaser.Math.Linear(start.y, destination.y, progress)
       });
+      this.updateWalkFrame(now - previousAt);
+      previousAt = now;
       this.syncVisual();
 
       if (progress >= 1) {
         this.controller.setPosition(destination);
         this.destinationFrame = undefined;
+        this.setMoving(false);
         this.syncVisual();
         return;
       }
@@ -185,11 +187,13 @@ export class PlayerNavigationView {
   }
 
   setTexture(assetKey: string): void {
-    this.applyPose(assetKey);
+    this.currentPoseKey = assetKey;
+    if (!this.moving || !this.canUseWalkFrames()) this.actor.setTexture(assetKey);
   }
 
   setDisplaySize(width: number, height: number): void {
-    this.actor.setScale(width / ACTOR_BASE_WIDTH, height / ACTOR_BASE_HEIGHT);
+    this.actor.setDisplaySize(width, height);
+    this.shadow.setSize(Math.max(88, width * 0.62), Math.max(20, height * 0.105));
   }
 
   setVisible(visible: boolean): void {
@@ -202,6 +206,7 @@ export class PlayerNavigationView {
     if (!enabled) {
       this.stopDestinationMovement();
       this.controller.clearDestination();
+      this.setMoving(false);
     }
   }
 
@@ -212,93 +217,38 @@ export class PlayerNavigationView {
     window.removeEventListener("touchstart", this.handleWindowTouchStart, true);
     this.walkArea.off("pointerdown", this.handleWalkAreaPointerDown, this);
     this.walkArea.destroy();
-    this.actor.destroy(true);
+    this.actor.destroy();
     this.shadow.destroy();
   }
 
-  private createCartoonActor(): { container: Phaser.GameObjects.Container; parts: CartoonActorParts } {
-    const { scene } = this;
-    const objects: Phaser.GameObjects.GameObject[] = [];
-
-    const backHair = scene.add.ellipse(0, -80, 70, 82, 0x56351f, 1);
-    const neck = scene.add.rectangle(0, -42, 24, 24, 0xf0b382, 1);
-    const leftLeg = scene.add.rectangle(-20, 82, 25, 78, 0x263e3a, 1);
-    const rightLeg = scene.add.rectangle(20, 82, 25, 78, 0x263e3a, 1);
-    const leftShoe = scene.add.ellipse(-24, 126, 42, 20, 0xf4efe4, 1).setStrokeStyle(3, 0x9f9b92, 0.55);
-    const rightShoe = scene.add.ellipse(24, 126, 42, 20, 0xf4efe4, 1).setStrokeStyle(3, 0x9f9b92, 0.55);
-    const torso = scene.add.rectangle(0, 18, 88, 116, 0xf7f1df, 1).setStrokeStyle(3, 0xd7cfba, 0.75);
-    const apron = scene.add.polygon(0, 24, [-39, -45, 39, -45, 34, 58, -34, 58], 0x2f8a58, 1)
-      .setStrokeStyle(3, 0x195a38, 0.82);
-    const apronPocket = scene.add.rectangle(0, 49, 42, 28, 0x3fa56b, 1).setStrokeStyle(2, 0xd8f1df, 0.3);
-    const badge = scene.add.circle(23, -3, 7, 0xffd95e, 1).setStrokeStyle(2, 0x9c7120, 0.8);
-
-    const leftArm = scene.add.rectangle(-55, 10, 24, 88, 0xf7f1df, 1).setStrokeStyle(3, 0xd7cfba, 0.65);
-    const rightArm = scene.add.rectangle(55, 10, 24, 88, 0xf7f1df, 1).setStrokeStyle(3, 0xd7cfba, 0.65);
-    const leftHand = scene.add.circle(-55, 58, 13, 0xf0b382, 1).setStrokeStyle(2, 0xb97750, 0.45);
-    const rightHand = scene.add.circle(55, 58, 13, 0xf0b382, 1).setStrokeStyle(2, 0xb97750, 0.45);
-
-    const head = scene.add.circle(0, -88, 40, 0xf2b98a, 1).setStrokeStyle(3, 0xb97750, 0.55);
-    const leftEye = scene.add.circle(-14, -92, 4, 0x2e302d, 1);
-    const rightEye = scene.add.circle(14, -92, 4, 0x2e302d, 1);
-    const smile = scene.add.arc(0, -78, 13, 15, 165, false, 0x8d4d39, 1);
-    const fringe = scene.add.arc(0, -103, 38, 190, 350, false, 0x56351f, 1);
-    const capBrim = scene.add.ellipse(3, -126, 70, 18, 0x2f8a58, 1).setStrokeStyle(2, 0x195a38, 0.8);
-    const capTop = scene.add.arc(-2, -130, 34, 180, 360, false, 0x3fa56b, 1);
-
-    const boxBody = scene.add.rectangle(0, 39, 92, 66, 0xd89b52, 1).setStrokeStyle(4, 0x8e5d2d, 0.9);
-    const boxTape = scene.add.rectangle(0, 39, 16, 66, 0xf2cf86, 0.9);
-    const boxMark = scene.add.text(0, 39, "↑", {
-      fontFamily: "Arial",
-      fontSize: "24px",
-      color: "#79502b",
-      fontStyle: "bold"
-    }).setOrigin(0.5);
-    const carriedBox = scene.add.container(0, 0, [boxBody, boxTape, boxMark]).setVisible(false);
-
-    objects.push(
-      backHair,
-      leftLeg,
-      rightLeg,
-      leftShoe,
-      rightShoe,
-      neck,
-      torso,
-      leftArm,
-      rightArm,
-      apron,
-      apronPocket,
-      badge,
-      head,
-      leftEye,
-      rightEye,
-      smile,
-      fringe,
-      capBrim,
-      capTop,
-      leftHand,
-      rightHand,
-      carriedBox
-    );
-
-    return {
-      container: scene.add.container(0, 0, objects),
-      parts: { leftArm, rightArm, leftHand, rightHand, carriedBox }
-    };
+  private setMoving(moving: boolean): void {
+    if (this.moving === moving) return;
+    this.moving = moving;
+    this.walkElapsedMs = 0;
+    this.walkFrame = 0;
+    if (!moving || !this.canUseWalkFrames()) {
+      this.actor.setTexture(this.currentPoseKey);
+    } else {
+      this.actor.setTexture(this.config.walkAssetKeys?.[0] ?? this.currentPoseKey);
+    }
   }
 
-  private applyPose(assetKey: string): void {
-    const carrying = assetKey.includes("carry");
-    const pushing = assetKey.includes("push");
-    const { leftArm, rightArm, leftHand, rightHand, carriedBox } = this.actorParts;
+  private canUseWalkFrames(): boolean {
+    return Boolean(
+      this.config.walkAssetKeys &&
+      this.currentPoseKey === this.config.assetKey
+    );
+  }
 
-    leftArm.setPosition(carrying ? -48 : pushing ? -48 : -55, carrying ? 22 : pushing ? 28 : 10)
-      .setAngle(carrying ? -35 : pushing ? -48 : 0);
-    rightArm.setPosition(carrying ? 48 : pushing ? 48 : 55, carrying ? 22 : pushing ? 28 : 10)
-      .setAngle(carrying ? 35 : pushing ? 48 : 0);
-    leftHand.setPosition(carrying ? -35 : pushing ? -26 : -55, carrying ? 46 : pushing ? 67 : 58);
-    rightHand.setPosition(carrying ? 35 : pushing ? 26 : 55, carrying ? 46 : pushing ? 67 : 58);
-    carriedBox.setVisible(carrying);
-    this.actor.setAngle(pushing ? -2 : 0);
+  private updateWalkFrame(deltaMs: number): void {
+    if (!this.moving || !this.canUseWalkFrames()) return;
+    const frames = this.config.walkAssetKeys;
+    if (!frames) return;
+    this.walkElapsedMs += deltaMs;
+    if (this.walkElapsedMs < 155) return;
+    this.walkElapsedMs = 0;
+    this.walkFrame = (this.walkFrame + 1) % frames.length;
+    this.actor.setTexture(frames[this.walkFrame] ?? this.currentPoseKey);
   }
 
   private handleWalkAreaPointerDown(pointer: Phaser.Input.Pointer): void {
