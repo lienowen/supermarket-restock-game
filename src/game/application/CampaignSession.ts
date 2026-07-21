@@ -1,3 +1,5 @@
+import type { GameDomainEventSink } from "../events/GameDomainEvents";
+
 export interface CampaignEconomy {
   readonly coins: number;
   readonly stars: number;
@@ -38,7 +40,8 @@ const normalizeEconomy = (economy: CampaignEconomy): CampaignEconomy => {
 export class CampaignSession {
   constructor(
     readonly config: CampaignSessionConfig,
-    private readonly store: CampaignSessionStore
+    private readonly store: CampaignSessionStore,
+    private readonly events?: GameDomainEventSink
   ) {
     if (!config.campaignId.trim()) throw new Error("Campaign ID is required");
     if (!config.firstLevelId.trim()) throw new Error("First level ID is required");
@@ -78,6 +81,13 @@ export class CampaignSession {
       ...normalizedEconomy
     });
     this.store.save(snapshot);
+    this.events?.emit("campaign.level-completed", {
+      campaignId: this.config.campaignId,
+      levelId,
+      nextLevelId,
+      economy: normalizedEconomy,
+      snapshot
+    });
     return snapshot;
   }
 
@@ -92,6 +102,10 @@ export class CampaignSession {
       ...economy
     });
     this.store.save(snapshot);
+    this.events?.emit("campaign.reset", {
+      campaignId: this.config.campaignId,
+      snapshot
+    });
     return snapshot;
   }
 }
