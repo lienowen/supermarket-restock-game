@@ -64,13 +64,16 @@ test("Every level is versioned, seeded and references global registries", () => 
 test("Each level owns only navigation and mode-specific tuning variables", () => {
   const [levelOne, levelTwo, levelThree, levelFour, levelFive] = campaign.levels;
 
-  assert.equal(levelOne.level.navigation.moveSpeed, 360);
-  assert.equal(levelTwo.level.navigation.moveSpeed, 385);
-  assert.equal(levelThree.level.navigation.moveSpeed, 400);
-  assert.equal(levelFour.level.navigation.moveSpeed, 405);
-  assert.equal(levelFive.level.navigation.moveSpeed, 420);
+  assert.equal(levelOne.level.navigation.moveSpeed, 520);
+  assert.equal(levelTwo.level.navigation.moveSpeed, 560);
+  assert.equal(levelThree.level.navigation.moveSpeed, 440);
+  assert.equal(levelFour.level.navigation.moveSpeed, 455);
+  assert.equal(levelFive.level.navigation.moveSpeed, 470);
   assert.equal(levelOne.runtime.reward.completionCoins, 40);
   assert.equal(levelTwo.runtime.reward.completionCoins, 60);
+  assert.equal(levelOne.level.tuning.rush.targetDurationMs, 9000);
+  assert.equal(levelOne.level.tuning.rush.streakWindowMs, 1900);
+  assert.equal(levelTwo.level.tuning.rush.minimumTargetDurationMs, 5200);
   assert.equal(levelThree.runtime.customerCount, 6);
   assert.equal(levelFour.runtime.spotCount, 4);
   assert.deepEqual(levelFive.runtime.products.map((product) => product.id), [

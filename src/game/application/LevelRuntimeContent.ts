@@ -118,6 +118,17 @@ export function selectCampaignLevel(
   throw new Error(`Level or shift ${requestedId} does not belong to campaign ${runtime.campaign.id}`);
 }
 
+const validatePositiveOptional = (
+  errors: string[],
+  levelId: string,
+  label: string,
+  value: number | undefined
+): void => {
+  if (value !== undefined && (!Number.isFinite(value) || value <= 0)) {
+    errors.push(`Level ${levelId} ${label} must be positive`);
+  }
+};
+
 export function validateLevelCampaignRuntime(
   runtime: LevelCampaignRuntime
 ): readonly string[] {
@@ -160,11 +171,40 @@ export function validateLevelCampaignRuntime(
     }
 
     switch (level.mode) {
-      case "restock":
+      case "restock": {
         if (!("product" in entry.runtime)) {
           errors.push(`Level ${level.id} did not resolve a restock runtime`);
         }
+        const rush = level.tuning.rush;
+        if (rush) {
+          validatePositiveOptional(errors, level.id, "rush target duration", rush.targetDurationMs);
+          validatePositiveOptional(
+            errors,
+            level.id,
+            "rush minimum target duration",
+            rush.minimumTargetDurationMs
+          );
+          validatePositiveOptional(errors, level.id, "rush speed-up", rush.speedUpPerSuccessMs);
+          validatePositiveOptional(errors, level.id, "rush streak window", rush.streakWindowMs);
+          validatePositiveOptional(errors, level.id, "rush gold time", rush.goldTimeMs);
+          validatePositiveOptional(errors, level.id, "rush silver time", rush.silverTimeMs);
+          if (
+            rush.targetDurationMs !== undefined &&
+            rush.minimumTargetDurationMs !== undefined &&
+            rush.minimumTargetDurationMs > rush.targetDurationMs
+          ) {
+            errors.push(`Level ${level.id} rush minimum target duration exceeds its starting duration`);
+          }
+          if (
+            rush.goldTimeMs !== undefined &&
+            rush.silverTimeMs !== undefined &&
+            rush.goldTimeMs >= rush.silverTimeMs
+          ) {
+            errors.push(`Level ${level.id} rush gold time must be lower than silver time`);
+          }
+        }
         return;
+      }
       case "checkout":
         if (!("customerCount" in entry.runtime)) {
           errors.push(`Level ${level.id} did not resolve a checkout runtime`);

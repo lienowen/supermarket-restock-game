@@ -70,11 +70,13 @@ export class InteractionTargetView {
         .setSize(hitWidth, hitHeight)
         .setDisplaySize(hitWidth, hitHeight)
         .setData("actionEnabled", enabled)
-        .setInteractive({ useHandCursor: true });
+        .disableInteractive();
+      if (enabled) this.hitTarget.setInteractive({ useHandCursor: true });
       this.target.disableInteractive();
     } else {
       this.hitTarget.setVisible(false).disableInteractive();
-      this.target.setInteractive({ useHandCursor: true });
+      this.target.disableInteractive();
+      if (enabled) this.target.setInteractive({ useHandCursor: true });
     }
 
     this.target.setVisible(true)
