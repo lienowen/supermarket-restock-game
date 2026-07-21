@@ -32,7 +32,6 @@ export class BeverageCoolerView {
   private readonly rows: Phaser.GameObjects.Container[] = [];
   private readonly rowPlates: Phaser.GameObjects.Graphics[] = [];
   private readonly rowMasks: Phaser.GameObjects.Rectangle[] = [];
-  private readonly rowHitTargets: Phaser.GameObjects.Rectangle[] = [];
   private previousFilledRows = new Set<number>();
 
   constructor(
@@ -73,11 +72,26 @@ export class BeverageCoolerView {
       const mask = scene.add.rectangle(
         config.centreX,
         y,
-        config.frameWidth * 0.52,
-        rowHeight,
+        config.frameWidth * 0.58,
+        Math.max(62, rowHeight + 16),
         0x102126,
         0.8
-      ).setStrokeStyle(2, 0x5c7479, 0.58).setDepth(3);
+      )
+        .setStrokeStyle(2, 0x5c7479, 0.58)
+        .setDepth(9)
+        .setName(`beverage-cooler-row-target-${rowIndex}`);
+      mask.on(
+        "pointerdown",
+        (
+          _pointer: Phaser.Input.Pointer,
+          _localX: number,
+          _localY: number,
+          event: Phaser.Types.Input.EventData
+        ) => {
+          event.stopPropagation();
+          config.onRowSelected?.(rowIndex);
+        }
+      );
       this.rowMasks.push(mask);
 
       const shelfLine = scene.add.rectangle(
@@ -93,28 +107,6 @@ export class BeverageCoolerView {
       const plate = this.createRowPlate(y, rowHeight);
       this.rowPlates.push(plate);
       this.rows.push(this.createRestockRow(y, rowIndex, rowHeight));
-
-      const hitTarget = scene.add.rectangle(
-        config.centreX,
-        y,
-        config.frameWidth * 0.58,
-        Math.max(62, rowHeight + 16),
-        0xffffff,
-        0.001
-      ).setDepth(12).setName(`beverage-cooler-row-target-${rowIndex}`);
-      hitTarget.on(
-        "pointerdown",
-        (
-          _pointer: Phaser.Input.Pointer,
-          _localX: number,
-          _localY: number,
-          event: Phaser.Types.Input.EventData
-        ) => {
-          event.stopPropagation();
-          config.onRowSelected?.(rowIndex);
-        }
-      );
-      this.rowHitTargets.push(hitTarget);
     });
 
     const firstRow = config.rowYs[0];
@@ -167,15 +159,16 @@ export class BeverageCoolerView {
       const filled = filledRows.has(index);
       const active = state.activeRowIndex === index && !filled;
       mask.setAlpha(filled ? 0 : active ? 0.22 : 0.78);
+      const enabled = state.interactionEnabled && !filled;
+      if (enabled && !mask.input?.enabled) {
+        mask.setInteractive({ useHandCursor: true });
+      } else if (!enabled && mask.input?.enabled) {
+        mask.disableInteractive();
+      }
     });
     this.rowPlates.forEach((plate, index) => {
       const active = state.activeRowIndex === index && !filledRows.has(index);
       plate.setAlpha(active ? 0.58 + (1 - state.remainingRatio) * 0.4 : 0);
-    });
-    this.rowHitTargets.forEach((target, index) => {
-      target.disableInteractive();
-      const enabled = state.interactionEnabled && !filledRows.has(index);
-      if (enabled) target.setInteractive({ useHandCursor: true });
     });
 
     filledRows.forEach((rowIndex) => {
@@ -213,7 +206,6 @@ export class BeverageCoolerView {
     this.rows.forEach((row) => row.destroy(true));
     this.rowPlates.forEach((plate) => plate.destroy());
     this.rowMasks.forEach((mask) => mask.destroy());
-    this.rowHitTargets.forEach((target) => target.destroy());
   }
 
   private animateFilledRow(rowIndex: number): void {
