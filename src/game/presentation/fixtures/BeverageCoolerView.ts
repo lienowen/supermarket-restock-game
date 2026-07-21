@@ -40,32 +40,31 @@ export class BeverageCoolerView {
 
   create(): void {
     const { scene, config } = this;
+    const productionBaseY = 820;
 
     scene.add.ellipse(
       config.centreX + 12,
-      config.baseY + 35,
-      config.displayWidth * 0.92,
-      54,
+      productionBaseY + 8,
+      430,
+      58,
       0x10241f,
       0.22
     ).setDepth(-1);
 
-    scene.add.image(config.centreX, config.baseY, config.coolerAssetKey)
+    scene.add.image(config.centreX, productionBaseY, config.coolerAssetKey)
       .setOrigin(0.5, 0.96)
       .setDisplaySize(config.displayWidth, config.displayHeight)
       .setDepth(0)
       .setName("beverage-cooler-production");
 
-    this.createHeader();
-
     config.rowYs.forEach((y, rowIndex) => {
       const mask = scene.add.rectangle(
         config.centreX,
         y,
-        config.frameWidth * 0.43,
+        config.frameWidth * 0.47,
         66,
         0xe8efea,
-        0.86
+        0.9
       ).setStrokeStyle(2, 0xa8beb7, 0.38).setDepth(3);
       this.rowMasks.push(mask);
 
@@ -77,7 +76,7 @@ export class BeverageCoolerView {
 
   sync(stockedRows: number): void {
     this.rows.forEach((row, index) => row.setAlpha(index < stockedRows ? 1 : 0.12));
-    this.rowMasks.forEach((mask, index) => mask.setAlpha(index < stockedRows ? 0 : 0.86));
+    this.rowMasks.forEach((mask, index) => mask.setAlpha(index < stockedRows ? 0 : 0.9));
     this.rowPlates.forEach((plate, index) => plate.setAlpha(index === stockedRows ? 0.96 : 0));
 
     if (stockedRows <= this.previousStockedRows) {
@@ -108,43 +107,9 @@ export class BeverageCoolerView {
     this.previousStockedRows = stockedRows;
   }
 
-  private createHeader(): void {
-    const { scene, config } = this;
-    const top = config.backgroundY - config.displayHeight / 2;
-    const header = scene.add.graphics().setDepth(4);
-    header.fillStyle(0x216d40, 0.95);
-    header.fillRoundedRect(
-      config.centreX - config.displayWidth * 0.39,
-      top + 26,
-      config.displayWidth * 0.78,
-      61,
-      15
-    );
-    header.lineStyle(2, 0x9dd6ac, 0.5);
-    header.strokeRoundedRect(
-      config.centreX - config.displayWidth * 0.39,
-      top + 26,
-      config.displayWidth * 0.78,
-      61,
-      15
-    );
-    scene.add.text(config.centreX, top + 45, config.departmentLabel, {
-      fontFamily: "Arial",
-      fontSize: "24px",
-      color: "#ffffff",
-      fontStyle: "bold"
-    }).setOrigin(0.5).setDepth(5);
-    scene.add.text(config.centreX, top + 70, config.subtitleLabel, {
-      fontFamily: "Arial",
-      fontSize: "12px",
-      color: "#d8f1df",
-      letterSpacing: 2
-    }).setOrigin(0.5).setDepth(5);
-  }
-
   private createRowPlate(y: number): Phaser.GameObjects.Graphics {
     const { scene, config } = this;
-    const width = config.frameWidth * 0.45;
+    const width = config.frameWidth * 0.49;
     const plate = scene.add.graphics().setDepth(6).setAlpha(0);
     plate.fillStyle(0xffd95e, 0.12);
     plate.fillRoundedRect(config.centreX - width / 2, y - 37, width, 74, 11);
@@ -162,11 +127,11 @@ export class BeverageCoolerView {
     for (let index = 0; index < count; index += 1) {
       const bottle = this.scene.add.image(
         startX + index * spacing,
-        y + 24,
+        y + 30,
         this.config.restockProductKey
       )
         .setOrigin(0.5, 0.96)
-        .setDisplaySize(38, 70)
+        .setDisplaySize(120, 136)
         .setDepth(5);
       objects.push(bottle);
     }
