@@ -1,30 +1,16 @@
 import type { LevelDefinition } from "../GameContent";
 
-const SHARED_ENVIRONMENT_ASSET_KEY = "environment-starter-market-salesfloor-prototype";
-
 const SHARED_NAVIGATION = Object.freeze({
   moveSpeed: 360,
   interactionRadius: 145
 });
 
-const SHARED_RESTOCK_ASSETS = Object.freeze({
-  environmentAssetKey: SHARED_ENVIRONMENT_ASSET_KEY,
-  fixtureAssetKey: "fixture-beverage-cooler-a",
-  workerIdleAssetKey: "worker-a-idle",
-  workerPushAssetKey: "worker-a-push-cart",
-  workerCarryAssetKey: "worker-a-carry-medium",
-  cartAssetKey: "equipment-restock-cart-a-empty",
-  ambientProductAssetKeys: Object.freeze([
-    "product-cola-bottle",
-    "product-milk-bottle",
-    "product-water-bottle"
-  ])
-});
-
 /**
- * Pure level data. No scene names, no level-specific methods, and no branching
- * by level id is allowed here. The runtime selects a handler from `mode` and a
- * presentation preset from `presentation.visualPresetId`.
+ * Pure level data. A level never owns methods or asset paths.
+ * - mode chooses a gameplay handler
+ * - assetPackId chooses globally registered assets
+ * - visualPresetId chooses a globally registered composition
+ * - mission/tuning/navigation provide the changing values
  */
 export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
   {
@@ -34,11 +20,9 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     missionId: "restock-cola-cooler",
     title: "First Delivery",
     navigation: SHARED_NAVIGATION,
-    presentation: { visualPresetId: "restock-standard-v1" },
-    assetBindings: {
-      ...SHARED_RESTOCK_ASSETS,
-      caseAssetKey: "prop-cola-case-closed",
-      productAssetKey: "product-cola-bottle"
+    presentation: {
+      assetPackId: "market-restock-v1",
+      visualPresetId: "restock-standard-v1"
     },
     tuning: {
       initialCoins: 100,
@@ -53,11 +37,9 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     missionId: "restock-water-promotion",
     title: "Promotion Restock",
     navigation: { moveSpeed: 385, interactionRadius: 145 },
-    presentation: { visualPresetId: "restock-standard-v1" },
-    assetBindings: {
-      ...SHARED_RESTOCK_ASSETS,
-      caseAssetKey: "prop-water-case-closed",
-      productAssetKey: "product-water-bottle"
+    presentation: {
+      assetPackId: "market-restock-v1",
+      visualPresetId: "restock-standard-v1"
     },
     tuning: {
       initialCoins: 200,
@@ -72,16 +54,9 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     missionId: "assist-checkout-rush",
     title: "Checkout Rush",
     navigation: { moveSpeed: 400, interactionRadius: 155 },
-    presentation: { visualPresetId: "checkout-standard-v1" },
-    assetBindings: {
-      environmentAssetKey: SHARED_ENVIRONMENT_ASSET_KEY,
-      workerAssetKey: "worker-a-idle",
-      customerAssetKeys: [
-        "customer-a-carry-basket",
-        "customer-b-carry-basket",
-        "customer-c-idle",
-        "customer-d-checkout"
-      ]
+    presentation: {
+      assetPackId: "market-checkout-v1",
+      visualPresetId: "checkout-standard-v1"
     },
     tuning: {
       initialCoins: 320,
@@ -97,14 +72,9 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     missionId: "clean-store-floor",
     title: "Spill Patrol",
     navigation: { moveSpeed: 405, interactionRadius: 150 },
-    presentation: { visualPresetId: "clean-standard-v1" },
-    assetBindings: {
-      environmentAssetKey: SHARED_ENVIRONMENT_ASSET_KEY,
-      workerAssetKey: "worker-a-idle",
-      workerMopAssetKey: "worker-a-mop-floor",
-      cleaningFixtureAssetKey: "fixture-cleaning-supplies-a",
-      cleaningCartAssetKey: "equipment-cleaning-cart",
-      wetFloorSignAssetKey: "equipment-wet-floor-sign"
+    presentation: {
+      assetPackId: "market-clean-v1",
+      visualPresetId: "clean-standard-v1"
     },
     tuning: {
       initialCoins: 400,
@@ -125,17 +95,9 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     missionId: "find-order-items",
     title: "Order Hunt",
     navigation: { moveSpeed: 420, interactionRadius: 165 },
-    presentation: { visualPresetId: "find-items-standard-v1" },
-    assetBindings: {
-      environmentAssetKey: SHARED_ENVIRONMENT_ASSET_KEY,
-      workerAssetKey: "worker-a-idle",
-      workerThinkingAssetKey: "worker-a-thinking",
-      fixtureAssetKey: "fixture-dairy-breakfast-a",
-      itemAssetKeys: [
-        "product-milk-bottle",
-        "product-apple",
-        "product-cereal-box"
-      ]
+    presentation: {
+      assetPackId: "market-find-items-v1",
+      visualPresetId: "find-items-standard-v1"
     },
     tuning: {
       initialCoins: 490,
