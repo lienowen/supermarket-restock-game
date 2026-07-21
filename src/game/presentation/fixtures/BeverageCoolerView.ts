@@ -63,10 +63,20 @@ export class BeverageCoolerView {
         y,
         config.frameWidth * 0.47,
         66,
-        0xe8efea,
-        0.9
-      ).setStrokeStyle(2, 0xa8beb7, 0.38).setDepth(3);
+        0x14282c,
+        0.93
+      ).setStrokeStyle(2, 0x456064, 0.72).setDepth(3);
       this.rowMasks.push(mask);
+
+      const shelfLine = scene.add.rectangle(
+        config.centreX,
+        y + 31,
+        config.frameWidth * 0.47,
+        4,
+        0x8aa0a3,
+        0.72
+      ).setDepth(4);
+      shelfLine.setName(`beverage-cooler-empty-shelf-${rowIndex}`);
 
       const plate = this.createRowPlate(y);
       this.rowPlates.push(plate);
@@ -76,7 +86,7 @@ export class BeverageCoolerView {
 
   sync(stockedRows: number): void {
     this.rows.forEach((row, index) => row.setAlpha(index < stockedRows ? 1 : 0.12));
-    this.rowMasks.forEach((mask, index) => mask.setAlpha(index < stockedRows ? 0 : 0.9));
+    this.rowMasks.forEach((mask, index) => mask.setAlpha(index < stockedRows ? 0 : 0.93));
     this.rowPlates.forEach((plate, index) => plate.setAlpha(index === stockedRows ? 0.96 : 0));
 
     if (stockedRows <= this.previousStockedRows) {
