@@ -1,0 +1,216 @@
+{
+  "assetRootInProject": "public/assets/game/production-v1",
+  "runtimePrefix": "assets/game/production-v1",
+  "unzipAt": "repository root",
+  "files": [
+    {
+      "key": "customer_elderly_cart_idle",
+      "runtimePath": "assets/game/production-v1/characters/customers/customer-elderly-cart-idle.png"
+    },
+    {
+      "key": "customer_elderly_cart_walk",
+      "runtimePath": "assets/game/production-v1/characters/customers/customer-elderly-cart-walk.png"
+    },
+    {
+      "key": "customer_man_checkout",
+      "runtimePath": "assets/game/production-v1/characters/customers/customer-man-checkout.png"
+    },
+    {
+      "key": "customer_man_idle",
+      "runtimePath": "assets/game/production-v1/characters/customers/customer-man-idle.png"
+    },
+    {
+      "key": "customer_young_man_basket",
+      "runtimePath": "assets/game/production-v1/characters/customers/customer-young-man-basket.png"
+    },
+    {
+      "key": "customer_young_man_idle",
+      "runtimePath": "assets/game/production-v1/characters/customers/customer-young-man-idle.png"
+    },
+    {
+      "key": "customer_young_woman_basket",
+      "runtimePath": "assets/game/production-v1/characters/customers/customer-young-woman-basket.png"
+    },
+    {
+      "key": "customer_young_woman_idle",
+      "runtimePath": "assets/game/production-v1/characters/customers/customer-young-woman-idle.png"
+    },
+    {
+      "key": "equipment_barcode_scanner",
+      "runtimePath": "assets/game/production-v1/props/equipment-barcode-scanner.png"
+    },
+    {
+      "key": "equipment_cleaning_cart",
+      "runtimePath": "assets/game/production-v1/props/equipment-cleaning-cart.png"
+    },
+    {
+      "key": "equipment_mop",
+      "runtimePath": "assets/game/production-v1/props/equipment-mop.png"
+    },
+    {
+      "key": "equipment_pos_terminal",
+      "runtimePath": "assets/game/production-v1/props/equipment-pos-terminal.png"
+    },
+    {
+      "key": "equipment_restock_cart_empty",
+      "runtimePath": "assets/game/production-v1/props/equipment-restock-cart-empty.png"
+    },
+    {
+      "key": "equipment_restock_cart_loaded",
+      "runtimePath": "assets/game/production-v1/props/equipment-restock-cart-loaded.png"
+    },
+    {
+      "key": "equipment_shopping_basket",
+      "runtimePath": "assets/game/production-v1/props/equipment-shopping-basket.png"
+    },
+    {
+      "key": "equipment_shopping_cart",
+      "runtimePath": "assets/game/production-v1/props/equipment-shopping-cart.png"
+    },
+    {
+      "key": "equipment_wet_floor_sign",
+      "runtimePath": "assets/game/production-v1/props/equipment-wet-floor-sign.png"
+    },
+    {
+      "key": "fixture_backroom_shelf",
+      "runtimePath": "assets/game/production-v1/fixtures/fixture-backroom-shelf.png"
+    },
+    {
+      "key": "fixture_beverage_cooler",
+      "runtimePath": "assets/game/production-v1/fixtures/fixture-beverage-cooler.png"
+    },
+    {
+      "key": "fixture_checkout_counter",
+      "runtimePath": "assets/game/production-v1/fixtures/fixture-checkout-counter.png"
+    },
+    {
+      "key": "fixture_cleaning_supplies_shelf",
+      "runtimePath": "assets/game/production-v1/fixtures/fixture-cleaning-supplies-shelf.png"
+    },
+    {
+      "key": "fixture_dairy_breakfast_shelf",
+      "runtimePath": "assets/game/production-v1/fixtures/fixture-dairy-breakfast-shelf.png"
+    },
+    {
+      "key": "fixture_produce_display",
+      "runtimePath": "assets/game/production-v1/fixtures/fixture-produce-display.png"
+    },
+    {
+      "key": "product_apple",
+      "runtimePath": "assets/game/production-v1/products/product-apple.png"
+    },
+    {
+      "key": "product_banana_bunch",
+      "runtimePath": "assets/game/production-v1/products/product-banana-bunch.png"
+    },
+    {
+      "key": "product_cereal_box",
+      "runtimePath": "assets/game/production-v1/products/product-cereal-box.png"
+    },
+    {
+      "key": "product_chips_bag",
+      "runtimePath": "assets/game/production-v1/products/product-chips-bag.png"
+    },
+    {
+      "key": "product_cola_bottle",
+      "runtimePath": "assets/game/production-v1/products/product-cola-bottle.png"
+    },
+    {
+      "key": "product_detergent_bottle",
+      "runtimePath": "assets/game/production-v1/products/product-detergent-bottle.png"
+    },
+    {
+      "key": "product_grapes_pack",
+      "runtimePath": "assets/game/production-v1/products/product-grapes-pack.png"
+    },
+    {
+      "key": "product_lemon_lime_soda",
+      "runtimePath": "assets/game/production-v1/products/product-lemon-lime-soda.png"
+    },
+    {
+      "key": "product_milk_jug",
+      "runtimePath": "assets/game/production-v1/products/product-milk-jug.png"
+    },
+    {
+      "key": "product_oats_canister",
+      "runtimePath": "assets/game/production-v1/products/product-oats-canister.png"
+    },
+    {
+      "key": "product_orange_soda",
+      "runtimePath": "assets/game/production-v1/products/product-orange-soda.png"
+    },
+    {
+      "key": "product_paper_towels",
+      "runtimePath": "assets/game/production-v1/products/product-paper-towels.png"
+    },
+    {
+      "key": "product_peanut_butter",
+      "runtimePath": "assets/game/production-v1/products/product-peanut-butter.png"
+    },
+    {
+      "key": "product_water_bottle",
+      "runtimePath": "assets/game/production-v1/products/product-water-bottle.png"
+    },
+    {
+      "key": "product_yogurt_cup",
+      "runtimePath": "assets/game/production-v1/products/product-yogurt-cup.png"
+    },
+    {
+      "key": "prop_cola_case_open",
+      "runtimePath": "assets/game/production-v1/props/prop-cola-case-open.png"
+    },
+    {
+      "key": "prop_cola_case_pallet",
+      "runtimePath": "assets/game/production-v1/props/prop-cola-case-pallet.png"
+    },
+    {
+      "key": "ui_task_clipboard",
+      "runtimePath": "assets/game/production-v1/props/ui-task-clipboard.png"
+    },
+    {
+      "key": "worker_carry_box",
+      "runtimePath": "assets/game/production-v1/characters/worker/worker-carry-box.png"
+    },
+    {
+      "key": "worker_idle",
+      "runtimePath": "assets/game/production-v1/characters/worker/worker-idle.png"
+    },
+    {
+      "key": "worker_mop_floor",
+      "runtimePath": "assets/game/production-v1/characters/worker/worker-mop-floor.png"
+    },
+    {
+      "key": "worker_open_box",
+      "runtimePath": "assets/game/production-v1/characters/worker/worker-open-box.png"
+    },
+    {
+      "key": "worker_push_cart",
+      "runtimePath": "assets/game/production-v1/characters/worker/worker-push-cart.png"
+    },
+    {
+      "key": "worker_scan_register",
+      "runtimePath": "assets/game/production-v1/characters/worker/worker-scan-register.png"
+    },
+    {
+      "key": "worker_stock_shelf",
+      "runtimePath": "assets/game/production-v1/characters/worker/worker-stock-shelf.png"
+    },
+    {
+      "key": "worker_thinking",
+      "runtimePath": "assets/game/production-v1/characters/worker/worker-thinking.png"
+    },
+    {
+      "key": "worker_walk_01",
+      "runtimePath": "assets/game/production-v1/characters/worker/worker-walk-01.png"
+    },
+    {
+      "key": "worker_walk_02",
+      "runtimePath": "assets/game/production-v1/characters/worker/worker-walk-02.png"
+    }
+  ],
+  "notes": [
+    "This package does not overwrite current assets.",
+    "Update StarterAssetCatalogue or the new unified asset catalogue to point to runtimePrefix.",
+    "Generated concept assets require final visual QA before commercial release."
+  ]
+}
