@@ -26,7 +26,8 @@ import { InteractionTargetView } from "../interactions/InteractionTargetView";
 import { RestockTargetResolver } from "../interactions/RestockTargetResolver";
 import { LevelCompleteOverlay } from "../ui/LevelCompleteOverlay";
 import { ShiftHud } from "../ui/ShiftHud";
-import { RESTOCK_VISUAL_PRESET } from "../visual/MarketLevelVisualPreset";
+import { resolveLevelVisualPreset } from "../visual/LevelVisualPresetResolver";
+import type { RestockLevelVisualPreset } from "../visual/MarketLevelVisualPreset";
 import { StarterMarketEnvironmentView } from "../world/StarterMarketEnvironmentView";
 
 export interface SceneCampaignSessionContext {
@@ -40,6 +41,7 @@ export class StarterMarketScene extends Phaser.Scene {
 
   private readonly interactionGate = new InteractionGate();
   private readonly targetResolver: RestockTargetResolver;
+  private readonly visualPreset: RestockLevelVisualPreset;
   private readonly disposers: Array<() => void> = [];
   private hud?: ShiftHud;
   private actors?: RestockActorView;
@@ -53,6 +55,7 @@ export class StarterMarketScene extends Phaser.Scene {
     private readonly campaignSession?: SceneCampaignSessionContext
   ) {
     super(context.scene.key);
+    this.visualPreset = resolveLevelVisualPreset(context.campaignLevel.level);
     const initialEconomy = campaignSession?.initialEconomy ?? {
       coins: context.campaignLevel.level.tuning.initialCoins,
       stars: 0,
@@ -70,8 +73,8 @@ export class StarterMarketScene extends Phaser.Scene {
       cartStart: context.world.cartStart,
       cartDestination: context.world.cartCooler,
       coolerCentreX: context.world.beverageCooler.x,
-      coolerRowYs: RESTOCK_VISUAL_PRESET.cooler.rowYs,
-      coolerTargetWidth: RESTOCK_VISUAL_PRESET.cooler.activeStockWidth
+      coolerRowYs: this.visualPreset.cooler.rowYs,
+      coolerTargetWidth: this.visualPreset.cooler.activeStockWidth
     });
   }
 
@@ -147,7 +150,7 @@ export class StarterMarketScene extends Phaser.Scene {
 
   private createCooler(): BeverageCoolerView {
     const context = this.context;
-    const preset = RESTOCK_VISUAL_PRESET.cooler;
+    const preset = this.visualPreset.cooler;
     const cooler = new BeverageCoolerView(this, {
       centreX: context.world.beverageCooler.x,
       baseY: preset.baseY,
@@ -176,7 +179,7 @@ export class StarterMarketScene extends Phaser.Scene {
 
   private createActors(): RestockActorView {
     const context = this.context;
-    const preset = RESTOCK_VISUAL_PRESET;
+    const preset = this.visualPreset;
     return new RestockActorView(this, {
       workerStart: context.world.workerStart,
       navigationBounds: context.visual.actor.navigationBounds,
