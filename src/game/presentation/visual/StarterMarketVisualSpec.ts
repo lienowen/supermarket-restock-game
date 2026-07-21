@@ -33,13 +33,13 @@ export const STARTER_MARKET_VISUAL_SPEC = {
   },
   actor: {
     spawn: { x: 890, y: 625 },
-    coolerPosition: { x: 1080, y: 630 },
-    pushSize: { width: 145, height: 225 },
-    carrySize: { width: 140, height: 220 },
-    idleSize: { width: 132, height: 210 },
+    coolerPosition: { x: 1080, y: 700 },
+    pushSize: { width: 480, height: 430 },
+    carrySize: { width: 500, height: 420 },
+    idleSize: { width: 600, height: 420 },
     navigationBounds: { x: 470, y: 430, width: 750, height: 340 },
     safeBounds: { x: 470, y: 430, width: 750, height: 340 },
-    shadowOffset: { x: 0, y: 76 }
+    shadowOffset: { x: 0, y: 5 }
   },
   backroom: {
     centre: { x: 750, y: 390 },
@@ -55,7 +55,7 @@ export const STARTER_MARKET_VISUAL_SPEC = {
   },
   cooler: {
     centre: { x: 1325, y: 505 },
-    displaySize: { width: 440, height: 610 },
+    displaySize: { width: 1100, height: 1320 },
     sign: { x: 1140, y: 150, width: 370, height: 58 },
     rowYs: [300, 375, 450, 525, 600, 675],
     activeStockBounds: { x: 1215, y: 260, width: 220, height: 455 },
