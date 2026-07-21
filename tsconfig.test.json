@@ -35,6 +35,8 @@
     "src/game/application/LevelRuntimeContent.ts",
     "src/game/application/PlayerNavigationController.ts",
     "src/game/application/ShiftRuntimeContent.ts",
+    "src/game/application/RestockPaceTracker.ts",
+    "src/game/application/RestockRushController.ts",
     "src/game/application/RestockSceneController.ts",
     "src/game/application/UtilityLevelRuntimeContent.ts",
     "src/game/events/DomainEventBus.ts",
