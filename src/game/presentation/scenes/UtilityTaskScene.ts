@@ -26,6 +26,8 @@ export type UtilityPresentationContext =
   | CleanStarterMarketPresentationContext
   | FindItemsStarterMarketPresentationContext;
 
+type UtilityProgressObject = Phaser.GameObjects.Image | Phaser.GameObjects.Ellipse;
+
 export class UtilityTaskScene extends Phaser.Scene {
   readonly controller: UtilityTaskSceneController;
 
@@ -36,7 +38,7 @@ export class UtilityTaskScene extends Phaser.Scene {
   private hud?: ShiftHud;
   private completionOverlay?: LevelCompleteOverlay;
   private readonly taskObjects: Phaser.GameObjects.GameObject[] = [];
-  private readonly progressObjects: Phaser.GameObjects.GameObject[] = [];
+  private readonly progressObjects: UtilityProgressObject[] = [];
   private previousProgress = 0;
   private completed = false;
 
