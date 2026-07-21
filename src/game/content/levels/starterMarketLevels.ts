@@ -41,9 +41,10 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
         targetDurationMs: 3200,
         minimumTargetDurationMs: 1500,
         speedUpPerSuccessMs: 240,
+        introGraceMs: 4200,
         streakWindowMs: 1900,
-        goldTimeMs: 26000,
-        silverTimeMs: 41000
+        goldTimeMs: 30000,
+        silverTimeMs: 45000
       }
     }
   },
@@ -69,9 +70,10 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
         targetDurationMs: 2600,
         minimumTargetDurationMs: 1150,
         speedUpPerSuccessMs: 220,
+        introGraceMs: 5000,
         streakWindowMs: 1550,
-        goldTimeMs: 21000,
-        silverTimeMs: 34000
+        goldTimeMs: 26000,
+        silverTimeMs: 40000
       }
     }
   },
