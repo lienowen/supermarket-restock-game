@@ -161,17 +161,17 @@ function createCopy(runtime: RestockShiftRuntimeContent): Record<RestockSceneSte
     },
     open: {
       objective,
-      instruction: "Opening the case for a fast shelf refill.",
+      instruction: "Opening the case. Get ready for the restock rush.",
       actionLabel: "OPENING..."
     },
     restock: {
       objective,
-      instruction: `Tap each highlighted row quickly to build a FAST STOCK streak.`,
-      actionLabel: "RESTOCK ROW"
+      instruction: "Tap the glowing shelf before its timer empties. A wrong or slow tap breaks your streak.",
+      actionLabel: "TAP THE SHELVES"
     },
     complete: {
       objective: `${product} section ready`,
-      instruction: `Great work. The ${fixture} display is fully stocked.`,
+      instruction: `Great work. Beat your time and best streak on the next run.`,
       actionLabel: "TASK COMPLETE"
     }
   };
