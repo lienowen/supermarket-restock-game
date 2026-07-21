@@ -4,8 +4,8 @@ import {
 } from "../GameContent";
 
 const SHARED_NAVIGATION = Object.freeze({
-  moveSpeed: 360,
-  interactionRadius: 145
+  moveSpeed: 520,
+  interactionRadius: 150
 });
 
 const NO_RULE_OVERRIDES = Object.freeze([]);
@@ -47,7 +47,7 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     missionId: "restock-water-promotion",
     title: "Promotion Restock",
     randomSeed: "starter-level-002-v1",
-    navigation: { moveSpeed: 385, interactionRadius: 145 },
+    navigation: { moveSpeed: 560, interactionRadius: 155 },
     presentation: {
       assetPackId: "market-restock-v1",
       visualPresetId: "restock-standard-v1"
@@ -67,7 +67,7 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     missionId: "assist-checkout-rush",
     title: "Checkout Rush",
     randomSeed: "starter-level-003-v1",
-    navigation: { moveSpeed: 400, interactionRadius: 155 },
+    navigation: { moveSpeed: 440, interactionRadius: 155 },
     presentation: {
       assetPackId: "market-checkout-v1",
       visualPresetId: "checkout-standard-v1"
@@ -88,7 +88,7 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     missionId: "clean-store-floor",
     title: "Spill Patrol",
     randomSeed: "starter-level-004-v1",
-    navigation: { moveSpeed: 405, interactionRadius: 150 },
+    navigation: { moveSpeed: 455, interactionRadius: 150 },
     presentation: {
       assetPackId: "market-clean-v1",
       visualPresetId: "clean-standard-v1"
@@ -114,7 +114,7 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     missionId: "find-order-items",
     title: "Order Hunt",
     randomSeed: "starter-level-005-v1",
-    navigation: { moveSpeed: 420, interactionRadius: 165 },
+    navigation: { moveSpeed: 470, interactionRadius: 165 },
     presentation: {
       assetPackId: "market-find-items-v1",
       visualPresetId: "find-items-standard-v1"
