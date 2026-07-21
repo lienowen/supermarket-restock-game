@@ -1,11 +1,17 @@
 import Phaser from "phaser";
 import type { StarterMarketPresentationContext } from "../context/StarterMarketPresentationContext";
+import { resolveLevelVisualPreset } from "../visual/LevelVisualPresetResolver";
+import type { MarketLevelVisualPreset } from "../visual/MarketLevelVisualPreset";
 
 export class StarterMarketEnvironmentView {
+  private readonly visualPreset: MarketLevelVisualPreset;
+
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly context: StarterMarketPresentationContext
-  ) {}
+  ) {
+    this.visualPreset = resolveLevelVisualPreset(context.campaignLevel.level);
+  }
 
   create(): void {
     this.createBase();
@@ -13,13 +19,14 @@ export class StarterMarketEnvironmentView {
     this.createCeiling();
     this.createBackroom();
     this.createProduceDepartment();
+    this.createModeFocus();
     this.createFloorRoute();
     this.createAtmosphere();
   }
 
   private createBase(): void {
     const { scene, context } = this;
-    scene.add.rectangle(context.world.width / 2, 112, context.world.width, 224, 0x18352c, 1).setDepth(-30);
+    scene.add.rectangle(context.world.width / 2, 112, context.world.width, 224, 0x17362c, 1).setDepth(-30);
     scene.add.rectangle(context.world.width / 2, 252, context.world.width, 280, 0xf1e5d2, 1).setDepth(-29);
     scene.add.rectangle(context.world.width / 2, 362, context.world.width, 18, 0xb88a57, 1).setDepth(-28);
     scene.add.rectangle(context.world.width / 2, 374, context.world.width, 8, 0x6e4b2f, 0.72).setDepth(-27);
@@ -33,6 +40,13 @@ export class StarterMarketEnvironmentView {
     wall.strokeRoundedRect(28, 172, 470, 154, 28);
     wall.strokeRoundedRect(515, 172, 470, 154, 28);
     wall.strokeRoundedRect(1002, 172, 570, 154, 28);
+
+    const trim = scene.add.graphics().setDepth(-25);
+    trim.lineStyle(2, 0x8c724f, 0.2);
+    [82, 545, 975, 1540].forEach((x) => trim.lineBetween(x, 166, x, 354));
+    trim.fillStyle(0x284d40, 0.12);
+    trim.fillRoundedRect(62, 214, 392, 86, 18);
+    trim.fillRoundedRect(1045, 214, 474, 86, 18);
   }
 
   private createFloor(): void {
@@ -62,6 +76,14 @@ export class StarterMarketEnvironmentView {
     scene.add.ellipse(780, 810, 520, 82, 0x263d35, 0.07).setDepth(-21);
     scene.add.ellipse(245, 812, 530, 74, 0x5c422d, 0.1).setDepth(-21);
     scene.add.ellipse(1320, 814, 500, 76, 0x23463e, 0.1).setDepth(-21);
+
+    const aisleEdges = scene.add.graphics().setDepth(-20);
+    aisleEdges.lineStyle(3, 0xffffff, 0.12);
+    aisleEdges.lineBetween(535, 390, 312, 900);
+    aisleEdges.lineBetween(1038, 390, 1330, 900);
+    aisleEdges.lineStyle(2, 0x315f38, 0.1);
+    aisleEdges.lineBetween(610, 390, 495, 900);
+    aisleEdges.lineBetween(965, 390, 1148, 900);
   }
 
   private createCeiling(): void {
@@ -74,6 +96,10 @@ export class StarterMarketEnvironmentView {
       scene.add.rectangle(x, 111, 92, 11, 0xe9d3a3, 1).setDepth(-15);
       scene.add.rectangle(x, 115, 66, 5, 0xfff8dd, 1).setDepth(-14);
     });
+
+    const beams = scene.add.graphics().setDepth(-16);
+    beams.lineStyle(5, 0x112820, 0.55);
+    [320, 640, 960, 1280].forEach((x) => beams.lineBetween(x, 0, x, 92));
   }
 
   private createBackroom(): void {
@@ -160,16 +186,60 @@ export class StarterMarketEnvironmentView {
     }
   }
 
+  private createModeFocus(): void {
+    const { focus, focusSize, inactiveWashAlpha } = this.visualPreset.environment;
+    const accent = this.context.mode === "checkout" ? this.context.palette.greenBright : this.context.palette.gold;
+
+    const focusShadow = this.scene.add.ellipse(
+      focus.x,
+      focus.y + 45,
+      focusSize.width,
+      focusSize.height,
+      0x1a3129,
+      0.08
+    ).setDepth(-12);
+    focusShadow.setBlendMode(Phaser.BlendModes.MULTIPLY);
+
+    const focusGlow = this.scene.add.ellipse(
+      focus.x,
+      focus.y,
+      focusSize.width * 0.78,
+      focusSize.height * 0.62,
+      accent,
+      0.055
+    ).setDepth(7);
+    focusGlow.setBlendMode(Phaser.BlendModes.ADD);
+
+    const edgeWash = this.scene.add.graphics().setDepth(75);
+    edgeWash.fillStyle(0x0b1713, inactiveWashAlpha);
+    const leftWidth = Math.max(0, focus.x - focusSize.width / 2);
+    const rightStart = Math.min(this.context.world.width, focus.x + focusSize.width / 2);
+    edgeWash.fillRect(0, 118, leftWidth, this.context.world.height - 118);
+    edgeWash.fillRect(rightStart, 118, this.context.world.width - rightStart, this.context.world.height - 118);
+  }
+
   private createFloorRoute(): void {
     const route = this.scene.add.graphics().setDepth(6);
-    route.lineStyle(5, this.context.palette.gold, 0.42);
-    route.beginPath();
-    route.moveTo(930, 718);
-    route.lineTo(1000, 735);
-    route.lineTo(1075, 725);
-    route.strokePath();
-    route.fillStyle(this.context.palette.gold, 0.48);
-    route.fillTriangle(1088, 725, 1058, 708, 1058, 742);
+    const start = this.context.world.workerStart;
+    const end = this.visualPreset.environment.focus;
+    const control = {
+      x: Phaser.Math.Linear(start.x, end.x, 0.5),
+      y: Math.max(start.y, end.y) + 82
+    };
+    const dotCount = 11;
+
+    for (let index = 0; index < dotCount; index += 1) {
+      const t = index / (dotCount - 1);
+      const inverse = 1 - t;
+      const x = inverse * inverse * start.x + 2 * inverse * t * control.x + t * t * end.x;
+      const y = inverse * inverse * start.y + 2 * inverse * t * control.y + t * t * end.y;
+      const radius = 4 + t * 2;
+      route.fillStyle(this.context.palette.gold, this.visualPreset.environment.routeAlpha * (0.55 + t * 0.45));
+      route.fillCircle(x, y, radius);
+    }
+
+    route.fillStyle(this.context.palette.gold, this.visualPreset.environment.routeAlpha + 0.12);
+    route.fillTriangle(end.x + 14, end.y, end.x - 14, end.y - 12, end.x - 14, end.y + 12);
   }
 
   private createAtmosphere(): void {
@@ -180,16 +250,19 @@ export class StarterMarketEnvironmentView {
       context.world.width,
       context.world.height,
       0xffe5ad,
-      0.035
+      0.028
     ).setDepth(80);
-    scene.add.rectangle(8, context.world.height / 2, 16, context.world.height, 0x17342c, 0.14).setDepth(81);
+
+    const vignetteAlpha = this.visualPreset.environment.vignetteAlpha;
+    scene.add.rectangle(8, context.world.height / 2, 16, context.world.height, 0x0c1a16, vignetteAlpha).setDepth(81);
     scene.add.rectangle(
       context.world.width - 8,
       context.world.height / 2,
       16,
       context.world.height,
-      0x17342c,
-      0.14
+      0x0c1a16,
+      vignetteAlpha
     ).setDepth(81);
+    scene.add.rectangle(context.world.width / 2, 112, context.world.width, 20, 0x07110e, vignetteAlpha * 0.7).setDepth(81);
   }
 }
