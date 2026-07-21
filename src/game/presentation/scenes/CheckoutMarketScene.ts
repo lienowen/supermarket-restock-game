@@ -8,6 +8,7 @@ import {
 } from "../../application/CheckoutSceneController";
 import type { NavigationPoint } from "../../application/PlayerNavigationController";
 import { resolveLevelProgression } from "../../application/LevelProgression";
+import { gameDomainEvents } from "../../events/GameDomainEvents";
 import { navigateToLevel } from "../../infrastructure/browser/BrowserLevelNavigator";
 import { PlayerNavigationView } from "../actors/PlayerNavigationView";
 import { CheckoutStationView } from "../checkout/CheckoutStationView";
@@ -37,6 +38,7 @@ export class CheckoutMarketScene extends Phaser.Scene {
   private target?: InteractionTargetView;
   private completionOverlay?: LevelCompleteOverlay;
   private previousStep?: CheckoutSceneStep;
+  private previousProgress = -1;
 
   constructor(
     private readonly context: CheckoutStarterMarketPresentationContext,
@@ -77,6 +79,7 @@ export class CheckoutMarketScene extends Phaser.Scene {
     this.station = new CheckoutStationView(this, {
       checkoutPosition: context.world.checkout,
       queueStart: context.world.customerQueueStart,
+      checkoutAssetKey: context.levelAssets.fixture.key,
       customerAssetKeys: context.levelAssets.customers.map((asset) => asset.key),
       customerCount: context.runtime.customerCount,
       scanDurationMs: context.campaignLevel.level.tuning.scanDurationMs,
@@ -93,6 +96,10 @@ export class CheckoutMarketScene extends Phaser.Scene {
       bounds: context.visual.actor.navigationBounds,
       speed: context.campaignLevel.level.navigation.moveSpeed,
       assetKey: context.levelAssets.worker.key,
+      walkAssetKeys: [
+        context.levelAssets.workerWalk[0].key,
+        context.levelAssets.workerWalk[1].key
+      ],
       displaySize: visual.actor.idleSize,
       shadowOffset: visual.actor.shadowOffset,
       name: "checkout-worker",
@@ -113,6 +120,7 @@ export class CheckoutMarketScene extends Phaser.Scene {
         dayLabel: `${context.labels.day} · ${context.labels.level}`,
         timeLabel: `${context.runtime.shift.startTime} AM`,
         initialObjective: context.runtime.mission.title,
+        modeLabel: "CHECKOUT",
         palette: context.palette
       },
       () => this.performCurrentAction()
@@ -165,6 +173,20 @@ export class CheckoutMarketScene extends Phaser.Scene {
     const accepted = this.controller.dispatch(action);
     if (!accepted) return;
 
+    gameDomainEvents.emit("task.action-accepted", {
+      levelId: this.context.campaignLevel.level.id,
+      mode: this.context.mode,
+      action
+    });
+
+    if (action === "SCAN_CUSTOMER") {
+      this.player?.setTexture(this.context.levelAssets.workerScan.key);
+      this.time.delayedCall(
+        Math.max(220, tuning.scanDurationMs),
+        () => this.player?.setTexture(this.context.levelAssets.worker.key)
+      );
+    }
+
     const position = this.player?.position();
     if (position) {
       playActionFeedback(this, position, action === "SCAN_CUSTOMER" ? "scan" : "interact");
@@ -187,7 +209,29 @@ export class CheckoutMarketScene extends Phaser.Scene {
     this.station?.sync(snapshot);
     this.syncTarget(snapshot);
 
+    if (snapshot.customersServed !== this.previousProgress) {
+      if (this.previousProgress >= 0) {
+        gameDomainEvents.emit("task.progressed", {
+          levelId: context.campaignLevel.level.id,
+          mode: context.mode,
+          progress: snapshot.customersServed,
+          total: snapshot.totalCustomers
+        });
+      }
+      this.previousProgress = snapshot.customersServed;
+    }
+
     if (snapshot.step === "complete" && this.previousStep !== "complete") {
+      gameDomainEvents.emit("task.completed", {
+        levelId: context.campaignLevel.level.id,
+        mode: context.mode,
+        economy: {
+          coins: snapshot.coins,
+          stars: snapshot.stars,
+          reputation: snapshot.reputation
+        }
+      });
+
       playRestockCompletionFeedback(this, {
         title: context.labels.completionTitle,
         coins: context.runtime.reward.totalCoins,
