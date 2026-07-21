@@ -250,13 +250,13 @@ try {
   const findInitial = await readSnapshot(findPage);
   await capture(findPage, report, "08-level5-find-initial.png", "Find-items gameplay with dynamic order targets");
   const findTargets = [
-    { x: 1010, y: 480 },
-    { x: 1125, y: 610 },
-    { x: 1190, y: 505 }
+    { target: { x: 1010, y: 480 }, approach: { x: 855, y: 480 } },
+    { target: { x: 1125, y: 610 }, approach: { x: 970, y: 610 } },
+    { target: { x: 1190, y: 505 }, approach: { x: 1035, y: 505 } }
   ];
   for (let index = 0; index < findTargets.length; index += 1) {
-    const point = findTargets[index];
-    await moveNearAndInteract(findPage, point, point);
+    const entry = findTargets[index];
+    await moveNearAndInteract(findPage, entry.approach, entry.target);
     await waitForSnapshot(findPage, { progress: index + 1 });
   }
   const findComplete = await waitForSnapshot(findPage, {
