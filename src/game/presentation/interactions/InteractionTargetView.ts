@@ -35,6 +35,7 @@ export class InteractionTargetView {
     }).setOrigin(0.5).setDepth(61);
 
     this.hitTarget.on("pointerdown", onAction);
+    this.target.on("pointerdown", onAction);
     this.pulse = scene.tweens.add({
       targets: [this.target, this.arrow],
       alpha: { from: 0.56, to: 1 },
@@ -51,23 +52,30 @@ export class InteractionTargetView {
   sync(bounds: InteractionTargetBounds | undefined, enabled: boolean): void {
     if (!bounds) {
       this.hitTarget.setVisible(false).disableInteractive();
-      this.target.setVisible(false);
+      this.target.setVisible(false).disableInteractive();
       this.arrow.setVisible(false);
       return;
     }
 
-    const hitPadding = this.hitPadding(bounds);
-    const hitWidth = bounds.width + hitPadding.left + hitPadding.right;
-    const hitHeight = bounds.height + hitPadding.top + hitPadding.bottom;
-    this.hitTarget.setVisible(true)
-      .setPosition(
-        bounds.x + (hitPadding.right - hitPadding.left) / 2,
-        bounds.y + (hitPadding.bottom - hitPadding.top) / 2
-      )
-      .setSize(hitWidth, hitHeight)
-      .setDisplaySize(hitWidth, hitHeight)
-      .setData("actionEnabled", enabled)
-      .setInteractive({ useHandCursor: true });
+    const useExpandedTouchArea = bounds.height < 80;
+    if (useExpandedTouchArea) {
+      const hitPadding = Object.freeze({ top: 110, right: 24, bottom: 24, left: 24 });
+      const hitWidth = bounds.width + hitPadding.left + hitPadding.right;
+      const hitHeight = bounds.height + hitPadding.top + hitPadding.bottom;
+      this.hitTarget.setVisible(true)
+        .setPosition(
+          bounds.x + (hitPadding.right - hitPadding.left) / 2,
+          bounds.y + (hitPadding.bottom - hitPadding.top) / 2
+        )
+        .setSize(hitWidth, hitHeight)
+        .setDisplaySize(hitWidth, hitHeight)
+        .setData("actionEnabled", enabled)
+        .setInteractive({ useHandCursor: true });
+      this.target.disableInteractive();
+    } else {
+      this.hitTarget.setVisible(false).disableInteractive();
+      this.target.setInteractive({ useHandCursor: true });
+    }
 
     this.target.setVisible(true)
       .setPosition(bounds.x, bounds.y)
@@ -88,17 +96,5 @@ export class InteractionTargetView {
     this.hitTarget.destroy();
     this.target.destroy();
     this.arrow.destroy();
-  }
-
-  private hitPadding(bounds: InteractionTargetBounds): {
-    readonly top: number;
-    readonly right: number;
-    readonly bottom: number;
-    readonly left: number;
-  } {
-    if (bounds.height < 80) {
-      return Object.freeze({ top: 110, right: 24, bottom: 24, left: 24 });
-    }
-    return Object.freeze({ top: 18, right: 18, bottom: 18, left: 18 });
   }
 }
