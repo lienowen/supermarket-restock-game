@@ -29,6 +29,9 @@ type NavigationKeys = {
   readonly d: Phaser.Input.Keyboard.Key;
 };
 
+const shadowWidth = (displayWidth: number): number => Phaser.Math.Clamp(displayWidth * 0.24, 110, 155);
+const shadowHeight = (displayHeight: number): number => Phaser.Math.Clamp(displayHeight * 0.075, 28, 38);
+
 export class PlayerNavigationView {
   readonly controller: PlayerNavigationController;
 
@@ -71,8 +74,8 @@ export class PlayerNavigationView {
     this.shadow = scene.add.ellipse(
       config.start.x + config.shadowOffset.x,
       config.start.y + config.shadowOffset.y,
-      Math.max(88, config.displaySize.width * 0.62),
-      Math.max(20, config.displaySize.height * 0.105),
+      shadowWidth(config.displaySize.width),
+      shadowHeight(config.displaySize.height),
       0x18261f,
       0.22
     ).setDepth((config.baseDepth ?? 24) - 1);
@@ -193,7 +196,7 @@ export class PlayerNavigationView {
 
   setDisplaySize(width: number, height: number): void {
     this.actor.setDisplaySize(width, height);
-    this.shadow.setSize(Math.max(88, width * 0.62), Math.max(20, height * 0.105));
+    this.shadow.setSize(shadowWidth(width), shadowHeight(height));
   }
 
   setVisible(visible: boolean): void {
