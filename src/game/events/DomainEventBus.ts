@@ -4,13 +4,11 @@ export interface DomainEventEnvelope<Type extends string = string, Payload = unk
   readonly occurredAtMs: number;
 }
 
-export type DomainEventMap = Readonly<Record<string, unknown>>;
-
 type DomainEventHandler<Payload> = (
   event: DomainEventEnvelope<string, Payload>
 ) => void;
 
-export class DomainEventBus<Events extends DomainEventMap> {
+export class DomainEventBus<Events extends object> {
   private readonly handlers = new Map<keyof Events, Set<DomainEventHandler<unknown>>>();
 
   emit<Type extends keyof Events & string>(
