@@ -1,9 +1,9 @@
 import type { StoreWorldLayout } from "./WorldLayout";
 
 /**
- * Composition locked to the approved visual target:
- * produce on the left, staff/backroom route in the centre, beverage cooler on
- * the right, and the worker/cart in the lower foreground.
+ * Shared 1600x900 market composition. Level-specific fixtures can reuse the
+ * same store while placing their primary interaction zone where that gameplay
+ * reads most clearly.
  */
 export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
   id: "starter-market-layout",
@@ -35,7 +35,7 @@ export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
       id: "checkout-zone",
       kind: "checkout",
       label: "Checkout",
-      bounds: { x: 250, y: 585, width: 1050, height: 315 }
+      bounds: { x: 300, y: 420, width: 1250, height: 480 }
     }
   ],
   fixtures: [
@@ -59,7 +59,7 @@ export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
     },
     {
       fixtureId: "checkout-a",
-      position: { x: 470, y: 700 },
+      position: { x: 1140, y: 735 },
       anchor: [0.5, 0.92],
       depth: 26
     }
@@ -90,8 +90,8 @@ export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
       id: "checkout-service-point",
       targetId: "checkout-a",
       actionGroup: "checkout",
-      position: { x: 520, y: 680 },
-      radius: 135
+      position: { x: 1035, y: 690 },
+      radius: 145
     }
   ],
   spawns: [
@@ -104,8 +104,8 @@ export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
     {
       id: "customer-queue-spawn",
       actorType: "customer",
-      position: { x: 690, y: 700 },
-      facing: "left"
+      position: { x: 350, y: 710 },
+      facing: "right"
     }
   ]
 };
