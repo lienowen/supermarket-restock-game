@@ -35,7 +35,6 @@ export class InteractionTargetView {
     }).setOrigin(0.5).setDepth(61);
 
     this.hitTarget.on("pointerdown", onAction);
-    this.target.on("pointerdown", onAction);
     this.pulse = scene.tweens.add({
       targets: [this.target, this.arrow],
       alpha: { from: 0.56, to: 1 },
@@ -52,7 +51,7 @@ export class InteractionTargetView {
   sync(bounds: InteractionTargetBounds | undefined, enabled: boolean): void {
     if (!bounds) {
       this.hitTarget.setVisible(false).disableInteractive();
-      this.target.setVisible(false).disableInteractive();
+      this.target.setVisible(false);
       this.arrow.setVisible(false);
       return;
     }
@@ -75,8 +74,7 @@ export class InteractionTargetView {
       .setSize(bounds.width, bounds.height)
       .setDisplaySize(bounds.width, bounds.height)
       .setData("actionEnabled", enabled)
-      .setStrokeStyle(4, this.target.fillColor, enabled ? 0.96 : 0.58)
-      .setInteractive({ useHandCursor: true });
+      .setStrokeStyle(4, this.target.fillColor, enabled ? 0.96 : 0.58);
     this.arrow.setVisible(true)
       .setAlpha(enabled ? 1 : 0.68)
       .setPosition(
