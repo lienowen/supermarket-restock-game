@@ -121,11 +121,11 @@ export const RESTOCK_VISUAL_PRESET: RestockLevelVisualPreset = Object.freeze({
     vignetteAlpha: 0.08
   }),
   cooler: Object.freeze({
-    baseY: 420,
-    backgroundY: 410,
+    baseY: 540,
+    backgroundY: 530,
     frameSize: Object.freeze({ width: 620, height: 520 }),
     displaySize: Object.freeze({ width: 470, height: 700 }),
-    rowYs: Object.freeze([260, 340, 420, 500, 580, 660]),
+    rowYs: Object.freeze([270, 348, 426, 504, 582, 660]),
     activeStockWidth: 360,
     restockItemCount: 5
   }),
