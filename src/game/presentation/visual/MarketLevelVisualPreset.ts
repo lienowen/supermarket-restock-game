@@ -114,24 +114,24 @@ export const RESTOCK_VISUAL_PRESET: RestockLevelVisualPreset = Object.freeze({
     carrySize: Object.freeze({ width: 470, height: 395 })
   }),
   environment: Object.freeze({
-    focus: Object.freeze({ x: 1180, y: 605 }),
-    focusSize: Object.freeze({ width: 840, height: 500 }),
-    routeAlpha: 0.42,
-    inactiveWashAlpha: 0.1,
-    vignetteAlpha: 0.16
+    focus: Object.freeze({ x: 1310, y: 610 }),
+    focusSize: Object.freeze({ width: 570, height: 620 }),
+    routeAlpha: 0.34,
+    inactiveWashAlpha: 0,
+    vignetteAlpha: 0.08
   }),
   cooler: Object.freeze({
-    baseY: 505,
-    backgroundY: 493,
-    frameSize: Object.freeze({ width: 520, height: 620 }),
-    displaySize: Object.freeze({ width: 900, height: 1080 }),
-    rowYs: Object.freeze([400, 455, 510, 565, 620, 675]),
-    activeStockWidth: 236,
+    baseY: 420,
+    backgroundY: 410,
+    frameSize: Object.freeze({ width: 620, height: 520 }),
+    displaySize: Object.freeze({ width: 470, height: 700 }),
+    rowYs: Object.freeze([260, 340, 420, 500, 580, 660]),
+    activeStockWidth: 360,
     restockItemCount: 5
   }),
   props: Object.freeze({
-    caseSize: Object.freeze({ width: 360, height: 300 }),
-    cartSize: Object.freeze({ width: 450, height: 360 })
+    caseSize: Object.freeze({ width: 235, height: 285 }),
+    cartSize: Object.freeze({ width: 390, height: 375 })
   })
 });
 
