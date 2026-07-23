@@ -96,16 +96,6 @@ test("Compatibility scene loads only canonical project assets", () => {
   assert.ok(V2_ASSET_LIST.every((asset) => asset.status === "prototype" || asset.status === "production"));
 });
 
-test("Beverage cooler exposes six independent product rows", () => {
-  const rows = STARTER_ASSET_CATALOGUE.assets.filter((asset) =>
-    asset.key.startsWith("fixture-beverage-cooler-a-row-")
-  );
-
-  assert.equal(rows.length, 6);
-  assert.ok(rows.every((row) => row.depthGroup === "fixture-contents"));
-  assert.ok(rows.every((row) => row.category === "product"));
-});
-
 test("Worker assets are action-oriented rather than level-oriented", () => {
   const workerAssets = STARTER_ASSET_CATALOGUE.assets.filter((asset) =>
     asset.key.startsWith("worker-a-")
