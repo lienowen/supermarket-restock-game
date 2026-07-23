@@ -1,0 +1,11 @@
+﻿key,category,subtype,path,width,height,canvas,anchor,status,bytes,sha256
+task-panel-b10,ui,task-panel,public/assets/game/production-v2/ui/panels/task-panel-b10.png,512,512,512x512,"[0.5,0.5]",production,24801,d152ad539c1e8f318bd07ba33a95154ede271861ea4a9889b530876576ee42e2
+progress-bar-b10,ui,progress-bar,public/assets/game/production-v2/ui/hud/progress-bar-b10.png,768,192,768x192,"[0.5,0.5]",production,19719,c593f3773b5f7393dfa2d006ff90a20ed5b04fee205b374bd7b419be65281ef8
+coin-b10,ui,coin,public/assets/game/production-v2/ui/rewards/coin-b10.png,512,512,512x512,"[0.5,0.5]",production,102013,a50560b0f7a8e5b7b8ea83dfc59347ff89812cf98e79c7e44d0007b754100439
+star-b10,ui,star,public/assets/game/production-v2/ui/rewards/star-b10.png,512,512,512x512,"[0.5,0.5]",production,113484,2311f22f76c427eba6070cb59c50ed9f680aeb6bd4e69808b3dea57708fc8bf3
+target-arrow-b10,ui,target-arrow,public/assets/game/production-v2/ui/guides/target-arrow-b10.png,512,512,512x512,"[0.5,0.5]",production,85520,5ded1637701d5e866610ac2e6d2cfe494035e80b17a0fdb52eddd73e81fc71c9
+tap-hand-b10,ui,tap-hand,public/assets/game/production-v2/ui/guides/tap-hand-b10.png,512,512,512x512,"[0.5,0.5]",production,77278,bff8ad8714f0ea8c467d775c9cbccf6d110bda34693d5e5138d66b79020fe757
+success-check-b10,ui,success-check,public/assets/game/production-v2/ui/feedback/success-check-b10.png,512,512,512x512,"[0.5,0.5]",production,84126,143f0114824aa071b81749a37b0f383b0a4307ab56bd247a50e9bb70b6bdc436
+error-cross-b10,ui,error-cross,public/assets/game/production-v2/ui/feedback/error-cross-b10.png,512,512,512x512,"[0.5,0.5]",production,78793,0afccb778ded4168e769d2c5f06467dc1f73829db7c0333e7ff45fc47161065f
+pause-button-b10,ui,pause-button,public/assets/game/production-v2/ui/buttons/pause-button-b10.png,512,512,512x512,"[0.5,0.5]",production,24719,3d202dc8d246c1ba73508ec55ef3035c04afc930f8b1cc66b229956ef2490fc6
+result-panel-b10,ui,result-panel,public/assets/game/production-v2/ui/panels/result-panel-b10.png,768,768,768x768,"[0.5,0.5]",production,48139,c40e539d2239e43208332aaeca23d4fd79637d5bf091a8dd7f6e3fd183108747

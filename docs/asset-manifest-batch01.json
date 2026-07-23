@@ -1,0 +1,52 @@
+[
+  {
+    "path": "public/assets/game/environments/stores/starter-market/salesfloor-production-b01.png",
+    "source_generated_file": "wide_brightly_lit_interior_supermarket_grocery_st_1.png",
+    "bytes": 2664224
+  },
+  {
+    "path": "public/assets/game/environments/stores/starter-market/backroom-production-b01.png",
+    "source_generated_file": "a_wide_clean_well_lit_industrial_storage_warehou_2_batch_1.png",
+    "bytes": 2565040
+  },
+  {
+    "path": "public/assets/game/environments/stores/starter-market/checkout-production-b01.png",
+    "source_generated_file": "a_wide_angle_highly_detailed_photoreal_3d_render_3_batch_2.png",
+    "bytes": 2404432
+  },
+  {
+    "path": "public/assets/game/environments/stores/starter-market/fresh-zone-production-b01.png",
+    "source_generated_file": "a_highly_detailed_photorealistic_wide_angle_view_4_batch_3.png",
+    "bytes": 2558164
+  },
+  {
+    "path": "public/assets/game/fixtures/coolers/beverage-cooler-a/row-cola-b01.png",
+    "source_generated_file": "a_clean_realistic_3d_photorealistic_render_of_a_s_5_batch_4.png",
+    "bytes": 1201882
+  },
+  {
+    "path": "public/assets/game/fixtures/coolers/beverage-cooler-a/row-water-b01.png",
+    "source_generated_file": "a_clean_photorealistic_product_display_scene_a_h_6_batch_5.png",
+    "bytes": 1410684
+  },
+  {
+    "path": "public/assets/game/fixtures/coolers/beverage-cooler-a/row-dairy-b01.png",
+    "source_generated_file": "a_hyper_realistic_clean_product_shelving_scene_a_7_batch_6.png",
+    "bytes": 1308927
+  },
+  {
+    "path": "public/assets/game/ui/panels/task-panel-b01.png",
+    "source_generated_file": "a_clean_2d_3d_stylized_game_ui_illustration_a_sho_8_batch_7.png",
+    "bytes": 1132568
+  },
+  {
+    "path": "public/assets/game/effects/arrows/active-target-b01.png",
+    "source_generated_file": "a_clean_centered_graphic_on_a_transparent_backgro_9_batch_8.png",
+    "bytes": 923697
+  },
+  {
+    "path": "public/assets/game/props/cases/milk-water-case-b01.png",
+    "source_generated_file": "a_clean_product_photography_style_scene_on_a_trans_10_batch_9.png",
+    "bytes": 1549464
+  }
+]

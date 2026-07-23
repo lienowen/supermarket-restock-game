@@ -1,0 +1,52 @@
+[
+  {
+    "path": "public/assets/game/fixtures/produce/produce-display-sparse-b03.png",
+    "source_generated_file": "a_detailed_3d_cgi_style_realistic_scene_of_a_super_1_batch_1.png",
+    "bytes": 1854456
+  },
+  {
+    "path": "public/assets/game/fixtures/shelves/double-sided-grocery-shelf-partial-b03.png",
+    "source_generated_file": "a_clean_3d_cgi_style_product_render_scene_showing_2_batch_2.png",
+    "bytes": 1672788
+  },
+  {
+    "path": "public/assets/game/props/baskets/shopping-basket-empty-b03.png",
+    "source_generated_file": "a_clean_3d_rendered_product_style_image_on_a_trans_3_batch_3.png",
+    "bytes": 1344769
+  },
+  {
+    "path": "public/assets/game/props/carts/shopping-cart-empty-b03.png",
+    "source_generated_file": "a_clean_studio_isolated_product_render_scene_a_si_4_batch_4.png",
+    "bytes": 1704491
+  },
+  {
+    "path": "public/assets/game/props/cases/milk-case-b03.png",
+    "source_generated_file": "a_clean_product_style_3d_photoreal_render_a_cardb_5_batch_5.png",
+    "bytes": 1866404
+  },
+  {
+    "path": "public/assets/game/props/cases/water-case-b03.png",
+    "source_generated_file": "a_clean_product_packaging_scene_on_a_transparent_c_6_batch_6.png",
+    "bytes": 1878714
+  },
+  {
+    "path": "public/assets/game/props/cleaning/mop-bucket-set-b03.png",
+    "source_generated_file": "a_clean_photorealistic_3d_rendered_product_illust_7_batch_7.png",
+    "bytes": 1458376
+  },
+  {
+    "path": "public/assets/game/props/cleaning/wet-floor-sign-b03.png",
+    "source_generated_file": "a_clean_studio_cg_render_of_a_bright_yellow_plasti_8_batch_8.png",
+    "bytes": 1405732
+  },
+  {
+    "path": "public/assets/game/effects/cleaning/clean-sparkle-effect-b03.png",
+    "source_generated_file": "a_clean_digital_sparkle_glow_effect_illustration_9_batch_9.png",
+    "bytes": 996759
+  },
+  {
+    "path": "public/assets/game/ui/feedback/combo-x5-badge-b03.png",
+    "source_generated_file": "a_vibrant_glossy_2d_game_ui_badge_graphic_on_a_tr_10_batch_10.png",
+    "bytes": 1650569
+  }
+]
