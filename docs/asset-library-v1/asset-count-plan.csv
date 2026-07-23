@@ -1,0 +1,14 @@
+section,categoryZh,category,targetCount,scope
+01,环境与场景,environment,32,P0 4个可玩区域；P1 时间和天气；P2 新店型
+02,货架与设备,fixtures-equipment,160,货架冷柜收银台库房设备推车和清洁设备
+03,角色与人物,characters,72,员工经理成人儿童老年顾客服装和外观变体
+04,角色动作,character-actions,260,移动搬运开箱补货清洁扫描收银和交互
+05,工具与道具,tools-props,96,纸箱篮筐推车扫描器清洁工具促销牌
+06,商品,products,420,60个SKU的单品整箱货架簇购物篮和结算图
+07,商品陈列状态,shelf-states,60,6种库存和错放状态乘10个核心货架类型
+08,UI界面元素,ui,110,HUD按钮面板图标教程结算和升级
+09,特效,effects,80,目标高亮成功错误金币污渍清洁冷气和升级
+10,音效,audio,72,脚步推车纸箱补货扫描收银UI环境和BGM
+11,设备状态,equipment-states,48,正常打开结冰损坏断电故障和维修
+12,材质与地面,materials,36,地砖木地板水泥墙面玻璃金属和湿滑
+TOTAL,,,1446,完整源素材库目标；运行包仅发布当前关卡引用资源
