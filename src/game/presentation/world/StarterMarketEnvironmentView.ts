@@ -14,6 +14,13 @@ export class StarterMarketEnvironmentView {
   }
 
   create(): void {
+    if (this.context.mode === "restock") {
+      this.createRestockAisle();
+      this.createFloorRoute();
+      this.createAtmosphere();
+      return;
+    }
+
     this.createBase();
     this.createFloor();
     this.createCeiling();
@@ -22,6 +29,27 @@ export class StarterMarketEnvironmentView {
     this.createModeFocus();
     this.createFloorRoute();
     this.createAtmosphere();
+  }
+
+  private createRestockAisle(): void {
+    const { scene, context } = this;
+    scene.add.image(
+      context.world.width / 2,
+      context.world.height / 2,
+      context.levelAssets.environment.key
+    )
+      .setDisplaySize(context.world.width, context.world.height)
+      .setDepth(-30)
+      .setName("restock-aisle-v2-background");
+
+    scene.add.rectangle(
+      context.world.width / 2,
+      context.world.height - 48,
+      context.world.width,
+      96,
+      0x0c1713,
+      0.08
+    ).setDepth(-29);
   }
 
   private createBase(): void {
@@ -250,7 +278,7 @@ export class StarterMarketEnvironmentView {
       context.world.width,
       context.world.height,
       0xffe5ad,
-      0.028
+      0.018
     ).setDepth(80);
 
     const vignetteAlpha = this.visualPreset.environment.vignetteAlpha;

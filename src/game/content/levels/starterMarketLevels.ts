@@ -3,9 +3,9 @@ import {
   type LevelDefinition
 } from "../GameContent";
 
-const SHARED_NAVIGATION = Object.freeze({
+const FIRST_DELIVERY_NAVIGATION = Object.freeze({
   moveSpeed: 520,
-  interactionRadius: 150
+  interactionRadius: 110
 });
 
 const NO_RULE_OVERRIDES = Object.freeze([]);
@@ -27,7 +27,7 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     missionId: "restock-cola-cooler",
     title: "First Delivery",
     randomSeed: "starter-level-001-v1",
-    navigation: SHARED_NAVIGATION,
+    navigation: FIRST_DELIVERY_NAVIGATION,
     presentation: {
       assetPackId: "market-restock-v1",
       visualPresetId: "restock-standard-v1"

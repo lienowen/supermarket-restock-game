@@ -69,8 +69,8 @@ export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
       id: "cola-case-pickup-point",
       targetId: "cola-case-a",
       actionGroup: "case",
-      position: { x: 770, y: 510 },
-      radius: 92
+      position: { x: 770, y: 650 },
+      radius: 110
     },
     {
       id: "restock-cart-load-point",

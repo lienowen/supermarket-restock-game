@@ -84,17 +84,17 @@ export const STARTER_ASSET_CATALOGUE: AssetCatalogue = {
   assets: [
     asset({
       key: "environment-starter-market-salesfloor-prototype",
-      path: "assets/game/environments/stores/starter-market/salesfloor-prototype.png",
+      path: "assets/game/environments/stores/starter-market/salesfloor-v2.webp",
       category: "environment",
-      canvasSize: [1448, 1086],
+      canvasSize: [1280, 720],
       anchor: [0, 0],
       defaultScale: 1,
       depthGroup: "far-environment",
       preloadGroup: "starter-market",
       perspective: "fixed-third-person",
       lightDirection: "upper-left",
-      state: "salesfloor-prototype",
-      status: "prototype"
+      state: "salesfloor-v2",
+      status: "production"
     }),
     asset({
       key: "environment-starter-market-backroom-prototype",

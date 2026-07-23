@@ -27,17 +27,17 @@ export class RestockTargetResolver {
       case "collect":
         return Object.freeze({
           x: this.config.backroomBox.x,
-          y: this.config.backroomBox.y,
-          width: 150,
-          height: 112
+          y: this.config.backroomBox.y - 130,
+          width: 215,
+          height: 250
         });
       case "load":
       case "push":
         return Object.freeze({
-          x: this.config.cartStart.x + 35,
-          y: this.config.cartStart.y,
-          width: 270,
-          height: 230
+          x: this.config.cartStart.x + 72,
+          y: this.config.cartStart.y - 165,
+          width: 330,
+          height: 310
         });
       case "park":
         return Object.freeze({
@@ -48,10 +48,10 @@ export class RestockTargetResolver {
         });
       case "open":
         return Object.freeze({
-          x: this.config.cartDestination.x + 18,
-          y: this.config.cartDestination.y - 84,
-          width: 150,
-          height: 108
+          x: this.config.cartDestination.x + 24,
+          y: this.config.cartDestination.y - 132,
+          width: 205,
+          height: 240
         });
       case "restock": {
         const rowIndex = Math.min(snapshot.stockedRows, snapshot.totalRows - 1);

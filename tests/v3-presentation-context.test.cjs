@@ -118,12 +118,29 @@ test("Campaign order supplies labels while level mode supplies task differences"
   assert.notEqual(levelOne.productAssets.restockProductKey, levelTwo.productAssets.restockProductKey);
 });
 
-test("Restock target resolver maps workflow phases without knowing level IDs or Phaser", () => {
+test("First Delivery starts outside the pickup interaction radius", () => {
+  const levelOne = createStarterMarketPresentationContext("starter-level-001");
+  const distance = Math.hypot(
+    levelOne.world.workerStart.x - levelOne.world.backroomBox.x,
+    levelOne.world.workerStart.y - levelOne.world.backroomBox.y
+  );
+
+  assert.ok(distance > levelOne.campaignLevel.level.navigation.interactionRadius);
+});
+
+test("Restock target resolver maps workflow phases to the visible production props", () => {
   assert.deepEqual(resolver.resolve(snapshot("collect")), {
     x: STARTER_MARKET_PRESENTATION.world.backroomBox.x,
-    y: STARTER_MARKET_PRESENTATION.world.backroomBox.y,
-    width: 150,
-    height: 112
+    y: STARTER_MARKET_PRESENTATION.world.backroomBox.y - 130,
+    width: 215,
+    height: 250
+  });
+
+  assert.deepEqual(resolver.resolve(snapshot("load")), {
+    x: STARTER_MARKET_PRESENTATION.world.cartStart.x + 72,
+    y: STARTER_MARKET_PRESENTATION.world.cartStart.y - 165,
+    width: 330,
+    height: 310
   });
 
   assert.deepEqual(resolver.resolve(snapshot("park")), {
@@ -131,6 +148,13 @@ test("Restock target resolver maps workflow phases without knowing level IDs or 
     y: STARTER_MARKET_PRESENTATION.world.cartCooler.y,
     width: 280,
     height: 230
+  });
+
+  assert.deepEqual(resolver.resolve(snapshot("open")), {
+    x: STARTER_MARKET_PRESENTATION.world.cartCooler.x + 24,
+    y: STARTER_MARKET_PRESENTATION.world.cartCooler.y - 132,
+    width: 205,
+    height: 240
   });
 });
 
