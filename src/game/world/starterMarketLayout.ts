@@ -104,7 +104,7 @@ export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
     {
       id: "customer-queue-spawn",
       actorType: "customer",
-      position: { x: 350, y: 710 },
+      position: { x: 835, y: 700 },
       facing: "right"
     }
   ]
