@@ -158,16 +158,16 @@ export const CHECKOUT_VISUAL_PRESET: CheckoutLevelVisualPreset = Object.freeze({
     servedExitOffset: Object.freeze({ x: 230, y: -38 })
   }),
   queue: Object.freeze({
-    customerSize: Object.freeze({ width: 400, height: 380 }),
-    columns: 2,
-    columnGap: -125,
-    rowGap: 110,
-    rowDriftX: -28,
-    alternatingYOffset: -40,
-    baseScale: 1,
-    rowScaleStep: 0.08,
-    columnScaleStep: 0.05,
-    minimumScale: 0.76
+    customerSize: Object.freeze({ width: 300, height: 315 }),
+    columns: 6,
+    columnGap: -118,
+    rowGap: 0,
+    rowDriftX: 0,
+    alternatingYOffset: 12,
+    baseScale: 0.92,
+    rowScaleStep: 0,
+    columnScaleStep: 0.025,
+    minimumScale: 0.78
   }),
   sign: Object.freeze({
     centre: Object.freeze({ x: 1280, y: 184 }),

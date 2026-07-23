@@ -6,6 +6,9 @@ const {
   validateStarterMarketVisualSpec
 } = require("../.test-dist/src/game/presentation/visual/StarterMarketVisualSpec.js");
 const {
+  CHECKOUT_VISUAL_PRESET
+} = require("../.test-dist/src/game/presentation/visual/MarketLevelVisualPreset.js");
+const {
   STARTER_MARKET_PRODUCTION_ASSET_PLAN,
   validateProductionAssetPlan
 } = require("../.test-dist/src/game/presentation/assets/ProductionAssetPlan.js");
@@ -34,6 +37,34 @@ test("Visual spec and world layout share the same locked composition", () => {
   assert.deepEqual(zones.get("produce-zone"), STARTER_MARKET_VISUAL_SPEC.composition.produceZone);
   assert.deepEqual(zones.get("staff-backroom"), STARTER_MARKET_VISUAL_SPEC.composition.backroomZone);
   assert.deepEqual(zones.get("beverage-zone"), STARTER_MARKET_VISUAL_SPEC.composition.beverageZone);
+});
+
+test("Checkout customers form one readable service line instead of a stacked crowd", () => {
+  const spawn = STARTER_MARKET_LAYOUT.spawns.find((entry) => entry.id === "customer-queue-spawn");
+  const checkout = STARTER_MARKET_LAYOUT.fixtures.find((entry) => entry.fixtureId === "checkout-a");
+  assert.ok(spawn);
+  assert.ok(checkout);
+
+  const queue = CHECKOUT_VISUAL_PRESET.queue;
+  const positions = Array.from({ length: 6 }, (_, index) => {
+    const column = index % queue.columns;
+    const row = Math.floor(index / queue.columns);
+    return {
+      x: spawn.position.x + column * queue.columnGap + row * queue.rowDriftX,
+      y: spawn.position.y - row * queue.rowGap + (column % 2) * queue.alternatingYOffset
+    };
+  });
+  const yValues = positions.map((position) => position.y);
+
+  assert.equal(queue.columns, 6);
+  assert.ok(queue.customerSize.width <= 320);
+  assert.ok(positions[0].x < checkout.position.x);
+  assert.ok(positions[0].x > positions.at(-1).x);
+  assert.ok(Math.max(...yValues) - Math.min(...yValues) <= 16);
+  positions.slice(1).forEach((position, index) => {
+    const previous = positions[index];
+    assert.ok(Math.hypot(position.x - previous.x, position.y - previous.y) >= 100);
+  });
 });
 
 test("Production asset plan preserves useful prototypes and identifies missing P0 art", () => {
