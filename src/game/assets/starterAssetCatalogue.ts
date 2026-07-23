@@ -141,20 +141,6 @@ export const STARTER_ASSET_CATALOGUE: AssetCatalogue = {
       PRODUCTION_V1_ASSETS.fixture_cleaning_supplies_shelf,
       "stocked"
     ),
-    ...Array.from({ length: 6 }, (_, index): AssetDescriptor => ({
-      key: `fixture-beverage-cooler-a-row-${String(index + 1).padStart(2, "0")}`,
-      path: `assets/game/fixtures/coolers/beverage-cooler-a/row-${String(index + 1).padStart(2, "0")}.png`,
-      category: "product",
-      canvasSize: [520, 90],
-      anchor: [0.5, 0.5],
-      defaultScale: 1,
-      depthGroup: "fixture-contents",
-      preloadGroup: "starter-market",
-      perspective: "fixed-third-person",
-      lightDirection: "upper-left",
-      state: `stock-row-${index + 1}`,
-      status: "concept"
-    })),
 
     productionCharacter("worker-a-idle", PRODUCTION_V1_ASSETS.worker_idle, "idle"),
     productionCharacter("worker-a-walk-01", PRODUCTION_V1_ASSETS.worker_walk_01, "walk-01"),
