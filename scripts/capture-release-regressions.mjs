@@ -327,12 +327,14 @@ async function completeRestockLevel(page, auditReport, prefix) {
     await waitForInteractionReady(page);
     const beforeRush = await waitForRushTarget(page);
     const rowIndex = beforeRush.activeRowIndex;
-    await clickGame(page, 1325, 400 + rowIndex * 55);
+    const target = await readRushTarget(page, rowIndex);
+    await clickGame(page, target.x, target.y);
     await page.waitForTimeout(240);
     const afterController = await readSnapshot(page);
     const afterRush = await readRushState(page);
     recordSnapshot(auditReport, `${prefix}-rush-click-${progress + 1}`, {
       selectedRowIndex: rowIndex,
+      target,
       beforeRush,
       afterRush,
       controller: afterController
@@ -340,7 +342,7 @@ async function completeRestockLevel(page, auditReport, prefix) {
     if (afterController?.stockedRows !== progress + 1) {
       throw new Error(
         `Rush click ${progress + 1} did not stock a row: ` +
-        JSON.stringify({ rowIndex, beforeRush, afterRush, afterController })
+        JSON.stringify({ rowIndex, target, beforeRush, afterRush, afterController })
       );
     }
   }
@@ -403,6 +405,27 @@ async function readRushState(page) {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
     return scene?.rush?.snapshot?.(scene.time.now) ?? null;
   }, GAME_SCENE_KEY);
+}
+
+async function readRushTarget(page, rowIndex) {
+  const target = await page.evaluate(({ sceneKey, index }) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+    const rowTarget = scene?.children?.getByName?.(`beverage-cooler-row-target-${index}`);
+    if (!rowTarget || !Number.isFinite(rowTarget.x) || !Number.isFinite(rowTarget.y)) return null;
+    return {
+      x: rowTarget.x,
+      y: rowTarget.y,
+      width: rowTarget.displayWidth ?? rowTarget.width ?? 0,
+      height: rowTarget.displayHeight ?? rowTarget.height ?? 0,
+      interactionEnabled: Boolean(rowTarget.input?.enabled)
+    };
+  }, { sceneKey: GAME_SCENE_KEY, index: rowIndex });
+
+  if (!target) throw new Error(`Missing rendered cooler target for row ${rowIndex}`);
+  if (!target.interactionEnabled) {
+    throw new Error(`Rendered cooler target for row ${rowIndex} is not interactive`);
+  }
+  return target;
 }
 
 async function readSdkEvents(page) {
