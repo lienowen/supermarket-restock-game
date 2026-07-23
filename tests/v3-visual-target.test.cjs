@@ -54,12 +54,13 @@ test("Checkout customers form one readable service line instead of a stacked cro
       y: spawn.position.y - row * queue.rowGap + (column % 2) * queue.alternatingYOffset
     };
   });
+  const yValues = positions.map((position) => position.y);
 
-  assert.equal(queue.columns, 1);
+  assert.equal(queue.columns, 6);
   assert.ok(queue.customerSize.width <= 320);
   assert.ok(positions[0].x < checkout.position.x);
   assert.ok(positions[0].x > positions.at(-1).x);
-  assert.ok(positions[0].y > positions.at(-1).y);
+  assert.ok(Math.max(...yValues) - Math.min(...yValues) <= 16);
   positions.slice(1).forEach((position, index) => {
     const previous = positions[index];
     assert.ok(Math.hypot(position.x - previous.x, position.y - previous.y) >= 100);
