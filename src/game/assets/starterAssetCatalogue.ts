@@ -262,33 +262,6 @@ export const STARTER_ASSET_CATALOGUE: AssetCatalogue = {
     productionProduct("product-yogurt-cup", PRODUCTION_V1_ASSETS.product_yogurt_cup),
     productionProduct("product-chips-bag", PRODUCTION_V1_ASSETS.product_chips_bag),
     productionProduct("product-detergent-bottle", PRODUCTION_V1_ASSETS.product_detergent_bottle),
-    productionProduct("product-paper-towels", PRODUCTION_V1_ASSETS.product_paper_towels),
-
-    asset({
-      key: "effect-active-target-arrow",
-      path: "assets/game/effects/arrows/active-target.svg",
-      category: "effect",
-      canvasSize: [128, 160],
-      anchor: [0.5, 1],
-      defaultScale: 1,
-      depthGroup: "world-effects",
-      preloadGroup: "core-ui",
-      perspective: "screen-space",
-      state: "active",
-      status: "concept"
-    }),
-    asset({
-      key: "ui-hud-task-panel",
-      path: "assets/game/ui/panels/task-panel.svg",
-      category: "ui",
-      canvasSize: [440, 170],
-      anchor: [1, 0],
-      defaultScale: 1,
-      depthGroup: "ui",
-      preloadGroup: "core-ui",
-      perspective: "screen-space",
-      state: "default",
-      status: "concept"
-    })
+    productionProduct("product-paper-towels", PRODUCTION_V1_ASSETS.product_paper_towels)
   ]
 };
