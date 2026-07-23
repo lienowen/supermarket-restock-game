@@ -39,12 +39,19 @@ export class ShiftHud {
   private readonly instructionText: Phaser.GameObjects.Text;
   private readonly actionLabel: Phaser.GameObjects.Text;
   private readonly actionButton: Phaser.GameObjects.Rectangle;
+  private readonly actionHalo: Phaser.GameObjects.Rectangle;
   private readonly actionSurface: Phaser.GameObjects.Graphics;
+  private readonly coinIcon: Phaser.GameObjects.Arc;
   private readonly coinText: Phaser.GameObjects.Text;
+  private readonly starGlyph: Phaser.GameObjects.Text;
   private readonly starText: Phaser.GameObjects.Text;
   private complete = false;
   private actionEnabled = false;
   private actionHovered = false;
+  private previousActionActive = false;
+  private previousCoins?: number;
+  private previousStars?: number;
+  private previousObjective: string;
   private previousProgress = -1;
 
   constructor(
@@ -54,6 +61,7 @@ export class ShiftHud {
   ) {
     const { palette } = config;
     const { hud } = STARTER_MARKET_VISUAL_SPEC;
+    this.previousObjective = config.initialObjective;
 
     this.createPanel(hud.dayPanel.x, hud.dayPanel.y, hud.dayPanel.width, hud.dayPanel.height, 18);
     const modeWidth = 82;
@@ -80,7 +88,7 @@ export class ShiftHud {
     }).setDepth(103);
 
     this.createPanel(hud.walletPanel.x, hud.walletPanel.y, hud.walletPanel.width, hud.walletPanel.height, 18);
-    scene.add.text(hud.walletPanel.x + 20, hud.walletPanel.y + 13, "★", {
+    this.starGlyph = scene.add.text(hud.walletPanel.x + 20, hud.walletPanel.y + 13, "★", {
       fontFamily: "Arial",
       fontSize: "27px",
       color: "#ffd95e"
@@ -92,7 +100,7 @@ export class ShiftHud {
       fontStyle: "bold"
     }).setDepth(103);
     scene.add.rectangle(hud.walletPanel.x + 105, hud.walletPanel.y + 29, 2, 28, 0xffffff, 0.14).setDepth(103);
-    scene.add.circle(hud.walletPanel.x + 132, hud.walletPanel.y + 29, 9, palette.gold, 1)
+    this.coinIcon = scene.add.circle(hud.walletPanel.x + 132, hud.walletPanel.y + 29, 9, palette.gold, 1)
       .setStrokeStyle(2, 0xffec9d, 0.65)
       .setDepth(103);
     this.coinText = scene.add.text(hud.walletPanel.x + 153, hud.walletPanel.y + 16, "0", {
@@ -213,6 +221,17 @@ export class ShiftHud {
     const actionHeight = 42;
     const actionX = hud.instructionPanel.x + hud.instructionPanel.width - actionWidth / 2 - 12;
     const actionY = hud.instructionPanel.y + hud.instructionPanel.height / 2;
+    this.actionHalo = scene.add.rectangle(
+      actionX,
+      actionY,
+      actionWidth + 10,
+      actionHeight + 10,
+      0xffffff,
+      0
+    )
+      .setStrokeStyle(3, palette.gold, 0.9)
+      .setDepth(102)
+      .setAlpha(0);
     this.actionSurface = scene.add.graphics().setDepth(103);
     this.actionButton = scene.add.rectangle(actionX, actionY, actionWidth, actionHeight, 0xffffff, 0.001)
       .setDepth(104)
@@ -238,7 +257,15 @@ export class ShiftHud {
   }
 
   update(snapshot: ShiftHudSnapshot, copy: ShiftHudCopy): void {
-    this.objectiveText.setText(copy.objective);
+    const coinDelta = this.previousCoins === undefined ? 0 : snapshot.coins - this.previousCoins;
+    const starDelta = this.previousStars === undefined ? 0 : snapshot.stars - this.previousStars;
+
+    if (copy.objective !== this.previousObjective) {
+      this.animateObjectiveChange(copy.objective);
+      this.previousObjective = copy.objective;
+    } else {
+      this.objectiveText.setText(copy.objective);
+    }
     this.progressText.setText(
       `${snapshot.stockedRows}/${snapshot.totalRows} ${snapshot.progressUnit ?? "ROWS"}`
     );
@@ -247,6 +274,11 @@ export class ShiftHud {
     this.coinText.setText(String(snapshot.coins));
     this.starText.setText(String(snapshot.stars));
     this.complete = snapshot.step === "complete";
+
+    if (coinDelta > 0) this.animateReward("coin", coinDelta);
+    if (starDelta > 0) this.animateReward("star", starDelta);
+    this.previousCoins = snapshot.coins;
+    this.previousStars = snapshot.stars;
 
     const { objectivePanel } = STARTER_MARKET_VISUAL_SPEC.hud;
     const maxWidth = objectivePanel.width - 92;
@@ -295,6 +327,9 @@ export class ShiftHud {
         duration: 210,
         ease: "Back.Out"
       });
+      if (snapshot.stockedRows > this.previousProgress) {
+        this.emitProgressSparkles(objectivePanel.x + 62 + fillWidth, objectivePanel.y + 62);
+      }
     }
     this.previousProgress = snapshot.stockedRows;
     this.syncActionState();
@@ -333,6 +368,13 @@ export class ShiftHud {
     if (active) this.actionButton.setInteractive({ useHandCursor: true });
     this.actionLabel.setAlpha(active ? 1 : 0.48);
     this.drawActionButton();
+
+    if (active && !this.previousActionActive) this.animateActionReady();
+    if (!active) {
+      this.scene.tweens.killTweensOf(this.actionHalo);
+      this.actionHalo.setAlpha(0).setScale(1);
+    }
+    this.previousActionActive = active;
   }
 
   private drawActionButton(): void {
@@ -359,5 +401,105 @@ export class ShiftHud {
       this.actionSurface.fillStyle(0xffffff, this.actionHovered ? 0.12 : 0.07);
       this.actionSurface.fillRoundedRect(x + 4, y + 4, width - 8, 12, 10);
     }
+  }
+
+  private animateObjectiveChange(objective: string): void {
+    this.scene.tweens.killTweensOf(this.objectiveText);
+    this.objectiveText
+      .setText(objective)
+      .setAlpha(0.35)
+      .setScale(0.97);
+    this.scene.tweens.add({
+      targets: this.objectiveText,
+      alpha: 1,
+      scaleX: 1,
+      scaleY: 1,
+      duration: 230,
+      ease: "Back.Out"
+    });
+  }
+
+  private animateActionReady(): void {
+    this.scene.tweens.killTweensOf([this.actionHalo, this.actionLabel]);
+    this.actionHalo.setAlpha(0.82).setScale(0.94);
+    this.actionLabel.setScale(0.92);
+    this.scene.tweens.add({
+      targets: this.actionHalo,
+      alpha: 0,
+      scaleX: 1.12,
+      scaleY: 1.24,
+      duration: 620,
+      ease: "Cubic.Out"
+    });
+    this.scene.tweens.add({
+      targets: this.actionLabel,
+      scaleX: 1,
+      scaleY: 1,
+      duration: 260,
+      ease: "Back.Out"
+    });
+  }
+
+  private animateReward(kind: "coin" | "star", delta: number): void {
+    const { walletPanel } = STARTER_MARKET_VISUAL_SPEC.hud;
+    const isCoin = kind === "coin";
+    const text = isCoin ? this.coinText : this.starText;
+    const icon = isCoin ? this.coinIcon : this.starGlyph;
+    const x = isCoin ? walletPanel.x + 175 : walletPanel.x + 72;
+    const color = isCoin ? "#ffd95e" : "#fff0a6";
+
+    this.scene.tweens.killTweensOf([text, icon]);
+    text.setColor(color).setScale(1.22);
+    icon.setScale(1.18);
+    this.scene.tweens.add({
+      targets: [text, icon],
+      scaleX: 1,
+      scaleY: 1,
+      duration: 300,
+      ease: "Back.Out",
+      onComplete: () => text.setColor("#ffffff")
+    });
+
+    const reward = this.scene.add.text(x, walletPanel.y + 8, `+${delta}`, {
+      fontFamily: "Arial",
+      fontSize: "16px",
+      color,
+      fontStyle: "bold",
+      stroke: "#173b2a",
+      strokeThickness: 3
+    }).setOrigin(0.5).setDepth(145).setAlpha(0);
+    this.scene.tweens.add({
+      targets: reward,
+      y: walletPanel.y - 20,
+      alpha: { from: 1, to: 0 },
+      scaleX: { from: 0.86, to: 1.08 },
+      scaleY: { from: 0.86, to: 1.08 },
+      duration: 720,
+      ease: "Cubic.Out",
+      onComplete: () => reward.destroy()
+    });
+  }
+
+  private emitProgressSparkles(x: number, y: number): void {
+    [-18, -9, 0, 9, 18].forEach((offset, index) => {
+      const sparkle = this.scene.add.circle(
+        x + offset * 0.35,
+        y,
+        2.5 + (index % 2),
+        this.config.palette.gold,
+        0.95
+      ).setDepth(130);
+      this.scene.tweens.add({
+        targets: sparkle,
+        x: x + offset,
+        y: y - 16 - (index % 3) * 5,
+        alpha: 0,
+        scaleX: 0.35,
+        scaleY: 0.35,
+        duration: 360 + index * 28,
+        ease: "Cubic.Out",
+        onComplete: () => sparkle.destroy()
+      });
+    });
   }
 }
