@@ -130,7 +130,7 @@ export class BeverageCoolerView {
         { length: Math.max(0, Math.min(stockedRows, this.rows.length)) },
         (_, index) => index
       ),
-      activeRowIndex: stockedRows < this.rows.length ? stockedRows : undefined,
+      activeRowIndex: undefined,
       remainingRatio: 1,
       interactionEnabled: false
     });
