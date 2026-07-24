@@ -47,14 +47,14 @@ test("Completion previews promise the actual configured next task", () => {
   assert.deepEqual(resolveCampaignProgressionPreview("starter-level-002"), {
     eyebrow: "UP NEXT · LEVEL 3",
     title: "CHECKOUT RUSH",
-    detail: "CHECKOUT RUSH · ASSIST CHECKOUT RUSH",
+    detail: "CHECKOUT RUSH · SERVE THE CUSTOMER QUEUE",
     isCampaignComplete: false
   });
 
   assert.deepEqual(resolveCampaignProgressionPreview("starter-level-004"), {
     eyebrow: "UP NEXT · LEVEL 5",
     title: "ORDER HUNT",
-    detail: "ORDER HUNT · FIND ORDER ITEMS",
+    detail: "ORDER HUNT · FIND ITEMS FOR THE ORDER",
     isCampaignComplete: false
   });
 });
