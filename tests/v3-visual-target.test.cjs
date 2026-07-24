@@ -10,6 +10,7 @@ const {
 } = require("../.test-dist/src/game/presentation/visual/StarterMarketVisualSpec.js");
 const {
   CHECKOUT_VISUAL_PRESET,
+  CLEAN_VISUAL_PRESET,
   FIND_ITEMS_VISUAL_PRESET
 } = require("../.test-dist/src/game/presentation/visual/MarketLevelVisualPreset.js");
 const {
@@ -69,6 +70,19 @@ test("Checkout customers form one readable service line instead of a stacked cro
     const previous = positions[index];
     assert.ok(Math.hypot(position.x - previous.x, position.y - previous.y) >= 100);
   });
+});
+
+test("Cleaning tools leave enough floor space for readable puddles and movement", () => {
+  assert.ok(CLEAN_VISUAL_PRESET.fixture.size.width <= 740);
+  assert.ok(CLEAN_VISUAL_PRESET.fixture.size.height <= 740);
+  assert.ok(CLEAN_VISUAL_PRESET.cartSize.width <= 350);
+  assert.ok(CLEAN_VISUAL_PRESET.cartSize.height <= 350);
+  assert.ok(CLEAN_VISUAL_PRESET.signSize.width <= 220);
+  assert.ok(CLEAN_VISUAL_PRESET.signSize.height <= 220);
+  assert.ok(CLEAN_VISUAL_PRESET.spillBaseSize.width >= 90);
+  assert.ok(CLEAN_VISUAL_PRESET.spillBaseSize.width <= 120);
+  assert.ok(CLEAN_VISUAL_PRESET.spillBaseSize.height >= 38);
+  assert.ok(CLEAN_VISUAL_PRESET.spillBaseSize.height <= 55);
 });
 
 test("Find-items products read as shelf stock instead of floating hero props", () => {
