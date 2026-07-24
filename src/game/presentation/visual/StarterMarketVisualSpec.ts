@@ -53,12 +53,12 @@ export const STARTER_MARKET_VISUAL_SPEC = {
   },
   actor: {
     spawn: requireSpawn("worker-a-spawn"),
-    coolerPosition: { x: 1080, y: 700 },
-    pushSize: { width: 480, height: 430 },
-    carrySize: { width: 500, height: 420 },
-    idleSize: { width: 600, height: 420 },
-    navigationBounds: { x: 470, y: 430, width: 750, height: 340 },
-    safeBounds: { x: 470, y: 430, width: 750, height: 340 },
+    coolerPosition: { x: 1320, y: 755 },
+    pushSize: { width: 400, height: 370 },
+    carrySize: { width: 390, height: 365 },
+    idleSize: { width: 400, height: 360 },
+    navigationBounds: { x: 260, y: 430, width: 1100, height: 370 },
+    safeBounds: { x: 260, y: 430, width: 1100, height: 370 },
     shadowOffset: { x: 0, y: 5 }
   },
   backroom: {

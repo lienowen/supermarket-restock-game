@@ -4,8 +4,11 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "predev": "node scripts/materialize-assets.mjs",
     "dev": "vite --host 0.0.0.0",
+    "prebuild": "node scripts/materialize-assets.mjs",
     "build": "tsc -b && vite build && node scripts/prune-release-assets.mjs",
+    "pretest": "node scripts/materialize-assets.mjs",
     "test": "node scripts/run-tests.mjs",
     "verify:release": "npm test && node scripts/check-release-bundle.mjs",
     "release:check": "npm run build && npm run verify:release",
