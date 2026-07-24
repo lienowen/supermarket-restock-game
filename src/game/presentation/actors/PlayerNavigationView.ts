@@ -32,6 +32,7 @@ type NavigationKeys = {
 
 const shadowWidth = (displayWidth: number): number => Phaser.Math.Clamp(displayWidth * 0.24, 110, 155);
 const shadowHeight = (displayHeight: number): number => Phaser.Math.Clamp(displayHeight * 0.075, 28, 38);
+const MAX_MOVEMENT_DELTA_MS = 50;
 
 export class PlayerNavigationView {
   readonly controller: PlayerNavigationController;
@@ -40,12 +41,13 @@ export class PlayerNavigationView {
   private readonly shadow: Phaser.GameObjects.Ellipse;
   private readonly actor: Phaser.GameObjects.Image;
   private readonly keys?: NavigationKeys;
-  private destinationFrame?: number;
   private enabled = true;
   private currentPoseKey: string;
   private walkElapsedMs = 0;
   private walkFrame = 0;
   private moving = false;
+  private lastVisualX: number;
+  private lastVisualY: number;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -57,6 +59,8 @@ export class PlayerNavigationView {
       speed: config.speed
     });
     this.currentPoseKey = config.assetKey;
+    this.lastVisualX = config.start.x;
+    this.lastVisualY = config.start.y;
 
     // One pointer event should have exactly one owner. Higher-depth gameplay targets
     // and HUD buttons win over the floor instead of also issuing a walk command.
@@ -103,26 +107,38 @@ export class PlayerNavigationView {
       }) as NavigationKeys;
     }
 
-    this.syncVisual();
+    this.syncVisual(true);
   }
 
   update(deltaMs: number): void {
     if (!this.enabled) return;
+    const frameDelta = Phaser.Math.Clamp(deltaMs, 0, MAX_MOVEMENT_DELTA_MS);
 
     const horizontal = this.axis(this.keys?.left, this.keys?.a, this.keys?.right, this.keys?.d);
     const vertical = this.axis(this.keys?.up, this.keys?.w, this.keys?.down, this.keys?.s);
     if (horizontal !== 0 || vertical !== 0) {
-      if (!this.moving || this.destinationFrame !== undefined) {
+      if (!this.moving || this.controller.snapshot().destination) {
         this.config.onManualNavigation?.();
       }
-      this.stopDestinationMovement();
+      this.controller.clearDestination();
       this.setMoving(true);
-      if (this.controller.moveDirection(horizontal, vertical, deltaMs)) this.syncVisual();
-      this.updateWalkFrame(deltaMs);
+      if (this.controller.moveDirection(horizontal, vertical, frameDelta)) {
+        this.syncVisual();
+      }
+      this.updateWalkFrame(frameDelta);
       return;
     }
 
-    if (this.destinationFrame === undefined) this.setMoving(false);
+    const hadDestination = Boolean(this.controller.snapshot().destination);
+    if (hadDestination) {
+      this.setMoving(true);
+      if (this.controller.update(frameDelta)) this.syncVisual();
+      this.updateWalkFrame(frameDelta);
+      if (!this.controller.snapshot().destination) this.setMoving(false);
+      return;
+    }
+
+    this.setMoving(false);
   }
 
   snapshot(): PlayerNavigationSnapshot {
@@ -138,58 +154,23 @@ export class PlayerNavigationView {
   }
 
   setPosition(point: NavigationPoint): void {
-    this.stopDestinationMovement();
     this.controller.setPosition(point);
-    this.syncVisual();
+    this.setMoving(false);
+    this.syncVisual(true);
   }
 
   setDestination(point: NavigationPoint): void {
     if (!this.enabled) return;
-
-    this.stopDestinationMovement();
     this.controller.setDestination(point);
     const destination = this.controller.snapshot().destination;
     if (!destination) return;
-
-    const start = this.controller.snapshot().position;
-    const distance = Math.hypot(destination.x - start.x, destination.y - start.y);
-    if (distance <= 1) {
+    if (this.controller.distanceTo(destination) <= 1) {
       this.controller.setPosition(destination);
-      this.syncVisual();
+      this.setMoving(false);
+      this.syncVisual(true);
       return;
     }
-
     this.setMoving(true);
-    const duration = Math.max(1, (distance / this.config.speed) * 1000);
-    const startedAt = performance.now();
-    let previousAt = startedAt;
-    const animate = (now: number): void => {
-      if (!this.enabled) {
-        this.destinationFrame = undefined;
-        this.setMoving(false);
-        return;
-      }
-
-      const progress = Phaser.Math.Clamp((now - startedAt) / duration, 0, 1);
-      this.controller.setPosition({
-        x: Phaser.Math.Linear(start.x, destination.x, progress),
-        y: Phaser.Math.Linear(start.y, destination.y, progress)
-      });
-      this.updateWalkFrame(now - previousAt);
-      previousAt = now;
-      this.syncVisual();
-
-      if (progress >= 1) {
-        this.controller.setPosition(destination);
-        this.destinationFrame = undefined;
-        this.setMoving(false);
-        this.syncVisual();
-        return;
-      }
-      this.destinationFrame = window.requestAnimationFrame(animate);
-    };
-
-    this.destinationFrame = window.requestAnimationFrame(animate);
   }
 
   setTexture(assetKey: string): void {
@@ -210,14 +191,13 @@ export class PlayerNavigationView {
   setEnabled(enabled: boolean): void {
     this.enabled = enabled;
     if (!enabled) {
-      this.stopDestinationMovement();
       this.controller.clearDestination();
       this.setMoving(false);
     }
   }
 
   destroy(): void {
-    this.stopDestinationMovement();
+    this.controller.clearDestination();
     this.walkArea.off("pointerdown", this.handleWalkAreaPointerDown, this);
     this.walkArea.destroy();
     this.actor.destroy();
@@ -248,22 +228,15 @@ export class PlayerNavigationView {
     const frames = this.config.walkAssetKeys;
     if (!frames) return;
     this.walkElapsedMs += deltaMs;
-    if (this.walkElapsedMs < 155) return;
-    this.walkElapsedMs = 0;
+    if (this.walkElapsedMs < 135) return;
+    this.walkElapsedMs %= 135;
     this.walkFrame = (this.walkFrame + 1) % frames.length;
     this.actor.setTexture(frames[this.walkFrame] ?? this.currentPoseKey);
   }
 
   private handleWalkAreaPointerDown(pointer: Phaser.Input.Pointer): void {
     this.config.onManualNavigation?.();
-    this.setDestination({ x: pointer.x, y: pointer.y });
-  }
-
-  private stopDestinationMovement(): void {
-    if (this.destinationFrame !== undefined) {
-      window.cancelAnimationFrame(this.destinationFrame);
-      this.destinationFrame = undefined;
-    }
+    this.setDestination({ x: pointer.worldX, y: pointer.worldY });
   }
 
   private axis(
@@ -277,8 +250,16 @@ export class PlayerNavigationView {
     return Number(positive) - Number(negative);
   }
 
-  private syncVisual(): void {
+  private syncVisual(force = false): void {
     const { position } = this.snapshot();
+    const movedX = position.x - this.lastVisualX;
+    if (force || Math.abs(movedX) > 0.01) {
+      if (movedX < -0.01) this.actor.setFlipX(true);
+      else if (movedX > 0.01) this.actor.setFlipX(false);
+    }
+    this.lastVisualX = position.x;
+    this.lastVisualY = position.y;
+
     const depth = (this.config.baseDepth ?? 24) + position.y / 1000;
     this.actor.setPosition(position.x, position.y).setDepth(depth);
     this.shadow.setPosition(
