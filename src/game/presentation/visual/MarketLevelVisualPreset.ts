@@ -117,7 +117,7 @@ export type MarketLevelVisualPreset =
   | FindItemsLevelVisualPreset;
 
 const SHARED_ACTOR = Object.freeze({
-  idleSize: Object.freeze({ width: 520, height: 390 }),
+  idleSize: Object.freeze({ width: 400, height: 360 }),
   shadowOffset: Object.freeze({ x: 0, y: 5 })
 });
 
@@ -126,15 +126,15 @@ export const RESTOCK_VISUAL_PRESET: RestockLevelVisualPreset = Object.freeze({
   mode: "restock",
   actor: Object.freeze({
     ...SHARED_ACTOR,
-    pushSize: Object.freeze({ width: 450, height: 405 }),
-    carrySize: Object.freeze({ width: 470, height: 395 })
+    pushSize: Object.freeze({ width: 400, height: 370 }),
+    carrySize: Object.freeze({ width: 390, height: 365 })
   }),
   environment: Object.freeze({
-    focus: Object.freeze({ x: 1310, y: 610 }),
-    focusSize: Object.freeze({ width: 570, height: 620 }),
-    routeAlpha: 0.34,
+    focus: Object.freeze({ x: 1280, y: 700 }),
+    focusSize: Object.freeze({ width: 450, height: 340 }),
+    routeAlpha: 0.18,
     inactiveWashAlpha: 0,
-    vignetteAlpha: 0.08
+    vignetteAlpha: 0.05
   }),
   cooler: Object.freeze({
     baseY: 540,
@@ -142,12 +142,12 @@ export const RESTOCK_VISUAL_PRESET: RestockLevelVisualPreset = Object.freeze({
     frameSize: Object.freeze({ width: 620, height: 520 }),
     displaySize: Object.freeze({ width: 470, height: 700 }),
     rowYs: Object.freeze([270, 348, 426, 504, 582, 660]),
-    activeStockWidth: 360,
+    activeStockWidth: 420,
     restockItemCount: 5
   }),
   props: Object.freeze({
-    caseSize: Object.freeze({ width: 235, height: 285 }),
-    cartSize: Object.freeze({ width: 390, height: 375 })
+    caseSize: Object.freeze({ width: 180, height: 220 }),
+    cartSize: Object.freeze({ width: 280, height: 270 })
   })
 });
 
@@ -156,38 +156,38 @@ export const CHECKOUT_VISUAL_PRESET: CheckoutLevelVisualPreset = Object.freeze({
   mode: "checkout",
   actor: SHARED_ACTOR,
   environment: Object.freeze({
-    focus: Object.freeze({ x: 1000, y: 660 }),
-    focusSize: Object.freeze({ width: 1180, height: 470 }),
-    routeAlpha: 0.28,
-    inactiveWashAlpha: 0.14,
-    vignetteAlpha: 0.18
+    focus: Object.freeze({ x: 1080, y: 760 }),
+    focusSize: Object.freeze({ width: 640, height: 300 }),
+    routeAlpha: 0.16,
+    inactiveWashAlpha: 0,
+    vignetteAlpha: 0.08
   }),
-  workerStartOffset: Object.freeze({ x: -45, y: -118 }),
+  workerStartOffset: Object.freeze({ x: 0, y: -125 }),
   station: Object.freeze({
-    counterOffsetY: 26,
-    counterSize: Object.freeze({ width: 820, height: 700 }),
-    shadowSize: Object.freeze({ width: 430, height: 62 }),
-    registerOffset: Object.freeze({ x: 82, y: -138 }),
-    laneLightOffset: Object.freeze({ x: -138, y: -112 }),
-    scanBeamOffset: Object.freeze({ x: -72, y: -65 }),
-    scanBeamSize: Object.freeze({ width: 124, height: 8 }),
-    servedExitOffset: Object.freeze({ x: 230, y: -38 })
+    counterOffsetY: 18,
+    counterSize: Object.freeze({ width: 480, height: 420 }),
+    shadowSize: Object.freeze({ width: 300, height: 46 }),
+    registerOffset: Object.freeze({ x: 48, y: -76 }),
+    laneLightOffset: Object.freeze({ x: -82, y: -66 }),
+    scanBeamOffset: Object.freeze({ x: -46, y: -38 }),
+    scanBeamSize: Object.freeze({ width: 84, height: 6 }),
+    servedExitOffset: Object.freeze({ x: 165, y: -20 })
   }),
   queue: Object.freeze({
-    customerSize: Object.freeze({ width: 300, height: 315 }),
+    customerSize: Object.freeze({ width: 220, height: 245 }),
     columns: 6,
-    columnGap: -118,
+    columnGap: -102,
     rowGap: 0,
     rowDriftX: 0,
     alternatingYOffset: 12,
     baseScale: 0.92,
     rowScaleStep: 0,
-    columnScaleStep: 0.025,
-    minimumScale: 0.78
+    columnScaleStep: 0.02,
+    minimumScale: 0.8
   }),
   sign: Object.freeze({
-    centre: Object.freeze({ x: 1280, y: 184 }),
-    size: Object.freeze({ width: 430, height: 64 })
+    centre: Object.freeze({ x: 1190, y: 170 }),
+    size: Object.freeze({ width: 330, height: 56 })
   })
 });
 
@@ -196,23 +196,23 @@ export const CLEAN_VISUAL_PRESET: CleanLevelVisualPreset = Object.freeze({
   mode: "clean",
   actor: SHARED_ACTOR,
   environment: Object.freeze({
-    focus: Object.freeze({ x: 940, y: 650 }),
-    focusSize: Object.freeze({ width: 1050, height: 480 }),
-    routeAlpha: 0.3,
-    inactiveWashAlpha: 0.12,
-    vignetteAlpha: 0.16
+    focus: Object.freeze({ x: 1170, y: 755 }),
+    focusSize: Object.freeze({ width: 620, height: 300 }),
+    routeAlpha: 0.16,
+    inactiveWashAlpha: 0,
+    vignetteAlpha: 0.08
   }),
   fixture: Object.freeze({
-    position: Object.freeze({ x: 1325, y: 800 }),
-    size: Object.freeze({ width: 720, height: 720 })
+    position: Object.freeze({ x: 1260, y: 790 }),
+    size: Object.freeze({ width: 420, height: 420 })
   }),
-  cartSize: Object.freeze({ width: 330, height: 330 }),
-  signSize: Object.freeze({ width: 210, height: 205 }),
-  signOffset: Object.freeze({ x: -125, y: 12 }),
-  toolsTargetSize: Object.freeze({ width: 330, height: 245 }),
+  cartSize: Object.freeze({ width: 190, height: 190 }),
+  signSize: Object.freeze({ width: 110, height: 108 }),
+  signOffset: Object.freeze({ x: -85, y: 10 }),
+  toolsTargetSize: Object.freeze({ width: 250, height: 180 }),
   collectedToolsAlpha: 0.24,
-  spillBaseSize: Object.freeze({ width: 108, height: 46 }),
-  spillTargetSize: Object.freeze({ width: 150, height: 82 }),
+  spillBaseSize: Object.freeze({ width: 92, height: 40 }),
+  spillTargetSize: Object.freeze({ width: 132, height: 68 }),
   inactiveSpillAlpha: 0.24,
   activeSpillAlpha: 0.72,
   spillColor: 0x6f98a4,
@@ -225,31 +225,31 @@ export const FIND_ITEMS_VISUAL_PRESET: FindItemsLevelVisualPreset = Object.freez
   mode: "find-items",
   actor: SHARED_ACTOR,
   environment: Object.freeze({
-    focus: Object.freeze({ x: 1085, y: 610 }),
-    focusSize: Object.freeze({ width: 920, height: 520 }),
-    routeAlpha: 0.3,
-    inactiveWashAlpha: 0.12,
-    vignetteAlpha: 0.16
+    focus: Object.freeze({ x: 1170, y: 720 }),
+    focusSize: Object.freeze({ width: 620, height: 330 }),
+    routeAlpha: 0.16,
+    inactiveWashAlpha: 0,
+    vignetteAlpha: 0.08
   }),
   fixture: Object.freeze({
-    position: Object.freeze({ x: 1165, y: 760 }),
-    size: Object.freeze({ width: 820, height: 760 })
+    position: Object.freeze({ x: 1220, y: 760 }),
+    size: Object.freeze({ width: 480, height: 450 })
   }),
   basket: Object.freeze({
-    position: Object.freeze({ x: 875, y: 750 }),
-    size: Object.freeze({ width: 245, height: 165 })
+    position: Object.freeze({ x: 960, y: 795 }),
+    size: Object.freeze({ width: 160, height: 110 })
   }),
   orderTicket: Object.freeze({
-    centre: Object.freeze({ x: 1270, y: 260 }),
-    size: Object.freeze({ width: 460, height: 145 }),
-    slotSize: Object.freeze({ width: 126, height: 82 }),
-    iconMaxSize: Object.freeze({ width: 62, height: 64 }),
-    itemGap: 138
+    centre: Object.freeze({ x: 1270, y: 255 }),
+    size: Object.freeze({ width: 430, height: 145 }),
+    slotSize: Object.freeze({ width: 116, height: 80 }),
+    iconMaxSize: Object.freeze({ width: 60, height: 62 }),
+    itemGap: 128
   }),
   itemSizes: Object.freeze({
-    "milk-bottle": Object.freeze({ width: 90, height: 112 }),
-    apple: Object.freeze({ width: 78, height: 84 }),
-    "cereal-box": Object.freeze({ width: 92, height: 126 })
+    "milk-bottle": Object.freeze({ width: 78, height: 100 }),
+    apple: Object.freeze({ width: 68, height: 72 }),
+    "cereal-box": Object.freeze({ width: 80, height: 110 })
   })
 });
 
