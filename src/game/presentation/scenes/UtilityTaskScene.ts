@@ -9,6 +9,7 @@ import {
 } from "../../application/UtilityTaskSceneController";
 import { navigateToLevel } from "../../infrastructure/browser/BrowserLevelNavigator";
 import { PlayerNavigationView } from "../actors/PlayerNavigationView";
+import { CleaningTaskView } from "../cleaning/CleaningTaskView";
 import type {
   CleanStarterMarketPresentationContext,
   FindItemsStarterMarketPresentationContext
@@ -32,7 +33,7 @@ export type UtilityPresentationContext =
   | FindItemsStarterMarketPresentationContext;
 
 type UtilityVisualPreset = CleanLevelVisualPreset | FindItemsLevelVisualPreset;
-type UtilityProgressObject = Phaser.GameObjects.Image | Phaser.GameObjects.Ellipse;
+type UtilityProgressObject = Phaser.GameObjects.Image | Phaser.GameObjects.Container;
 
 export class UtilityTaskScene extends Phaser.Scene {
   readonly controller: UtilityTaskSceneController;
@@ -43,6 +44,7 @@ export class UtilityTaskScene extends Phaser.Scene {
   private player?: PlayerNavigationView;
   private target?: InteractionTargetView;
   private hud?: ShiftHud;
+  private cleaningView?: CleaningTaskView;
   private completionOverlay?: LevelCompleteOverlay;
   private readonly taskObjects: Phaser.GameObjects.GameObject[] = [];
   private readonly progressObjects: UtilityProgressObject[] = [];
@@ -155,46 +157,15 @@ export class UtilityTaskScene extends Phaser.Scene {
     context: CleanStarterMarketPresentationContext,
     visual: CleanLevelVisualPreset
   ): void {
-    const fixture = this.add.image(
-      visual.fixture.position.x,
-      visual.fixture.position.y,
-      context.levelAssets.cleaningFixture.key
-    )
-      .setOrigin(0.5, 0.96)
-      .setDisplaySize(visual.fixture.size.width, visual.fixture.size.height)
-      .setDepth(2);
-    const cart = this.add.image(
-      context.runtime.toolPoint.x,
-      context.runtime.toolPoint.y,
-      context.levelAssets.cleaningCart.key
-    )
-      .setOrigin(0.5, 0.96)
-      .setDisplaySize(visual.cartSize.width, visual.cartSize.height)
-      .setDepth(20);
-    const sign = this.add.image(
-      context.runtime.toolPoint.x - 145,
-      context.runtime.toolPoint.y + 18,
-      context.levelAssets.wetFloorSign.key
-    )
-      .setOrigin(0.5, 0.96)
-      .setDisplaySize(visual.signSize.width, visual.signSize.height)
-      .setDepth(20);
-    this.taskObjects.push(fixture, cart, sign);
-
-    context.runtime.spotPositions.forEach((point, index) => {
-      const spill = this.add.ellipse(
-        point.x,
-        point.y,
-        visual.spillBaseSize.width + (index % 2) * 26,
-        visual.spillBaseSize.height + (index % 3) * 8,
-        0x7f99a3,
-        0.48
-      )
-        .setStrokeStyle(3, 0xd8ecf1, 0.45)
-        .setDepth(9)
-        .setName(`clean-spill-${index + 1}`);
-      this.progressObjects.push(spill);
+    this.cleaningView = new CleaningTaskView(this, {
+      fixtureAssetKey: context.levelAssets.cleaningFixture.key,
+      cleaningCartAssetKey: context.levelAssets.cleaningCart.key,
+      wetFloorSignAssetKey: context.levelAssets.wetFloorSign.key,
+      toolPoint: context.runtime.toolPoint,
+      spotPositions: context.runtime.spotPositions,
+      visual
     });
+    this.progressObjects.push(...this.cleaningView.create());
   }
 
   private createFindItemsTask(
@@ -396,7 +367,8 @@ export class UtilityTaskScene extends Phaser.Scene {
   private dispose(): void {
     this.disposers.splice(0).forEach((dispose) => dispose());
     this.taskObjects.forEach((object) => object.destroy());
-    this.progressObjects.forEach((object) => object.destroy());
+    if (this.cleaningView) this.cleaningView.destroy();
+    else this.progressObjects.forEach((object) => object.destroy());
     this.completionOverlay?.destroy();
     this.player?.destroy();
     this.target?.destroy();
