@@ -45,6 +45,8 @@ export interface RestockRushSelectionResult {
   readonly snapshot: RestockRushSnapshot;
 }
 
+const MAX_ACTIVE_CLOCK_STEP_MS = 250;
+
 const requirePositive = (value: number, label: string): number => {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be a positive finite number`);
@@ -105,6 +107,9 @@ export class RestockRushController {
   private currentTargetDurationMs: number;
   private introWindowActive = true;
   private mistakes = 0;
+  private logicalNowMs?: number;
+  private lastExternalTimestampMs?: number;
+  private stallProtectionArmed = false;
 
   constructor(readonly config: RestockRushConfig) {
     if (!Number.isInteger(config.rowCount) || config.rowCount <= 0) {
@@ -139,22 +144,20 @@ export class RestockRushController {
   }
 
   start(nowMs: number): RestockRushSnapshot {
-    const now = requireTimestamp(nowMs);
-    if (this.deadlineMs === undefined && this.queue.length > 0) {
-      this.pace.start(now);
-      this.deadlineMs = now + this.currentTargetDurationMs;
-    }
-    return this.snapshot(now);
+    const now = this.advanceClock(nowMs, this.stallProtectionArmed);
+    this.ensureStarted(now);
+    return this.createSnapshot(now);
   }
 
   tick(nowMs: number): RestockRushTickResult {
-    const now = requireTimestamp(nowMs);
+    const now = this.advanceClock(nowMs, this.stallProtectionArmed);
+    this.stallProtectionArmed = true;
     if (this.queue.length === 0) {
-      return Object.freeze({ event: "none", snapshot: this.snapshot(now) });
+      return Object.freeze({ event: "none", snapshot: this.createSnapshot(now) });
     }
-    this.start(now);
+    this.ensureStarted(now);
     if (this.deadlineMs === undefined || now < this.deadlineMs) {
-      return Object.freeze({ event: "none", snapshot: this.snapshot(now) });
+      return Object.freeze({ event: "none", snapshot: this.createSnapshot(now) });
     }
 
     this.mistakes += 1;
@@ -162,15 +165,15 @@ export class RestockRushController {
     this.consumeIntroWindow();
     this.rotateTarget();
     this.resetDeadline(now);
-    return Object.freeze({ event: "timeout", snapshot: this.snapshot(now) });
+    return Object.freeze({ event: "timeout", snapshot: this.createSnapshot(now) });
   }
 
   selectRow(rowIndex: number, nowMs: number): RestockRushSelectionResult {
-    const now = requireTimestamp(nowMs);
+    const now = this.advanceClock(nowMs, this.stallProtectionArmed);
     if (!Number.isInteger(rowIndex) || rowIndex < 0 || rowIndex >= this.config.rowCount) {
       throw new Error("Selected restock row is outside the configured shelf");
     }
-    this.start(now);
+    this.ensureStarted(now);
 
     const expectedRowIndex = this.queue[0];
     if (expectedRowIndex === undefined) {
@@ -178,7 +181,7 @@ export class RestockRushController {
         correct: false,
         selectedRowIndex: rowIndex,
         expectedRowIndex: undefined,
-        snapshot: this.snapshot(now)
+        snapshot: this.createSnapshot(now)
       });
     }
 
@@ -192,7 +195,7 @@ export class RestockRushController {
         correct: false,
         selectedRowIndex: rowIndex,
         expectedRowIndex,
-        snapshot: this.snapshot(now)
+        snapshot: this.createSnapshot(now)
       });
     }
 
@@ -213,16 +216,25 @@ export class RestockRushController {
       correct: true,
       selectedRowIndex: rowIndex,
       expectedRowIndex,
-      snapshot: this.snapshot(now)
+      snapshot: this.createSnapshot(now)
     });
   }
 
   snapshot(nowMs: number): RestockRushSnapshot {
-    const now = requireTimestamp(nowMs);
-    const pace = this.pace.snapshot(now);
+    return this.createSnapshot(this.projectClock(nowMs));
+  }
+
+  private ensureStarted(nowMs: number): void {
+    if (this.deadlineMs !== undefined || this.queue.length === 0) return;
+    this.pace.start(nowMs);
+    this.deadlineMs = nowMs + this.currentTargetDurationMs;
+  }
+
+  private createSnapshot(nowMs: number): RestockRushSnapshot {
+    const pace = this.pace.snapshot(nowMs);
     const remainingMs = this.deadlineMs === undefined
       ? 0
-      : Math.max(0, this.deadlineMs - now);
+      : Math.max(0, this.deadlineMs - nowMs);
     const remainingRatio = this.deadlineMs === undefined
       ? 0
       : Math.max(0, Math.min(1, remainingMs / this.currentTargetDurationMs));
@@ -241,6 +253,36 @@ export class RestockRushController {
       elapsedMs: pace.elapsedMs,
       grade: pace.grade
     });
+  }
+
+  private advanceClock(nowMs: number, protectFromStall: boolean): number {
+    const externalNow = requireTimestamp(nowMs);
+    if (this.logicalNowMs === undefined || this.lastExternalTimestampMs === undefined) {
+      this.logicalNowMs = externalNow;
+      this.lastExternalTimestampMs = externalNow;
+      return externalNow;
+    }
+
+    const elapsed = Math.max(0, externalNow - this.lastExternalTimestampMs);
+    const activeElapsed = protectFromStall
+      ? Math.min(elapsed, MAX_ACTIVE_CLOCK_STEP_MS)
+      : elapsed;
+    this.logicalNowMs += activeElapsed;
+    this.lastExternalTimestampMs = externalNow;
+    return this.logicalNowMs;
+  }
+
+  private projectClock(nowMs: number): number {
+    const externalNow = requireTimestamp(nowMs);
+    if (this.logicalNowMs === undefined || this.lastExternalTimestampMs === undefined) {
+      return externalNow;
+    }
+    const elapsed = Math.max(0, externalNow - this.lastExternalTimestampMs);
+    return this.logicalNowMs + (
+      this.stallProtectionArmed
+        ? Math.min(elapsed, MAX_ACTIVE_CLOCK_STEP_MS)
+        : elapsed
+    );
   }
 
   private consumeIntroWindow(): void {

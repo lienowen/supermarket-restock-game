@@ -14,13 +14,9 @@ export class StarterMarketEnvironmentView {
   }
 
   create(): void {
-    if (this.context.mode === "restock") {
-      this.createRestockAisle();
-      this.createFloorRoute();
-      this.createAtmosphere();
-      return;
-    }
-
+    // All modes use the same layered store construction. The old restock-only
+    // full-screen image was 1280x720 and had to be enlarged to the 1600x900
+    // game canvas, which made the first level visibly softer than its actors.
     this.createBase();
     this.createFloor();
     this.createCeiling();
@@ -29,27 +25,6 @@ export class StarterMarketEnvironmentView {
     this.createModeFocus();
     this.createFloorRoute();
     this.createAtmosphere();
-  }
-
-  private createRestockAisle(): void {
-    const { scene, context } = this;
-    scene.add.image(
-      context.world.width / 2,
-      context.world.height / 2,
-      context.levelAssets.environment.key
-    )
-      .setDisplaySize(context.world.width, context.world.height)
-      .setDepth(-30)
-      .setName("restock-aisle-v2-background");
-
-    scene.add.rectangle(
-      context.world.width / 2,
-      context.world.height - 48,
-      context.world.width,
-      96,
-      0x0c1713,
-      0.08
-    ).setDepth(-29);
   }
 
   private createBase(): void {
@@ -146,7 +121,7 @@ export class StarterMarketEnvironmentView {
       .setDepth(-4)
       .setName("production-backroom-rack");
 
-    this.createDepartmentSign(x, 190, 230, context.labels.backroom, undefined);
+    this.createDepartmentSign(x, 190, 230, context.labels.backroom);
   }
 
   private createProduceDepartment(): void {
@@ -216,7 +191,9 @@ export class StarterMarketEnvironmentView {
 
   private createModeFocus(): void {
     const { focus, focusSize, inactiveWashAlpha } = this.visualPreset.environment;
-    const accent = this.context.mode === "checkout" ? this.context.palette.greenBright : this.context.palette.gold;
+    const accent = this.context.mode === "checkout"
+      ? this.context.palette.greenBright
+      : this.context.palette.gold;
 
     const focusShadow = this.scene.add.ellipse(
       focus.x,
@@ -262,7 +239,10 @@ export class StarterMarketEnvironmentView {
       const x = inverse * inverse * start.x + 2 * inverse * t * control.x + t * t * end.x;
       const y = inverse * inverse * start.y + 2 * inverse * t * control.y + t * t * end.y;
       const radius = 4 + t * 2;
-      route.fillStyle(this.context.palette.gold, this.visualPreset.environment.routeAlpha * (0.55 + t * 0.45));
+      route.fillStyle(
+        this.context.palette.gold,
+        this.visualPreset.environment.routeAlpha * (0.55 + t * 0.45)
+      );
       route.fillCircle(x, y, radius);
     }
 
@@ -291,6 +271,13 @@ export class StarterMarketEnvironmentView {
       0x0c1a16,
       vignetteAlpha
     ).setDepth(81);
-    scene.add.rectangle(context.world.width / 2, 112, context.world.width, 20, 0x07110e, vignetteAlpha * 0.7).setDepth(81);
+    scene.add.rectangle(
+      context.world.width / 2,
+      112,
+      context.world.width,
+      20,
+      0x07110e,
+      vignetteAlpha * 0.7
+    ).setDepth(81);
   }
 }

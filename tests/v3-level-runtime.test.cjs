@@ -73,7 +73,9 @@ test("Each level owns only navigation and mode-specific tuning variables", () =>
   assert.equal(levelTwo.runtime.reward.completionCoins, 60);
   assert.equal(levelOne.level.tuning.rush.targetDurationMs, 9000);
   assert.equal(levelOne.level.tuning.rush.streakWindowMs, 1900);
-  assert.equal(levelTwo.level.tuning.rush.minimumTargetDurationMs, 5200);
+  assert.equal(levelTwo.level.tuning.rush.targetDurationMs, 8500);
+  assert.equal(levelTwo.level.tuning.rush.minimumTargetDurationMs, 7000);
+  assert.equal(levelTwo.level.tuning.rush.speedUpPerSuccessMs, 300);
   assert.equal(levelThree.runtime.customerCount, 6);
   assert.equal(levelFour.runtime.spotCount, 4);
   assert.deepEqual(levelFive.runtime.products.map((product) => product.id), [

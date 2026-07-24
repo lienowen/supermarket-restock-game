@@ -79,7 +79,8 @@ export async function createPhaserGame(
     render: {
       antialias: true,
       roundPixels: false,
-      pixelArt: false
+      pixelArt: false,
+      powerPreference: "high-performance"
     },
     input: {
       activePointers: 3
