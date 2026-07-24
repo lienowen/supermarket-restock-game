@@ -23,6 +23,10 @@ const requestedLevelFromLocation = (): string | undefined => {
   return parameters.get("level")?.trim() || parameters.get("shift")?.trim() || undefined;
 };
 
+const renderResolution = (): number => (
+  Math.min(2, Math.max(1, window.devicePixelRatio || 1))
+);
+
 export async function createPhaserGame(
   options: PhaserGameFactoryOptions = {}
 ): Promise<Phaser.Game> {
@@ -70,6 +74,7 @@ export async function createPhaserGame(
     parent: options.parent ?? "app",
     width: presentation.world.width,
     height: presentation.world.height,
+    resolution: renderResolution(),
     backgroundColor: "#171712",
     scale: {
       mode: Phaser.Scale.FIT,
