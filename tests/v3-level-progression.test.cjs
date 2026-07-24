@@ -7,6 +7,9 @@ const {
 const {
   createLevelNavigationUrl
 } = require("../.test-dist/src/game/infrastructure/browser/BrowserLevelNavigator.js");
+const {
+  resolveCampaignProgressionPreview
+} = require("../.test-dist/src/game/presentation/ui/CampaignProgressionPreview.js");
 
 test("Completed levels continue to the configured next level", () => {
   assert.deepEqual(
@@ -38,6 +41,31 @@ test("The final level restarts the campaign from Level 1", () => {
       statusLabel: "CAMPAIGN COMPLETE"
     }
   );
+});
+
+test("Completion previews promise the actual configured next task", () => {
+  assert.deepEqual(resolveCampaignProgressionPreview("starter-level-002"), {
+    eyebrow: "UP NEXT · LEVEL 3",
+    title: "CHECKOUT RUSH",
+    detail: "CHECKOUT RUSH · ASSIST CHECKOUT RUSH",
+    isCampaignComplete: false
+  });
+
+  assert.deepEqual(resolveCampaignProgressionPreview("starter-level-004"), {
+    eyebrow: "UP NEXT · LEVEL 5",
+    title: "ORDER HUNT",
+    detail: "ORDER HUNT · FIND ORDER ITEMS",
+    isCampaignComplete: false
+  });
+});
+
+test("The final completion preview closes the campaign loop", () => {
+  assert.deepEqual(resolveCampaignProgressionPreview("starter-level-005"), {
+    eyebrow: "CAMPAIGN COMPLETE",
+    title: "THE STORE IS RUNNING",
+    detail: "PLAY AGAIN TO BUILD A FASTER, CLEANER SHIFT",
+    isCampaignComplete: true
+  });
 });
 
 test("Browser navigation writes the canonical level query and removes legacy shift selection", () => {
