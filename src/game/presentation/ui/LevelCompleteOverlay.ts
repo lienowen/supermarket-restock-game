@@ -60,13 +60,13 @@ export class LevelCompleteOverlay {
 
     const cardShadow = scene.add.graphics();
     cardShadow.fillStyle(0x10251d, 0.38);
-    cardShadow.fillRoundedRect(-338, -202, 696, 430, 36);
+    cardShadow.fillRoundedRect(-338, -202, 696, 486, 36);
 
     const card = scene.add.graphics();
     card.fillStyle(0xfffbef, 1);
-    card.fillRoundedRect(-348, -216, 696, 430, 36);
+    card.fillRoundedRect(-348, -216, 696, 474, 36);
     card.lineStyle(6, 0x2f8a58, 1);
-    card.strokeRoundedRect(-348, -216, 696, 430, 36);
+    card.strokeRoundedRect(-348, -216, 696, 474, 36);
     card.fillStyle(0x2f8a58, 1);
     card.fillRoundedRect(-348, -216, 696, 82, {
       tl: 36,
@@ -151,18 +151,57 @@ export class LevelCompleteOverlay {
       wordWrap: { width: 500 }
     }).setOrigin(0.5);
 
+    const progressLabel = scene.add.text(
+      -280,
+      166,
+      `SHIFT PROGRESS  ${preview.currentLevelNumber}/${preview.totalLevels}`,
+      {
+        fontFamily: "Arial",
+        fontSize: "12px",
+        color: "#52705f",
+        fontStyle: "bold",
+        letterSpacing: 1
+      }
+    ).setOrigin(0, 0.5);
+
+    const progressDots = Array.from({ length: preview.totalLevels }, (_, index) => {
+      const completed = index < preview.currentLevelNumber;
+      const dot = scene.add.circle(
+        126 + index * 31,
+        166,
+        completed ? 8 : 6,
+        completed ? config.accentColor : 0xb5c7bb,
+        completed ? 1 : 0.72
+      ).setName(`completion-progress-dot-${index + 1}`);
+      if (completed) dot.setStrokeStyle(2, 0xb98118, 0.75);
+      return dot;
+    });
+
+    const buttonGlow = scene.add.rectangle(0, 0, 348, 78, 0x9ee0ae, 0.12);
     const button = scene.add.rectangle(0, 0, 330, 64, 0x2f8a58, 1)
       .setStrokeStyle(4, 0x195a38, 1)
       .setInteractive({ useHandCursor: true });
     const buttonHighlight = scene.add.rectangle(0, -21, 292, 8, 0x8bd29f, 0.48);
-    const buttonLabel = scene.add.text(0, 0, config.actionLabel, {
+    const buttonLabel = scene.add.text(-10, 0, config.actionLabel, {
       fontFamily: "Arial",
       fontSize: "21px",
       color: "#ffffff",
       fontStyle: "bold",
       letterSpacing: 1
     }).setOrigin(0.5);
-    const buttonContainer = scene.add.container(0, 174, [button, buttonHighlight, buttonLabel]);
+    const buttonArrow = scene.add.text(126, -1, "›", {
+      fontFamily: "Arial",
+      fontSize: "34px",
+      color: "#ffffff",
+      fontStyle: "bold"
+    }).setOrigin(0.5);
+    const buttonContainer = scene.add.container(0, 218, [
+      buttonGlow,
+      button,
+      buttonHighlight,
+      buttonLabel,
+      buttonArrow
+    ]).setName("completion-primary-action");
 
     const confetti = [
       { x: -292, y: -136, angle: -18, color: config.accentColor },
@@ -192,6 +231,8 @@ export class LevelCompleteOverlay {
       previewEyebrow,
       previewTitle,
       previewDetail,
+      progressLabel,
+      ...progressDots,
       buttonContainer
     ]).setDepth(180).setAlpha(0).setScale(0.84);
 
@@ -221,12 +262,32 @@ export class LevelCompleteOverlay {
       ease: "Back.Out"
     });
     scene.tweens.add({
-      targets: [previewEyebrow, previewTitle, previewDetail, buttonContainer],
+      targets: [previewEyebrow, previewTitle, previewDetail],
       alpha: { from: 0, to: 1 },
       y: "+=8",
-      delay: scene.tweens.stagger(55, { start: 300 }),
-      duration: 260,
+      delay: scene.tweens.stagger(45, { start: 260 }),
+      duration: 240,
       ease: "Sine.Out"
+    });
+    scene.tweens.add({
+      targets: buttonGlow,
+      alpha: { from: 0.06, to: 0.24 },
+      scaleX: { from: 0.98, to: 1.08 },
+      scaleY: { from: 0.92, to: 1.08 },
+      yoyo: true,
+      repeat: -1,
+      delay: 900,
+      duration: 820,
+      ease: "Sine.InOut"
+    });
+    scene.tweens.add({
+      targets: buttonArrow,
+      x: { from: 122, to: 130 },
+      yoyo: true,
+      repeat: -1,
+      delay: 900,
+      duration: 620,
+      ease: "Sine.InOut"
     });
   }
 

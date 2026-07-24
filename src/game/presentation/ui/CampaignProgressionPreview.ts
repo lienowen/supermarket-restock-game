@@ -6,6 +6,8 @@ export interface CampaignProgressionPreview {
   readonly title: string;
   readonly detail: string;
   readonly isCampaignComplete: boolean;
+  readonly currentLevelNumber: number;
+  readonly totalLevels: number;
 }
 
 const MODE_LABELS: Readonly<Record<LevelDefinition["mode"], string>> = Object.freeze({
@@ -18,19 +20,23 @@ const MODE_LABELS: Readonly<Record<LevelDefinition["mode"], string>> = Object.fr
 export function resolveCampaignProgressionPreview(
   currentLevelId: string | undefined
 ): CampaignProgressionPreview {
+  const totalLevels = MAIN_LEVEL_CAMPAIGN_RUNTIME.levels.length;
   const current = currentLevelId
     ? MAIN_LEVEL_CAMPAIGN_RUNTIME.levels.find((entry) => entry.level.id === currentLevelId)
     : undefined;
   const next = current?.nextLevelId
     ? MAIN_LEVEL_CAMPAIGN_RUNTIME.levels.find((entry) => entry.level.id === current.nextLevelId)
     : undefined;
+  const currentLevelNumber = current?.levelNumber ?? 0;
 
   if (next) {
     return Object.freeze({
       eyebrow: `UP NEXT · ${next.levelLabel}`,
       title: next.level.title.toUpperCase(),
       detail: `${MODE_LABELS[next.level.mode]} · ${next.mission.title.toUpperCase()}`,
-      isCampaignComplete: false
+      isCampaignComplete: false,
+      currentLevelNumber,
+      totalLevels
     });
   }
 
@@ -38,6 +44,8 @@ export function resolveCampaignProgressionPreview(
     eyebrow: "CAMPAIGN COMPLETE",
     title: "THE STORE IS RUNNING",
     detail: "PLAY AGAIN TO BUILD A FASTER, CLEANER SHIFT",
-    isCampaignComplete: true
+    isCampaignComplete: true,
+    currentLevelNumber,
+    totalLevels
   });
 }
