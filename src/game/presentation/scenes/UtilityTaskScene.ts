@@ -165,7 +165,7 @@ export class UtilityTaskScene extends Phaser.Scene {
       spotPositions: context.runtime.spotPositions,
       visual
     });
-    this.progressObjects.push(...this.cleaningView.create());
+    this.cleaningView.create();
   }
 
   private createFindItemsTask(
@@ -239,26 +239,34 @@ export class UtilityTaskScene extends Phaser.Scene {
       this.player?.setTexture(snapshot.step === "collect-tools"
         ? context.levelAssets.worker.key
         : context.levelAssets.workerMop.key);
+      this.cleaningView?.sync({
+        phase: snapshot.step === "collect-tools"
+          ? "tools"
+          : snapshot.step === "clean"
+            ? "spills"
+            : "complete",
+        completedSpills: snapshot.progress
+      });
     } else {
       this.player?.setTexture(snapshot.step === "complete"
         ? context.levelAssets.worker.key
         : context.levelAssets.workerThinking.key);
-    }
 
-    if (snapshot.progress > this.previousProgress) {
-      const completedObject = this.progressObjects[snapshot.progress - 1];
-      if (completedObject) {
-        this.tweens.add({
-          targets: completedObject,
-          alpha: 0,
-          scaleX: 0.4,
-          scaleY: 0.4,
-          duration: 360,
-          ease: "Back.In",
-          onComplete: () => completedObject.setVisible(false)
-        });
+      if (snapshot.progress > this.previousProgress) {
+        const completedObject = this.progressObjects[snapshot.progress - 1];
+        if (completedObject) {
+          this.tweens.add({
+            targets: completedObject,
+            alpha: 0,
+            scaleX: 0.4,
+            scaleY: 0.4,
+            duration: 360,
+            ease: "Back.In",
+            onComplete: () => completedObject.setVisible(false)
+          });
+        }
+        this.previousProgress = snapshot.progress;
       }
-      this.previousProgress = snapshot.progress;
     }
 
     this.syncTarget(snapshot);
@@ -337,11 +345,25 @@ export class UtilityTaskScene extends Phaser.Scene {
     if (snapshot.step === "complete") return undefined;
     const point = this.currentInteractionPoint(snapshot);
     if (!point) return undefined;
+
+    if (this.context.mode === "clean") {
+      const visual = this.visualPreset as CleanLevelVisualPreset;
+      const size = snapshot.step === "collect-tools"
+        ? visual.toolsTargetSize
+        : visual.spillTargetSize;
+      return {
+        x: point.x,
+        y: point.y,
+        width: size.width,
+        height: size.height
+      };
+    }
+
     return {
       x: point.x,
       y: point.y,
-      width: this.context.mode === "clean" && snapshot.step === "clean" ? 150 : 132,
-      height: this.context.mode === "clean" && snapshot.step === "clean" ? 82 : 142
+      width: 132,
+      height: 142
     };
   }
 
