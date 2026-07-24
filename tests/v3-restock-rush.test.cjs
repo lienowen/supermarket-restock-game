@@ -85,3 +85,19 @@ test("Expired targets cost a mistake and move the player to a new shelf", () => 
   assert.equal(tick.snapshot.currentStreak, 0);
   assert.notEqual(tick.snapshot.activeRowIndex, expired);
 });
+
+test("A browser frame stall does not consume the player's active rush window", () => {
+  const rush = createRush({ rowCount: 3, targetDurationMs: 1000, minimumTargetDurationMs: 700 });
+  rush.start(0);
+  rush.tick(16);
+  const target = rush.snapshot(16).activeRowIndex;
+
+  const afterStall = rush.tick(5016);
+  assert.equal(afterStall.event, "none");
+  assert.equal(afterStall.snapshot.mistakes, 0);
+  assert.ok(afterStall.snapshot.remainingMs >= 700);
+
+  const selection = rush.selectRow(target, 5020);
+  assert.equal(selection.correct, true);
+  assert.equal(selection.snapshot.mistakes, 0);
+});
