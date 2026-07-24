@@ -67,13 +67,13 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
       slotCount: 6,
       progressRewardRatio: 0.5,
       rush: {
-        targetDurationMs: 7800,
-        minimumTargetDurationMs: 5200,
-        speedUpPerSuccessMs: 420,
+        targetDurationMs: 8500,
+        minimumTargetDurationMs: 7000,
+        speedUpPerSuccessMs: 300,
         introGraceMs: 3200,
         streakWindowMs: 1550,
-        goldTimeMs: 26000,
-        silverTimeMs: 40000
+        goldTimeMs: 30000,
+        silverTimeMs: 44000
       }
     }
   },
