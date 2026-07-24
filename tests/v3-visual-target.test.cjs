@@ -2,11 +2,15 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const {
+  STARTER_MARKET_LEVELS
+} = require("../.test-dist/src/game/content/levels/starterMarketLevels.js");
+const {
   STARTER_MARKET_VISUAL_SPEC,
   validateStarterMarketVisualSpec
 } = require("../.test-dist/src/game/presentation/visual/StarterMarketVisualSpec.js");
 const {
-  CHECKOUT_VISUAL_PRESET
+  CHECKOUT_VISUAL_PRESET,
+  FIND_ITEMS_VISUAL_PRESET
 } = require("../.test-dist/src/game/presentation/visual/MarketLevelVisualPreset.js");
 const {
   STARTER_MARKET_PRODUCTION_ASSET_PLAN,
@@ -64,6 +68,29 @@ test("Checkout customers form one readable service line instead of a stacked cro
   positions.slice(1).forEach((position, index) => {
     const previous = positions[index];
     assert.ok(Math.hypot(position.x - previous.x, position.y - previous.y) >= 100);
+  });
+});
+
+test("Find-items products read as shelf stock instead of floating hero props", () => {
+  const level = STARTER_MARKET_LEVELS.find((entry) => entry.mode === "find-items");
+  assert.ok(level);
+
+  const sizes = Object.values(FIND_ITEMS_VISUAL_PRESET.itemSizes);
+  assert.ok(sizes.every((size) => size.width <= 100));
+  assert.ok(sizes.every((size) => size.height <= 130));
+  assert.ok(FIND_ITEMS_VISUAL_PRESET.fixture.size.width <= 850);
+  assert.ok(FIND_ITEMS_VISUAL_PRESET.fixture.size.height <= 780);
+  assert.ok(FIND_ITEMS_VISUAL_PRESET.basket.size.width <= 260);
+  assert.ok(FIND_ITEMS_VISUAL_PRESET.basket.size.height <= 180);
+
+  const targets = level.tuning.itemTargets;
+  targets.forEach((target) => {
+    assert.ok(target.x >= 980 && target.x <= 1320);
+    assert.ok(target.y >= 450 && target.y <= 650);
+  });
+  targets.slice(1).forEach((target, index) => {
+    const previous = targets[index];
+    assert.ok(Math.hypot(target.x - previous.x, target.y - previous.y) >= 100);
   });
 });
 
