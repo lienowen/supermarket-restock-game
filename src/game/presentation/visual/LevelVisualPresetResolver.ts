@@ -27,6 +27,9 @@ export function resolveLevelVisualPreset(
   level: FindItemsLevelDefinition
 ): FindItemsLevelVisualPreset;
 export function resolveLevelVisualPreset(
+  level: CleanLevelDefinition | FindItemsLevelDefinition
+): CleanLevelVisualPreset | FindItemsLevelVisualPreset;
+export function resolveLevelVisualPreset(
   level: LevelDefinition
 ): MarketLevelVisualPreset;
 export function resolveLevelVisualPreset(level: LevelDefinition): MarketLevelVisualPreset {

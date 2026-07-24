@@ -30,6 +30,7 @@
     "src/game/application/CampaignSession.ts",
     "src/game/application/CheckoutLevelRuntimeContent.ts",
     "src/game/application/CheckoutSceneController.ts",
+    "src/game/application/FindItemsChallengeController.ts",
     "src/game/application/GameplayModeRegistry.ts",
     "src/game/application/LevelProgression.ts",
     "src/game/application/LevelRuntimeContent.ts",

@@ -144,13 +144,10 @@ export class UtilityTaskSceneController {
         progressUnit: "ITEMS" as const
       });
     }
-    const product = this.runtime.products[this.progress];
     return Object.freeze({
       objective: this.runtime.mission.title,
-      instruction: product
-        ? `Find the highlighted ${product.name.toLowerCase()} and add it to the basket.`
-        : "Collect the requested product.",
-      actionLabel: "PICK ITEM",
+      instruction: "Use the order list, search the shelf, and tap any requested product.",
+      actionLabel: "TAP A PRODUCT",
       progressUnit: "ITEMS" as const
     });
   }

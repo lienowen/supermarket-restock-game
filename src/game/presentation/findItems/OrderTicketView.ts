@@ -3,6 +3,7 @@ import type { VisualSize } from "../visual/StarterMarketVisualSpec";
 import type { FindItemsLevelVisualPreset } from "../visual/MarketLevelVisualPreset";
 
 interface OrderTicketSlot {
+  readonly productId: string;
   readonly card: Phaser.GameObjects.Graphics;
   readonly image: Phaser.GameObjects.Image;
   readonly label: Phaser.GameObjects.Text;
@@ -21,12 +22,13 @@ export interface OrderTicketViewConfig {
   readonly accentColor: number;
 }
 
-/** A reusable, data-driven order summary for find-items activities. */
+/** A reusable, data-driven order summary for player-driven find-items activities. */
 export class OrderTicketView {
   private container?: Phaser.GameObjects.Container;
   private counter?: Phaser.GameObjects.Text;
   private readonly slots: OrderTicketSlot[] = [];
-  private previousProgress = -1;
+  private previousCompleted = new Set<string>();
+  private previousCount = 0;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -98,7 +100,7 @@ export class OrderTicketView {
         {
           fontFamily: "Arial",
           fontSize: "11px",
-          color: "#53675b",
+          color: "#234f35",
           fontStyle: "bold",
           align: "center",
           wordWrap: { width: slotSize.width - 18 }
@@ -119,6 +121,7 @@ export class OrderTicketView {
       }).setOrigin(0.5).setVisible(false);
 
       const slot: OrderTicketSlot = {
+        productId,
         card,
         image,
         label,
@@ -134,30 +137,28 @@ export class OrderTicketView {
     this.container = scene.add.container(centre.x, centre.y, objects)
       .setDepth(18)
       .setName("find-items-order-ticket");
-    this.sync(0, false);
+    this.sync([], false);
   }
 
-  sync(progress: number, animate = true): void {
+  sync(completedProductIds: readonly string[], animate = true): void {
     if (!this.container || !this.counter) return;
-    const completedCount = Phaser.Math.Clamp(progress, 0, this.slots.length);
+    const completed = new Set(completedProductIds);
+    const completedCount = Phaser.Math.Clamp(completed.size, 0, this.slots.length);
     this.counter.setText(`${completedCount}/${this.slots.length}`);
 
     this.slots.forEach((slot, index) => {
-      const completed = index < completedCount;
-      const active = index === completedCount && completedCount < this.slots.length;
-      this.drawSlot(slot.card, index, completed, active);
-      slot.checkBadge.setVisible(completed);
-      slot.check.setVisible(completed);
-      slot.label.setColor(completed ? "#5d7867" : active ? "#234f35" : "#859288");
-      slot.image.setAlpha(completed ? 0.35 : active ? 1 : 0.5);
-      slot.image.setScale(
-        slot.baseScaleX * (active ? 1.05 : 1),
-        slot.baseScaleY * (active ? 1.05 : 1)
-      );
+      const isCompleted = completed.has(slot.productId);
+      this.drawSlot(slot.card, index, isCompleted);
+      slot.checkBadge.setVisible(isCompleted);
+      slot.check.setVisible(isCompleted);
+      slot.label.setColor(isCompleted ? "#5d7867" : "#234f35");
+      slot.image.setAlpha(isCompleted ? 0.35 : 1);
+      slot.image.setScale(slot.baseScaleX, slot.baseScaleY);
 
-      if (animate && completed && index >= this.previousProgress) {
+      if (animate && isCompleted && !this.previousCompleted.has(slot.productId)) {
         slot.checkBadge.setScale(0.2);
         slot.check.setScale(0.2);
+        slot.image.setScale(slot.baseScaleX * 1.12, slot.baseScaleY * 1.12);
         this.scene.tweens.add({
           targets: [slot.checkBadge, slot.check],
           scaleX: 1,
@@ -165,10 +166,17 @@ export class OrderTicketView {
           duration: 260,
           ease: "Back.Out"
         });
+        this.scene.tweens.add({
+          targets: slot.image,
+          scaleX: slot.baseScaleX,
+          scaleY: slot.baseScaleY,
+          duration: 220,
+          ease: "Back.Out"
+        });
       }
     });
 
-    if (animate && completedCount !== this.previousProgress) {
+    if (animate && completedCount !== this.previousCount) {
       this.scene.tweens.add({
         targets: this.counter,
         scaleX: 1.18,
@@ -178,7 +186,8 @@ export class OrderTicketView {
         ease: "Sine.Out"
       });
     }
-    this.previousProgress = completedCount;
+    this.previousCompleted = completed;
+    this.previousCount = completedCount;
   }
 
   destroy(): void {
@@ -186,19 +195,19 @@ export class OrderTicketView {
     this.container = undefined;
     this.counter = undefined;
     this.slots.length = 0;
+    this.previousCompleted.clear();
   }
 
   private drawSlot(
     card: Phaser.GameObjects.Graphics,
     index: number,
-    completed: boolean,
-    active: boolean
+    completed: boolean
   ): void {
     const { slotSize, itemGap } = this.config.visual;
     const x = -((this.slots.length - 1) * itemGap) / 2 + index * itemGap;
     const y = 27;
     card.clear();
-    card.fillStyle(completed ? 0xdfece2 : active ? 0xfff3c4 : 0xf0ede0, completed ? 0.75 : 0.96);
+    card.fillStyle(completed ? 0xdfece2 : 0xfff3c4, completed ? 0.75 : 0.96);
     card.fillRoundedRect(
       x - slotSize.width / 2,
       y - slotSize.height / 2,
@@ -206,7 +215,7 @@ export class OrderTicketView {
       slotSize.height,
       12
     );
-    card.lineStyle(active ? 4 : 2, active ? this.config.accentColor : 0x9cb2a2, active ? 1 : 0.55);
+    card.lineStyle(2, completed ? 0x9cb2a2 : this.config.accentColor, completed ? 0.55 : 0.9);
     card.strokeRoundedRect(
       x - slotSize.width / 2,
       y - slotSize.height / 2,
