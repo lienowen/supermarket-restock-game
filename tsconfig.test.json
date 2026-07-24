@@ -65,6 +65,7 @@
     "src/game/presentation/context/StarterMarketPresentationContext.ts",
     "src/game/presentation/interactions/CheckoutTargetResolver.ts",
     "src/game/presentation/interactions/RestockTargetResolver.ts",
+    "src/game/presentation/ui/LevelProgressionPreview.ts",
     "src/game-v2/assets/manifest.ts",
     "src/game-v2/domain/restock.ts"
   ]
