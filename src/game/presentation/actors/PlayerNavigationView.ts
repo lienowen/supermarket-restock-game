@@ -47,7 +47,8 @@ export class PlayerNavigationView {
   private walkFrame = 0;
   private moving = false;
   private lastVisualX: number;
-  private lastUpdateAt = Number.NaN;
+  private destinationTween?: Phaser.Tweens.Tween;
+  private activeDestination?: NavigationPoint;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -104,38 +105,27 @@ export class PlayerNavigationView {
       }) as NavigationKeys;
     }
 
-    scene.events.on(Phaser.Scenes.Events.UPDATE, this.handleSceneUpdate, this);
     this.syncVisual(true);
   }
 
   update(deltaMs: number): void {
     if (!this.enabled) return;
-
-    // Parent scenes still forward update for compatibility. The scene event is the
-    // authoritative source; this guard prevents two movement steps in one frame.
-    const frameTime = this.scene.time.now;
-    if (frameTime === this.lastUpdateAt) return;
-    this.lastUpdateAt = frameTime;
-
     const frameDelta = Phaser.Math.Clamp(deltaMs, 0, MAX_MOVEMENT_DELTA_MS);
+
     const horizontal = this.axis(this.keys?.left, this.keys?.a, this.keys?.right, this.keys?.d);
     const vertical = this.axis(this.keys?.up, this.keys?.w, this.keys?.down, this.keys?.s);
     if (horizontal !== 0 || vertical !== 0) {
-      if (!this.moving || this.controller.snapshot().destination) {
-        this.config.onManualNavigation?.();
-      }
-      this.controller.clearDestination();
+      if (!this.moving || this.destinationTween) this.config.onManualNavigation?.();
+      this.cancelDestinationMovement();
       this.setMoving(true);
       if (this.controller.moveDirection(horizontal, vertical, frameDelta)) this.syncVisual();
       this.updateWalkFrame(frameDelta);
       return;
     }
 
-    if (this.controller.snapshot().destination) {
+    if (this.destinationTween) {
       this.setMoving(true);
-      if (this.controller.update(frameDelta)) this.syncVisual();
       this.updateWalkFrame(frameDelta);
-      if (!this.controller.snapshot().destination) this.setMoving(false);
       return;
     }
 
@@ -143,11 +133,16 @@ export class PlayerNavigationView {
   }
 
   snapshot(): PlayerNavigationSnapshot {
-    return this.controller.snapshot();
+    const snapshot = this.controller.snapshot();
+    return Object.freeze({
+      position: snapshot.position,
+      destination: this.activeDestination,
+      moving: Boolean(this.activeDestination)
+    });
   }
 
   position(): NavigationPoint {
-    return this.snapshot().position;
+    return this.controller.snapshot().position;
   }
 
   isNear(point: NavigationPoint, radius: number): boolean {
@@ -155,6 +150,7 @@ export class PlayerNavigationView {
   }
 
   setPosition(point: NavigationPoint): void {
+    this.cancelDestinationMovement();
     this.controller.setPosition(point);
     this.setMoving(false);
     this.syncVisual(true);
@@ -162,16 +158,44 @@ export class PlayerNavigationView {
 
   setDestination(point: NavigationPoint): void {
     if (!this.enabled) return;
+    this.cancelDestinationMovement();
+
     this.controller.setDestination(point);
     const destination = this.controller.snapshot().destination;
     if (!destination) return;
-    if (this.controller.distanceTo(destination) <= 1) {
+    const start = this.controller.snapshot().position;
+    const distance = Math.hypot(destination.x - start.x, destination.y - start.y);
+    if (distance <= 1) {
       this.controller.setPosition(destination);
-      this.setMoving(false);
       this.syncVisual(true);
       return;
     }
+
+    this.activeDestination = Object.freeze({ ...destination });
     this.setMoving(true);
+    const travel = { x: start.x, y: start.y };
+    this.destinationTween = this.scene.tweens.add({
+      targets: travel,
+      x: destination.x,
+      y: destination.y,
+      duration: Math.max(1, (distance / this.config.speed) * 1000),
+      ease: "Linear",
+      onUpdate: () => {
+        this.controller.setPosition(travel);
+        this.syncVisual();
+      },
+      onComplete: () => {
+        this.controller.setPosition(destination);
+        this.activeDestination = undefined;
+        this.destinationTween = undefined;
+        this.setMoving(false);
+        this.syncVisual(true);
+      },
+      onStop: () => {
+        this.activeDestination = undefined;
+        this.destinationTween = undefined;
+      }
+    });
   }
 
   setTexture(assetKey: string): void {
@@ -192,23 +216,26 @@ export class PlayerNavigationView {
   setEnabled(enabled: boolean): void {
     this.enabled = enabled;
     if (!enabled) {
-      this.controller.clearDestination();
+      this.cancelDestinationMovement();
       this.setMoving(false);
     }
   }
 
   destroy(): void {
-    this.scene.events.off(Phaser.Scenes.Events.UPDATE, this.handleSceneUpdate, this);
-    this.controller.clearDestination();
+    this.cancelDestinationMovement();
     this.walkArea.off("pointerdown", this.handleWalkAreaPointerDown, this);
     this.walkArea.destroy();
     this.actor.destroy();
     this.shadow.destroy();
   }
 
-  private readonly handleSceneUpdate = (_time: number, deltaMs: number): void => {
-    this.update(deltaMs);
-  };
+  private cancelDestinationMovement(): void {
+    const tween = this.destinationTween;
+    this.destinationTween = undefined;
+    this.activeDestination = undefined;
+    if (tween?.isPlaying()) tween.stop();
+    this.controller.clearDestination();
+  }
 
   private setMoving(moving: boolean): void {
     if (this.moving === moving) return;
@@ -257,7 +284,7 @@ export class PlayerNavigationView {
   }
 
   private syncVisual(force = false): void {
-    const { position } = this.snapshot();
+    const { position } = this.controller.snapshot();
     const movedX = position.x - this.lastVisualX;
     if (force || Math.abs(movedX) > 0.01) {
       if (movedX < -0.01) this.actor.setFlipX(true);
