@@ -33,6 +33,7 @@ const run = spawnSync(
     "tests/v3-checkout-runtime.test.cjs",
     "tests/v3-shift-runtime.test.cjs",
     "tests/v3-restock-rush.test.cjs",
+    "tests/v3-find-items-challenge.test.cjs",
     "tests/v3-presentation-context.test.cjs",
     "tests/v3-foundation-contracts.test.cjs",
     "tests/v3-standard-market-rules.test.cjs",
