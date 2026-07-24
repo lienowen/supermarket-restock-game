@@ -262,11 +262,11 @@ export class LevelCompleteOverlay {
       ease: "Back.Out"
     });
     scene.tweens.add({
-      targets: [previewEyebrow, previewTitle, previewDetail, progressLabel, ...progressDots, buttonContainer],
+      targets: [previewEyebrow, previewTitle, previewDetail],
       alpha: { from: 0, to: 1 },
       y: "+=8",
-      delay: scene.tweens.stagger(45, { start: 300 }),
-      duration: 260,
+      delay: scene.tweens.stagger(45, { start: 260 }),
+      duration: 240,
       ease: "Sine.Out"
     });
     scene.tweens.add({
