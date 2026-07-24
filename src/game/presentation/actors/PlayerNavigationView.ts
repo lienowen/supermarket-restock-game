@@ -47,7 +47,7 @@ export class PlayerNavigationView {
   private walkFrame = 0;
   private moving = false;
   private lastVisualX: number;
-  private lastVisualY: number;
+  private lastUpdateAt = Number.NaN;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -60,10 +60,7 @@ export class PlayerNavigationView {
     });
     this.currentPoseKey = config.assetKey;
     this.lastVisualX = config.start.x;
-    this.lastVisualY = config.start.y;
 
-    // One pointer event should have exactly one owner. Higher-depth gameplay targets
-    // and HUD buttons win over the floor instead of also issuing a walk command.
     scene.input.topOnly = true;
     this.walkArea = scene.add.rectangle(
       config.bounds.x + config.bounds.width / 2,
@@ -107,13 +104,20 @@ export class PlayerNavigationView {
       }) as NavigationKeys;
     }
 
+    scene.events.on(Phaser.Scenes.Events.UPDATE, this.handleSceneUpdate, this);
     this.syncVisual(true);
   }
 
   update(deltaMs: number): void {
     if (!this.enabled) return;
-    const frameDelta = Phaser.Math.Clamp(deltaMs, 0, MAX_MOVEMENT_DELTA_MS);
 
+    // Parent scenes still forward update for compatibility. The scene event is the
+    // authoritative source; this guard prevents two movement steps in one frame.
+    const frameTime = this.scene.time.now;
+    if (frameTime === this.lastUpdateAt) return;
+    this.lastUpdateAt = frameTime;
+
+    const frameDelta = Phaser.Math.Clamp(deltaMs, 0, MAX_MOVEMENT_DELTA_MS);
     const horizontal = this.axis(this.keys?.left, this.keys?.a, this.keys?.right, this.keys?.d);
     const vertical = this.axis(this.keys?.up, this.keys?.w, this.keys?.down, this.keys?.s);
     if (horizontal !== 0 || vertical !== 0) {
@@ -122,15 +126,12 @@ export class PlayerNavigationView {
       }
       this.controller.clearDestination();
       this.setMoving(true);
-      if (this.controller.moveDirection(horizontal, vertical, frameDelta)) {
-        this.syncVisual();
-      }
+      if (this.controller.moveDirection(horizontal, vertical, frameDelta)) this.syncVisual();
       this.updateWalkFrame(frameDelta);
       return;
     }
 
-    const hadDestination = Boolean(this.controller.snapshot().destination);
-    if (hadDestination) {
+    if (this.controller.snapshot().destination) {
       this.setMoving(true);
       if (this.controller.update(frameDelta)) this.syncVisual();
       this.updateWalkFrame(frameDelta);
@@ -197,12 +198,17 @@ export class PlayerNavigationView {
   }
 
   destroy(): void {
+    this.scene.events.off(Phaser.Scenes.Events.UPDATE, this.handleSceneUpdate, this);
     this.controller.clearDestination();
     this.walkArea.off("pointerdown", this.handleWalkAreaPointerDown, this);
     this.walkArea.destroy();
     this.actor.destroy();
     this.shadow.destroy();
   }
+
+  private readonly handleSceneUpdate = (_time: number, deltaMs: number): void => {
+    this.update(deltaMs);
+  };
 
   private setMoving(moving: boolean): void {
     if (this.moving === moving) return;
@@ -258,7 +264,6 @@ export class PlayerNavigationView {
       else if (movedX > 0.01) this.actor.setFlipX(false);
     }
     this.lastVisualX = position.x;
-    this.lastVisualY = position.y;
 
     const depth = (this.config.baseDepth ?? 24) + position.y / 1000;
     this.actor.setPosition(position.x, position.y).setDepth(depth);
