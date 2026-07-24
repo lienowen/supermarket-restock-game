@@ -35,7 +35,7 @@ test("Player navigation rules remain independent from Phaser and mission modes",
   assert.equal(source.includes("Phaser."), false);
 });
 
-test("Pointer input has one owner and destination movement stays in the Phaser loop", () => {
+test("Pointer input has one owner and click movement uses the Phaser clock", () => {
   const source = read("src/game/presentation/actors/PlayerNavigationView.ts");
   assert.equal(source.includes("scene.input.topOnly = true"), true);
   assert.equal(source.includes('window.addEventListener("mousedown"'), false);
@@ -44,7 +44,9 @@ test("Pointer input has one owner and destination movement stays in the Phaser l
   assert.equal(source.includes("handleWalkAreaPointerDown"), true);
   assert.equal(source.includes("requestAnimationFrame"), false);
   assert.equal(source.includes("performance.now"), false);
-  assert.equal(source.includes("this.controller.update(frameDelta)"), true);
+  assert.equal(source.includes("this.scene.tweens.add"), true);
+  assert.equal(source.includes("destinationTween"), true);
+  assert.equal(source.includes("this.controller.setPosition(travel)"), true);
   assert.equal(source.includes("pointer.worldX"), true);
 });
 
