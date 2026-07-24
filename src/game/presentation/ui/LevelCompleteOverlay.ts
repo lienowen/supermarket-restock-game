@@ -46,6 +46,7 @@ export class LevelCompleteOverlay {
       activeLevelId,
       MAIN_LEVEL_CAMPAIGN_RUNTIME.levels
     );
+    const eyebrowWidth = preview.eyebrow.length > 10 ? 196 : 128;
 
     const shade = scene.add.rectangle(
       0,
@@ -139,9 +140,9 @@ export class LevelCompleteOverlay {
     nextPanel.lineStyle(3, 0x56894d, 0.72);
     nextPanel.strokeRoundedRect(-330, -4, 660, 136, 24);
     nextPanel.fillStyle(config.accentColor, 0.12);
-    nextPanel.fillRoundedRect(-318, 8, 128, 34, 13);
+    nextPanel.fillRoundedRect(-318, 8, eyebrowWidth, 34, 13);
 
-    const nextEyebrow = scene.add.text(-254, 25, preview.eyebrow, {
+    const nextEyebrow = scene.add.text(-318 + eyebrowWidth / 2, 25, preview.eyebrow, {
       fontFamily: "Arial",
       fontSize: "12px",
       color: "#ffe59b",
