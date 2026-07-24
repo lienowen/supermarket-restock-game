@@ -48,11 +48,11 @@ test("Pointer input has one owner and destination movement stays in the Phaser l
   assert.equal(source.includes("pointer.worldX"), true);
 });
 
-test("High-DPI rendering is explicit and capped for browser performance", () => {
+test("Renderer stays antialiased and requests the high-performance GPU path", () => {
   const source = read("src/game/infrastructure/phaser/createPhaserGame.ts");
-  assert.equal(source.includes("window.devicePixelRatio"), true);
-  assert.equal(source.includes("resolution: renderResolution()"), true);
-  assert.equal(source.includes("Math.min(2"), true);
+  assert.equal(source.includes("antialias: true"), true);
+  assert.equal(source.includes("pixelArt: false"), true);
+  assert.equal(source.includes('powerPreference: "high-performance"'), true);
 });
 
 test("Every mode builds the store from layered assets instead of a stretched backdrop", () => {
