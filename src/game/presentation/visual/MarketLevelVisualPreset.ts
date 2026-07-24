@@ -240,11 +240,11 @@ export const FIND_ITEMS_VISUAL_PRESET: FindItemsLevelVisualPreset = Object.freez
     size: Object.freeze({ width: 245, height: 165 })
   }),
   orderTicket: Object.freeze({
-    centre: Object.freeze({ x: 1280, y: 255 }),
-    size: Object.freeze({ width: 440, height: 116 }),
-    slotSize: Object.freeze({ width: 116, height: 60 }),
-    iconMaxSize: Object.freeze({ width: 42, height: 48 }),
-    itemGap: 128
+    centre: Object.freeze({ x: 1270, y: 260 }),
+    size: Object.freeze({ width: 460, height: 145 }),
+    slotSize: Object.freeze({ width: 126, height: 82 }),
+    iconMaxSize: Object.freeze({ width: 62, height: 64 }),
+    itemGap: 138
   }),
   itemSizes: Object.freeze({
     "milk-bottle": Object.freeze({ width: 90, height: 112 }),
