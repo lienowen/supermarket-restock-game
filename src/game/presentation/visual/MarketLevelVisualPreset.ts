@@ -207,17 +207,17 @@ export const FIND_ITEMS_VISUAL_PRESET: FindItemsLevelVisualPreset = Object.freez
     vignetteAlpha: 0.16
   }),
   fixture: Object.freeze({
-    position: Object.freeze({ x: 1160, y: 820 }),
-    size: Object.freeze({ width: 1000, height: 900 })
+    position: Object.freeze({ x: 1165, y: 760 }),
+    size: Object.freeze({ width: 820, height: 760 })
   }),
   basket: Object.freeze({
-    position: Object.freeze({ x: 850, y: 735 }),
-    size: Object.freeze({ width: 350, height: 240 })
+    position: Object.freeze({ x: 875, y: 750 }),
+    size: Object.freeze({ width: 245, height: 165 })
   }),
   itemSizes: Object.freeze({
-    "milk-bottle": Object.freeze({ width: 200, height: 230 }),
-    apple: Object.freeze({ width: 160, height: 180 }),
-    "cereal-box": Object.freeze({ width: 160, height: 222 })
+    "milk-bottle": Object.freeze({ width: 90, height: 112 }),
+    apple: Object.freeze({ width: 78, height: 84 }),
+    "cereal-box": Object.freeze({ width: 92, height: 126 })
   })
 });
 
