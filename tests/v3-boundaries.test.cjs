@@ -35,13 +35,34 @@ test("Player navigation rules remain independent from Phaser and mission modes",
   assert.equal(source.includes("Phaser."), false);
 });
 
-test("Pointer input has one owner instead of duplicate window and Phaser handlers", () => {
+test("Pointer input has one owner and destination movement stays in the Phaser loop", () => {
   const source = read("src/game/presentation/actors/PlayerNavigationView.ts");
   assert.equal(source.includes("scene.input.topOnly = true"), true);
   assert.equal(source.includes('window.addEventListener("mousedown"'), false);
   assert.equal(source.includes('window.addEventListener("click"'), false);
   assert.equal(source.includes('window.addEventListener("touchstart"'), false);
   assert.equal(source.includes("handleWalkAreaPointerDown"), true);
+  assert.equal(source.includes("requestAnimationFrame"), false);
+  assert.equal(source.includes("performance.now"), false);
+  assert.equal(source.includes("this.controller.update(frameDelta)"), true);
+  assert.equal(source.includes("pointer.worldX"), true);
+});
+
+test("High-DPI rendering is explicit and capped for browser performance", () => {
+  const source = read("src/game/infrastructure/phaser/createPhaserGame.ts");
+  assert.equal(source.includes("window.devicePixelRatio"), true);
+  assert.equal(source.includes("resolution: renderResolution()"), true);
+  assert.equal(source.includes("Math.min(2"), true);
+});
+
+test("Every mode builds the store from layered assets instead of a stretched backdrop", () => {
+  const source = read("src/game/presentation/world/StarterMarketEnvironmentView.ts");
+  assert.equal(source.includes("restock-aisle-v2-background"), false);
+  assert.equal(source.includes("createRestockAisle"), false);
+  assert.equal(source.includes("this.createBase()"), true);
+  assert.equal(source.includes("this.createFloor()"), true);
+  assert.equal(source.includes("fixture-backroom-rack-a"), true);
+  assert.equal(source.includes("fixture-produce-display-a"), true);
 });
 
 test("Restock actor presentation composes the shared navigation view", () => {
