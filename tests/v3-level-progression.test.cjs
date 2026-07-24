@@ -48,14 +48,18 @@ test("Completion previews promise the actual configured next task", () => {
     eyebrow: "UP NEXT · LEVEL 3",
     title: "CHECKOUT RUSH",
     detail: "CHECKOUT RUSH · SERVE THE CUSTOMER QUEUE",
-    isCampaignComplete: false
+    isCampaignComplete: false,
+    currentLevelNumber: 2,
+    totalLevels: 5
   });
 
   assert.deepEqual(resolveCampaignProgressionPreview("starter-level-004"), {
     eyebrow: "UP NEXT · LEVEL 5",
     title: "ORDER HUNT",
     detail: "ORDER HUNT · FIND ITEMS FOR THE ORDER",
-    isCampaignComplete: false
+    isCampaignComplete: false,
+    currentLevelNumber: 4,
+    totalLevels: 5
   });
 });
 
@@ -64,7 +68,9 @@ test("The final completion preview closes the campaign loop", () => {
     eyebrow: "CAMPAIGN COMPLETE",
     title: "THE STORE IS RUNNING",
     detail: "PLAY AGAIN TO BUILD A FASTER, CLEANER SHIFT",
-    isCampaignComplete: true
+    isCampaignComplete: true,
+    currentLevelNumber: 5,
+    totalLevels: 5
   });
 });
 
