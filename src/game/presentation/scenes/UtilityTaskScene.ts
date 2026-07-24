@@ -16,6 +16,7 @@ import type {
 } from "../context/StarterMarketPresentationContext";
 import { playActionFeedback } from "../effects/ActionFeedback";
 import { playRestockCompletionFeedback } from "../effects/RestockCompletionFeedback";
+import { OrderTicketView } from "../findItems/OrderTicketView";
 import { InteractionGate } from "../interactions/InteractionGate";
 import { InteractionTargetView } from "../interactions/InteractionTargetView";
 import { LevelCompleteOverlay } from "../ui/LevelCompleteOverlay";
@@ -45,6 +46,7 @@ export class UtilityTaskScene extends Phaser.Scene {
   private target?: InteractionTargetView;
   private hud?: ShiftHud;
   private cleaningView?: CleaningTaskView;
+  private orderTicket?: OrderTicketView;
   private completionOverlay?: LevelCompleteOverlay;
   private readonly taskObjects: Phaser.GameObjects.GameObject[] = [];
   private readonly progressObjects: UtilityProgressObject[] = [];
@@ -202,6 +204,16 @@ export class UtilityTaskScene extends Phaser.Scene {
         .setName(`find-item-${target.productId}`);
       this.progressObjects.push(item);
     });
+
+    this.orderTicket = new OrderTicketView(this, {
+      productIds: context.runtime.itemTargets.map((target) => target.productId),
+      itemAssetKeys: context.levelAssets.items.map((asset) => asset.key),
+      itemSizes: visual.itemSizes,
+      visual: visual.orderTicket,
+      panelColor: context.palette.hud,
+      accentColor: context.palette.gold
+    });
+    this.orderTicket.create();
   }
 
   private performCurrentAction(): void {
@@ -251,6 +263,7 @@ export class UtilityTaskScene extends Phaser.Scene {
       this.player?.setTexture(snapshot.step === "complete"
         ? context.levelAssets.worker.key
         : context.levelAssets.workerThinking.key);
+      this.orderTicket?.sync(snapshot.progress);
 
       if (snapshot.progress > this.previousProgress) {
         const completedObject = this.progressObjects[snapshot.progress - 1];
@@ -391,6 +404,7 @@ export class UtilityTaskScene extends Phaser.Scene {
     this.taskObjects.forEach((object) => object.destroy());
     if (this.cleaningView) this.cleaningView.destroy();
     else this.progressObjects.forEach((object) => object.destroy());
+    this.orderTicket?.destroy();
     this.completionOverlay?.destroy();
     this.player?.destroy();
     this.target?.destroy();

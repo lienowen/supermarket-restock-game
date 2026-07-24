@@ -100,6 +100,13 @@ export interface FindItemsLevelVisualPreset extends BaseMarketLevelVisualPreset 
   readonly mode: "find-items";
   readonly fixture: { readonly position: VisualPoint; readonly size: VisualSize };
   readonly basket: { readonly position: VisualPoint; readonly size: VisualSize };
+  readonly orderTicket: {
+    readonly centre: VisualPoint;
+    readonly size: VisualSize;
+    readonly slotSize: VisualSize;
+    readonly iconMaxSize: VisualSize;
+    readonly itemGap: number;
+  };
   readonly itemSizes: Readonly<Record<string, VisualSize>>;
 }
 
@@ -231,6 +238,13 @@ export const FIND_ITEMS_VISUAL_PRESET: FindItemsLevelVisualPreset = Object.freez
   basket: Object.freeze({
     position: Object.freeze({ x: 875, y: 750 }),
     size: Object.freeze({ width: 245, height: 165 })
+  }),
+  orderTicket: Object.freeze({
+    centre: Object.freeze({ x: 1270, y: 260 }),
+    size: Object.freeze({ width: 460, height: 145 }),
+    slotSize: Object.freeze({ width: 126, height: 82 }),
+    iconMaxSize: Object.freeze({ width: 62, height: 64 }),
+    itemGap: 138
   }),
   itemSizes: Object.freeze({
     "milk-bottle": Object.freeze({ width: 90, height: 112 }),

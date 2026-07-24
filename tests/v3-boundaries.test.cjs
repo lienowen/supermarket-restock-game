@@ -97,6 +97,18 @@ test("Utility scene delegates phase-driven cleaning focus to a reusable view", (
   assert.equal(view.includes("starter-level-"), false);
 });
 
+test("Utility scene delegates the order summary to a reusable view", () => {
+  const source = read("src/game/presentation/scenes/UtilityTaskScene.ts");
+  const view = read("src/game/presentation/findItems/OrderTicketView.ts");
+
+  assert.equal(source.includes("new OrderTicketView"), true);
+  assert.equal(source.includes("orderTicket?.sync"), true);
+  assert.equal(view.includes("ORDER LIST"), true);
+  assert.equal(view.includes("productIds"), true);
+  assert.equal(view.includes("itemAssetKeys"), true);
+  assert.equal(view.includes("starter-level-"), false);
+});
+
 test("Phaser bootstrap delegates mode selection to the gameplay scene registry", () => {
   const source = read("src/game/infrastructure/phaser/createPhaserGame.ts");
   assert.equal(source.includes("createGameplayScene"), true);
