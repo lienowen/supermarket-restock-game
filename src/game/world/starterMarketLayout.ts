@@ -90,7 +90,7 @@ export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
       id: "checkout-service-point",
       targetId: "checkout-a",
       actionGroup: "checkout",
-      position: { x: 1080, y: 735 },
+      position: { x: 1035, y: 690 },
       radius: 145
     }
   ],
