@@ -109,6 +109,18 @@ test("Utility scene delegates the order summary to a reusable view", () => {
   assert.equal(view.includes("starter-level-"), false);
 });
 
+test("Order hunt is driven by player shelf choices rather than a revealed answer", () => {
+  const source = read("src/game/presentation/scenes/UtilityTaskScene.ts");
+  const challenge = read("src/game/application/FindItemsChallengeController.ts");
+
+  assert.equal(source.includes("remainingProductIds.includes(productId)"), true);
+  assert.equal(source.includes("expectedProduct"), false);
+  assert.equal(source.includes("this.target?.sync(undefined, false)"), true);
+  assert.equal(source.includes("new FindItemsCountdownView"), true);
+  assert.equal(challenge.includes("mistakePenaltySeconds"), true);
+  assert.equal(challenge.includes('status = "failed"'), true);
+});
+
 test("Phaser bootstrap delegates mode selection to the gameplay scene registry", () => {
   const source = read("src/game/infrastructure/phaser/createPhaserGame.ts");
   assert.equal(source.includes("createGameplayScene"), true);
