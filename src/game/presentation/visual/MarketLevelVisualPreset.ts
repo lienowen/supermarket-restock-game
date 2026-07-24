@@ -83,7 +83,11 @@ export interface CleanLevelVisualPreset extends BaseMarketLevelVisualPreset {
   readonly fixture: { readonly position: VisualPoint; readonly size: VisualSize };
   readonly cartSize: VisualSize;
   readonly signSize: VisualSize;
+  readonly signOffset: VisualPoint;
   readonly spillBaseSize: VisualSize;
+  readonly spillColor: number;
+  readonly spillEdgeColor: number;
+  readonly spillHighlightColor: number;
 }
 
 export interface FindItemsLevelVisualPreset extends BaseMarketLevelVisualPreset {
@@ -187,12 +191,16 @@ export const CLEAN_VISUAL_PRESET: CleanLevelVisualPreset = Object.freeze({
     vignetteAlpha: 0.16
   }),
   fixture: Object.freeze({
-    position: Object.freeze({ x: 1325, y: 820 }),
-    size: Object.freeze({ width: 900, height: 900 })
+    position: Object.freeze({ x: 1325, y: 800 }),
+    size: Object.freeze({ width: 720, height: 720 })
   }),
-  cartSize: Object.freeze({ width: 500, height: 500 }),
-  signSize: Object.freeze({ width: 380, height: 375 }),
-  spillBaseSize: Object.freeze({ width: 130, height: 58 })
+  cartSize: Object.freeze({ width: 330, height: 330 }),
+  signSize: Object.freeze({ width: 210, height: 205 }),
+  signOffset: Object.freeze({ x: -125, y: 12 }),
+  spillBaseSize: Object.freeze({ width: 108, height: 46 }),
+  spillColor: 0x6f98a4,
+  spillEdgeColor: 0xcce4e9,
+  spillHighlightColor: 0xf4ffff
 });
 
 export const FIND_ITEMS_VISUAL_PRESET: FindItemsLevelVisualPreset = Object.freeze({

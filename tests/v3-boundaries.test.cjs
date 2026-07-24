@@ -82,6 +82,17 @@ test("Checkout scene composes checkout and shared navigation modules without res
   assert.equal(source.includes("RestockSceneController"), false);
 });
 
+test("Utility scene delegates the cleaning station and spill drawing to a reusable view", () => {
+  const source = read("src/game/presentation/scenes/UtilityTaskScene.ts");
+  const view = read("src/game/presentation/cleaning/CleaningTaskView.ts");
+
+  assert.equal(source.includes("new CleaningTaskView"), true);
+  assert.equal(source.includes("clean-spill"), false);
+  assert.equal(view.includes("clean-spill"), true);
+  assert.equal(view.includes("spotPositions"), true);
+  assert.equal(view.includes("starter-level-"), false);
+});
+
 test("Phaser bootstrap delegates mode selection to the gameplay scene registry", () => {
   const source = read("src/game/infrastructure/phaser/createPhaserGame.ts");
   assert.equal(source.includes("createGameplayScene"), true);
