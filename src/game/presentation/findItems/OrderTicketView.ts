@@ -78,7 +78,7 @@ export class OrderTicketView {
 
     const objects: Phaser.GameObjects.GameObject[] = [shadow, panel, title, this.counter];
     const startX = -((config.productIds.length - 1) * itemGap) / 2;
-    const slotY = 22;
+    const slotY = 27;
 
     config.productIds.forEach((productId, index) => {
       const assetKey = config.itemAssetKeys[index];
@@ -89,31 +89,31 @@ export class OrderTicketView {
       const x = startX + index * itemGap;
       const card = scene.add.graphics();
       const imageSize = this.fitSize(sourceSize, config.visual.iconMaxSize);
-      const image = scene.add.image(x - slotSize.width * 0.24, slotY + 3, assetKey)
+      const image = scene.add.image(x, slotY - 10, assetKey)
         .setDisplaySize(imageSize.width, imageSize.height);
       const label = scene.add.text(
-        x + slotSize.width * 0.1,
-        slotY + 2,
+        x,
+        slotY + slotSize.height / 2 - 13,
         this.productLabel(productId),
         {
           fontFamily: "Arial",
-          fontSize: "10px",
+          fontSize: "11px",
           color: "#53675b",
           fontStyle: "bold",
           align: "center",
-          wordWrap: { width: slotSize.width * 0.5 }
+          wordWrap: { width: slotSize.width - 18 }
         }
       ).setOrigin(0.5);
       const checkBadge = scene.add.circle(
-        x + slotSize.width / 2 - 10,
-        slotY - slotSize.height / 2 + 10,
-        11,
+        x + slotSize.width / 2 - 11,
+        slotY - slotSize.height / 2 + 11,
+        12,
         0x42a866,
         1
       ).setStrokeStyle(2, 0xffffff, 0.88).setVisible(false);
       const check = scene.add.text(checkBadge.x, checkBadge.y - 1, "✓", {
         fontFamily: "Arial",
-        fontSize: "15px",
+        fontSize: "16px",
         color: "#ffffff",
         fontStyle: "bold"
       }).setOrigin(0.5).setVisible(false);
@@ -151,8 +151,8 @@ export class OrderTicketView {
       slot.label.setColor(completed ? "#5d7867" : active ? "#234f35" : "#859288");
       slot.image.setAlpha(completed ? 0.35 : active ? 1 : 0.5);
       slot.image.setScale(
-        slot.baseScaleX * (active ? 1.08 : 1),
-        slot.baseScaleY * (active ? 1.08 : 1)
+        slot.baseScaleX * (active ? 1.05 : 1),
+        slot.baseScaleY * (active ? 1.05 : 1)
       );
 
       if (animate && completed && index >= this.previousProgress) {
@@ -196,7 +196,7 @@ export class OrderTicketView {
   ): void {
     const { slotSize, itemGap } = this.config.visual;
     const x = -((this.slots.length - 1) * itemGap) / 2 + index * itemGap;
-    const y = 22;
+    const y = 27;
     card.clear();
     card.fillStyle(completed ? 0xdfece2 : active ? 0xfff3c4 : 0xf0ede0, completed ? 0.75 : 0.96);
     card.fillRoundedRect(
