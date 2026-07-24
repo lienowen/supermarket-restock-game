@@ -306,8 +306,7 @@ export class UtilityTaskScene extends Phaser.Scene {
     this.pendingFindProductId = undefined;
     const currentPosition = this.player.position();
     this.player.setDestination(currentPosition);
-    const expectedProduct = this.context.runtime.products[this.controller.snapshot().progress]?.id;
-    if (productId !== expectedProduct) {
+    if (!challenge.remainingProductIds.includes(productId)) {
       this.recordFindMistake("WRONG ITEM");
       return;
     }
@@ -452,7 +451,7 @@ export class UtilityTaskScene extends Phaser.Scene {
       this.player?.setTexture(snapshot.step === "complete"
         ? context.levelAssets.worker.key
         : context.levelAssets.workerThinking.key);
-      this.orderTicket?.sync(snapshot.progress);
+      this.orderTicket?.sync(this.findChallenge?.snapshot().collectedProductIds ?? []);
     }
 
     this.syncTarget(snapshot);
