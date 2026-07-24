@@ -11,13 +11,21 @@ export interface CleaningTaskViewConfig {
   readonly visual: CleanLevelVisualPreset;
 }
 
+export interface CleaningTaskViewState {
+  readonly phase: "tools" | "spills" | "complete";
+  readonly completedSpills: number;
+}
+
 /**
  * Reusable cleaning presentation. Gameplay owns which spill is active; this
  * view owns how the supplies station and floor mess read to the player.
  */
 export class CleaningTaskView {
   private readonly staticObjects: Phaser.GameObjects.GameObject[] = [];
+  private readonly toolObjects: Phaser.GameObjects.Image[] = [];
   private readonly spills: Phaser.GameObjects.Container[] = [];
+  private previousPhase: CleaningTaskViewState["phase"] = "tools";
+  private previousCompletedSpills = 0;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -59,16 +67,131 @@ export class CleaningTaskView {
       .setDepth(20)
       .setName("wet-floor-sign-tool");
     this.staticObjects.push(fixture, cart, sign);
+    this.toolObjects.push(cart, sign);
 
     config.spotPositions.forEach((point, index) => {
       this.spills.push(this.createSpill(point, index));
     });
+    this.showToolsPhase(false);
     return Object.freeze([...this.spills]);
+  }
+
+  sync(state: CleaningTaskViewState): void {
+    if (state.phase === "tools") {
+      this.showToolsPhase(this.previousPhase !== "tools");
+    } else if (state.phase === "spills") {
+      this.showSpillPhase(
+        state.completedSpills,
+        this.previousPhase !== "spills" || state.completedSpills !== this.previousCompletedSpills
+      );
+    } else {
+      this.showCompletePhase();
+    }
+
+    this.previousPhase = state.phase;
+    this.previousCompletedSpills = state.completedSpills;
   }
 
   destroy(): void {
     this.staticObjects.splice(0).forEach((object) => object.destroy());
+    this.toolObjects.length = 0;
     this.spills.splice(0).forEach((spill) => spill.destroy(true));
+  }
+
+  private showToolsPhase(animate: boolean): void {
+    this.toolObjects.forEach((tool) => {
+      tool.setVisible(true);
+      if (!animate) {
+        tool.setAlpha(1).setScale(1);
+        return;
+      }
+      this.scene.tweens.killTweensOf(tool);
+      this.scene.tweens.add({
+        targets: tool,
+        alpha: 1,
+        scaleX: 1,
+        scaleY: 1,
+        duration: 220,
+        ease: "Sine.Out"
+      });
+    });
+    this.spills.forEach((spill) => {
+      this.scene.tweens.killTweensOf(spill);
+      spill.setVisible(false).setAlpha(0).setScale(0.82);
+    });
+  }
+
+  private showSpillPhase(completedSpills: number, animate: boolean): void {
+    const { visual } = this.config;
+    this.toolObjects.forEach((tool) => {
+      this.scene.tweens.killTweensOf(tool);
+      if (!animate) {
+        tool.setAlpha(visual.collectedToolsAlpha);
+        return;
+      }
+      this.scene.tweens.add({
+        targets: tool,
+        alpha: visual.collectedToolsAlpha,
+        duration: 260,
+        ease: "Sine.Out"
+      });
+    });
+
+    this.spills.forEach((spill, index) => {
+      this.scene.tweens.killTweensOf(spill);
+      if (index < completedSpills) {
+        if (animate && index >= this.previousCompletedSpills) {
+          this.scene.tweens.add({
+            targets: spill,
+            alpha: 0,
+            scaleX: 0.4,
+            scaleY: 0.4,
+            duration: 360,
+            ease: "Back.In",
+            onComplete: () => spill.setVisible(false)
+          });
+        } else {
+          spill.setVisible(false).setAlpha(0).setScale(0.4);
+        }
+        return;
+      }
+
+      const active = index === completedSpills;
+      const targetAlpha = active ? visual.activeSpillAlpha : visual.inactiveSpillAlpha;
+      const targetScale = active ? 1.06 : 1;
+      spill.setVisible(true);
+
+      if (!animate) {
+        spill.setAlpha(targetAlpha).setScale(targetScale);
+        return;
+      }
+
+      const enteringSpillPhase = this.previousPhase !== "spills";
+      if (enteringSpillPhase) {
+        spill.setAlpha(0).setScale(0.82);
+      }
+      this.scene.tweens.add({
+        targets: spill,
+        alpha: targetAlpha,
+        scaleX: targetScale,
+        scaleY: targetScale,
+        duration: 260,
+        delay: enteringSpillPhase ? Math.max(0, index - completedSpills) * 65 : 0,
+        ease: active ? "Back.Out" : "Sine.Out"
+      });
+    });
+  }
+
+  private showCompletePhase(): void {
+    const { visual } = this.config;
+    this.toolObjects.forEach((tool) => {
+      this.scene.tweens.killTweensOf(tool);
+      tool.setAlpha(visual.collectedToolsAlpha);
+    });
+    this.spills.forEach((spill) => {
+      this.scene.tweens.killTweensOf(spill);
+      spill.setVisible(false).setAlpha(0);
+    });
   }
 
   private createSpill(
@@ -130,6 +253,9 @@ export class CleaningTaskView {
     ])
       .setDepth(9)
       .setAngle([-5, 4, -2, 6][index % 4] ?? 0)
+      .setVisible(false)
+      .setAlpha(0)
+      .setScale(0.82)
       .setName(`clean-spill-${index + 1}`);
   }
 }

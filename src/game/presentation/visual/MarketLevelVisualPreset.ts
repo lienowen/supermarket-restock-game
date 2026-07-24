@@ -84,7 +84,12 @@ export interface CleanLevelVisualPreset extends BaseMarketLevelVisualPreset {
   readonly cartSize: VisualSize;
   readonly signSize: VisualSize;
   readonly signOffset: VisualPoint;
+  readonly toolsTargetSize: VisualSize;
+  readonly collectedToolsAlpha: number;
   readonly spillBaseSize: VisualSize;
+  readonly spillTargetSize: VisualSize;
+  readonly inactiveSpillAlpha: number;
+  readonly activeSpillAlpha: number;
   readonly spillColor: number;
   readonly spillEdgeColor: number;
   readonly spillHighlightColor: number;
@@ -197,7 +202,12 @@ export const CLEAN_VISUAL_PRESET: CleanLevelVisualPreset = Object.freeze({
   cartSize: Object.freeze({ width: 330, height: 330 }),
   signSize: Object.freeze({ width: 210, height: 205 }),
   signOffset: Object.freeze({ x: -125, y: 12 }),
+  toolsTargetSize: Object.freeze({ width: 330, height: 245 }),
+  collectedToolsAlpha: 0.24,
   spillBaseSize: Object.freeze({ width: 108, height: 46 }),
+  spillTargetSize: Object.freeze({ width: 150, height: 82 }),
+  inactiveSpillAlpha: 0.24,
+  activeSpillAlpha: 0.72,
   spillColor: 0x6f98a4,
   spillEdgeColor: 0xcce4e9,
   spillHighlightColor: 0xf4ffff
