@@ -60,17 +60,11 @@ export interface CheckoutLevelVisualPreset extends BaseMarketLevelVisualPreset {
     readonly servedExitOffset: VisualPoint;
   };
   readonly queue: {
-    readonly customerSize: VisualSize;
-    readonly columns: number;
-    readonly columnGap: number;
-    readonly rowGap: number;
-    readonly rowDriftX: number;
-    readonly alternatingYOffset: number;
-    readonly baseScale: number;
-    readonly rowScaleStep: number;
-    readonly columnScaleStep: number;
-    readonly minimumScale: number;
-    readonly visibleCount: number;
+    readonly panelOffset: VisualPoint;
+    readonly panelSize: VisualSize;
+    readonly basketSize: VisualSize;
+    readonly basketGap: number;
+    readonly visibleBasketCount: number;
   };
   readonly sign: {
     readonly centre: VisualPoint;
@@ -158,7 +152,7 @@ export const CHECKOUT_VISUAL_PRESET: CheckoutLevelVisualPreset = Object.freeze({
   id: "checkout-standard-v1",
   mode: "checkout",
   actor: Object.freeze({
-    idleSize: Object.freeze({ width: 300, height: 315 }),
+    idleSize: Object.freeze({ width: 270, height: 285 }),
     shadowOffset: SHARED_ACTOR.shadowOffset
   }),
   environment: Object.freeze({
@@ -168,29 +162,23 @@ export const CHECKOUT_VISUAL_PRESET: CheckoutLevelVisualPreset = Object.freeze({
     inactiveWashAlpha: 0,
     vignetteAlpha: 0.06
   }),
-  workerStartOffset: Object.freeze({ x: -145, y: -8 }),
+  workerStartOffset: Object.freeze({ x: -250, y: 0 }),
   station: Object.freeze({
     counterOffsetY: 12,
-    counterSize: Object.freeze({ width: 410, height: 355 }),
-    shadowSize: Object.freeze({ width: 285, height: 42 }),
-    registerOffset: Object.freeze({ x: 44, y: -72 }),
-    laneLightOffset: Object.freeze({ x: -70, y: -60 }),
-    scanBeamOffset: Object.freeze({ x: -38, y: -34 }),
-    scanBeamSize: Object.freeze({ width: 74, height: 6 }),
-    servedExitOffset: Object.freeze({ x: 150, y: -12 })
+    counterSize: Object.freeze({ width: 390, height: 340 }),
+    shadowSize: Object.freeze({ width: 275, height: 40 }),
+    registerOffset: Object.freeze({ x: 42, y: -69 }),
+    laneLightOffset: Object.freeze({ x: -66, y: -57 }),
+    scanBeamOffset: Object.freeze({ x: -36, y: -32 }),
+    scanBeamSize: Object.freeze({ width: 70, height: 6 }),
+    servedExitOffset: Object.freeze({ x: 140, y: -10 })
   }),
   queue: Object.freeze({
-    customerSize: Object.freeze({ width: 300, height: 330 }),
-    columns: 6,
-    columnGap: -132,
-    rowGap: 0,
-    rowDriftX: 0,
-    alternatingYOffset: 8,
-    baseScale: 1,
-    rowScaleStep: 0,
-    columnScaleStep: 0.045,
-    minimumScale: 0.78,
-    visibleCount: 1
+    panelOffset: Object.freeze({ x: -12, y: -154 }),
+    panelSize: Object.freeze({ width: 220, height: 86 }),
+    basketSize: Object.freeze({ width: 54, height: 42 }),
+    basketGap: 58,
+    visibleBasketCount: 3
   }),
   sign: Object.freeze({
     centre: Object.freeze({ x: 1110, y: 170 }),
