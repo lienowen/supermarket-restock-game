@@ -67,6 +67,11 @@ export class CheckoutMarketScene extends Phaser.Scene {
   create(): void {
     const context = this.context;
     const visual = this.visualPreset;
+    const basketAsset = context.levelAssets.equipment.find(
+      (asset) => asset.key === "equipment-shopping-basket"
+    );
+    if (!basketAsset) throw new Error("Checkout scene requires the shopping basket asset");
+
     document.body.dataset.gameScene = context.scene.datasetName;
     document.body.dataset.gameArchitecture = context.scene.architecture;
     document.body.dataset.activeShift = context.runtime.shift.id;
@@ -80,7 +85,7 @@ export class CheckoutMarketScene extends Phaser.Scene {
       checkoutPosition: context.world.checkout,
       queueStart: context.world.customerQueueStart,
       checkoutAssetKey: context.levelAssets.fixture.key,
-      customerAssetKeys: context.levelAssets.customers.map((asset) => asset.key),
+      basketAssetKey: basketAsset.key,
       customerCount: context.runtime.customerCount,
       scanDurationMs: context.campaignLevel.level.tuning.scanDurationMs,
       queueAdvanceDurationMs: context.campaignLevel.level.tuning.queueAdvanceDurationMs,
@@ -200,7 +205,7 @@ export class CheckoutMarketScene extends Phaser.Scene {
         step: snapshot.step,
         stockedRows: snapshot.customersServed,
         totalRows: snapshot.totalCustomers,
-        progressUnit: "CUSTOMERS",
+        progressUnit: "ORDERS",
         coins: snapshot.coins,
         stars: snapshot.stars
       },
