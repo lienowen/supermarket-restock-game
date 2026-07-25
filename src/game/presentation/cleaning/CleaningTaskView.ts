@@ -40,26 +40,19 @@ export class CleaningTaskView {
     const { scene, config } = this;
     const { visual } = config;
 
-    // The shared supermarket background already contains shelving. Keep the
-    // configured fixture asset available for compatibility without drawing a
-    // second shelf over the scene.
+    // The coherent supermarket background already contains shelving. The
+    // cleaning-cart sprite also includes its own caution marker, so rendering
+    // either extra asset would duplicate the environment and the sign.
     scene.textures.exists(config.fixtureAssetKey);
+    scene.textures.exists(config.wetFloorSignAssetKey);
 
     const cartShadow = scene.add.ellipse(
-      config.toolPoint.x + 6,
+      config.toolPoint.x + 5,
       config.toolPoint.y + 4,
       visual.cartSize.width * 0.72,
-      Math.max(18, visual.cartSize.height * 0.13),
+      Math.max(16, visual.cartSize.height * 0.12),
       0x16231f,
       0.2
-    ).setDepth(18);
-    const signShadow = scene.add.ellipse(
-      config.toolPoint.x + visual.signOffset.x + 2,
-      config.toolPoint.y + visual.signOffset.y + 3,
-      visual.signSize.width * 0.66,
-      Math.max(12, visual.signSize.height * 0.12),
-      0x16231f,
-      0.18
     ).setDepth(18);
 
     const cart = scene.add.image(
@@ -71,18 +64,9 @@ export class CleaningTaskView {
       .setDisplaySize(visual.cartSize.width, visual.cartSize.height)
       .setDepth(20)
       .setName("cleaning-cart-tool");
-    const sign = scene.add.image(
-      config.toolPoint.x + visual.signOffset.x,
-      config.toolPoint.y + visual.signOffset.y,
-      config.wetFloorSignAssetKey
-    )
-      .setOrigin(0.5, 0.96)
-      .setDisplaySize(visual.signSize.width, visual.signSize.height)
-      .setDepth(20)
-      .setName("wet-floor-sign-tool");
 
-    this.staticObjects.push(cartShadow, signShadow, cart, sign);
-    this.toolObjects.push(cart, sign);
+    this.staticObjects.push(cartShadow, cart);
+    this.toolObjects.push(cart);
 
     config.spotPositions.forEach((point, index) => {
       this.spills.push(this.createSpill(point, index));
