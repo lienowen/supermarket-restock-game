@@ -44,43 +44,31 @@ test("Visual spec and world layout share the same locked composition", () => {
   assert.deepEqual(zones.get("beverage-zone"), STARTER_MARKET_VISUAL_SPEC.composition.beverageZone);
 });
 
-test("Checkout shows a readable active queue instead of six tiny cutouts", () => {
+test("Checkout presents one active customer instead of a pasted crowd", () => {
   const spawn = STARTER_MARKET_LAYOUT.spawns.find((entry) => entry.id === "customer-queue-spawn");
   const checkout = STARTER_MARKET_LAYOUT.fixtures.find((entry) => entry.fixtureId === "checkout-a");
   assert.ok(spawn);
   assert.ok(checkout);
 
   const queue = CHECKOUT_VISUAL_PRESET.queue;
-  const positions = Array.from({ length: queue.visibleCount }, (_, index) => {
-    const column = index % queue.columns;
-    const row = Math.floor(index / queue.columns);
-    return {
-      x: spawn.position.x + column * queue.columnGap + row * queue.rowDriftX,
-      y: spawn.position.y - row * queue.rowGap + (column % 2) * queue.alternatingYOffset
-    };
-  });
-  const yValues = positions.map((position) => position.y);
-
   assert.equal(queue.columns, 6);
-  assert.equal(queue.visibleCount, 3);
-  assert.ok(queue.customerSize.width >= 260 && queue.customerSize.width <= 320);
-  assert.ok(queue.customerSize.height >= 290 && queue.customerSize.height <= 340);
-  assert.ok(positions[0].x < checkout.position.x);
-  assert.ok(positions[0].x > positions.at(-1).x);
-  assert.ok(Math.max(...yValues) - Math.min(...yValues) <= 16);
-  positions.slice(1).forEach((position, index) => {
-    const previous = positions[index];
-    assert.ok(Math.hypot(position.x - previous.x, position.y - previous.y) >= 120);
-  });
+  assert.equal(queue.visibleCount, 1);
+  assert.ok(queue.customerSize.width >= 280 && queue.customerSize.width <= 330);
+  assert.ok(queue.customerSize.height >= 310 && queue.customerSize.height <= 350);
+  assert.ok(spawn.position.x < checkout.position.x);
+  assert.ok(Math.hypot(
+    checkout.position.x - spawn.position.x,
+    checkout.position.y - spawn.position.y
+  ) >= 200);
 });
 
-test("Cleaning tools remain a compact floor station with open movement space", () => {
+test("Cleaning tools remain one compact grounded station", () => {
   assert.equal(CLEAN_VISUAL_PRESET.fixture.size.width, 0);
   assert.equal(CLEAN_VISUAL_PRESET.fixture.size.height, 0);
-  assert.ok(CLEAN_VISUAL_PRESET.cartSize.width <= 150);
-  assert.ok(CLEAN_VISUAL_PRESET.cartSize.height <= 160);
-  assert.ok(CLEAN_VISUAL_PRESET.signSize.width <= 80);
-  assert.ok(CLEAN_VISUAL_PRESET.signSize.height <= 90);
+  assert.ok(CLEAN_VISUAL_PRESET.cartSize.width <= 125);
+  assert.ok(CLEAN_VISUAL_PRESET.cartSize.height <= 135);
+  assert.equal(CLEAN_VISUAL_PRESET.signSize.width, 0);
+  assert.equal(CLEAN_VISUAL_PRESET.signSize.height, 0);
   assert.ok(CLEAN_VISUAL_PRESET.spillBaseSize.width >= 80);
   assert.ok(CLEAN_VISUAL_PRESET.spillBaseSize.width <= 110);
   assert.ok(CLEAN_VISUAL_PRESET.spillBaseSize.height >= 34);
