@@ -55,6 +55,7 @@ export class UtilityTaskScene extends Phaser.Scene {
   private cleaningView?: CleaningTaskView;
   private orderTicket?: OrderTicketView;
   private findCountdown?: FindItemsCountdownView;
+  private findBasket?: Phaser.GameObjects.Image;
   private completionOverlay?: LevelCompleteOverlay;
   private readonly taskObjects: Phaser.GameObjects.GameObject[] = [];
   private readonly progressObjects: UtilityProgressObject[] = [];
@@ -201,16 +202,11 @@ export class UtilityTaskScene extends Phaser.Scene {
     context: FindItemsStarterMarketPresentationContext,
     visual: FindItemsLevelVisualPreset
   ): void {
-    const fixture = this.add.image(
-      visual.fixture.position.x,
-      visual.fixture.position.y,
-      context.levelAssets.fixture.key
-    )
-      .setOrigin(0.5, 0.96)
-      .setDisplaySize(visual.fixture.size.width, visual.fixture.size.height)
-      .setDepth(2)
-      .setInteractive({ useHandCursor: true })
-      .on("pointerdown", () => this.recordFindMistake("WRONG ITEM"));
+    // The environment already contains coherent dairy, grocery and produce
+    // shelving. Keep the configured fixture available, but never draw a second
+    // freestanding shelf over the salesfloor.
+    this.textures.exists(context.levelAssets.fixture.key);
+
     const basket = this.add.image(
       visual.basket.position.x,
       visual.basket.position.y,
@@ -218,20 +214,38 @@ export class UtilityTaskScene extends Phaser.Scene {
     )
       .setOrigin(0.5, 0.96)
       .setDisplaySize(visual.basket.size.width, visual.basket.size.height)
-      .setDepth(19);
-    this.taskObjects.push(fixture, basket);
+      .setDepth(19)
+      .setName("order-basket");
+    this.findBasket = basket;
+    this.taskObjects.push(basket);
 
     context.runtime.itemTargets.forEach((target, index) => {
       const asset = context.levelAssets.items[index];
       if (!asset) throw new Error(`Missing find-items asset at index ${index}`);
       const dimensions = visual.itemSizes[target.productId];
       if (!dimensions) throw new Error(`Missing find-items visual size for ${target.productId}`);
-      const item = this.add.image(target.x, target.y, asset.key)
+      const shelfPosition = visual.itemPositions[target.productId];
+      if (!shelfPosition) throw new Error(`Missing find-items shelf position for ${target.productId}`);
+
+      const item = this.add.image(shelfPosition.x, shelfPosition.y, asset.key)
         .setOrigin(0.5, 0.96)
         .setDisplaySize(dimensions.width, dimensions.height)
-        .setDepth(12)
+        .setDepth(12 + shelfPosition.y / 1000)
         .setName(`find-item-${target.productId}`)
         .setInteractive({ useHandCursor: true })
+        .on("pointerover", () => {
+          this.tweens.killTweensOf(item);
+          this.tweens.add({
+            targets: item,
+            scaleX: item.scaleX * 1.08,
+            scaleY: item.scaleY * 1.08,
+            duration: 100,
+            ease: "Sine.Out"
+          });
+        })
+        .on("pointerout", () => {
+          item.setDisplaySize(dimensions.width, dimensions.height);
+        })
         .on(
           "pointerdown",
           (
@@ -354,20 +368,26 @@ export class UtilityTaskScene extends Phaser.Scene {
     this.interactionGate.lockFor(420);
     if (!this.controller.dispatch("PICK_ITEM")) return;
     const item = this.findItemsByProduct.get(productId);
+    const basket = this.findBasket;
     if (item) {
+      const baseScaleX = item.scaleX;
+      const baseScaleY = item.scaleY;
       this.tweens.add({
         targets: item,
+        x: basket?.x ?? item.x,
+        y: basket ? basket.y - 22 : item.y,
         alpha: 0,
-        scaleX: 0.4,
-        scaleY: 0.4,
-        duration: 360,
-        ease: "Back.In",
+        scaleX: baseScaleX * 0.32,
+        scaleY: baseScaleY * 0.32,
+        duration: 380,
+        ease: "Cubic.In",
         onComplete: () => item.setVisible(false).disableInteractive()
       });
     }
-    const target = this.context.runtime.itemTargets.find((entry) => entry.productId === productId);
-    if (target) {
-      playActionFeedback(this, target, "interact", { label: "ADDED TO ORDER" });
+    const visual = this.visualPreset as FindItemsLevelVisualPreset;
+    const shelfPosition = visual.itemPositions[productId];
+    if (shelfPosition) {
+      playActionFeedback(this, shelfPosition, "interact", { label: "ADDED TO ORDER" });
     }
     this.findCountdown?.sync(result.snapshot.remainingSeconds);
   }
