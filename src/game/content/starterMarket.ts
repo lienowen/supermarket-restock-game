@@ -32,8 +32,8 @@ export const RESTOCK_WATER_PROMOTION_MISSION: MissionDefinition = {
 
 export const ASSIST_CHECKOUT_RUSH_MISSION: MissionDefinition = {
   id: "assist-checkout-rush",
-  title: "Serve the Customer Queue",
-  description: "Scan baskets and help waiting customers at the express checkout.",
+  title: "Process the Checkout Queue",
+  description: "Scan each waiting grocery basket at the express checkout.",
   objectives: [{
     type: "operate-checkout",
     checkoutId: "checkout-a",

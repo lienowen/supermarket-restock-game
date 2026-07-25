@@ -1,4 +1,5 @@
 import {
+  migrateCampaignSessionSnapshot,
   validateCampaignSessionSnapshot,
   type CampaignSessionSnapshot,
   type CampaignSessionStore
@@ -28,15 +29,13 @@ export class BrowserCampaignSessionStore implements CampaignSessionStore {
     if (!raw) return undefined;
 
     try {
-      const parsed = JSON.parse(raw) as CampaignSessionSnapshot;
-      if (validateCampaignSessionSnapshot(parsed, campaignId).length > 0) {
+      const migrated = migrateCampaignSessionSnapshot(JSON.parse(raw), campaignId);
+      if (!migrated || validateCampaignSessionSnapshot(migrated, campaignId).length > 0) {
         this.clear(campaignId);
         return undefined;
       }
-      return Object.freeze({
-        ...parsed,
-        completedLevelIds: Object.freeze([...parsed.completedLevelIds])
-      });
+      if (JSON.stringify(migrated) !== raw) this.save(migrated);
+      return migrated;
     } catch {
       this.clear(campaignId);
       return undefined;

@@ -44,67 +44,63 @@ test("Visual spec and world layout share the same locked composition", () => {
   assert.deepEqual(zones.get("beverage-zone"), STARTER_MARKET_VISUAL_SPEC.composition.beverageZone);
 });
 
-test("Checkout customers form one readable service line instead of a stacked crowd", () => {
-  const spawn = STARTER_MARKET_LAYOUT.spawns.find((entry) => entry.id === "customer-queue-spawn");
+test("Checkout uses a compact grocery basket queue instead of pasted customer cutouts", () => {
   const checkout = STARTER_MARKET_LAYOUT.fixtures.find((entry) => entry.fixtureId === "checkout-a");
-  assert.ok(spawn);
   assert.ok(checkout);
 
   const queue = CHECKOUT_VISUAL_PRESET.queue;
-  const positions = Array.from({ length: 6 }, (_, index) => {
-    const column = index % queue.columns;
-    const row = Math.floor(index / queue.columns);
-    return {
-      x: spawn.position.x + column * queue.columnGap + row * queue.rowDriftX,
-      y: spawn.position.y - row * queue.rowGap + (column % 2) * queue.alternatingYOffset
-    };
-  });
-  const yValues = positions.map((position) => position.y);
-
-  assert.equal(queue.columns, 6);
-  assert.ok(queue.customerSize.width <= 320);
-  assert.ok(positions[0].x < checkout.position.x);
-  assert.ok(positions[0].x > positions.at(-1).x);
-  assert.ok(Math.max(...yValues) - Math.min(...yValues) <= 16);
-  positions.slice(1).forEach((position, index) => {
-    const previous = positions[index];
-    assert.ok(Math.hypot(position.x - previous.x, position.y - previous.y) >= 100);
-  });
+  assert.equal(queue.visibleBasketCount, 3);
+  assert.ok(queue.panelSize.width <= 240);
+  assert.ok(queue.panelSize.height <= 100);
+  assert.ok(queue.basketSize.width <= 60);
+  assert.ok(queue.basketSize.height <= 48);
+  assert.ok(CHECKOUT_VISUAL_PRESET.actor.idleSize.width <= 280);
+  assert.ok(CHECKOUT_VISUAL_PRESET.workerStartOffset.x <= -220);
+  assert.ok(CHECKOUT_VISUAL_PRESET.station.counterSize.width <= 400);
+  assert.ok(CHECKOUT_VISUAL_PRESET.station.counterSize.height <= 350);
 });
 
-test("Cleaning tools leave enough floor space for readable puddles and movement", () => {
-  assert.ok(CLEAN_VISUAL_PRESET.fixture.size.width <= 740);
-  assert.ok(CLEAN_VISUAL_PRESET.fixture.size.height <= 740);
-  assert.ok(CLEAN_VISUAL_PRESET.cartSize.width <= 350);
-  assert.ok(CLEAN_VISUAL_PRESET.cartSize.height <= 350);
-  assert.ok(CLEAN_VISUAL_PRESET.signSize.width <= 220);
-  assert.ok(CLEAN_VISUAL_PRESET.signSize.height <= 220);
-  assert.ok(CLEAN_VISUAL_PRESET.spillBaseSize.width >= 90);
-  assert.ok(CLEAN_VISUAL_PRESET.spillBaseSize.width <= 120);
-  assert.ok(CLEAN_VISUAL_PRESET.spillBaseSize.height >= 38);
-  assert.ok(CLEAN_VISUAL_PRESET.spillBaseSize.height <= 55);
+test("Cleaning tools remain one compact grounded station", () => {
+  assert.equal(CLEAN_VISUAL_PRESET.fixture.size.width, 0);
+  assert.equal(CLEAN_VISUAL_PRESET.fixture.size.height, 0);
+  assert.ok(CLEAN_VISUAL_PRESET.cartSize.width <= 125);
+  assert.ok(CLEAN_VISUAL_PRESET.cartSize.height <= 135);
+  assert.equal(CLEAN_VISUAL_PRESET.signSize.width, 0);
+  assert.equal(CLEAN_VISUAL_PRESET.signSize.height, 0);
+  assert.ok(CLEAN_VISUAL_PRESET.spillBaseSize.width >= 80);
+  assert.ok(CLEAN_VISUAL_PRESET.spillBaseSize.width <= 110);
+  assert.ok(CLEAN_VISUAL_PRESET.spillBaseSize.height >= 34);
+  assert.ok(CLEAN_VISUAL_PRESET.spillBaseSize.height <= 50);
 });
 
-test("Find-items products read as shelf stock instead of floating hero props", () => {
+test("Find-items embeds products in existing departments instead of drawing another shelf", () => {
   const level = STARTER_MARKET_LEVELS.find((entry) => entry.mode === "find-items");
   assert.ok(level);
 
   const sizes = Object.values(FIND_ITEMS_VISUAL_PRESET.itemSizes);
-  assert.ok(sizes.every((size) => size.width <= 100));
-  assert.ok(sizes.every((size) => size.height <= 130));
-  assert.ok(FIND_ITEMS_VISUAL_PRESET.fixture.size.width <= 850);
-  assert.ok(FIND_ITEMS_VISUAL_PRESET.fixture.size.height <= 780);
-  assert.ok(FIND_ITEMS_VISUAL_PRESET.basket.size.width <= 260);
-  assert.ok(FIND_ITEMS_VISUAL_PRESET.basket.size.height <= 180);
+  assert.ok(sizes.every((size) => size.width <= 60));
+  assert.ok(sizes.every((size) => size.height <= 75));
+  assert.equal(FIND_ITEMS_VISUAL_PRESET.fixture.size.width, 0);
+  assert.equal(FIND_ITEMS_VISUAL_PRESET.fixture.size.height, 0);
+  assert.ok(FIND_ITEMS_VISUAL_PRESET.basket.size.width <= 120);
+  assert.ok(FIND_ITEMS_VISUAL_PRESET.basket.size.height <= 85);
+
+  const shelfPositions = FIND_ITEMS_VISUAL_PRESET.itemPositions;
+  assert.ok(shelfPositions["milk-bottle"].x < 500);
+  assert.ok(shelfPositions.apple.x > 1300);
+  assert.ok(shelfPositions["cereal-box"].x >= 550 && shelfPositions["cereal-box"].x <= 850);
+  Object.values(shelfPositions).forEach((position) => {
+    assert.ok(position.y >= 350 && position.y <= 600);
+  });
 
   const targets = level.tuning.itemTargets;
   targets.forEach((target) => {
-    assert.ok(target.x >= 980 && target.x <= 1320);
-    assert.ok(target.y >= 450 && target.y <= 650);
+    assert.ok(target.x >= 470 && target.x <= 1220);
+    assert.ok(target.y >= 620 && target.y <= 770);
   });
   targets.slice(1).forEach((target, index) => {
     const previous = targets[index];
-    assert.ok(Math.hypot(target.x - previous.x, target.y - previous.y) >= 100);
+    assert.ok(Math.hypot(target.x - previous.x, target.y - previous.y) >= 180);
   });
 });
 

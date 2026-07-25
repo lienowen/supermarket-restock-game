@@ -105,17 +105,17 @@ function createCopy(
   return {
     open: {
       objective: runtime.mission.title,
-      instruction: "Open the register before the promotion queue arrives.",
+      instruction: "Open the register before the rush starts.",
       actionLabel: "OPEN REGISTER"
     },
     serve: {
       objective: runtime.mission.title,
-      instruction: `Scan baskets and serve all ${runtime.customerCount} waiting customers.`,
+      instruction: `Scan all ${runtime.customerCount} waiting baskets.`,
       actionLabel: "SCAN BASKET"
     },
     complete: {
-      objective: "Checkout rush cleared",
-      instruction: "The queue is moving again. Great work.",
+      objective: "Checkout orders cleared",
+      instruction: "Every waiting basket has been processed.",
       actionLabel: "TASK COMPLETE"
     }
   };

@@ -18,7 +18,7 @@ export interface CleaningTaskViewState {
 
 /**
  * Reusable cleaning presentation. Gameplay owns which spill is active; this
- * view owns how the supplies station and floor mess read to the player.
+ * view owns how the compact floor station and spills read to the player.
  */
 export class CleaningTaskView {
   private readonly staticObjects: Phaser.GameObjects.GameObject[] = [];
@@ -39,15 +39,22 @@ export class CleaningTaskView {
 
     const { scene, config } = this;
     const { visual } = config;
-    const fixture = scene.add.image(
-      visual.fixture.position.x,
-      visual.fixture.position.y,
-      config.fixtureAssetKey
-    )
-      .setOrigin(0.5, 0.96)
-      .setDisplaySize(visual.fixture.size.width, visual.fixture.size.height)
-      .setDepth(2)
-      .setName("cleaning-supplies-fixture");
+
+    // The coherent supermarket background already contains shelving. The
+    // cleaning-cart sprite also includes its own caution marker, so rendering
+    // either extra asset would duplicate the environment and the sign.
+    scene.textures.exists(config.fixtureAssetKey);
+    scene.textures.exists(config.wetFloorSignAssetKey);
+
+    const cartShadow = scene.add.ellipse(
+      config.toolPoint.x + 5,
+      config.toolPoint.y + 4,
+      visual.cartSize.width * 0.72,
+      Math.max(16, visual.cartSize.height * 0.12),
+      0x16231f,
+      0.2
+    ).setDepth(18);
+
     const cart = scene.add.image(
       config.toolPoint.x,
       config.toolPoint.y,
@@ -57,17 +64,9 @@ export class CleaningTaskView {
       .setDisplaySize(visual.cartSize.width, visual.cartSize.height)
       .setDepth(20)
       .setName("cleaning-cart-tool");
-    const sign = scene.add.image(
-      config.toolPoint.x + visual.signOffset.x,
-      config.toolPoint.y + visual.signOffset.y,
-      config.wetFloorSignAssetKey
-    )
-      .setOrigin(0.5, 0.96)
-      .setDisplaySize(visual.signSize.width, visual.signSize.height)
-      .setDepth(20)
-      .setName("wet-floor-sign-tool");
-    this.staticObjects.push(fixture, cart, sign);
-    this.toolObjects.push(cart, sign);
+
+    this.staticObjects.push(cartShadow, cart);
+    this.toolObjects.push(cart);
 
     config.spotPositions.forEach((point, index) => {
       this.spills.push(this.createSpill(point, index));

@@ -167,15 +167,15 @@ try {
 
   const checkoutPage = await openLevel(context, report, LEVELS.checkout);
   const checkoutInitial = await readSnapshot(checkoutPage);
-  await capture(checkoutPage, report, "04-level3-checkout-initial.png", "Right-side checkout and left customer queue");
+  await capture(checkoutPage, report, "04-level3-checkout-initial.png", "Grounded checkout lane with grocery basket queue");
   await movePlayerByTap(checkoutPage, { x: 900, y: 690 });
   await waitForInteractionReady(checkoutPage);
   await clickGame(checkoutPage, 1035, 690);
   await waitForSnapshot(checkoutPage, { step: "serve" });
-  for (let customer = 0; customer < 6; customer += 1) {
+  for (let order = 0; order < 6; order += 1) {
     await waitForInteractionReady(checkoutPage);
     await clickGame(checkoutPage, 1035, 690);
-    await waitForSnapshot(checkoutPage, { customersServed: customer + 1 });
+    await waitForSnapshot(checkoutPage, { customersServed: order + 1 });
   }
   const checkoutComplete = await waitForSnapshot(checkoutPage, {
     step: "complete",
@@ -200,19 +200,19 @@ try {
     })
   );
   recordSnapshot(report, "level3-complete", checkoutComplete);
-  await capture(checkoutPage, report, "05-level3-checkout-complete.png", "Checkout queue complete");
+  await capture(checkoutPage, report, "05-level3-checkout-complete.png", "Checkout orders complete");
   await checkoutPage.close();
 
   const cleanPage = await openLevel(context, report, LEVELS.clean);
   const cleanInitial = await readSnapshot(cleanPage);
-  await capture(cleanPage, report, "06-level4-clean-initial.png", "Cleaning gameplay with four dynamic spills");
-  await moveNearAndInteract(cleanPage, { x: 1040, y: 620 }, { x: 1120, y: 620 });
+  await capture(cleanPage, report, "06-level4-clean-initial.png", "Grounded cleaning cart and four dynamic spills");
+  await moveNearAndInteract(cleanPage, { x: 1060, y: 760 }, { x: 1190, y: 760 });
   await waitForSnapshot(cleanPage, { step: "clean" });
   const cleanSpots = [
-    { x: 690, y: 590 },
-    { x: 865, y: 700 },
-    { x: 1035, y: 535 },
-    { x: 1145, y: 735 }
+    { x: 620, y: 742 },
+    { x: 790, y: 672 },
+    { x: 970, y: 748 },
+    { x: 1135, y: 685 }
   ];
   for (let index = 0; index < cleanSpots.length; index += 1) {
     const spot = cleanSpots[index];
@@ -247,15 +247,17 @@ try {
 
   const findPage = await openLevel(context, report, LEVELS.findItems);
   const findInitial = await readSnapshot(findPage);
-  await capture(findPage, report, "08-level5-find-initial.png", "Find-items gameplay with dynamic order targets");
+  await capture(findPage, report, "08-level5-find-initial.png", "Products embedded in the real supermarket departments");
   const findTargets = [
-    { target: { x: 1010, y: 480 }, approach: { x: 855, y: 480 } },
-    { target: { x: 1125, y: 610 }, approach: { x: 970, y: 610 } },
-    { target: { x: 1190, y: 505 }, approach: { x: 1035, y: 505 } }
+    { display: { x: 330, y: 410 }, approach: { x: 520, y: 700 } },
+    { display: { x: 1430, y: 560 }, approach: { x: 1180, y: 720 } },
+    { display: { x: 690, y: 432 }, approach: { x: 820, y: 650 } }
   ];
   for (let index = 0; index < findTargets.length; index += 1) {
     const entry = findTargets[index];
-    await moveNearAndInteract(findPage, entry.approach, entry.target);
+    await movePlayerByTap(findPage, entry.approach);
+    await waitForInteractionReady(findPage);
+    await clickGame(findPage, entry.display.x, entry.display.y);
     await waitForSnapshot(findPage, { progress: index + 1 });
   }
   const findComplete = await waitForSnapshot(findPage, {

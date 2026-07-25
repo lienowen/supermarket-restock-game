@@ -1,106 +1,33 @@
-import { existsSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
-import { extname, join, relative, resolve } from "node:path";
+import { existsSync, rmSync } from "node:fs";
+import { resolve } from "node:path";
+import { analyseRuntimeAssets } from "./runtime-asset-references.mjs";
 
 const DIST_DIR = resolve("dist");
-const TEXT_EXTENSIONS = new Set([".html", ".js", ".css", ".json"]);
-const TARGETS = [
-  "assets/day01/source_refs",
-  "assets/day02/promotion/_source",
-  "assets/day02/promotion/source",
-  "assets/storefront/modules",
-  "assets/day01/backroom_bg.png",
-  "assets/day01/salesfloor_bg.png",
-  "assets/day01/ChatGPT Image 2026年7月13日 16_09_46.png"
-];
-
-const FORCED_UNUSED_TARGETS = [
-  "assets/common/supermarket/backgrounds/store/store-overview-02.png",
-  "assets/common/supermarket/backgrounds/store/store-overview-03.png",
-  "assets/common/supermarket/backgrounds/navigation/aisle-general-02.png",
-  "assets/common/supermarket/backgrounds/navigation/aisle-general-03.png",
-  "assets/common/supermarket/backgrounds/navigation/aisle-cold-corridor-01.png",
-  "assets/common/supermarket/stockroom/stockroom-overview-02.png",
-  "assets/common/supermarket/restock/dairy/dairy-zone-01.png",
-  "assets/common/supermarket/restock/dairy/dairy-zone-02.png",
-  "assets/common/supermarket/restock/dairy/dairy-zone-03.png",
-  "assets/common/supermarket/restock/dairy/dairy-zone-04.png",
-  "assets/common/supermarket/restock/dairy/dairy-zone-05.png",
-  "assets/common/supermarket/restock/frozen/frozen-zone-01.png",
-  "assets/common/supermarket/restock/frozen/frozen-zone-02.png",
-  "assets/common/supermarket/restock/snacks/snacks-zone-01.png",
-  "assets/common/supermarket/restock/snacks/snacks-zone-02.png",
-  "assets/common/supermarket/restock/pantry/pantry-zone-01.png",
-  "assets/common/supermarket/restock/pantry/pantry-zone-02.png"
-];
+const TOP_REMOVED_COUNT = 30;
 
 if (!existsSync(DIST_DIR)) {
   throw new Error("dist/ does not exist. Run vite build before pruning release assets.");
 }
 
-const allFiles = walk(DIST_DIR);
-const runtimeText = allFiles
-  .filter((file) => TEXT_EXTENSIONS.has(extname(file).toLowerCase()))
-  .map((file) => readFileSync(file, "utf8"))
-  .join("\n");
+const analysis = analyseRuntimeAssets(DIST_DIR);
+const removed = [...analysis.unreferenced].sort((left, right) => right.size - left.size);
+const removedBytes = removed.reduce((sum, entry) => sum + entry.size, 0);
 
-let removedFiles = 0;
-let removedBytes = 0;
-
-for (const target of TARGETS) {
-  const absolute = join(DIST_DIR, target);
-  if (!existsSync(absolute)) continue;
-
-  const targetFiles = statSync(absolute).isDirectory() ? walk(absolute) : [absolute];
-  const referenced = targetFiles.find((file) => isRuntimeReferenced(file));
-
-  if (referenced) {
-    const name = relative(DIST_DIR, referenced).replaceAll("\\", "/");
-    throw new Error(`Refusing to prune runtime-referenced release asset: ${name}`);
-  }
-
-  removeFiles(targetFiles);
-  rmSync(absolute, { recursive: true, force: true });
+for (const entry of removed) {
+  rmSync(entry.file, { force: true });
 }
 
-for (const target of FORCED_UNUSED_TARGETS) {
-  const absolute = join(DIST_DIR, target);
-  if (!existsSync(absolute)) continue;
-  removeFiles([absolute]);
-  rmSync(absolute, { force: true });
-}
-
-// The repository intentionally keeps a large reusable supermarket art library.
-// Public assets are copied wholesale by Vite, so remove every image in that library
-// that has no literal reference in the built runtime. This keeps source art available
-// for later days without shipping it in the current CrazyGames package.
-const supermarketRoot = join(DIST_DIR, "assets/common/supermarket");
-if (existsSync(supermarketRoot)) {
-  const unreferencedSupermarketAssets = walk(supermarketRoot).filter((file) => {
-    if (TEXT_EXTENSIONS.has(extname(file).toLowerCase())) return false;
-    return !isRuntimeReferenced(file);
-  });
-
-  removeFiles(unreferencedSupermarketAssets);
-  unreferencedSupermarketAssets.forEach((file) => rmSync(file, { force: true }));
-}
-
+console.log("Largest pruned non-runtime assets:");
+removed.slice(0, TOP_REMOVED_COUNT).forEach((entry, index) => {
+  console.log(
+    `${String(index + 1).padStart(2, "0")}. ${formatBytes(entry.size).padStart(10)}  ${entry.name}`
+  );
+});
 console.log(
-  `Pruned ${removedFiles} non-runtime release assets, saving ${(removedBytes / 1024 / 1024).toFixed(2)} MiB.`
+  `Pruned ${removed.length} non-runtime release assets, saving ${formatBytes(removedBytes)}. ` +
+  `${analysis.referenced.size} runtime assets remain protected by the built reference graph.`
 );
 
-function isRuntimeReferenced(file) {
-  const name = relative(DIST_DIR, file).replaceAll("\\", "/");
-  return runtimeText.includes(name) || runtimeText.includes(encodeURI(name));
-}
-
-function removeFiles(files) {
-  removedFiles += files.length;
-  removedBytes += files.reduce((sum, file) => sum + statSync(file).size, 0);
-}
-
-function walk(directory) {
-  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-    const path = join(directory, entry.name);
-    return entry.isDirectory() ? walk(path) : [path];
-  });
+function formatBytes(bytes) {
+  return `${(bytes / 1024 / 1024).toFixed(2)} MiB`;
 }

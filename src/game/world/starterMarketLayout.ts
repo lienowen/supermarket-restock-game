@@ -1,9 +1,9 @@
 import type { StoreWorldLayout } from "./WorldLayout";
 
 /**
- * Shared 1600x900 market composition. Level-specific fixtures can reuse the
- * same store while placing their primary interaction zone where that gameplay
- * reads most clearly.
+ * Shared 1600x900 market composition. The coherent salesfloor art owns the
+ * shelves and departments; these coordinates reserve the visible foreground
+ * aisles for actors, equipment, queues and task interactions.
  */
 export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
   id: "starter-market-layout",
@@ -59,7 +59,7 @@ export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
     },
     {
       fixtureId: "checkout-a",
-      position: { x: 1140, y: 735 },
+      position: { x: 1080, y: 790 },
       anchor: [0.5, 0.92],
       depth: 26
     }
@@ -69,21 +69,21 @@ export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
       id: "cola-case-pickup-point",
       targetId: "cola-case-a",
       actionGroup: "case",
-      position: { x: 770, y: 650 },
+      position: { x: 1240, y: 790 },
       radius: 110
     },
     {
       id: "restock-cart-load-point",
       targetId: "restock-cart-a",
       actionGroup: "cart",
-      position: { x: 825, y: 730 },
+      position: { x: 1070, y: 805 },
       radius: 120
     },
     {
       id: "beverage-restock-zone",
       targetId: "beverage-cooler-a",
       actionGroup: "parking-zone",
-      position: { x: 1120, y: 725 },
+      position: { x: 1320, y: 755 },
       radius: 150
     },
     {
@@ -98,13 +98,13 @@ export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
     {
       id: "worker-a-spawn",
       actorType: "worker",
-      position: { x: 890, y: 625 },
+      position: { x: 920, y: 790 },
       facing: "back-right"
     },
     {
       id: "customer-queue-spawn",
       actorType: "customer",
-      position: { x: 835, y: 700 },
+      position: { x: 800, y: 785 },
       facing: "right"
     }
   ]

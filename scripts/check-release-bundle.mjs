@@ -1,5 +1,6 @@
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { extname, join, relative } from "node:path";
+import { existsSync, readFileSync, statSync } from "node:fs";
+import { extname } from "node:path";
+import { analyseRuntimeAssets } from "./runtime-asset-references.mjs";
 
 const DIST_DIR = "dist";
 const ABSOLUTE_MAX_BYTES = 250 * 1024 * 1024;
@@ -14,20 +15,13 @@ if (!existsSync(DIST_DIR)) {
   process.exit(1);
 }
 
-const files = walk(DIST_DIR);
-const fileStats = files
-  .map((file) => ({
-    file,
-    name: relative(DIST_DIR, file).replaceAll("\\", "/"),
-    size: statSync(file).size,
-    extension: extname(file).toLowerCase()
-  }))
+const analysis = analyseRuntimeAssets(DIST_DIR);
+const fileStats = analysis.entries
+  .map((entry) => ({ ...entry, extension: extname(entry.file).toLowerCase() }))
   .sort((left, right) => right.size - left.size);
 const totalBytes = fileStats.reduce((sum, entry) => sum + entry.size, 0);
 const failures = [];
 const warnings = [];
-const textEntries = fileStats.filter((entry) => TEXT_EXTENSIONS.has(entry.extension));
-const combinedText = textEntries.map((entry) => readFileSync(entry.file, "utf8")).join("\n");
 
 for (const entry of fileStats) {
   if (entry.size > LARGE_FILE_WARNING_BYTES) {
@@ -57,17 +51,20 @@ if (totalBytes > ABSOLUTE_MAX_BYTES) {
   failures.push(`bundle size ${formatBytes(totalBytes)} exceeds 250 MiB`);
 }
 
-const unreferencedAssets = fileStats.filter((entry) => {
-  if (!entry.name.startsWith("assets/") || TEXT_EXTENSIONS.has(entry.extension)) return false;
-  return !combinedText.includes(entry.name) && !combinedText.includes(encodeURI(entry.name));
-});
+const unreferencedAssets = [...analysis.unreferenced].sort((left, right) => right.size - left.size);
+if (unreferencedAssets.length > 0) {
+  failures.push(
+    `bundle still contains ${unreferencedAssets.length} unreachable assets ` +
+    `(${formatBytes(unreferencedAssets.reduce((sum, entry) => sum + entry.size, 0))})`
+  );
+}
 
 console.log("Largest release files:");
 fileStats.slice(0, TOP_FILE_COUNT).forEach((entry, index) => {
   console.log(`${String(index + 1).padStart(2, "0")}. ${formatBytes(entry.size).padStart(10)}  ${entry.name}`);
 });
 
-console.log("Largest assets with no literal runtime reference:");
+console.log("Largest assets with no runtime reference:");
 unreferencedAssets.slice(0, TOP_UNREFERENCED_COUNT).forEach((entry, index) => {
   console.log(`${String(index + 1).padStart(2, "0")}. ${formatBytes(entry.size).padStart(10)}  ${entry.name}`);
 });
@@ -86,16 +83,10 @@ if (failures.length > 0) {
 }
 
 console.log(
-  `Release bundle verified: ${fileStats.length} files, ${formatBytes(totalBytes)}. ` +
+  `Release bundle verified: ${fileStats.length} files, ${formatBytes(totalBytes)}, ` +
+  `${analysis.referenced.size} referenced runtime assets. ` +
   "Initial-download budgets are enforced by measure-release-payload.mjs."
 );
-
-function walk(directory) {
-  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-    const path = join(directory, entry.name);
-    return entry.isDirectory() ? walk(path) : [path];
-  });
-}
 
 function formatBytes(bytes) {
   return `${(bytes / 1024 / 1024).toFixed(2)} MiB`;
