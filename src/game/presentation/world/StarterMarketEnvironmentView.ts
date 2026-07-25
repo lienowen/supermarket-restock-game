@@ -23,7 +23,6 @@ export class StarterMarketEnvironmentView {
     this.createFloor();
     this.registerSharedFixtureAvailability();
     this.createModeFocus();
-    if (this.context.mode !== "restock") this.createFloorRoute();
     this.createAtmosphere();
   }
 
@@ -72,32 +71,9 @@ export class StarterMarketEnvironmentView {
       focusSize.width * 0.72,
       focusSize.height * 0.34,
       accent,
-      this.context.mode === "restock" ? 0.026 : 0.045
+      this.context.mode === "restock" ? 0.026 : 0.035
     ).setDepth(7);
     glow.setBlendMode(Phaser.BlendModes.ADD);
-  }
-
-  private createFloorRoute(): void {
-    const route = this.scene.add.graphics().setDepth(6);
-    const start = this.context.world.workerStart;
-    const end = this.visualPreset.environment.focus;
-    const control = {
-      x: Phaser.Math.Linear(start.x, end.x, 0.5),
-      y: Math.max(start.y, end.y) + 70
-    };
-    const dotCount = 9;
-
-    for (let index = 0; index < dotCount; index += 1) {
-      const t = index / (dotCount - 1);
-      const inverse = 1 - t;
-      const x = inverse * inverse * start.x + 2 * inverse * t * control.x + t * t * end.x;
-      const y = inverse * inverse * start.y + 2 * inverse * t * control.y + t * t * end.y;
-      route.fillStyle(
-        this.context.palette.gold,
-        this.visualPreset.environment.routeAlpha * (0.35 + t * 0.4)
-      );
-      route.fillCircle(x, y, 3.5 + t * 1.5);
-    }
   }
 
   private createAtmosphere(): void {
