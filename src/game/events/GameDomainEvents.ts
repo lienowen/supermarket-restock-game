@@ -1,4 +1,5 @@
 import type { CampaignEconomy, CampaignSessionSnapshot } from "../application/CampaignSession";
+import type { MarketUpgradeId, MarketUpgradeLevels } from "../application/MarketUpgrades";
 import { DomainEventBus } from "./DomainEventBus";
 
 export interface GameDomainEventMap {
@@ -7,10 +8,19 @@ export interface GameDomainEventMap {
     readonly levelId: string;
     readonly nextLevelId?: string;
     readonly economy: CampaignEconomy;
+    readonly upgrades: MarketUpgradeLevels;
+    readonly snapshot: CampaignSessionSnapshot;
+  };
+  readonly "campaign.upgrade-purchased": {
+    readonly campaignId: string;
+    readonly upgradeId: MarketUpgradeId;
+    readonly economy: CampaignEconomy;
+    readonly upgrades: MarketUpgradeLevels;
     readonly snapshot: CampaignSessionSnapshot;
   };
   readonly "campaign.reset": {
     readonly campaignId: string;
+    readonly preserveMetaProgress: boolean;
     readonly snapshot: CampaignSessionSnapshot;
   };
   readonly "task.action-accepted": {
