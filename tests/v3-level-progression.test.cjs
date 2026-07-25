@@ -47,7 +47,7 @@ test("Completion previews promise the actual configured next task", () => {
   assert.deepEqual(resolveCampaignProgressionPreview("starter-level-002"), {
     eyebrow: "UP NEXT · LEVEL 3",
     title: "CHECKOUT RUSH",
-    detail: "CHECKOUT RUSH · SERVE THE CUSTOMER QUEUE",
+    detail: "CHECKOUT RUSH · PROCESS THE CHECKOUT QUEUE",
     isCampaignComplete: false,
     currentLevelNumber: 2,
     totalLevels: 5
