@@ -163,7 +163,7 @@ export const CHECKOUT_VISUAL_PRESET: CheckoutLevelVisualPreset = Object.freeze({
   }),
   environment: Object.freeze({
     focus: Object.freeze({ x: 1035, y: 735 }),
-    focusSize: Object.freeze({ width: 560, height: 270 }),
+    focusSize: Object.freeze({ width: 500, height: 250 }),
     routeAlpha: 0,
     inactiveWashAlpha: 0,
     vignetteAlpha: 0.06
@@ -180,7 +180,7 @@ export const CHECKOUT_VISUAL_PRESET: CheckoutLevelVisualPreset = Object.freeze({
     servedExitOffset: Object.freeze({ x: 150, y: -12 })
   }),
   queue: Object.freeze({
-    customerSize: Object.freeze({ width: 286, height: 315 }),
+    customerSize: Object.freeze({ width: 300, height: 330 }),
     columns: 6,
     columnGap: -132,
     rowGap: 0,
@@ -190,7 +190,7 @@ export const CHECKOUT_VISUAL_PRESET: CheckoutLevelVisualPreset = Object.freeze({
     rowScaleStep: 0,
     columnScaleStep: 0.045,
     minimumScale: 0.78,
-    visibleCount: 3
+    visibleCount: 1
   }),
   sign: Object.freeze({
     centre: Object.freeze({ x: 1110, y: 170 }),
@@ -202,12 +202,12 @@ export const CLEAN_VISUAL_PRESET: CleanLevelVisualPreset = Object.freeze({
   id: "clean-standard-v1",
   mode: "clean",
   actor: Object.freeze({
-    idleSize: Object.freeze({ width: 290, height: 310 }),
+    idleSize: Object.freeze({ width: 320, height: 330 }),
     shadowOffset: SHARED_ACTOR.shadowOffset
   }),
   environment: Object.freeze({
-    focus: Object.freeze({ x: 1210, y: 775 }),
-    focusSize: Object.freeze({ width: 470, height: 230 }),
+    focus: Object.freeze({ x: 1190, y: 760 }),
+    focusSize: Object.freeze({ width: 380, height: 200 }),
     routeAlpha: 0,
     inactiveWashAlpha: 0,
     vignetteAlpha: 0.06
@@ -216,10 +216,10 @@ export const CLEAN_VISUAL_PRESET: CleanLevelVisualPreset = Object.freeze({
     position: Object.freeze({ x: 1260, y: 790 }),
     size: Object.freeze({ width: 0, height: 0 })
   }),
-  cartSize: Object.freeze({ width: 138, height: 148 }),
-  signSize: Object.freeze({ width: 72, height: 78 }),
-  signOffset: Object.freeze({ x: -72, y: 4 }),
-  toolsTargetSize: Object.freeze({ width: 220, height: 150 }),
+  cartSize: Object.freeze({ width: 118, height: 128 }),
+  signSize: Object.freeze({ width: 0, height: 0 }),
+  signOffset: Object.freeze({ x: 0, y: 0 }),
+  toolsTargetSize: Object.freeze({ width: 180, height: 130 }),
   collectedToolsAlpha: 0.2,
   spillBaseSize: Object.freeze({ width: 88, height: 38 }),
   spillTargetSize: Object.freeze({ width: 126, height: 64 }),
