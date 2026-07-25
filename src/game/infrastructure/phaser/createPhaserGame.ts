@@ -6,6 +6,7 @@ import {
   createStarterMarketPresentationContext,
   MAIN_LEVEL_CAMPAIGN_RUNTIME
 } from "../../presentation/context/StarterMarketPresentationContext";
+import { applyMarketUpgradesToPresentation } from "../../presentation/context/MarketUpgradePresentation";
 import type { SceneCampaignSessionContext } from "../../presentation/scenes/StarterMarketScene";
 import { BrowserCampaignSessionStore } from "../browser/BrowserCampaignSessionStore";
 import { createGameplayScene } from "./GameplaySceneRegistry";
@@ -34,7 +35,7 @@ export async function createPhaserGame(
   if (!firstLevel) throw new Error("Main campaign has no playable levels");
   const requestedId = options.levelId ?? options.shiftId ?? requestedLevelFromLocation();
   const levelId = requestedId ?? firstLevel.level.id;
-  const presentation = createStarterMarketPresentationContext(levelId);
+  const basePresentation = createStarterMarketPresentationContext(levelId);
 
   const session = new CampaignSession(
     {
@@ -49,6 +50,7 @@ export async function createPhaserGame(
     new BrowserCampaignSessionStore(),
     gameDomainEvents
   );
+  const presentation = applyMarketUpgradesToPresentation(basePresentation, session);
   const campaignSession: SceneCampaignSessionContext = Object.freeze({
     session,
     initialEconomy: session.initialEconomyFor(
@@ -87,6 +89,7 @@ export async function createPhaserGame(
     },
     scene: [activeScene]
   });
+  game.registry.set("campaignSession", session);
 
   const exposeTestBridge = options.exposeTestBridge ?? (
     new URLSearchParams(window.location.search).get("test") === "1"
