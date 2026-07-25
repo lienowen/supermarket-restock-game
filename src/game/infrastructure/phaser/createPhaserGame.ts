@@ -4,7 +4,8 @@ import { CampaignSession } from "../../application/CampaignSession";
 import { gameDomainEvents } from "../../events/GameDomainEvents";
 import {
   createStarterMarketPresentationContext,
-  MAIN_LEVEL_CAMPAIGN_RUNTIME
+  MAIN_LEVEL_CAMPAIGN_RUNTIME,
+  type StarterMarketPresentationContext
 } from "../../presentation/context/StarterMarketPresentationContext";
 import type { SceneCampaignSessionContext } from "../../presentation/scenes/StarterMarketScene";
 import { BrowserCampaignSessionStore } from "../browser/BrowserCampaignSessionStore";
@@ -23,6 +24,119 @@ const requestedLevelFromLocation = (): string | undefined => {
   return parameters.get("level")?.trim() || parameters.get("shift")?.trim() || undefined;
 };
 
+const rewardWithProfitUpgrade = <T extends { readonly totalCoins: number }>(
+  reward: T,
+  profitLevel: number
+): T => Object.freeze({
+  ...reward,
+  totalCoins: Math.round(reward.totalCoins * (1 + profitLevel * 0.1))
+}) as T;
+
+const applyCampaignUpgrades = (
+  presentation: StarterMarketPresentationContext,
+  session: CampaignSession
+): StarterMarketPresentationContext => {
+  const upgrades = session.upgrades();
+  const navigation = Object.freeze({
+    ...presentation.campaignLevel.level.navigation,
+    moveSpeed: session.movementSpeed(presentation.campaignLevel.level.navigation.moveSpeed)
+  });
+
+  switch (presentation.mode) {
+    case "restock": {
+      const runtime = Object.freeze({
+        ...presentation.runtime,
+        reward: rewardWithProfitUpgrade(presentation.runtime.reward, upgrades.profit)
+      });
+      const level = Object.freeze({
+        ...presentation.campaignLevel.level,
+        navigation
+      });
+      return Object.freeze({
+        ...presentation,
+        runtime,
+        campaignLevel: Object.freeze({
+          ...presentation.campaignLevel,
+          level,
+          runtime
+        })
+      });
+    }
+    case "checkout": {
+      const tuning = Object.freeze({
+        ...presentation.campaignLevel.level.tuning,
+        scanDurationMs: session.serviceDuration(presentation.campaignLevel.level.tuning.scanDurationMs),
+        queueAdvanceDurationMs: session.serviceDuration(
+          presentation.campaignLevel.level.tuning.queueAdvanceDurationMs
+        )
+      });
+      const runtime = Object.freeze({
+        ...presentation.runtime,
+        reward: rewardWithProfitUpgrade(presentation.runtime.reward, upgrades.profit)
+      });
+      const level = Object.freeze({
+        ...presentation.campaignLevel.level,
+        navigation,
+        tuning
+      });
+      return Object.freeze({
+        ...presentation,
+        runtime,
+        campaignLevel: Object.freeze({
+          ...presentation.campaignLevel,
+          level,
+          runtime
+        })
+      });
+    }
+    case "clean": {
+      const cleanDurationMs = session.serviceDuration(presentation.runtime.cleanDurationMs);
+      const tuning = Object.freeze({
+        ...presentation.campaignLevel.level.tuning,
+        cleanDurationMs
+      });
+      const runtime = Object.freeze({
+        ...presentation.runtime,
+        cleanDurationMs,
+        reward: rewardWithProfitUpgrade(presentation.runtime.reward, upgrades.profit)
+      });
+      const level = Object.freeze({
+        ...presentation.campaignLevel.level,
+        navigation,
+        tuning
+      });
+      return Object.freeze({
+        ...presentation,
+        runtime,
+        campaignLevel: Object.freeze({
+          ...presentation.campaignLevel,
+          level,
+          runtime
+        })
+      });
+    }
+    case "find-items": {
+      const runtime = Object.freeze({
+        ...presentation.runtime,
+        reward: rewardWithProfitUpgrade(presentation.runtime.reward, upgrades.profit)
+      });
+      const level = Object.freeze({
+        ...presentation.campaignLevel.level,
+        navigation
+      });
+      return Object.freeze({
+        ...presentation,
+        runtime,
+        campaignLevel: Object.freeze({
+          ...presentation.campaignLevel,
+          level,
+          runtime
+        })
+      });
+    }
+  }
+};
+
 export async function createPhaserGame(
   options: PhaserGameFactoryOptions = {}
 ): Promise<Phaser.Game> {
@@ -34,7 +148,7 @@ export async function createPhaserGame(
   if (!firstLevel) throw new Error("Main campaign has no playable levels");
   const requestedId = options.levelId ?? options.shiftId ?? requestedLevelFromLocation();
   const levelId = requestedId ?? firstLevel.level.id;
-  const presentation = createStarterMarketPresentationContext(levelId);
+  const basePresentation = createStarterMarketPresentationContext(levelId);
 
   const session = new CampaignSession(
     {
@@ -49,6 +163,7 @@ export async function createPhaserGame(
     new BrowserCampaignSessionStore(),
     gameDomainEvents
   );
+  const presentation = applyCampaignUpgrades(basePresentation, session);
   const campaignSession: SceneCampaignSessionContext = Object.freeze({
     session,
     initialEconomy: session.initialEconomyFor(
@@ -87,6 +202,7 @@ export async function createPhaserGame(
     },
     scene: [activeScene]
   });
+  game.registry.set("campaignSession", session);
 
   const exposeTestBridge = options.exposeTestBridge ?? (
     new URLSearchParams(window.location.search).get("test") === "1"
