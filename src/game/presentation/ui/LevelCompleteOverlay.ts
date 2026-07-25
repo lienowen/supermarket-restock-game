@@ -51,7 +51,10 @@ export class LevelCompleteOverlay {
     const preview = config.progressionPreview ?? resolveCampaignProgressionPreview(
       config.currentLevelId ?? document.body.dataset.activeLevel
     );
-    const hasUpgradeShop = Boolean(config.campaignSession);
+    const registeredSession = scene.game.registry.get("campaignSession") as CampaignSession | undefined;
+    const campaignSession = config.campaignSession ?? registeredSession;
+    const hasUpgradeShop = Boolean(campaignSession);
+
     const cardTop = hasUpgradeShop ? -306 : -216;
     const cardHeight = hasUpgradeShop ? 612 : 474;
     const statusY = hasUpgradeShop ? -254 : -164;
@@ -59,9 +62,6 @@ export class LevelCompleteOverlay {
     const starsY = hasUpgradeShop ? -142 : -52;
     const rewardY = hasUpgradeShop ? -90 : 3;
     const previewPanelY = hasUpgradeShop ? -46 : 45;
-    const previewEyebrowY = previewPanelY + 17;
-    const previewTitleY = previewPanelY + 43;
-    const previewDetailY = previewPanelY + 70;
     const progressY = hasUpgradeShop ? 230 : 166;
     const buttonY = hasUpgradeShop ? 282 : 218;
 
@@ -73,7 +73,6 @@ export class LevelCompleteOverlay {
       0x10221b,
       0.62
     );
-
     const cardShadow = scene.add.graphics();
     cardShadow.fillStyle(0x10251d, 0.38);
     cardShadow.fillRoundedRect(-338, cardTop + 14, 696, cardHeight + 12, 36);
@@ -84,12 +83,7 @@ export class LevelCompleteOverlay {
     card.lineStyle(6, 0x2f8a58, 1);
     card.strokeRoundedRect(-348, cardTop, 696, cardHeight, 36);
     card.fillStyle(0x2f8a58, 1);
-    card.fillRoundedRect(-348, cardTop, 696, 82, {
-      tl: 36,
-      tr: 36,
-      bl: 0,
-      br: 0
-    });
+    card.fillRoundedRect(-348, cardTop, 696, 82, { tl: 36, tr: 36, bl: 0, br: 0 });
     card.fillStyle(0xe7f3e8, 1);
     card.fillRoundedRect(-268, rewardY - 27, 536, 54, 18);
     card.fillStyle(config.panelColor, 0.96);
@@ -117,7 +111,6 @@ export class LevelCompleteOverlay {
       fontStyle: "bold",
       letterSpacing: 3
     }).setOrigin(0.5);
-
     const title = scene.add.text(0, titleY, config.levelTitle, {
       fontFamily: "Arial",
       fontSize: "35px",
@@ -126,15 +119,18 @@ export class LevelCompleteOverlay {
       align: "center",
       wordWrap: { width: 610 }
     }).setOrigin(0.5);
-
-    const stars = [-72, 0, 72].map((x, index) => scene.add.text(x, starsY + Math.abs(index - 1) * 5, "★", {
-      fontFamily: "Arial",
-      fontSize: index === 1 ? "34px" : "29px",
-      color: `#${config.accentColor.toString(16).padStart(6, "0")}`,
-      stroke: "#b98118",
-      strokeThickness: 3
-    }).setOrigin(0.5));
-
+    const stars = [-72, 0, 72].map((x, index) => scene.add.text(
+      x,
+      starsY + Math.abs(index - 1) * 5,
+      "★",
+      {
+        fontFamily: "Arial",
+        fontSize: index === 1 ? "34px" : "29px",
+        color: `#${config.accentColor.toString(16).padStart(6, "0")}`,
+        stroke: "#b98118",
+        strokeThickness: 3
+      }
+    ).setOrigin(0.5));
     const reward = scene.add.text(0, rewardY, config.rewardLabel, {
       fontFamily: "Arial",
       fontSize: "17px",
@@ -145,21 +141,21 @@ export class LevelCompleteOverlay {
       wordWrap: { width: 510 }
     }).setOrigin(0.5);
 
-    const previewEyebrow = scene.add.text(0, previewEyebrowY, preview.eyebrow, {
+    const previewEyebrow = scene.add.text(0, previewPanelY + 17, preview.eyebrow, {
       fontFamily: "Arial",
       fontSize: "13px",
       color: "#ffd95e",
       fontStyle: "bold",
       letterSpacing: 2
     }).setOrigin(0.5);
-    const previewTitle = scene.add.text(0, previewTitleY, preview.title, {
+    const previewTitle = scene.add.text(0, previewPanelY + 43, preview.title, {
       fontFamily: "Arial",
       fontSize: "23px",
       color: "#ffffff",
       fontStyle: "bold",
       align: "center"
     }).setOrigin(0.5);
-    const previewDetail = scene.add.text(0, previewDetailY, preview.detail, {
+    const previewDetail = scene.add.text(0, previewPanelY + 70, preview.detail, {
       fontFamily: "Arial",
       fontSize: "12px",
       color: "#b8d9c4",
@@ -168,14 +164,14 @@ export class LevelCompleteOverlay {
       wordWrap: { width: 500 }
     }).setOrigin(0.5);
 
-    const upgradePanel = config.campaignSession
+    const upgradePanel = campaignSession
       ? new CampaignUpgradePanel(scene, {
           x: 0,
           y: 132,
           width: 600,
           panelColor: config.panelColor,
           accentColor: config.accentColor,
-          session: config.campaignSession
+          session: campaignSession
         })
       : undefined;
 
@@ -191,7 +187,6 @@ export class LevelCompleteOverlay {
         letterSpacing: 1
       }
     ).setOrigin(0, 0.5);
-
     const progressDots = Array.from({ length: preview.totalLevels }, (_, index) => {
       const completed = index < preview.currentLevelNumber;
       const dot = scene.add.circle(
@@ -231,15 +226,6 @@ export class LevelCompleteOverlay {
       buttonArrow
     ]).setName("completion-primary-action");
 
-    const confetti = [
-      { x: -292, y: statusY + 28, angle: -18, color: config.accentColor },
-      { x: -307, y: rewardY - 4, angle: 24, color: 0x62c77d },
-      { x: -296, y: progressY - 48, angle: -30, color: 0x67d7e5 },
-      { x: 292, y: statusY + 32, angle: 22, color: 0x67d7e5 },
-      { x: 307, y: rewardY + 2, angle: -20, color: config.accentColor },
-      { x: 296, y: progressY - 46, angle: 34, color: 0x62c77d }
-    ].map((entry) => scene.add.rectangle(entry.x, entry.y, 13, 31, entry.color, 1).setAngle(entry.angle));
-
     button.on("pointerover", () => buttonContainer.setScale(1.045));
     button.on("pointerout", () => buttonContainer.setScale(1));
     button.on("pointerdown", () => this.continueOnce());
@@ -248,7 +234,6 @@ export class LevelCompleteOverlay {
       shade,
       cardShadow,
       card,
-      ...confetti,
       badgeShadow,
       badge,
       badgeStar,
@@ -290,14 +275,6 @@ export class LevelCompleteOverlay {
       duration: 260,
       ease: "Back.Out"
     });
-    scene.tweens.add({
-      targets: [previewEyebrow, previewTitle, previewDetail],
-      alpha: { from: 0, to: 1 },
-      y: "+=8",
-      delay: scene.tweens.stagger(45, { start: 260 }),
-      duration: 240,
-      ease: "Sine.Out"
-    });
     if (upgradePanel) {
       scene.tweens.add({
         targets: upgradePanel.container,
@@ -317,15 +294,6 @@ export class LevelCompleteOverlay {
       repeat: -1,
       delay: 900,
       duration: 820,
-      ease: "Sine.InOut"
-    });
-    scene.tweens.add({
-      targets: buttonArrow,
-      x: { from: 122, to: 130 },
-      yoyo: true,
-      repeat: -1,
-      delay: 900,
-      duration: 620,
       ease: "Sine.InOut"
     });
   }
