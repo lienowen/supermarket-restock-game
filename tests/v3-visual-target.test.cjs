@@ -44,22 +44,20 @@ test("Visual spec and world layout share the same locked composition", () => {
   assert.deepEqual(zones.get("beverage-zone"), STARTER_MARKET_VISUAL_SPEC.composition.beverageZone);
 });
 
-test("Checkout presents one active customer instead of a pasted crowd", () => {
-  const spawn = STARTER_MARKET_LAYOUT.spawns.find((entry) => entry.id === "customer-queue-spawn");
+test("Checkout uses a compact grocery basket queue instead of pasted customer cutouts", () => {
   const checkout = STARTER_MARKET_LAYOUT.fixtures.find((entry) => entry.fixtureId === "checkout-a");
-  assert.ok(spawn);
   assert.ok(checkout);
 
   const queue = CHECKOUT_VISUAL_PRESET.queue;
-  assert.equal(queue.columns, 6);
-  assert.equal(queue.visibleCount, 1);
-  assert.ok(queue.customerSize.width >= 280 && queue.customerSize.width <= 330);
-  assert.ok(queue.customerSize.height >= 310 && queue.customerSize.height <= 350);
-  assert.ok(spawn.position.x < checkout.position.x);
-  assert.ok(Math.hypot(
-    checkout.position.x - spawn.position.x,
-    checkout.position.y - spawn.position.y
-  ) >= 200);
+  assert.equal(queue.visibleBasketCount, 3);
+  assert.ok(queue.panelSize.width <= 240);
+  assert.ok(queue.panelSize.height <= 100);
+  assert.ok(queue.basketSize.width <= 60);
+  assert.ok(queue.basketSize.height <= 48);
+  assert.ok(CHECKOUT_VISUAL_PRESET.actor.idleSize.width <= 280);
+  assert.ok(CHECKOUT_VISUAL_PRESET.workerStartOffset.x <= -220);
+  assert.ok(CHECKOUT_VISUAL_PRESET.station.counterSize.width <= 400);
+  assert.ok(CHECKOUT_VISUAL_PRESET.station.counterSize.height <= 350);
 });
 
 test("Cleaning tools remain one compact grounded station", () => {
