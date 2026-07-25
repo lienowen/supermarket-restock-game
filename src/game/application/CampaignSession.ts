@@ -27,13 +27,6 @@ export interface CampaignSessionSnapshot extends CampaignEconomy {
   readonly upgrades: MarketUpgradeLevels;
 }
 
-interface LegacyCampaignSessionSnapshot extends CampaignEconomy {
-  readonly version: 1;
-  readonly campaignId: string;
-  readonly currentLevelId: string;
-  readonly completedLevelIds: readonly string[];
-}
-
 export interface CampaignSessionStore {
   load(campaignId: string): CampaignSessionSnapshot | undefined;
   save(snapshot: CampaignSessionSnapshot): void;
@@ -218,10 +211,17 @@ export function migrateCampaignSessionSnapshot(
   campaignId: string
 ): CampaignSessionSnapshot | undefined {
   if (!value || typeof value !== "object") return undefined;
-  const candidate = value as Partial<CampaignSessionSnapshot & LegacyCampaignSessionSnapshot>;
+  const candidate = value as Record<string, unknown>;
   if (candidate.campaignId !== campaignId) return undefined;
-  if (typeof candidate.currentLevelId !== "string" || !candidate.currentLevelId.trim()) return undefined;
+  const currentLevelId = typeof candidate.currentLevelId === "string"
+    ? candidate.currentLevelId.trim()
+    : "";
+  if (!currentLevelId) return undefined;
   if (!Array.isArray(candidate.completedLevelIds)) return undefined;
+  if (candidate.completedLevelIds.some((levelId) => typeof levelId !== "string" || !levelId.trim())) {
+    return undefined;
+  }
+  const completedLevelIds = candidate.completedLevelIds as string[];
 
   const economy = {
     coins: Number(candidate.coins),
@@ -237,20 +237,23 @@ export function migrateCampaignSessionSnapshot(
   if (candidate.version === 1) {
     return createSnapshot(
       campaignId,
-      candidate.currentLevelId,
-      candidate.completedLevelIds,
+      currentLevelId,
+      completedLevelIds,
       economy,
       DEFAULT_MARKET_UPGRADES
     );
   }
   if (candidate.version !== 2) return undefined;
 
+  const upgrades = candidate.upgrades && typeof candidate.upgrades === "object"
+    ? candidate.upgrades as Partial<MarketUpgradeLevels>
+    : undefined;
   return createSnapshot(
     campaignId,
-    candidate.currentLevelId,
-    candidate.completedLevelIds,
+    currentLevelId,
+    completedLevelIds,
     economy,
-    normalizeMarketUpgrades(candidate.upgrades)
+    normalizeMarketUpgrades(upgrades)
   );
 }
 
