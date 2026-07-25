@@ -18,7 +18,7 @@ export interface CleaningTaskViewState {
 
 /**
  * Reusable cleaning presentation. Gameplay owns which spill is active; this
- * view owns how the supplies station and floor mess read to the player.
+ * view owns how the compact floor station and spills read to the player.
  */
 export class CleaningTaskView {
   private readonly staticObjects: Phaser.GameObjects.GameObject[] = [];
@@ -39,15 +39,29 @@ export class CleaningTaskView {
 
     const { scene, config } = this;
     const { visual } = config;
-    const fixture = scene.add.image(
-      visual.fixture.position.x,
-      visual.fixture.position.y,
-      config.fixtureAssetKey
-    )
-      .setOrigin(0.5, 0.96)
-      .setDisplaySize(visual.fixture.size.width, visual.fixture.size.height)
-      .setDepth(2)
-      .setName("cleaning-supplies-fixture");
+
+    // The shared supermarket background already contains shelving. Keep the
+    // configured fixture asset available for compatibility without drawing a
+    // second shelf over the scene.
+    scene.textures.exists(config.fixtureAssetKey);
+
+    const cartShadow = scene.add.ellipse(
+      config.toolPoint.x + 6,
+      config.toolPoint.y + 4,
+      visual.cartSize.width * 0.72,
+      Math.max(18, visual.cartSize.height * 0.13),
+      0x16231f,
+      0.2
+    ).setDepth(18);
+    const signShadow = scene.add.ellipse(
+      config.toolPoint.x + visual.signOffset.x + 2,
+      config.toolPoint.y + visual.signOffset.y + 3,
+      visual.signSize.width * 0.66,
+      Math.max(12, visual.signSize.height * 0.12),
+      0x16231f,
+      0.18
+    ).setDepth(18);
+
     const cart = scene.add.image(
       config.toolPoint.x,
       config.toolPoint.y,
@@ -66,7 +80,8 @@ export class CleaningTaskView {
       .setDisplaySize(visual.signSize.width, visual.signSize.height)
       .setDepth(20)
       .setName("wet-floor-sign-tool");
-    this.staticObjects.push(fixture, cart, sign);
+
+    this.staticObjects.push(cartShadow, signShadow, cart, sign);
     this.toolObjects.push(cart, sign);
 
     config.spotPositions.forEach((point, index) => {
