@@ -115,12 +115,12 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     tuning: {
       initialCoins: 400,
       cleanDurationMs: 850,
-      toolPoint: { x: 1120, y: 620 },
+      toolPoint: { x: 1190, y: 760 },
       spotPositions: [
-        { x: 690, y: 590 },
-        { x: 865, y: 700 },
-        { x: 1035, y: 535 },
-        { x: 1145, y: 735 }
+        { x: 620, y: 742 },
+        { x: 790, y: 672 },
+        { x: 970, y: 748 },
+        { x: 1135, y: 685 }
       ]
     }
   },
@@ -143,9 +143,9 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
       timeLimitSeconds: 60,
       mistakePenaltySeconds: 5,
       itemTargets: [
-        { productId: "milk-bottle", x: 1010, y: 480 },
-        { productId: "apple", x: 1125, y: 610 },
-        { productId: "cereal-box", x: 1190, y: 505 }
+        { productId: "milk-bottle", x: 520, y: 700 },
+        { productId: "apple", x: 1180, y: 720 },
+        { productId: "cereal-box", x: 820, y: 650 }
       ]
     }
   }
