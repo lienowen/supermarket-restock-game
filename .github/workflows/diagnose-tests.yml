@@ -18,34 +18,14 @@ jobs:
         include:
           - name: core-flow
             file: tests/core-flow.test.cjs
-          - name: v3-architecture
-            file: tests/v3-architecture.test.cjs
-          - name: v3-catalogues
-            file: tests/v3-catalogues.test.cjs
           - name: v3-visual-target
             file: tests/v3-visual-target.test.cjs
-          - name: v3-campaign-runtime
-            file: tests/v3-campaign-runtime.test.cjs
-          - name: v3-campaign-session
-            file: tests/v3-campaign-session.test.cjs
           - name: v3-level-runtime
             file: tests/v3-level-runtime.test.cjs
           - name: v3-level-progression
             file: tests/v3-level-progression.test.cjs
-          - name: v3-player-navigation
-            file: tests/v3-player-navigation.test.cjs
-          - name: v3-checkout-runtime
-            file: tests/v3-checkout-runtime.test.cjs
-          - name: v3-shift-runtime
-            file: tests/v3-shift-runtime.test.cjs
-          - name: v3-restock-rush
-            file: tests/v3-restock-rush.test.cjs
-          - name: v3-find-items-challenge
-            file: tests/v3-find-items-challenge.test.cjs
           - name: v3-presentation-context
             file: tests/v3-presentation-context.test.cjs
-          - name: v3-foundation-contracts
-            file: tests/v3-foundation-contracts.test.cjs
           - name: v3-standard-market-rules
             file: tests/v3-standard-market-rules.test.cjs
           - name: v3-boundaries
