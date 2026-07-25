@@ -4,6 +4,7 @@ import { extname, join, relative } from "node:path";
 const ROOT_TEXT_EXTENSIONS = new Set([".html", ".js", ".css", ".webmanifest", ".xml"]);
 const NESTED_TEXT_EXTENSIONS = new Set([".json", ".webmanifest", ".xml", ".txt"]);
 const GENERATED_CODE_EXTENSIONS = new Set([".js", ".css"]);
+const STRING_DELIMITERS = new Set(["\"", "'", "`"]);
 
 export function analyseRuntimeAssets(distDir) {
   const files = walk(distDir);
@@ -50,7 +51,28 @@ export function analyseRuntimeAssets(distDir) {
 }
 
 export function containsReference(text, name) {
-  return text.includes(name) || text.includes(encodeURI(name));
+  if (text.includes(name) || text.includes(encodeURI(name))) return true;
+  return containsDynamicDirectoryReference(text, name) || containsDynamicDirectoryReference(text, encodeURI(name));
+}
+
+export function containsDynamicDirectoryReference(text, name) {
+  const slashIndex = name.lastIndexOf("/");
+  if (slashIndex < 0) return false;
+  const directory = name.slice(0, slashIndex + 1);
+  let offset = text.indexOf(directory);
+
+  while (offset >= 0) {
+    const delimiter = text[offset - 1];
+    const following = text[offset + directory.length];
+    if (
+      STRING_DELIMITERS.has(delimiter) &&
+      (following === "$" || following === delimiter)
+    ) {
+      return true;
+    }
+    offset = text.indexOf(directory, offset + directory.length);
+  }
+  return false;
 }
 
 export function walk(directory) {
