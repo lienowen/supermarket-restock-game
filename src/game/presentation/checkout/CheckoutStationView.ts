@@ -7,7 +7,7 @@ export interface CheckoutStationViewConfig {
   readonly checkoutPosition: PresentationPoint;
   readonly queueStart: PresentationPoint;
   readonly checkoutAssetKey: string;
-  readonly customerAssetKeys: readonly string[];
+  readonly basketAssetKey: string;
   readonly customerCount: number;
   readonly scanDurationMs: number;
   readonly queueAdvanceDurationMs: number;
@@ -16,18 +16,19 @@ export interface CheckoutStationViewConfig {
   readonly visual: CheckoutLevelVisualPreset;
 }
 
-interface ImageScale {
-  readonly x: number;
-  readonly y: number;
-}
-
+/**
+ * Checkout presentation intentionally avoids rendering the current photographic
+ * customer cuts in the 3D-cartoon scene. The gameplay is communicated through
+ * a grounded register, one active grocery basket and a compact order queue.
+ */
 export class CheckoutStationView {
   private readonly objects: Phaser.GameObjects.GameObject[] = [];
-  private readonly customers: Phaser.GameObjects.Image[] = [];
-  private readonly customerBaseScales: ImageScale[] = [];
+  private readonly queueBaskets: Phaser.GameObjects.Image[] = [];
   private readonly beltItems: Phaser.GameObjects.Arc[] = [];
+  private readonly beltBasket: Phaser.GameObjects.Image;
   private readonly registerText: Phaser.GameObjects.Text;
   private readonly waitingText: Phaser.GameObjects.Text;
+  private readonly queueOverflowText: Phaser.GameObjects.Text;
   private readonly laneLight: Phaser.GameObjects.Arc;
   private readonly serviceHalo: Phaser.GameObjects.Ellipse;
   private readonly scanBeam: Phaser.GameObjects.Rectangle;
@@ -41,17 +42,17 @@ export class CheckoutStationView {
     const { checkoutPosition, visual } = config;
 
     this.serviceHalo = scene.add.ellipse(
-      checkoutPosition.x - 38,
-      checkoutPosition.y - 8,
-      280,
-      108,
+      checkoutPosition.x - 34,
+      checkoutPosition.y - 6,
+      270,
+      102,
       config.accentColor,
-      0.055
-    ).setStrokeStyle(2, config.accentColor, 0.26).setDepth(18);
+      0.05
+    ).setStrokeStyle(2, config.accentColor, 0.22).setDepth(18);
 
     const shadow = scene.add.ellipse(
       checkoutPosition.x + 8,
-      checkoutPosition.y + 26,
+      checkoutPosition.y + 25,
       visual.station.shadowSize.width,
       visual.station.shadowSize.height,
       0x1b2c26,
@@ -70,18 +71,28 @@ export class CheckoutStationView {
 
     const beltSurface = scene.add.graphics().setDepth(29);
     beltSurface.fillStyle(0x192824, 0.7);
-    beltSurface.fillRoundedRect(checkoutPosition.x - 150, checkoutPosition.y - 91, 176, 48, 14);
+    beltSurface.fillRoundedRect(checkoutPosition.x - 146, checkoutPosition.y - 88, 170, 46, 14);
     beltSurface.lineStyle(2, 0xffffff, 0.1);
-    beltSurface.strokeRoundedRect(checkoutPosition.x - 150, checkoutPosition.y - 91, 176, 48, 14);
+    beltSurface.strokeRoundedRect(checkoutPosition.x - 146, checkoutPosition.y - 88, 170, 46, 14);
+
+    this.beltBasket = scene.add.image(
+      checkoutPosition.x - 110,
+      checkoutPosition.y - 43,
+      config.basketAssetKey
+    )
+      .setOrigin(0.5, 0.96)
+      .setDisplaySize(88, 62)
+      .setDepth(30)
+      .setName("checkout-active-basket");
 
     [0, 1, 2].forEach((index) => {
       const item = scene.add.circle(
-        checkoutPosition.x - 122 + index * 46,
-        checkoutPosition.y - 66,
-        10 + index,
+        checkoutPosition.x - 112 + index * 39,
+        checkoutPosition.y - 70,
+        8 + index,
         index === 0 ? 0xd96055 : index === 1 ? 0x5ca4cc : 0xe0bb58,
         0.92
-      ).setStrokeStyle(2, 0xffffff, 0.28).setDepth(30);
+      ).setStrokeStyle(2, 0xffffff, 0.28).setDepth(31);
       this.beltItems.push(item);
       this.objects.push(item);
     });
@@ -93,7 +104,7 @@ export class CheckoutStationView {
       visual.station.scanBeamSize.height,
       0xff3c31,
       0
-    ).setDepth(31);
+    ).setDepth(32);
 
     this.registerText = scene.add.text(
       checkoutPosition.x + visual.station.registerOffset.x,
@@ -108,7 +119,7 @@ export class CheckoutStationView {
         backgroundColor: "#10211d",
         padding: { x: 10, y: 6 }
       }
-    ).setOrigin(0.5).setDepth(31);
+    ).setOrigin(0.5).setDepth(32);
 
     this.laneLight = scene.add.circle(
       checkoutPosition.x + visual.station.laneLightOffset.x,
@@ -116,46 +127,82 @@ export class CheckoutStationView {
       11,
       0xc95b4f,
       1
-    ).setStrokeStyle(2, 0xffffff, 0.4).setDepth(31);
+    ).setStrokeStyle(2, 0xffffff, 0.4).setDepth(32);
+
+    const queueCentre = {
+      x: config.queueStart.x + visual.queue.panelOffset.x,
+      y: config.queueStart.y + visual.queue.panelOffset.y
+    };
+    const queuePanel = scene.add.graphics().setDepth(20);
+    queuePanel.fillStyle(config.panelColor, 0.94);
+    queuePanel.fillRoundedRect(
+      queueCentre.x - visual.queue.panelSize.width / 2,
+      queueCentre.y - visual.queue.panelSize.height / 2,
+      visual.queue.panelSize.width,
+      visual.queue.panelSize.height,
+      18
+    );
+    queuePanel.lineStyle(2, config.accentColor, 0.42);
+    queuePanel.strokeRoundedRect(
+      queueCentre.x - visual.queue.panelSize.width / 2,
+      queueCentre.y - visual.queue.panelSize.height / 2,
+      visual.queue.panelSize.width,
+      visual.queue.panelSize.height,
+      18
+    );
 
     this.waitingText = scene.add.text(
-      config.queueStart.x - 116,
-      config.queueStart.y - 202,
-      `${config.customerCount} IN QUEUE`,
+      queueCentre.x,
+      queueCentre.y - 25,
+      `${config.customerCount} ORDERS WAITING`,
       {
         fontFamily: "Arial",
         fontSize: "13px",
         color: "#eaf5ed",
-        fontStyle: "bold",
-        backgroundColor: "#18362d",
-        padding: { x: 13, y: 8 }
+        fontStyle: "bold"
       }
-    ).setOrigin(0.5).setDepth(32);
+    ).setOrigin(0.5).setDepth(22);
+
+    const visibleWidth = (visual.queue.visibleBasketCount - 1) * visual.queue.basketGap;
+    for (let index = 0; index < visual.queue.visibleBasketCount; index += 1) {
+      const basket = scene.add.image(
+        queueCentre.x - visibleWidth / 2 + index * visual.queue.basketGap,
+        queueCentre.y + 29,
+        config.basketAssetKey
+      )
+        .setOrigin(0.5, 0.96)
+        .setDisplaySize(visual.queue.basketSize.width, visual.queue.basketSize.height)
+        .setDepth(22)
+        .setName(`checkout-queued-basket-${index + 1}`);
+      this.queueBaskets.push(basket);
+      this.objects.push(basket);
+    }
+
+    this.queueOverflowText = scene.add.text(
+      queueCentre.x + visual.queue.panelSize.width / 2 - 19,
+      queueCentre.y + 18,
+      "",
+      {
+        fontFamily: "Arial",
+        fontSize: "12px",
+        color: "#ffd95e",
+        fontStyle: "bold"
+      }
+    ).setOrigin(0.5).setDepth(23);
 
     this.objects.push(
       this.serviceHalo,
       shadow,
       counter,
       beltSurface,
+      this.beltBasket,
       this.scanBeam,
       this.registerText,
       this.laneLight,
-      this.waitingText
+      queuePanel,
+      this.waitingText,
+      this.queueOverflowText
     );
-
-    for (let index = 0; index < config.customerCount; index += 1) {
-      const position = this.queuePosition(index);
-      const assetKey = config.customerAssetKeys[index % config.customerAssetKeys.length];
-      if (!assetKey) throw new Error("Checkout station requires customer assets");
-      const customer = scene.add.image(position.x, position.y, assetKey)
-        .setOrigin(0.5, 0.96)
-        .setDisplaySize(visual.queue.customerSize.width, visual.queue.customerSize.height)
-        .setDepth(this.queueDepth(position.y))
-        .setName(`checkout-customer-${index + 1}`);
-      this.customerBaseScales.push(Object.freeze({ x: customer.scaleX, y: customer.scaleY }));
-      this.customers.push(customer);
-      this.objects.push(customer);
-    }
   }
 
   sync(snapshot: CheckoutSceneSnapshot): void {
@@ -164,51 +211,37 @@ export class CheckoutStationView {
     this.registerText.setText(isOpen ? `${snapshot.customersServed}/${snapshot.totalCustomers}` : "CLOSED");
     this.registerText.setColor(isOpen ? "#9ff0b5" : "#ffd95e");
     this.laneLight.setFillStyle(isOpen ? 0x52be75 : 0xc95b4f, 1);
-    this.waitingText.setText(`${remaining} IN QUEUE`);
+    this.waitingText.setText(`${remaining} ORDERS WAITING`);
     this.waitingText.setAlpha(snapshot.step === "complete" ? 0.45 : 1);
     this.serviceHalo.setVisible(snapshot.step !== "complete");
+    this.beltBasket.setAlpha(isOpen && remaining > 0 ? 1 : 0.42);
+    this.layoutBasketQueue(remaining);
 
     if (!this.initialized) {
       this.initialized = true;
       this.previousServed = snapshot.customersServed;
-      this.layoutQueue(snapshot.customersServed, false);
       return;
     }
 
     if (snapshot.customersServed <= this.previousServed) return;
-
     this.playScanBeam();
-    const servedIndex = snapshot.customersServed - 1;
-    const servedCustomer = this.customers[servedIndex];
-    const baseScale = this.customerBaseScales[servedIndex];
-    if (servedCustomer && baseScale) {
-      servedCustomer.clearTint();
-      this.scene.tweens.add({
-        targets: servedCustomer,
-        x: this.config.checkoutPosition.x + this.config.visual.station.servedExitOffset.x,
-        y: this.config.checkoutPosition.y + this.config.visual.station.servedExitOffset.y,
-        alpha: 0,
-        scaleX: baseScale.x * 0.78,
-        scaleY: baseScale.y * 0.78,
-        duration: this.config.scanDurationMs,
-        ease: "Sine.InOut",
-        onComplete: () => servedCustomer.setVisible(false)
-      });
-    }
-
-    this.scene.time.delayedCall(
-      Math.max(80, Math.floor(this.config.scanDurationMs * 0.45)),
-      () => this.layoutQueue(snapshot.customersServed, true)
-    );
     this.previousServed = snapshot.customersServed;
   }
 
   destroy(): void {
     this.objects.forEach((object) => object.destroy());
     this.objects.length = 0;
-    this.customers.length = 0;
-    this.customerBaseScales.length = 0;
+    this.queueBaskets.length = 0;
     this.beltItems.length = 0;
+  }
+
+  private layoutBasketQueue(remaining: number): void {
+    const visible = Math.min(remaining, this.queueBaskets.length);
+    this.queueBaskets.forEach((basket, index) => {
+      basket.setVisible(index < visible).setAlpha(index === 0 ? 1 : 0.72);
+    });
+    const overflow = Math.max(0, remaining - visible);
+    this.queueOverflowText.setText(overflow > 0 ? `+${overflow}` : "");
   }
 
   private playScanBeam(): void {
@@ -221,12 +254,28 @@ export class CheckoutStationView {
       ease: "Cubic.Out"
     });
 
+    const startX = this.config.checkoutPosition.x - 110;
+    this.beltBasket.setPosition(startX, this.config.checkoutPosition.y - 43).setAlpha(1).setScale(1);
+    this.scene.tweens.add({
+      targets: this.beltBasket,
+      x: startX + 105,
+      alpha: 0.16,
+      scaleX: 0.82,
+      scaleY: 0.82,
+      duration: Math.max(240, this.config.queueAdvanceDurationMs),
+      ease: "Cubic.In",
+      onComplete: () => this.beltBasket
+        .setPosition(startX, this.config.checkoutPosition.y - 43)
+        .setAlpha(1)
+        .setScale(1)
+    });
+
     this.beltItems.forEach((item, index) => {
-      const originalX = this.config.checkoutPosition.x - 122 + index * 46;
+      const originalX = this.config.checkoutPosition.x - 112 + index * 39;
       item.setAlpha(1).setScale(1);
       this.scene.tweens.add({
         targets: item,
-        x: originalX + 56,
+        x: originalX + 58,
         alpha: 0.18,
         scaleX: 0.72,
         scaleY: 0.72,
@@ -234,78 +283,10 @@ export class CheckoutStationView {
         delay: index * 55,
         ease: "Cubic.In",
         onComplete: () => item
-          .setPosition(originalX, this.config.checkoutPosition.y - 66)
+          .setPosition(originalX, this.config.checkoutPosition.y - 70)
           .setAlpha(1)
           .setScale(1)
       });
     });
-  }
-
-  private layoutQueue(servedCount: number, animate: boolean): void {
-    this.customers.forEach((customer, index) => {
-      if (index < servedCount) {
-        customer.setVisible(false);
-        return;
-      }
-      const baseScale = this.customerBaseScales[index];
-      if (!baseScale) return;
-      const queueIndex = index - servedCount;
-      if (queueIndex >= this.config.visual.queue.visibleCount) {
-        customer.setVisible(false).setAlpha(0);
-        return;
-      }
-
-      const position = this.queuePosition(queueIndex);
-      const scaleFactor = this.queueScale(queueIndex) * (queueIndex === 0 ? 1.04 : 1);
-      const scaleX = baseScale.x * scaleFactor;
-      const scaleY = baseScale.y * scaleFactor;
-      customer
-        .setVisible(true)
-        .setAlpha(queueIndex === 0 ? 1 : 0.88)
-        .setDepth(this.queueDepth(position.y));
-      if (queueIndex === 0) customer.setTint(0xfff2d5);
-      else customer.clearTint();
-
-      if (!animate) {
-        customer.setPosition(position.x, position.y).setScale(scaleX, scaleY);
-        return;
-      }
-
-      customer.setAlpha(0.2);
-      this.scene.tweens.add({
-        targets: customer,
-        x: position.x,
-        y: position.y,
-        alpha: queueIndex === 0 ? 1 : 0.88,
-        scaleX,
-        scaleY,
-        duration: this.config.queueAdvanceDurationMs,
-        ease: "Sine.Out"
-      });
-    });
-  }
-
-  private queueScale(index: number): number {
-    const { queue } = this.config.visual;
-    const row = Math.floor(index / queue.columns);
-    const column = index % queue.columns;
-    return Math.max(
-      queue.minimumScale,
-      queue.baseScale - row * queue.rowScaleStep - column * queue.columnScaleStep
-    );
-  }
-
-  private queuePosition(index: number): PresentationPoint {
-    const { queue } = this.config.visual;
-    const column = index % queue.columns;
-    const row = Math.floor(index / queue.columns);
-    return {
-      x: this.config.queueStart.x + column * queue.columnGap + row * queue.rowDriftX,
-      y: this.config.queueStart.y - row * queue.rowGap + (column % 2) * queue.alternatingYOffset
-    };
-  }
-
-  private queueDepth(y: number): number {
-    return 21 + y / 1000;
   }
 }
