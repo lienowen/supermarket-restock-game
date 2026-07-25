@@ -192,7 +192,7 @@ export class CampaignSession {
   reset(options: CampaignResetOptions = {}): CampaignSessionSnapshot {
     const previous = this.store.load(this.config.campaignId);
     this.store.clear(this.config.campaignId);
-    const preserveMetaProgress = options.preserveMetaProgress === true;
+    const preserveMetaProgress = options.preserveMetaProgress !== false;
     const economy = normalizeEconomy(
       preserveMetaProgress && previous ? previous : this.config.defaultEconomy
     );
