@@ -1,5 +1,12 @@
 import Phaser from "phaser";
 
+const BEVERAGE_BOTTLE_CROP = Object.freeze({
+  x: 188,
+  y: 374,
+  width: 136,
+  height: 356
+});
+
 export interface BeverageCoolerViewConfig {
   readonly centreX: number;
   readonly baseY: number;
@@ -10,6 +17,7 @@ export interface BeverageCoolerViewConfig {
   readonly displayHeight: number;
   readonly departmentLabel: string;
   readonly subtitleLabel: string;
+  readonly rowXs: readonly number[];
   readonly rowYs: readonly number[];
   readonly ambientPositions: readonly number[];
   readonly restockStartX: number;
@@ -29,11 +37,13 @@ export interface BeverageCoolerRushState {
 }
 
 /**
- * Interactive stock rows layered over one glass-door bay in the photographed
- * cooler. Bottles sit on the real shelf lips and never cross a door mullion.
+ * Six interactive stock slots arranged as two real glass-door bays with three
+ * shelf segments each. Product sprites are cropped to their visible pixels,
+ * masked against the busy photographed stock, and grounded on shelf lips.
  */
 export class BeverageCoolerView {
   private readonly rows: Phaser.GameObjects.Container[] = [];
+  private readonly rowBackings: Phaser.GameObjects.Graphics[] = [];
   private readonly rowPlates: Phaser.GameObjects.Graphics[] = [];
   private readonly rowTargets: Phaser.GameObjects.Rectangle[] = [];
   private previousFilledRows = new Set<number>();
@@ -45,17 +55,23 @@ export class BeverageCoolerView {
     if (config.rowYs.length === 0) {
       throw new Error("Beverage cooler view requires at least one shelf row");
     }
+    if (config.rowXs.length !== config.rowYs.length) {
+      throw new Error("Beverage cooler row X/Y coordinates must have equal length");
+    }
   }
 
   create(): void {
     const rowHeight = this.rowHeight();
     this.config.rowYs.forEach((y, rowIndex) => {
+      const x = this.rowX(rowIndex);
       const shelfWidth = this.shelfWidth(rowIndex);
+      this.rowBackings.push(this.createRowBacking(x, y, rowIndex, rowHeight));
+
       const target = this.scene.add.rectangle(
-        this.stockCentreX(),
+        x,
         y,
-        shelfWidth + 30,
-        Math.max(50, rowHeight + 8),
+        shelfWidth + 34,
+        rowHeight + 20,
         0xffffff,
         0.001
       )
@@ -63,8 +79,8 @@ export class BeverageCoolerView {
         .setName(`beverage-cooler-row-target-${rowIndex}`);
       target.on("pointerdown", () => this.config.onRowSelected?.(rowIndex));
       this.rowTargets.push(target);
-      this.rowPlates.push(this.createRowPlate(y, rowIndex, rowHeight));
-      this.rows.push(this.createRestockRow(y, rowIndex, rowHeight));
+      this.rowPlates.push(this.createRowPlate(x, y, rowIndex, rowHeight));
+      this.rows.push(this.createRestockRow(x, y, rowIndex, rowHeight));
     });
 
     this.syncRush({
@@ -92,7 +108,13 @@ export class BeverageCoolerView {
     this.rows.forEach((row, index) => {
       const filled = filledRows.has(index);
       const active = state.activeRowIndex === index && !filled;
-      row.setAlpha(filled ? 1 : active ? 0.2 : 0.035);
+      row.setAlpha(filled ? 1 : active ? 0.22 : 0.025);
+    });
+
+    this.rowBackings.forEach((backing, index) => {
+      const filled = filledRows.has(index);
+      const active = state.activeRowIndex === index && !filled;
+      backing.setAlpha(filled ? 0.84 : active ? 0.95 : 0.56);
     });
 
     this.rowTargets.forEach((target, index) => {
@@ -119,20 +141,18 @@ export class BeverageCoolerView {
   rowCentre(rowIndex: number): { readonly x: number; readonly y: number } {
     const y = this.config.rowYs[rowIndex];
     if (y === undefined) throw new Error(`Unknown cooler row ${rowIndex}`);
-    return Object.freeze({ x: this.stockCentreX(), y });
+    return Object.freeze({ x: this.rowX(rowIndex), y });
   }
 
   showMistake(rowIndex: number): void {
-    const y = this.config.rowYs[rowIndex];
-    if (y === undefined) return;
-    const width = this.shelfWidth(rowIndex) + 28;
-    const height = this.rowHeight() + 6;
-    const x = this.stockCentreX();
+    const centre = this.rowCentre(rowIndex);
+    const width = this.shelfWidth(rowIndex) + 30;
+    const height = this.rowHeight() + 12;
     const flash = this.scene.add.graphics().setDepth(14);
     flash.fillStyle(0xe45d52, 0.14);
-    flash.fillRoundedRect(x - width / 2, y - height / 2, width, height, 8);
+    flash.fillRoundedRect(centre.x - width / 2, centre.y - height / 2, width, height, 8);
     flash.lineStyle(3, 0xff8f86, 0.9);
-    flash.strokeRoundedRect(x - width / 2, y - height / 2, width, height, 8);
+    flash.strokeRoundedRect(centre.x - width / 2, centre.y - height / 2, width, height, 8);
     this.scene.tweens.add({
       targets: flash,
       alpha: 0,
@@ -144,6 +164,7 @@ export class BeverageCoolerView {
 
   destroy(): void {
     this.rows.forEach((row) => row.destroy(true));
+    this.rowBackings.forEach((backing) => backing.destroy());
     this.rowPlates.forEach((plate) => plate.destroy());
     this.rowTargets.forEach((target) => target.destroy());
   }
@@ -159,17 +180,35 @@ export class BeverageCoolerView {
       duration: 250,
       ease: "Back.Out"
     });
-    this.playRowSparkles(this.config.rowYs[rowIndex]);
+    this.playRowSparkles(rowIndex);
   }
 
-  private createRowPlate(
+  private createRowBacking(
+    x: number,
     y: number,
     rowIndex: number,
     rowHeight: number
   ): Phaser.GameObjects.Graphics {
-    const width = this.shelfWidth(rowIndex) + 26;
-    const height = rowHeight + 4;
-    const x = this.stockCentreX();
+    const width = this.shelfWidth(rowIndex) + 24;
+    const height = rowHeight + 14;
+    const backing = this.scene.add.graphics().setDepth(4);
+    backing.fillStyle(0x10211d, 0.72);
+    backing.fillRoundedRect(x - width / 2, y - height / 2, width, height, 7);
+    backing.lineStyle(1, 0x9db7ad, 0.34);
+    backing.strokeRoundedRect(x - width / 2, y - height / 2, width, height, 7);
+    backing.lineStyle(3, 0xc7d7d0, 0.46);
+    backing.lineBetween(x - width / 2 + 5, y + height / 2 - 5, x + width / 2 - 5, y + height / 2 - 5);
+    return backing;
+  }
+
+  private createRowPlate(
+    x: number,
+    y: number,
+    rowIndex: number,
+    rowHeight: number
+  ): Phaser.GameObjects.Graphics {
+    const width = this.shelfWidth(rowIndex) + 28;
+    const height = rowHeight + 10;
     const plate = this.scene.add.graphics().setDepth(10).setAlpha(0);
     plate.fillStyle(0xffd95e, 0.07);
     plate.fillRoundedRect(x - width / 2, y - height / 2, width, height, 7);
@@ -179,6 +218,7 @@ export class BeverageCoolerView {
   }
 
   private createRestockRow(
+    x: number,
     y: number,
     rowIndex: number,
     rowHeight: number
@@ -187,66 +227,69 @@ export class BeverageCoolerView {
     const shelfWidth = this.shelfWidth(rowIndex);
     const spacing = shelfWidth / (count - 1);
     const startX = -shelfWidth / 2;
-    const progress = this.rowProgress(rowIndex);
-    const bottleHeight = Phaser.Math.Linear(52, 58, progress);
-    const bottleWidth = bottleHeight * 0.62;
+    const progress = this.verticalProgress(rowIndex);
+    const bottleHeight = Phaser.Math.Linear(50, 56, progress);
+    const bottleWidth = bottleHeight * (BEVERAGE_BOTTLE_CROP.width / BEVERAGE_BOTTLE_CROP.height);
     const objects: Phaser.GameObjects.GameObject[] = [];
 
     for (let index = 0; index < count; index += 1) {
-      objects.push(
-        this.scene.add.image(
-          startX + index * spacing,
-          rowHeight / 2 - 1,
-          this.config.restockProductKey
+      const bottle = this.scene.add.image(
+        startX + index * spacing,
+        rowHeight / 2 + 2,
+        this.config.restockProductKey
+      )
+        .setCrop(
+          BEVERAGE_BOTTLE_CROP.x,
+          BEVERAGE_BOTTLE_CROP.y,
+          BEVERAGE_BOTTLE_CROP.width,
+          BEVERAGE_BOTTLE_CROP.height
         )
-          .setOrigin(0.5, 0.96)
-          .setDisplaySize(bottleWidth, bottleHeight)
-          .setDepth(5)
-      );
+        .setOrigin(0.5, 1)
+        .setDisplaySize(bottleWidth, bottleHeight)
+        .setDepth(5);
+      objects.push(bottle);
     }
 
-    return this.scene.add.container(this.stockCentreX(), y, objects)
-      .setAlpha(0.035)
+    return this.scene.add.container(x, y, objects)
+      .setAlpha(0.025)
       .setDepth(5)
       .setName(`beverage-cooler-row-${rowIndex}`);
   }
 
-  private stockCentreX(): number {
-    return this.config.centreX - 15;
+  private rowX(rowIndex: number): number {
+    const x = this.config.rowXs[rowIndex];
+    if (x === undefined) throw new Error(`Unknown cooler row ${rowIndex}`);
+    return x;
   }
 
   private shelfWidth(rowIndex: number): number {
-    return Phaser.Math.Linear(48, 54, this.rowProgress(rowIndex));
+    return Phaser.Math.Linear(50, 56, this.verticalProgress(rowIndex));
   }
 
-  private rowProgress(rowIndex: number): number {
-    return this.config.rowYs.length <= 1
+  private verticalProgress(rowIndex: number): number {
+    const rowsPerBay = Math.max(1, this.config.rowYs.length / 2);
+    return rowsPerBay <= 1
       ? 0
-      : Phaser.Math.Clamp(rowIndex / (this.config.rowYs.length - 1), 0, 1);
+      : Phaser.Math.Clamp((rowIndex % rowsPerBay) / (rowsPerBay - 1), 0, 1);
   }
 
   private rowHeight(): number {
-    const spacings = this.config.rowYs
-      .slice(1)
-      .map((y, index) => y - this.config.rowYs[index])
-      .filter((spacing) => spacing > 0);
-    const minimumSpacing = spacings.length > 0 ? Math.min(...spacings) : 60;
-    return Phaser.Math.Clamp(minimumSpacing * 0.76, 42, 48);
+    return 54;
   }
 
-  private playRowSparkles(y: number): void {
-    const x = this.stockCentreX();
-    [-30, -15, 0, 15, 30].forEach((offset, index) => {
+  private playRowSparkles(rowIndex: number): void {
+    const centre = this.rowCentre(rowIndex);
+    [-28, -14, 0, 14, 28].forEach((offset, index) => {
       const sparkle = this.scene.add.circle(
-        x + offset,
-        y - 3,
+        centre.x + offset,
+        centre.y - 3,
         3 + (index % 2),
         0xffe18a,
         0.82
       ).setDepth(15);
       this.scene.tweens.add({
         targets: sparkle,
-        y: y - 24 - (index % 3) * 5,
+        y: centre.y - 24 - (index % 3) * 5,
         alpha: 0,
         scaleX: 0.4,
         scaleY: 0.4,
