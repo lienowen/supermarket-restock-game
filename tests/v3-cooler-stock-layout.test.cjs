@@ -4,8 +4,11 @@ const assert = require("node:assert/strict");
 const {
   BEVERAGE_BOTTLE_CROP,
   COOLER_STOCK_SLOT_OFFSETS,
+  COOLER_STOCK_TARGET_HEIGHT,
+  COOLER_STOCK_TARGET_WIDTH,
+  resolveCoolerStockBounds,
   resolveCoolerStockSlots
-} = require("../.test-dist/src/game/presentation/interactions/RestockTargetResolver.js");
+} = require("../.test-dist/src/game/presentation/visual/CoolerStockLayout.js");
 
 test("Cooler stock uses two glass-door bays with three grounded shelves each", () => {
   assert.equal(COOLER_STOCK_SLOT_OFFSETS.length, 6);
@@ -20,6 +23,16 @@ test("Cooler stock uses two glass-door bays with three grounded shelves each", (
   assert.equal(uniquePoints.size, 6);
   assert.ok(slots.every((slot) => slot.x >= 1380 && slot.x <= 1520));
   assert.ok(slots.every((slot) => slot.y >= 280 && slot.y <= 550));
+
+  const bounds = resolveCoolerStockBounds(1410);
+  assert.deepEqual(bounds, {
+    x: 1360,
+    y: 263,
+    width: 175,
+    height: 314
+  });
+  assert.equal(COOLER_STOCK_TARGET_WIDTH, 90);
+  assert.equal(COOLER_STOCK_TARGET_HEIGHT, 74);
 });
 
 test("Beverage bottle crop removes the padded transparent canvas", () => {
