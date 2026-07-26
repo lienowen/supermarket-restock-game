@@ -62,7 +62,8 @@ export async function bootstrapGame(): Promise<Phaser.Game> {
   document.body.dataset.uiLanguage = PROJECT_CONFIG.language;
   document.body.dataset.gameArchitecture = PROJECT_CONFIG.version;
   document.body.dataset.gameVersion = PROJECT_CONFIG.version;
-  document.body.dataset.visualTarget = "production-v1-ten-level-polish";
+  document.body.dataset.visualTarget = "production-v1-five-mode-campaign";
+  document.body.dataset.experienceTarget = "ten-level-gameplay-polish-v1";
   document.body.dataset.activeCampaign = MAIN_CAMPAIGN_RUNTIME.campaign.id;
   return createPhaserGame();
 }
