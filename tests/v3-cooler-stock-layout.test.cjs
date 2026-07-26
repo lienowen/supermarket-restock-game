@@ -1,5 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const { readFileSync } = require("node:fs");
 
 const {
   BEVERAGE_BOTTLE_CROP,
@@ -11,6 +12,8 @@ const {
   resolveCoolerStockBounds,
   resolveCoolerStockSlots
 } = require("../.test-dist/src/game/presentation/visual/CoolerStockLayout.js");
+
+const read = (path) => readFileSync(path, "utf8");
 
 test("Cooler stock uses two glass-door bays with three grounded shelves each", () => {
   assert.equal(COOLER_STOCK_SLOT_OFFSETS.length, 6);
@@ -38,6 +41,17 @@ test("Cooler stock uses two glass-door bays with three grounded shelves each", (
   });
   assert.equal(COOLER_STOCK_TARGET_WIDTH, 90);
   assert.equal(COOLER_STOCK_TARGET_HEIGHT, 74);
+});
+
+test("Restock mode covers photographed background stock with opaque empty bays", () => {
+  const source = read("src/game/presentation/world/StarterMarketEnvironmentView.ts");
+  assert.equal(source.includes('setName("beverage-cooler-empty-shell")'), true);
+  assert.equal(source.includes('setData("background-stock-occluded", true)'), true);
+  assert.equal(source.includes("shell.fillStyle(0x06110d, 1)"), true);
+  assert.equal(
+    source.includes('document.body.dataset.restockCoolerBackground = "occluded"'),
+    true
+  );
 });
 
 test("Beverage bottle crop removes the padded transparent canvas", () => {
