@@ -7,6 +7,7 @@ const {
 
 const createRush = (overrides = {}) => new RestockRushController({
   rowCount: 6,
+  itemsPerRow: 3,
   randomSeed: "rush-test-seed",
   targetDurationMs: 3000,
   minimumTargetDurationMs: 1200,
@@ -17,28 +18,61 @@ const createRush = (overrides = {}) => new RestockRushController({
   ...overrides
 });
 
-test("Restock rush produces a deterministic target order from level seed", () => {
+test("Restock rush produces a deterministic completed-shelf order from level seed", () => {
   const first = createRush();
   const second = createRush();
   let now = 0;
+  const firstCompletedOrder = [];
+  const secondCompletedOrder = [];
 
   first.start(now);
   second.start(now);
-  const firstOrder = [];
-  const secondOrder = [];
-
   while (!first.snapshot(now).complete) {
     const firstTarget = first.snapshot(now).activeRowIndex;
     const secondTarget = second.snapshot(now).activeRowIndex;
-    firstOrder.push(firstTarget);
-    secondOrder.push(secondTarget);
-    now += 500;
-    first.selectRow(firstTarget, now);
-    second.selectRow(secondTarget, now);
+    assert.equal(firstTarget, secondTarget);
+    now += 300;
+    const firstResult = first.selectRow(firstTarget, now);
+    const secondResult = second.selectRow(secondTarget, now);
+    if (firstResult.rowCompleted) firstCompletedOrder.push(firstTarget);
+    if (secondResult.rowCompleted) secondCompletedOrder.push(secondTarget);
   }
 
-  assert.deepEqual(firstOrder, secondOrder);
-  assert.equal(new Set(firstOrder).size, 6);
+  assert.deepEqual(firstCompletedOrder, secondCompletedOrder);
+  assert.equal(firstCompletedOrder.length, 6);
+  assert.equal(new Set(firstCompletedOrder).size, 6);
+  assert.equal(first.snapshot(now).totalItemsStocked, 18);
+  assert.deepEqual(first.snapshot(now).rowItemCounts, [3, 3, 3, 3, 3, 3]);
+});
+
+test("A shelf stays active until three individual products are placed", () => {
+  const rush = createRush({ rowCount: 2, sequenceMode: "fixed" });
+  let now = 0;
+  const started = rush.start(now);
+  assert.equal(started.activeRowIndex, 0);
+  assert.deepEqual(started.rowItemCounts, [0, 0]);
+
+  const first = rush.selectRow(0, now += 300);
+  assert.equal(first.correct, true);
+  assert.equal(first.stockedItemCount, 1);
+  assert.equal(first.rowCompleted, false);
+  assert.equal(first.snapshot.activeRowIndex, 0);
+  assert.deepEqual(first.snapshot.filledRowIndexes, []);
+  assert.deepEqual(first.snapshot.rowItemCounts, [1, 0]);
+
+  const second = rush.selectRow(0, now += 300);
+  assert.equal(second.stockedItemCount, 2);
+  assert.equal(second.rowCompleted, false);
+  assert.equal(second.snapshot.activeRowIndex, 0);
+  assert.deepEqual(second.snapshot.filledRowIndexes, []);
+  assert.deepEqual(second.snapshot.rowItemCounts, [2, 0]);
+
+  const third = rush.selectRow(0, now += 300);
+  assert.equal(third.stockedItemCount, 3);
+  assert.equal(third.rowCompleted, true);
+  assert.equal(third.snapshot.activeRowIndex, 1);
+  assert.deepEqual(third.snapshot.filledRowIndexes, [0]);
+  assert.deepEqual(third.snapshot.rowItemCounts, [3, 0]);
 });
 
 test("Wrong shelf selections rotate urgency and break the streak", () => {
@@ -53,9 +87,10 @@ test("Wrong shelf selections rotate urgency and break the streak", () => {
   assert.equal(result.snapshot.currentStreak, 0);
   assert.notEqual(result.snapshot.activeRowIndex, expected);
   assert.deepEqual(result.snapshot.filledRowIndexes, []);
+  assert.deepEqual(result.snapshot.rowItemCounts, [0, 0, 0]);
 });
 
-test("Fast correct play builds streak and awards a gold rush grade", () => {
+test("Fast correct item placement builds streak and awards a gold rush grade", () => {
   const rush = createRush({ rowCount: 4 });
   let now = 0;
   rush.start(now);
@@ -69,7 +104,8 @@ test("Fast correct play builds streak and awards a gold rush grade", () => {
 
   const completed = rush.snapshot(now);
   assert.equal(completed.complete, true);
-  assert.equal(completed.bestStreak, 4);
+  assert.equal(completed.totalItemsStocked, 12);
+  assert.equal(completed.bestStreak, 12);
   assert.equal(completed.mistakes, 0);
   assert.equal(completed.grade, "GOLD");
 });
@@ -99,5 +135,7 @@ test("A browser frame stall does not consume the player's active rush window", (
 
   const selection = rush.selectRow(target, 5020);
   assert.equal(selection.correct, true);
+  assert.equal(selection.stockedItemCount, 1);
+  assert.equal(selection.rowCompleted, false);
   assert.equal(selection.snapshot.mistakes, 0);
 });
