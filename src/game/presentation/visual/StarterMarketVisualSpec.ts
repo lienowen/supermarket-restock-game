@@ -1,4 +1,10 @@
 import { STARTER_MARKET_LAYOUT } from "../../world/starterMarketLayout";
+import {
+  COOLER_STOCK_ITEMS_PER_SLOT,
+  COOLER_STOCK_ROW_YS,
+  COOLER_STOCK_SLOT_COUNT,
+  resolveCoolerStockBounds
+} from "./CoolerStockLayout";
 
 export interface VisualPoint {
   readonly x: number;
@@ -28,11 +34,18 @@ const requireSpawn = (spawnId: string): VisualPoint => {
   return Object.freeze({ ...spawn.position });
 };
 
+const requireFixturePosition = (fixtureId: string): VisualPoint => {
+  const fixture = STARTER_MARKET_LAYOUT.fixtures.find((entry) => entry.fixtureId === fixtureId);
+  if (!fixture) throw new Error(`Missing visual fixture placement: ${fixtureId}`);
+  return Object.freeze({ ...fixture.position });
+};
+
 const [logicalWidth, logicalHeight] = STARTER_MARKET_LAYOUT.logicalSize;
+const beverageCoolerCentre = requireFixturePosition("beverage-cooler-a");
 
 /**
- * Presentation-only values. World zones, logical size and actor spawn are read
- * from STARTER_MARKET_LAYOUT so layout coordinates have one canonical owner.
+ * Presentation-only values. World zones, logical size, actor spawn and fixture
+ * centres are read from STARTER_MARKET_LAYOUT so coordinates have one owner.
  */
 export const STARTER_MARKET_VISUAL_SPEC = {
   logicalSize: {
@@ -74,16 +87,16 @@ export const STARTER_MARKET_VISUAL_SPEC = {
     ]
   },
   cooler: {
-    centre: { x: 1325, y: 505 },
+    centre: beverageCoolerCentre,
     displaySize: { width: 1100, height: 1320 },
     sign: { x: 1140, y: 150, width: 370, height: 58 },
-    rowYs: [300, 375, 450, 525, 600, 675],
-    activeStockBounds: { x: 1215, y: 260, width: 220, height: 455 },
+    rowYs: COOLER_STOCK_ROW_YS,
+    activeStockBounds: resolveCoolerStockBounds(beverageCoolerCentre.x),
     ambientLeftXs: [1169, 1211, 1253],
     ambientRightXs: [1397, 1439, 1481],
     restockStartX: 1249,
     restockStepX: 38,
-    restockItemCount: 5
+    restockItemCount: COOLER_STOCK_ITEMS_PER_SLOT
   },
   hud: {
     dayPanel: { x: 20, y: 18, width: 225, height: 70 },
@@ -133,8 +146,8 @@ export function validateStarterMarketVisualSpec(): VisualTargetValidationResult 
   if (spec.composition.backroomZone.x >= spec.composition.beverageZone.x) {
     errors.push("The backroom must remain left of the beverage zone");
   }
-  if (spec.cooler.rowYs.length !== 6) {
-    errors.push("The beverage cooler must expose six independently controlled rows");
+  if (spec.cooler.rowYs.length !== COOLER_STOCK_SLOT_COUNT) {
+    errors.push("The beverage cooler must expose six independently controlled slots");
   }
   if (intersects(spec.hud.objectivePanel, spec.hud.departmentSignSafeArea)) {
     errors.push("The objective HUD must not cover the beverage department sign");
