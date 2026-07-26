@@ -56,7 +56,7 @@ test("Completion previews promise the actual configured next task", () => {
   assert.deepEqual(resolveCampaignProgressionPreview("starter-level-005"), {
     eyebrow: "UP NEXT · LEVEL 6",
     title: "CLOSING STOCK SPRINT",
-    detail: "CLOSING STOCK SPRINT · FINISH THE COLA COOLER",
+    detail: "RESTOCK CHALLENGE · FINISH THE COLA COOLER",
     isCampaignComplete: false,
     currentLevelNumber: 5,
     totalLevels: 10
@@ -65,7 +65,7 @@ test("Completion previews promise the actual configured next task", () => {
   assert.deepEqual(resolveCampaignProgressionPreview("starter-level-009"), {
     eyebrow: "UP NEXT · LEVEL 10",
     title: "FINAL COOLER RUSH",
-    detail: "FINAL COOLER RUSH · COMPLETE THE FINAL COOLER RUSH",
+    detail: "RESTOCK CHALLENGE · COMPLETE THE FINAL COOLER RUSH",
     isCampaignComplete: false,
     currentLevelNumber: 9,
     totalLevels: 10
