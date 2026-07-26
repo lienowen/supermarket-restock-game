@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 10
     outputs:
       contact_b64: ${{ steps.export.outputs.contact_b64 }}
-      report_b64: ${{ steps.export.outputs.report_b64 }}
+      summary_b64: ${{ steps.export.outputs.summary_b64 }}
       capture_outcome: ${{ steps.capture_restock.outcome }}
 
     steps:
@@ -50,8 +50,30 @@ jobs:
         run: |
           test -f restock-visual-audit/restock-contact-sheet.jpg
           test -f restock-visual-audit/restock-visual-audit.json
-          echo "contact_b64=$(base64 -w0 restock-visual-audit/restock-contact-sheet.jpg)" >> "$GITHUB_OUTPUT"
-          echo "report_b64=$(base64 -w0 restock-visual-audit/restock-visual-audit.json)" >> "$GITHUB_OUTPUT"
+          node - <<'NODE' > /tmp/restock-summary.json
+          const fs = require('node:fs');
+          const report = JSON.parse(fs.readFileSync('restock-visual-audit/restock-visual-audit.json', 'utf8'));
+          const states = (report.states || []).map((state) => ({
+            itemCount: state.itemCount,
+            stockedRows: state.controller?.stockedRows,
+            activeRowItemCount: state.rush?.activeRowItemCount,
+            filledRowIndexes: state.rush?.filledRowIndexes,
+            shell: state.shell,
+            backgroundState: state.backgroundState
+          }));
+          process.stdout.write(JSON.stringify({
+            assertions: report.assertions,
+            fatalError: report.fatalError,
+            rowIndex: report.rowIndex,
+            states
+          }));
+          NODE
+          echo "summary_b64=$(base64 -w0 /tmp/restock-summary.json)" >> "$GITHUB_OUTPUT"
+          {
+            echo 'contact_b64<<RESTOCK_CONTACT_EOF'
+            base64 -w76 restock-visual-audit/restock-contact-sheet.jpg
+            echo 'RESTOCK_CONTACT_EOF'
+          } >> "$GITHUB_OUTPUT"
 
   evidence:
     needs: capture
@@ -62,16 +84,16 @@ jobs:
       - name: Print compact visual evidence
         env:
           CONTACT_B64: ${{ needs.capture.outputs.contact_b64 }}
-          REPORT_B64: ${{ needs.capture.outputs.report_b64 }}
+          SUMMARY_B64: ${{ needs.capture.outputs.summary_b64 }}
           CAPTURE_OUTCOME: ${{ needs.capture.outputs.capture_outcome }}
         run: |
           echo "CAPTURE_OUTCOME=$CAPTURE_OUTCOME"
-          echo "REPORT_B64_BEGIN"
-          printf '%s' "$REPORT_B64" | fold -w 3000
+          echo "SUMMARY_B64_BEGIN"
+          printf '%s' "$SUMMARY_B64" | fold -w 3000
           echo
-          echo "REPORT_B64_END"
+          echo "SUMMARY_B64_END"
           echo "CONTACT_B64_BEGIN"
-          printf '%s' "$CONTACT_B64" | fold -w 3000
+          printf '%s' "$CONTACT_B64" | tr -d '\n\r' | fold -w 3000
           echo
           echo "CONTACT_B64_END"
           test "$CAPTURE_OUTCOME" = "success"
