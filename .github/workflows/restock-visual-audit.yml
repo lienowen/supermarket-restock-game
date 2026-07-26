@@ -38,45 +38,24 @@ jobs:
         continue-on-error: true
         run: node scripts/capture-restock-empty-to-full.mjs > /tmp/restock-capture.log 2>&1
 
-      - name: Print focused result and visual evidence
+      - name: Print focused result
         if: always()
         run: |
           echo "CAPTURE_OUTCOME=${{ steps.capture.outcome }}"
-          echo "GENERATED_FILES_BEGIN"
           find restock-visual-audit -maxdepth 1 -type f -printf '%f %s bytes\n' 2>/dev/null || true
-          echo "GENERATED_FILES_END"
-          echo "CAPTURE_LOG_TAIL_BEGIN"
           tail -n 30 /tmp/restock-capture.log || true
-          echo "CAPTURE_LOG_TAIL_END"
 
-          if [ -f restock-visual-audit/restock-visual-audit.json ]; then
-            echo "REPORT_JSON_BEGIN"
-            node - <<'NODE'
-            const fs = require('node:fs');
-            const report = JSON.parse(fs.readFileSync('restock-visual-audit/restock-visual-audit.json', 'utf8'));
-            const states = (report.states ?? []).map((state) => ({
-              itemCount: state.itemCount,
-              stockedRows: state.controller?.stockedRows,
-              activeRowItemCount: state.rush?.activeRowItemCount,
-              filledRowIndexes: state.rush?.filledRowIndexes,
-              backgroundState: state.backgroundState,
-              shell: state.shell
-            }));
-            console.log(JSON.stringify({
-              assertions: report.assertions,
-              fatalError: report.fatalError,
-              rowIndex: report.rowIndex,
-              states
-            }));
-            NODE
-            echo "REPORT_JSON_END"
-          fi
+      - name: Upload compact restock evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: restock-empty-to-full-${{ github.run_id }}
+          path: |
+            restock-visual-audit/restock-contact-sheet.jpg
+            restock-visual-audit/restock-visual-audit.json
+          if-no-files-found: error
+          retention-days: 3
 
-          if [ -f restock-visual-audit/restock-contact-sheet.jpg ]; then
-            echo "CONTACT_BASE64_BEGIN"
-            base64 -w0 restock-visual-audit/restock-contact-sheet.jpg | fold -w 4000
-            echo
-            echo "CONTACT_BASE64_END"
-          fi
-
-          test "${{ steps.capture.outcome }}" = "success"
+      - name: Enforce focused result
+        if: always()
+        run: test "${{ steps.capture.outcome }}" = "success"
