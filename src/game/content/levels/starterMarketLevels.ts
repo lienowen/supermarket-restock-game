@@ -12,8 +12,8 @@ const NO_RULE_OVERRIDES = Object.freeze([]);
 
 /**
  * Pure level data. A level never owns methods or asset paths.
- * Difficulty grows through quantities, service time, movement, penalties and
- * rush windows while all reusable algorithms remain in registered mode code.
+ * Repeated modes must select a distinct interaction profile or challenge rule;
+ * quantity and timing changes alone are not accepted as new level design.
  */
 export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
   {
@@ -35,13 +35,15 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
       slotCount: 6,
       progressRewardRatio: 0.6,
       rush: {
+        sequenceMode: "fixed",
+        timeoutEnabled: false,
         targetDurationMs: 9000,
         minimumTargetDurationMs: 6500,
         speedUpPerSuccessMs: 400,
-        introGraceMs: 3500,
-        streakWindowMs: 1900,
-        goldTimeMs: 30000,
-        silverTimeMs: 45000
+        introGraceMs: 0,
+        streakWindowMs: 2400,
+        goldTimeMs: 45000,
+        silverTimeMs: 70000
       }
     }
   },
@@ -64,6 +66,8 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
       slotCount: 6,
       progressRewardRatio: 0.5,
       rush: {
+        sequenceMode: "shuffled",
+        timeoutEnabled: true,
         targetDurationMs: 8500,
         minimumTargetDurationMs: 7000,
         speedUpPerSuccessMs: 300,
@@ -165,6 +169,8 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
       slotCount: 6,
       progressRewardRatio: 0.55,
       rush: {
+        sequenceMode: "shuffled",
+        timeoutEnabled: true,
         targetDurationMs: 7200,
         minimumTargetDurationMs: 5000,
         speedUpPerSuccessMs: 350,
@@ -268,6 +274,8 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
       slotCount: 6,
       progressRewardRatio: 0.5,
       rush: {
+        sequenceMode: "shuffled",
+        timeoutEnabled: true,
         targetDurationMs: 6500,
         minimumTargetDurationMs: 4200,
         speedUpPerSuccessMs: 320,
