@@ -11,6 +11,8 @@ const GAME_CANVAS_SELECTOR = "#app > canvas:not(#mobile-game-backdrop)";
 const GAME_SCENE_KEY = "starter-market-shift";
 const GAME_WIDTH = 1600;
 const GAME_HEIGHT = 900;
+const ITEMS_PER_SHELF = 3;
+const SHELF_COUNT = 6;
 
 const PRODUCT_DISPLAYS = Object.freeze({
   "milk-bottle": Object.freeze({ x: 330, y: 410 }),
@@ -240,6 +242,10 @@ const report = {
     productionAssetRuntime: false,
     englishHud: false,
     movementRequired: false,
+    emptyShelfHasNoGhostProducts: false,
+    shelfBuildsOneItemAtATime: false,
+    threeItemsRequiredPerShelf: false,
+    allRestockLevelsStockEighteenItems: false,
     level1: false,
     level2: false,
     level3: false,
@@ -288,6 +294,7 @@ try {
   });
 
   const initialSnapshots = [];
+  const restockItemTotals = [];
 
   for (const level of LEVELS) {
     const page = await openLevel(context, report, level);
@@ -308,19 +315,9 @@ try {
         runtimeMetadata.actorTexture === "worker-a-idle"
       );
       report.regressions.movementRequired = await interactionReady(page) === false;
-      await capture(
-        page,
-        report,
-        screenshotName(level.number, "initial"),
-        `${level.label} initial state`
-      );
+      await capture(page, report, screenshotName(level.number, "initial"), `${level.label} initial state`);
     } else if (level.number >= 6) {
-      await capture(
-        page,
-        report,
-        screenshotName(level.number, "initial"),
-        `${level.label} initial state`
-      );
+      await capture(page, report, screenshotName(level.number, "initial"), `${level.label} initial state`);
     }
 
     const completed = await completeConfiguredLevel(page, report, level);
@@ -328,13 +325,13 @@ try {
       matches(initial, level.initial) && matches(completed, level.complete)
     );
     recordSnapshot(report, `level${level.number}-complete`, completed);
-    await page.waitForTimeout(320);
-    await capture(
-      page,
-      report,
-      screenshotName(level.number, "complete"),
-      `${level.label} complete`
-    );
+    await page.waitForTimeout(360);
+    await capture(page, report, screenshotName(level.number, "complete"), `${level.label} complete`);
+
+    if (level.mode === "restock") {
+      const finalRush = await readRushState(page);
+      restockItemTotals.push(finalRush?.totalItemsStocked ?? 0);
+    }
 
     const events = await readSdkEvents(page);
     report.sdkEvents.push({ level: level.id, events });
@@ -367,6 +364,10 @@ try {
   report.regressions.campaignEconomyCarry = initialSnapshots.every(({ snapshot, expected }) => (
     matches(snapshot, expected)
   ));
+  report.regressions.allRestockLevelsStockEighteenItems = (
+    restockItemTotals.length === 4 &&
+    restockItemTotals.every((count) => count === SHELF_COUNT * ITEMS_PER_SHELF)
+  );
 
   const issueCount = report.consoleErrors.length + report.pageErrors.length + report.failedRequests.length + report.badResponses.length;
   const failed = Object.entries(report.regressions).filter(([, value]) => !value).map(([key]) => key);
@@ -397,7 +398,7 @@ async function openLevel(context, auditReport, level) {
 async function completeConfiguredLevel(page, auditReport, level) {
   switch (level.mode) {
     case "restock":
-      return completeRestockLevel(page, auditReport, `level${level.number}`);
+      return completeRestockLevel(page, auditReport, `level${level.number}`, level.number === 1);
     case "checkout":
       return completeCheckoutLevel(page, level.customerCount);
     case "clean":
@@ -409,38 +410,105 @@ async function completeConfiguredLevel(page, auditReport, level) {
   }
 }
 
-async function completeRestockLevel(page, auditReport, prefix) {
+async function completeRestockLevel(page, auditReport, prefix, captureGrowth) {
   await clickGame(page, 1228, 850);
   await waitForSnapshot(page, { step: "load", boxCollected: true });
 
   await clickGame(page, 1228, 850);
   await waitForSnapshot(page, { step: "restock", boxLoaded: true, boxOpened: true });
 
-  for (let progress = 0; progress < 6; progress += 1) {
-    await waitForInteractionReady(page);
-    const beforeRush = await waitForRushTarget(page);
-    const rowIndex = beforeRush.activeRowIndex;
+  const initialRush = await waitForRushTarget(page);
+  const firstRowIndex = initialRush.activeRowIndex;
+  const emptyShelf = await readRenderedShelf(page, firstRowIndex);
+  if (captureGrowth) {
+    auditReport.regressions.emptyShelfHasNoGhostProducts = (
+      initialRush.totalItemsStocked === 0 &&
+      initialRush.rowItemCounts.every((count) => count === 0) &&
+      emptyShelf.itemCount === 0
+    );
+    await capture(page, auditReport, "restock-shelf-0-of-3.png", "Empty shelf before physical stocking");
+  }
+
+  for (let completedRows = 0; completedRows < SHELF_COUNT; completedRows += 1) {
+    const rowStart = await waitForRushTarget(page);
+    const rowIndex = rowStart.activeRowIndex;
     const target = await readRushTarget(page, rowIndex);
-    await clickGame(page, target.x, target.y);
-    await page.waitForTimeout(240);
-    const afterController = await readSnapshot(page);
-    const afterRush = await readRushState(page);
-    recordSnapshot(auditReport, `${prefix}-rush-click-${progress + 1}`, {
-      selectedRowIndex: rowIndex,
-      target,
-      beforeRush,
-      afterRush,
-      controller: afterController
-    });
-    if (afterController?.stockedRows !== progress + 1) {
-      throw new Error(
-        `Rush click ${progress + 1} did not stock a row: ` +
-        JSON.stringify({ rowIndex, target, beforeRush, afterRush, afterController })
-      );
+
+    for (let itemNumber = 1; itemNumber <= ITEMS_PER_SHELF; itemNumber += 1) {
+      await waitForInteractionReady(page);
+      const beforeRush = await readRushState(page);
+      const beforeController = await readSnapshot(page);
+      await clickGame(page, target.x, target.y);
+      await waitForRushItemCount(page, rowIndex, itemNumber);
+      await page.waitForTimeout(60);
+
+      const afterController = await readSnapshot(page);
+      const afterRush = await readRushState(page);
+      const renderedShelf = await readRenderedShelf(page, rowIndex);
+      recordSnapshot(auditReport, `${prefix}-row-${completedRows + 1}-item-${itemNumber}`, {
+        selectedRowIndex: rowIndex,
+        target,
+        beforeRush,
+        afterRush,
+        beforeController,
+        afterController,
+        renderedShelf
+      });
+
+      if (renderedShelf.itemCount !== itemNumber) {
+        throw new Error(`Shelf ${rowIndex} rendered ${renderedShelf.itemCount} items after item ${itemNumber}`);
+      }
+      if (afterRush?.rowItemCounts?.[rowIndex] !== itemNumber) {
+        throw new Error(`Shelf ${rowIndex} state did not reach ${itemNumber}/${ITEMS_PER_SHELF}`);
+      }
+
+      const expectedCompletedRows = itemNumber === ITEMS_PER_SHELF
+        ? completedRows + 1
+        : completedRows;
+      if (afterController?.stockedRows !== expectedCompletedRows) {
+        throw new Error(
+          `Shelf completion advanced at the wrong item: ` +
+          JSON.stringify({ completedRows, itemNumber, expectedCompletedRows, afterController, afterRush })
+        );
+      }
+      if (itemNumber < ITEMS_PER_SHELF && afterRush.activeRowIndex !== rowIndex) {
+        throw new Error(`Shelf target changed before reaching ${ITEMS_PER_SHELF} products`);
+      }
+
+      if (captureGrowth && completedRows === 0) {
+        await capture(
+          page,
+          auditReport,
+          `restock-shelf-${itemNumber}-of-3.png`,
+          `Physical shelf growth ${itemNumber}/${ITEMS_PER_SHELF}`
+        );
+        if (itemNumber === 1) {
+          auditReport.regressions.shelfBuildsOneItemAtATime = (
+            beforeController.stockedRows === 0 &&
+            afterController.stockedRows === 0 &&
+            renderedShelf.itemCount === 1
+          );
+        }
+        if (itemNumber === ITEMS_PER_SHELF) {
+          auditReport.regressions.threeItemsRequiredPerShelf = (
+            afterController.stockedRows === 1 &&
+            renderedShelf.itemCount === ITEMS_PER_SHELF &&
+            afterRush.filledRowIndexes.includes(rowIndex)
+          );
+        }
+      }
     }
   }
 
-  return waitForSnapshot(page, { step: "complete", stockedRows: 6 });
+  const complete = await waitForSnapshot(page, { step: "complete", stockedRows: SHELF_COUNT });
+  const finalRush = await readRushState(page);
+  if (
+    finalRush.totalItemsStocked !== SHELF_COUNT * ITEMS_PER_SHELF ||
+    !finalRush.rowItemCounts.every((count) => count === ITEMS_PER_SHELF)
+  ) {
+    throw new Error(`Restock completed without eighteen physical products: ${JSON.stringify(finalRush)}`);
+  }
+  return complete;
 }
 
 async function completeCheckoutLevel(page, customerCount) {
@@ -553,6 +621,32 @@ async function readRushState(page) {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
     return scene?.rush?.snapshot?.(scene.time.now) ?? null;
   }, GAME_SCENE_KEY);
+}
+
+async function readRenderedShelf(page, rowIndex) {
+  return page.evaluate(({ sceneKey, index }) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+    const holder = scene?.children?.getByName?.(`beverage-cooler-row-${index}`);
+    const countLabel = scene?.children?.getByName?.(`beverage-cooler-row-count-${index}`);
+    return {
+      itemCount: Array.isArray(holder?.list) ? holder.list.length : -1,
+      countText: countLabel?.text ?? null,
+      countVisible: countLabel?.visible ?? false
+    };
+  }, { sceneKey: GAME_SCENE_KEY, index: rowIndex });
+}
+
+async function waitForRushItemCount(page, rowIndex, expectedCount) {
+  await page.waitForFunction(({ sceneKey, index, count }) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+    const rush = scene?.rush?.snapshot?.(scene.time.now);
+    const holder = scene?.children?.getByName?.(`beverage-cooler-row-${index}`);
+    return (
+      rush?.rowItemCounts?.[index] === count &&
+      Array.isArray(holder?.list) &&
+      holder.list.length === count
+    );
+  }, { sceneKey: GAME_SCENE_KEY, index: rowIndex, count: expectedCount }, { timeout: 15000 });
 }
 
 async function readRushTarget(page, rowIndex) {
