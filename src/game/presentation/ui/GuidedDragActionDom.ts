@@ -17,6 +17,7 @@ export interface GuidedDragActionDomHandle {
 
 interface PrimaryActionScenePort {
   readonly isInteractionReady?: () => boolean;
+  readonly input?: { enabled: boolean };
   readonly children?: {
     readonly getByName?: (name: string) => Phaser.GameObjects.GameObject | null;
   };
@@ -34,6 +35,7 @@ export function mountGuidedDragActionDom(
   const overlay = document.createElement("section");
   overlay.id = "guided-drag-action";
   overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-modal", "true");
   overlay.setAttribute("aria-label", config.spec.title);
   applyStyles(overlay, {
     position: "fixed",
@@ -44,10 +46,11 @@ export function mountGuidedDragActionDom(
     justifyContent: "center",
     padding: "18px",
     boxSizing: "border-box",
-    background: "rgba(3, 9, 6, 0.24)",
+    background: "rgba(3, 9, 6, 0.34)",
     fontFamily: "Arial, sans-serif",
     color: "#ffffff",
-    touchAction: "none"
+    touchAction: "none",
+    pointerEvents: "auto"
   });
 
   const panel = document.createElement("div");
@@ -57,8 +60,9 @@ export function mountGuidedDragActionDom(
     padding: "16px 18px 18px",
     border: "1px solid rgba(255, 218, 94, 0.56)",
     borderRadius: "20px",
-    background: "rgba(9, 27, 18, 0.96)",
-    boxShadow: "0 18px 54px rgba(0, 0, 0, 0.46)"
+    background: "rgba(9, 27, 18, 0.98)",
+    boxShadow: "0 18px 54px rgba(0, 0, 0, 0.46)",
+    pointerEvents: "auto"
   });
 
   const eyebrow = document.createElement("div");
@@ -111,7 +115,7 @@ export function mountGuidedDragActionDom(
     cursor: "grab",
     userSelect: "none",
     touchAction: "none",
-    transition: "border-color 120ms ease, background 120ms ease"
+    transition: "border-color 120ms ease, background 120ms ease, transform 120ms ease"
   });
 
   const sourceImage = document.createElement("img");
@@ -137,7 +141,8 @@ export function mountGuidedDragActionDom(
     color: "#ffffff",
     fontSize: "10px",
     fontWeight: "900",
-    letterSpacing: "1px"
+    letterSpacing: "1px",
+    pointerEvents: "none"
   });
   source.append(sourceImage, sourceLabel);
 
@@ -147,7 +152,8 @@ export function mountGuidedDragActionDom(
     textAlign: "center",
     color: "#ffd95e",
     fontSize: "30px",
-    fontWeight: "900"
+    fontWeight: "900",
+    pointerEvents: "none"
   });
 
   const target = document.createElement("div");
@@ -189,7 +195,8 @@ export function mountGuidedDragActionDom(
     color: "#ffe993",
     fontSize: "10px",
     fontWeight: "900",
-    letterSpacing: "1px"
+    letterSpacing: "1px",
+    pointerEvents: "none"
   });
   target.append(targetImage, targetLabel);
 
@@ -224,6 +231,21 @@ export function mountGuidedDragActionDom(
   let translateY = 0;
   let readinessTimer: number | undefined;
 
+  const scenePort = (): PrimaryActionScenePort | undefined => {
+    try {
+      return config.game.scene.getScene(config.sceneKey) as unknown as PrimaryActionScenePort;
+    } catch {
+      return undefined;
+    }
+  };
+
+  const setSceneInputEnabled = (enabled: boolean): void => {
+    const input = scenePort()?.input;
+    if (input) input.enabled = enabled;
+  };
+
+  const isReady = (): boolean => Boolean(scenePort()?.isInteractionReady?.());
+
   const resetSource = (): void => {
     dragging = false;
     keyboardPicked = false;
@@ -239,22 +261,20 @@ export function mountGuidedDragActionDom(
     target.style.transform = "scale(1)";
   };
 
-  const scenePort = (): PrimaryActionScenePort | undefined => {
-    try {
-      return config.game.scene.getScene(config.sceneKey) as unknown as PrimaryActionScenePort;
-    } catch {
-      return undefined;
-    }
+  const hide = (state: "complete" | "closed"): void => {
+    visible = false;
+    overlay.style.display = "none";
+    setSceneInputEnabled(true);
+    document.body.dataset.guidedDrag = state;
   };
-
-  const isReady = (): boolean => Boolean(scenePort()?.isInteractionReady?.());
 
   const show = (): void => {
     if (visible || completed || !armed || !isReady()) return;
     visible = true;
     overlay.style.display = "flex";
+    setSceneInputEnabled(false);
     document.body.dataset.guidedDrag = "active";
-    source.focus();
+    requestAnimationFrame(() => source.focus());
   };
 
   const beginReadinessWatch = (): void => {
@@ -299,9 +319,23 @@ export function mountGuidedDragActionDom(
     );
   };
 
+  const blockUnderlyingPointer = (event: Event): void => {
+    event.stopPropagation();
+  };
+  overlay.addEventListener("pointerdown", blockUnderlyingPointer);
+  overlay.addEventListener("pointermove", blockUnderlyingPointer);
+  overlay.addEventListener("pointerup", blockUnderlyingPointer);
+  overlay.addEventListener("click", blockUnderlyingPointer);
+  overlay.addEventListener("dblclick", blockUnderlyingPointer);
+  overlay.addEventListener("contextmenu", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+  });
+
   source.addEventListener("pointerdown", (event) => {
     if (!visible || completed) return;
     event.preventDefault();
+    event.stopPropagation();
     dragging = true;
     pointerId = event.pointerId;
     startX = event.clientX - translateX;
@@ -316,6 +350,7 @@ export function mountGuidedDragActionDom(
   source.addEventListener("pointermove", (event) => {
     if (!dragging || pointerId !== event.pointerId) return;
     event.preventDefault();
+    event.stopPropagation();
     translateX = event.clientX - startX;
     translateY = event.clientY - startY;
     source.style.transform = `translate(${translateX}px, ${translateY}px)`;
@@ -329,6 +364,7 @@ export function mountGuidedDragActionDom(
   source.addEventListener("pointerup", (event) => {
     if (!dragging || pointerId !== event.pointerId) return;
     event.preventDefault();
+    event.stopPropagation();
     const accepted = sourceCentreInsideTarget();
     if (source.hasPointerCapture(event.pointerId)) source.releasePointerCapture(event.pointerId);
     if (accepted) {
@@ -339,6 +375,8 @@ export function mountGuidedDragActionDom(
       resetSource();
     }
   });
+
+  source.addEventListener("pointercancel", () => resetSource());
 
   source.addEventListener("keydown", (event) => {
     if (event.key !== "Enter" && event.key !== " ") return;
@@ -366,16 +404,13 @@ export function mountGuidedDragActionDom(
       }
       if (event.payload.action === config.spec.confirmAction) {
         completed = true;
-        visible = false;
-        overlay.style.display = "none";
-        document.body.dataset.guidedDrag = "complete";
+        hide("complete");
       }
     }),
     gameDomainEvents.subscribe("task.completed", (event) => {
       if (event.payload.levelId !== config.levelId) return;
       completed = true;
-      overlay.style.display = "none";
-      document.body.dataset.guidedDrag = "complete";
+      hide("complete");
     })
   ];
 
@@ -383,6 +418,7 @@ export function mountGuidedDragActionDom(
     destroy: () => {
       if (readinessTimer !== undefined) window.clearInterval(readinessTimer);
       disposers.forEach((dispose) => dispose());
+      setSceneInputEnabled(true);
       overlay.remove();
       delete document.body.dataset.guidedDrag;
     }
