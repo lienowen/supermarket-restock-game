@@ -6,6 +6,7 @@ import { validateCampaignRuntime } from "./application/CampaignRuntime";
 import { validateGameplayRuntime } from "./application/GameplayModeRegistry";
 import { validateLevelCampaignRuntime } from "./application/LevelRuntimeContent";
 import { PROJECT_CONFIG } from "./config/project";
+import { validateLevelExperienceSpecs } from "./content/experience/LevelExperienceSpec";
 import { validateLevelDefinitions } from "./content/validation/LevelConfigValidator";
 import { validateProductionAssetPlan } from "./presentation/assets/ProductionAssetPlan";
 import { validateProductAssetMappings } from "./presentation/assets/ProductAssetResolver";
@@ -21,6 +22,7 @@ import { validateWorldLayout } from "./world/WorldLayout";
 import { STARTER_MARKET_LAYOUT } from "./world/starterMarketLayout";
 
 function validateProjectContracts(): void {
+  const levelDefinitions = MAIN_LEVEL_CAMPAIGN_RUNTIME.levels.map((entry) => entry.level);
   const presentationContexts = MAIN_LEVEL_CAMPAIGN_RUNTIME.levels.map((entry) => (
     createStarterMarketPresentationContext(entry.level.id)
   ));
@@ -37,7 +39,8 @@ function validateProjectContracts(): void {
   const errors = [
     ...validateAssetCatalogue(STARTER_ASSET_CATALOGUE),
     ...STARTER_RUNTIME_ASSET_REGISTRY.validateKeys(configuredAssetKeys),
-    ...validateLevelDefinitions(MAIN_LEVEL_CAMPAIGN_RUNTIME.levels.map((entry) => entry.level)),
+    ...validateLevelDefinitions(levelDefinitions),
+    ...validateLevelExperienceSpecs(levelDefinitions),
     ...validateWorldLayout(STARTER_MARKET_LAYOUT),
     ...validateStarterMarketVisualSpec().errors,
     ...validateProductionAssetPlan(),
@@ -59,7 +62,7 @@ export async function bootstrapGame(): Promise<Phaser.Game> {
   document.body.dataset.uiLanguage = PROJECT_CONFIG.language;
   document.body.dataset.gameArchitecture = PROJECT_CONFIG.version;
   document.body.dataset.gameVersion = PROJECT_CONFIG.version;
-  document.body.dataset.visualTarget = "production-v1-five-mode-campaign";
+  document.body.dataset.visualTarget = "production-v1-ten-level-polish";
   document.body.dataset.activeCampaign = MAIN_CAMPAIGN_RUNTIME.campaign.id;
   return createPhaserGame();
 }
