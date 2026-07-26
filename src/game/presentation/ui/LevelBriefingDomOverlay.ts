@@ -49,11 +49,11 @@ export function mountLevelBriefingDomOverlay(
     padding: "clamp(18px, 4vw, 48px)",
     background: "rgba(4, 10, 7, 0.78)",
     backdropFilter: "blur(8px)",
-    WebkitBackdropFilter: "blur(8px)",
     fontFamily: "Arial, sans-serif",
     color: "#ffffff",
     touchAction: "manipulation"
   });
+  overlay.style.setProperty("-webkit-backdrop-filter", "blur(8px)");
 
   const panel = document.createElement("div");
   applyStyles(panel, {
