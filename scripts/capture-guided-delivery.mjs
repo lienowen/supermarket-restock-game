@@ -96,6 +96,11 @@ try {
     null,
     { timeout: 20000 }
   );
+
+  const source = page.locator("#guided-drag-source");
+  const target = page.locator("#guided-drag-target");
+  await source.waitFor({ state: "visible", timeout: 10000 });
+  await target.waitFor({ state: "visible", timeout: 10000 });
   report.assertions.dragGateAppears = await page.locator("#guided-drag-action").isVisible();
   await page.screenshot({
     path: join(OUTPUT_DIR, "guided-delivery-drag-active.png"),
@@ -106,14 +111,13 @@ try {
   await clickGame(page, 1228, 850);
   await page.waitForTimeout(450);
   const afterBlockedTap = await readSnapshot(page);
+  const dragStateAfterBlockedTap = await page.evaluate(() => document.body.dataset.guidedDrag);
   report.assertions.oldTapBlocked = (
     beforeBlockedTap?.step === "load" &&
     afterBlockedTap?.step === "load" &&
-    document.body.dataset.guidedDrag === "active"
+    dragStateAfterBlockedTap === "active"
   );
 
-  const source = page.locator("#guided-drag-source");
-  const target = page.locator("#guided-drag-target");
   const sourceBox = await source.boundingBox();
   const targetBox = await target.boundingBox();
   if (!sourceBox || !targetBox) throw new Error("Guided drag source or target has no bounds");
