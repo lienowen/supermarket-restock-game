@@ -8,6 +8,7 @@ export type RestockSequenceMode = "fixed" | "shuffled";
 export interface RestockRushConfig {
   readonly rowCount: number;
   readonly randomSeed: string;
+  readonly itemsPerRow?: number;
   readonly sequenceMode?: RestockSequenceMode;
   readonly timeoutEnabled?: boolean;
   readonly keepTargetOnFailure?: boolean;
@@ -25,7 +26,11 @@ export interface RestockRushSnapshot {
   readonly started: boolean;
   readonly complete: boolean;
   readonly activeRowIndex?: number;
+  readonly activeRowItemCount: number;
   readonly filledRowIndexes: readonly number[];
+  readonly rowItemCounts: readonly number[];
+  readonly itemsPerRow: number;
+  readonly totalItemsStocked: number;
   readonly remainingMs: number;
   readonly targetDurationMs: number;
   readonly remainingRatio: number;
@@ -47,6 +52,8 @@ export interface RestockRushSelectionResult {
   readonly correct: boolean;
   readonly selectedRowIndex: number;
   readonly expectedRowIndex?: number;
+  readonly stockedItemCount: number;
+  readonly rowCompleted: boolean;
   readonly snapshot: RestockRushSnapshot;
 }
 
@@ -55,6 +62,13 @@ const MAX_ACTIVE_CLOCK_STEP_MS = 250;
 const requirePositive = (value: number, label: string): number => {
   if (!Number.isFinite(value) || value <= 0) {
     throw new Error(`${label} must be a positive finite number`);
+  }
+  return value;
+};
+
+const requirePositiveInteger = (value: number, label: string): number => {
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`${label} must be a positive integer`);
   }
   return value;
 };
@@ -113,6 +127,8 @@ export class RestockRushController {
   private readonly queue: number[];
   private readonly initialQueue: readonly number[];
   private readonly filledRows = new Set<number>();
+  private readonly rowItemCounts: number[];
+  private readonly itemsPerRow: number;
   private readonly sequenceMode: RestockSequenceMode;
   private readonly timeoutEnabled: boolean;
   private readonly keepTargetOnFailure: boolean;
@@ -133,6 +149,8 @@ export class RestockRushController {
       throw new Error("Restock rush requires a random seed");
     }
 
+    this.itemsPerRow = requirePositiveInteger(config.itemsPerRow ?? 1, "Items per restock row");
+    this.rowItemCounts = Array.from({ length: config.rowCount }, () => 0);
     this.sequenceMode = config.sequenceMode ?? "shuffled";
     this.timeoutEnabled = config.timeoutEnabled ?? true;
     this.keepTargetOnFailure = config.keepTargetOnFailure ?? false;
@@ -205,6 +223,8 @@ export class RestockRushController {
         correct: false,
         selectedRowIndex: rowIndex,
         expectedRowIndex: undefined,
+        stockedItemCount: this.rowItemCounts[rowIndex] ?? 0,
+        rowCompleted: false,
         snapshot: this.createSnapshot(now)
       });
     }
@@ -219,14 +239,25 @@ export class RestockRushController {
         correct: false,
         selectedRowIndex: rowIndex,
         expectedRowIndex,
+        stockedItemCount: this.rowItemCounts[rowIndex] ?? 0,
+        rowCompleted: false,
         snapshot: this.createSnapshot(now)
       });
     }
 
-    this.queue.shift();
-    this.filledRows.add(rowIndex);
+    const nextCount = Math.min(
+      this.itemsPerRow,
+      (this.rowItemCounts[rowIndex] ?? 0) + 1
+    );
+    this.rowItemCounts[rowIndex] = nextCount;
     this.pace.recordStock(now);
     this.introWindowActive = false;
+
+    const rowCompleted = nextCount >= this.itemsPerRow;
+    if (rowCompleted) {
+      this.queue.shift();
+      this.filledRows.add(rowIndex);
+    }
 
     if (this.queue.length === 0) {
       this.deadlineMs = undefined;
@@ -240,6 +271,8 @@ export class RestockRushController {
       correct: true,
       selectedRowIndex: rowIndex,
       expectedRowIndex,
+      stockedItemCount: nextCount,
+      rowCompleted,
       snapshot: this.createSnapshot(now)
     });
   }
@@ -267,12 +300,18 @@ export class RestockRushController {
         : this.deadlineMs === undefined
           ? 0
           : Math.max(0, Math.min(1, remainingMs / this.currentTargetDurationMs));
+    const activeRowIndex = this.queue[0];
+    const frozenCounts = Object.freeze([...this.rowItemCounts]);
 
     return Object.freeze({
       started: pace.started,
       complete: this.queue.length === 0,
-      activeRowIndex: this.queue[0],
+      activeRowIndex,
+      activeRowItemCount: activeRowIndex === undefined ? 0 : frozenCounts[activeRowIndex] ?? 0,
       filledRowIndexes: Object.freeze([...this.filledRows].sort((left, right) => left - right)),
+      rowItemCounts: frozenCounts,
+      itemsPerRow: this.itemsPerRow,
+      totalItemsStocked: frozenCounts.reduce((sum, count) => sum + count, 0),
       remainingMs,
       targetDurationMs: this.currentTargetDurationMs,
       remainingRatio,
