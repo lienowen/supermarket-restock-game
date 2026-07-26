@@ -10,7 +10,7 @@ permissions:
   contents: read
 
 jobs:
-  diagnose:
+  capture:
     runs-on: ubuntu-latest
     timeout-minutes: 12
 
@@ -29,7 +29,8 @@ jobs:
       - name: Prepare focused browser audit
         run: |
           npm ci > /tmp/restock-npm-ci.log 2>&1
-          npx playwright install --with-deps chromium > /tmp/restock-playwright.log 2>&1
+          npm install --no-save --package-lock=false playwright > /tmp/restock-playwright-package.log 2>&1
+          npx playwright install --with-deps chromium > /tmp/restock-playwright-browser.log 2>&1
           npm run build > /tmp/restock-build.log 2>&1
 
       - name: Run focused capture
@@ -37,14 +38,45 @@ jobs:
         continue-on-error: true
         run: node scripts/capture-restock-empty-to-full.mjs > /tmp/restock-capture.log 2>&1
 
-      - name: Print focused capture result
+      - name: Print focused result and visual evidence
         if: always()
         run: |
           echo "CAPTURE_OUTCOME=${{ steps.capture.outcome }}"
           echo "GENERATED_FILES_BEGIN"
           find restock-visual-audit -maxdepth 1 -type f -printf '%f %s bytes\n' 2>/dev/null || true
           echo "GENERATED_FILES_END"
-          echo "CAPTURE_ERROR_TAIL_BEGIN"
-          tail -n 40 /tmp/restock-capture.log || true
-          echo "CAPTURE_ERROR_TAIL_END"
+          echo "CAPTURE_LOG_TAIL_BEGIN"
+          tail -n 30 /tmp/restock-capture.log || true
+          echo "CAPTURE_LOG_TAIL_END"
+
+          if [ -f restock-visual-audit/restock-visual-audit.json ]; then
+            echo "REPORT_JSON_BEGIN"
+            node - <<'NODE'
+            const fs = require('node:fs');
+            const report = JSON.parse(fs.readFileSync('restock-visual-audit/restock-visual-audit.json', 'utf8'));
+            const states = (report.states ?? []).map((state) => ({
+              itemCount: state.itemCount,
+              stockedRows: state.controller?.stockedRows,
+              activeRowItemCount: state.rush?.activeRowItemCount,
+              filledRowIndexes: state.rush?.filledRowIndexes,
+              backgroundState: state.backgroundState,
+              shell: state.shell
+            }));
+            console.log(JSON.stringify({
+              assertions: report.assertions,
+              fatalError: report.fatalError,
+              rowIndex: report.rowIndex,
+              states
+            }));
+            NODE
+            echo "REPORT_JSON_END"
+          fi
+
+          if [ -f restock-visual-audit/restock-contact-sheet.jpg ]; then
+            echo "CONTACT_BASE64_BEGIN"
+            base64 -w0 restock-visual-audit/restock-contact-sheet.jpg | fold -w 4000
+            echo
+            echo "CONTACT_BASE64_END"
+          fi
+
           test "${{ steps.capture.outcome }}" = "success"
