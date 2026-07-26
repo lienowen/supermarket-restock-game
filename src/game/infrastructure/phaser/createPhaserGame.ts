@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { crazyGamesPlatform } from "../../../platform/crazyGamesPlatform";
 import { CampaignSession } from "../../application/CampaignSession";
 import { STARTER_RUNTIME_ASSET_REGISTRY } from "../../assets/RuntimeAssetRegistry";
+import { resolveCartCapacityExperienceSpec } from "../../content/experience/CartCapacityExperienceSpec";
 import { resolveLevelExperienceSpec } from "../../content/experience/LevelExperienceSpec";
 import { gameDomainEvents } from "../../events/GameDomainEvents";
 import {
@@ -10,6 +11,7 @@ import {
 } from "../../presentation/context/StarterMarketPresentationContext";
 import { applyMarketUpgradesToPresentation } from "../../presentation/context/MarketUpgradePresentation";
 import type { SceneCampaignSessionContext } from "../../presentation/scenes/StarterMarketScene";
+import { mountCartCapacityLoadDom } from "../../presentation/ui/CartCapacityLoadDom";
 import { mountCheckoutScanDom } from "../../presentation/ui/CheckoutScanDom";
 import { mountGuidedDragActionDom } from "../../presentation/ui/GuidedDragActionDom";
 import { mountHoldWorkDom } from "../../presentation/ui/HoldWorkDom";
@@ -26,6 +28,7 @@ export interface PhaserGameFactoryOptions {
   readonly shiftId?: string;
   readonly skipBriefing?: boolean;
   readonly skipGuidedInteractions?: boolean;
+  readonly skipCartCapacity?: boolean;
   readonly skipCheckoutScan?: boolean;
   readonly skipHoldWork?: boolean;
 }
@@ -46,6 +49,7 @@ const featureDisabledFromLocation = (parameterName: string): boolean => {
 
 const briefingDisabledFromLocation = (): boolean => featureDisabledFromLocation("briefing");
 const guidedInteractionsDisabledFromLocation = (): boolean => featureDisabledFromLocation("guided");
+const cartCapacityDisabledFromLocation = (): boolean => featureDisabledFromLocation("cartload");
 const checkoutScanDisabledFromLocation = (): boolean => featureDisabledFromLocation("checkout");
 const holdWorkDisabledFromLocation = (): boolean => featureDisabledFromLocation("hold");
 
@@ -62,6 +66,7 @@ export async function createPhaserGame(
   const levelId = requestedId ?? firstLevel.level.id;
   const basePresentation = createStarterMarketPresentationContext(levelId);
   const experience = resolveLevelExperienceSpec(basePresentation.campaignLevel.level);
+  const cartCapacity = resolveCartCapacityExperienceSpec(basePresentation.campaignLevel.level);
 
   const session = new CampaignSession(
     {
@@ -144,6 +149,27 @@ export async function createPhaserGame(
     });
   } else {
     document.body.dataset.guidedDrag = experience.guidedDrag ? "skipped" : "none";
+  }
+
+  const skipCartCapacity = options.skipCartCapacity ?? cartCapacityDisabledFromLocation();
+  if (
+    cartCapacity &&
+    !skipCartCapacity &&
+    "cart" in presentation.levelAssets
+  ) {
+    mountCartCapacityLoadDom({
+      game,
+      sceneKey: presentation.scene.key,
+      levelId: presentation.campaignLevel.level.id,
+      spec: cartCapacity,
+      options: cartCapacity.options.map((option) => ({
+        spec: option,
+        imagePath: STARTER_RUNTIME_ASSET_REGISTRY.require(option.assetKey).path
+      })),
+      targetImagePath: presentation.levelAssets.cart.path
+    });
+  } else {
+    document.body.dataset.cartCapacityLoad = cartCapacity ? "skipped" : "none";
   }
 
   const skipCheckoutScan = options.skipCheckoutScan ?? checkoutScanDisabledFromLocation();
