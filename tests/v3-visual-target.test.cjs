@@ -9,10 +9,16 @@ const {
   validateStarterMarketVisualSpec
 } = require("../.test-dist/src/game/presentation/visual/StarterMarketVisualSpec.js");
 const {
+  RESTOCK_VISUAL_PRESET,
   CHECKOUT_VISUAL_PRESET,
   CLEAN_VISUAL_PRESET,
   FIND_ITEMS_VISUAL_PRESET
 } = require("../.test-dist/src/game/presentation/visual/MarketLevelVisualPreset.js");
+const {
+  COOLER_STOCK_SLOT_OFFSETS,
+  resolveCoolerStockBounds,
+  resolveCoolerStockSlots
+} = require("../.test-dist/src/game/presentation/visual/CoolerStockLayout.js");
 const {
   STARTER_MARKET_PRODUCTION_ASSET_PLAN,
   validateProductionAssetPlan
@@ -42,6 +48,35 @@ test("Visual spec and world layout share the same locked composition", () => {
   assert.deepEqual(zones.get("produce-zone"), STARTER_MARKET_VISUAL_SPEC.composition.produceZone);
   assert.deepEqual(zones.get("staff-backroom"), STARTER_MARKET_VISUAL_SPEC.composition.backroomZone);
   assert.deepEqual(zones.get("beverage-zone"), STARTER_MARKET_VISUAL_SPEC.composition.beverageZone);
+});
+
+test("Cola stock occupies two cooler doors and stays above the worker overlap zone", () => {
+  const cooler = RESTOCK_VISUAL_PRESET.cooler;
+  const coolerFixture = STARTER_MARKET_LAYOUT.fixtures.find(
+    (entry) => entry.fixtureId === "beverage-cooler-a"
+  );
+  const restockZone = STARTER_MARKET_LAYOUT.interactions.find(
+    (entry) => entry.id === "beverage-restock-zone"
+  );
+
+  assert.ok(coolerFixture);
+  assert.ok(restockZone);
+  assert.deepEqual(STARTER_MARKET_VISUAL_SPEC.cooler.centre, coolerFixture.position);
+  assert.deepEqual(
+    STARTER_MARKET_VISUAL_SPEC.cooler.activeStockBounds,
+    resolveCoolerStockBounds(coolerFixture.position.x)
+  );
+  assert.equal(cooler.rowYs.length, COOLER_STOCK_SLOT_OFFSETS.length);
+  assert.equal(cooler.restockItemCount, 3);
+  assert.ok(cooler.activeStockWidth <= 100);
+  assert.ok(coolerFixture.position.x >= 1390 && coolerFixture.position.x <= 1420);
+  assert.ok(restockZone.position.x >= 1340 && restockZone.position.x <= 1390);
+
+  const slots = resolveCoolerStockSlots(coolerFixture.position.x);
+  assert.deepEqual(slots.map((slot) => slot.x), [1405, 1405, 1405, 1490, 1490, 1490]);
+  assert.deepEqual(slots.map((slot) => slot.y), [300, 420, 540, 300, 420, 540]);
+  assert.equal(new Set(slots.map((slot) => `${slot.x}:${slot.y}`)).size, 6);
+  assert.ok(slots.every((slot) => slot.y <= 540));
 });
 
 test("Checkout uses a compact grocery basket queue instead of pasted customer cutouts", () => {

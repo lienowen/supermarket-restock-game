@@ -17,6 +17,9 @@ const {
   RestockTargetResolver
 } = require("../.test-dist/src/game/presentation/interactions/RestockTargetResolver.js");
 const {
+  resolveCoolerStockSlots
+} = require("../.test-dist/src/game/presentation/visual/CoolerStockLayout.js");
+const {
   STARTER_MARKET_LAYOUT
 } = require("../.test-dist/src/game/world/starterMarketLayout.js");
 
@@ -36,8 +39,7 @@ const resolver = new RestockTargetResolver({
   backroomBox: STARTER_MARKET_PRESENTATION.world.backroomBox,
   cartStart: STARTER_MARKET_PRESENTATION.world.cartStart,
   cartDestination: STARTER_MARKET_PRESENTATION.world.cartCooler,
-  coolerCentreX: STARTER_MARKET_PRESENTATION.visual.cooler.centre.x,
-  coolerRowYs: STARTER_MARKET_PRESENTATION.visual.cooler.rowYs,
+  coolerCentreX: STARTER_MARKET_PRESENTATION.world.beverageCooler.x,
   coolerTargetWidth: STARTER_MARKET_PRESENTATION.visual.cooler.activeStockBounds.width
 });
 
@@ -185,11 +187,15 @@ test("Checkout target resolver uses the configured service point until completio
   }), undefined);
 });
 
-test("Each restock step targets the next independent cooler row", () => {
-  STARTER_MARKET_PRESENTATION.visual.cooler.rowYs.forEach((rowY, rowIndex) => {
+test("Each restock step targets the next independent two-bay cooler slot", () => {
+  const expectedSlots = resolveCoolerStockSlots(
+    STARTER_MARKET_PRESENTATION.world.beverageCooler.x
+  );
+
+  expectedSlots.forEach((slot, rowIndex) => {
     const target = resolver.resolve(snapshot("restock", rowIndex));
-    assert.equal(target.y, rowY);
-    assert.equal(target.x, STARTER_MARKET_PRESENTATION.visual.cooler.centre.x);
+    assert.equal(target.x, slot.x);
+    assert.equal(target.y, slot.y);
   });
 });
 

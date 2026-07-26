@@ -1,5 +1,10 @@
 import type { RestockSceneSnapshot } from "../../application/RestockSceneController";
 import type { PresentationPoint } from "../context/StarterMarketPresentationContext";
+import {
+  COOLER_STOCK_SLOT_COUNT,
+  COOLER_STOCK_TARGET_HEIGHT,
+  resolveCoolerStockSlots
+} from "../visual/CoolerStockLayout";
 
 export interface InteractionTargetBounds extends PresentationPoint {
   readonly width: number;
@@ -11,14 +16,15 @@ export interface RestockTargetResolverConfig {
   readonly cartStart: PresentationPoint;
   readonly cartDestination: PresentationPoint;
   readonly coolerCentreX: number;
-  readonly coolerRowYs: readonly number[];
+  /** @deprecated Slot geometry is owned by CoolerStockLayout. */
+  readonly coolerRowYs?: readonly number[];
   readonly coolerTargetWidth: number;
 }
 
 export class RestockTargetResolver {
   constructor(private readonly config: RestockTargetResolverConfig) {
-    if (config.coolerRowYs.length === 0) {
-      throw new Error("Restock target resolver requires at least one cooler row");
+    if (config.coolerTargetWidth <= 0) {
+      throw new Error("Restock cooler target width must be positive");
     }
   }
 
@@ -54,12 +60,13 @@ export class RestockTargetResolver {
           height: 240
         });
       case "restock": {
-        const rowIndex = Math.min(snapshot.stockedRows, snapshot.totalRows - 1);
+        const slotIndex = Math.min(snapshot.stockedRows, COOLER_STOCK_SLOT_COUNT - 1);
+        const slot = resolveCoolerStockSlots(this.config.coolerCentreX)[slotIndex];
         return Object.freeze({
-          x: this.config.coolerCentreX,
-          y: this.config.coolerRowYs[rowIndex],
+          x: slot.x,
+          y: slot.y,
           width: this.config.coolerTargetWidth,
-          height: 68
+          height: COOLER_STOCK_TARGET_HEIGHT
         });
       }
       case "complete":
