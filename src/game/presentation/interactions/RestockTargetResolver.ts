@@ -16,6 +16,8 @@ export interface RestockTargetResolverConfig {
   readonly cartStart: PresentationPoint;
   readonly cartDestination: PresentationPoint;
   readonly coolerCentreX: number;
+  /** @deprecated Slot geometry is owned by CoolerStockLayout. */
+  readonly coolerRowYs?: readonly number[];
   readonly coolerTargetWidth: number;
 }
 
