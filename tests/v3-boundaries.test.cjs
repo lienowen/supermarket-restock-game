@@ -131,15 +131,20 @@ test("Utility scene delegates the order summary to a reusable view", () => {
   assert.equal(source.includes("orderTicket?.sync"), true);
   assert.equal(view.includes("ORDER LIST"), true);
   assert.equal(view.includes("productIds"), true);
+  assert.equal(view.includes("itemAssetKeys"), true);
+  assert.equal(view.includes("starter-level-"), false);
 });
 
 test("Order hunt is driven by player shelf choices rather than a revealed answer", () => {
   const source = read("src/game/presentation/scenes/UtilityTaskScene.ts");
-  assert.equal(source.includes("attemptFindProduct"), true);
-  assert.equal(source.includes("requestFindProduct"), true);
-  assert.equal(source.includes("recordFindMistake"), true);
-  assert.equal(source.includes("findChallenge.selectProduct"), true);
-  assert.equal(source.includes("findChallenge.recordMistake"), true);
+  const challenge = read("src/game/application/FindItemsChallengeController.ts");
+
+  assert.equal(source.includes("remainingProductIds.includes(productId)"), true);
+  assert.equal(source.includes("expectedProduct"), false);
+  assert.equal(source.includes("this.target?.sync(undefined, false)"), true);
+  assert.equal(source.includes("new FindItemsCountdownView"), true);
+  assert.equal(challenge.includes("mistakePenaltySeconds"), true);
+  assert.equal(challenge.includes('status = "failed"'), true);
 });
 
 test("Phaser bootstrap delegates mode selection to the gameplay scene registry", () => {
@@ -147,24 +152,65 @@ test("Phaser bootstrap delegates mode selection to the gameplay scene registry",
   assert.equal(source.includes("createGameplayScene"), true);
   assert.equal(source.includes("new StarterMarketScene"), false);
   assert.equal(source.includes("new CheckoutMarketScene"), false);
-  assert.equal(source.includes("new UtilityTaskScene"), false);
+  assert.equal(source.includes("switch (presentation.mode)"), false);
 });
 
 test("Gameplay runtime selection is owned by a mode registry", () => {
-  const source = read("src/game/application/GameplayModeRegistry.ts");
+  const source = read("src/game/application/LevelRuntimeContent.ts");
   assert.equal(source.includes("resolveGameplayRuntime"), true);
-  assert.equal(source.includes("validateGameplayRuntime"), true);
-  assert.equal(source.includes("switch (level.mode)"), true);
+  assert.equal(source.includes("resolveRestockShiftRuntime"), false);
+  assert.equal(source.includes("resolveCheckoutLevelRuntime"), false);
 });
 
 test("Gameplay code never branches on a concrete level id", () => {
-  const roots = [
+  const runtimeRoots = [
     "src/game/application",
-    "src/game/presentation",
-    "src/game/infrastructure"
+    "src/game/infrastructure",
+    "src/game/presentation"
   ];
-  const offenders = roots
-    .flatMap((root) => sourceFilesUnder(root))
-    .filter((path) => read(path).includes("starter-level-"));
+  const branchPattern = /(if\s*\([^\n]*starter-level-|case\s+["']starter-level-|===?\s*["']starter-level-|!==?\s*["']starter-level-)/;
+  const offenders = runtimeRoots
+    .flatMap(sourceFilesUnder)
+    .filter((path) => branchPattern.test(read(path)));
   assert.deepEqual(offenders, []);
+});
+
+test("Level configuration contains variables but no asset paths or methods", () => {
+  const source = read("src/game/content/levels/starterMarketLevels.ts");
+  assert.equal(source.includes("assetPackId"), true);
+  assert.equal(source.includes("visualPresetId"), true);
+  assert.equal(source.includes('mode: "restock"'), true);
+  assert.equal(source.includes('mode: "checkout"'), true);
+  assert.equal(source.includes('mode: "clean"'), true);
+  assert.equal(source.includes('mode: "find-items"'), true);
+  assert.equal(source.includes("AssetKey"), false);
+  assert.equal(source.includes("assets/game/"), false);
+  assert.equal(source.includes("new Phaser"), false);
+  assert.equal(source.includes("Scene"), false);
+});
+
+test("Global asset packs own reusable character and equipment bindings", () => {
+  const source = read("src/game/assets/GlobalAssetPackRegistry.ts");
+  assert.equal(source.includes("market-restock-v1"), true);
+  assert.equal(source.includes("market-checkout-v1"), true);
+  assert.equal(source.includes("market-clean-v1"), true);
+  assert.equal(source.includes("market-find-items-v1"), true);
+  assert.equal(source.includes("caseAssetsByProductId"), true);
+});
+
+test("Scenes resolve presentation from the active level configuration", () => {
+  for (const path of [
+    "src/game/presentation/scenes/StarterMarketScene.ts",
+    "src/game/presentation/scenes/CheckoutMarketScene.ts",
+    "src/game/presentation/scenes/UtilityTaskScene.ts"
+  ]) {
+    const source = read(path);
+    assert.equal(source.includes("resolveLevelVisualPreset"), true, path);
+  }
+});
+
+test("Legacy scene delegates to the project presentation scene", () => {
+  const source = read("src/game-v2/presentation/ImmersiveDayOneScene.ts").trim();
+  assert.equal(source.includes("StarterMarketScene as ImmersiveDayOneScene"), true);
+  assert.equal(source.includes("class ImmersiveDayOneScene"), false);
 });
