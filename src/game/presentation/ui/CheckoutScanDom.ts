@@ -19,6 +19,7 @@ export interface CheckoutScanDomHandle {
 }
 
 interface CheckoutScenePort {
+  readonly input?: { enabled: boolean };
   readonly controller?: {
     readonly snapshot?: () => {
       readonly step: string;
@@ -52,6 +53,7 @@ export function mountCheckoutScanDom(config: CheckoutScanDomConfig): CheckoutSca
   const overlay = document.createElement("section");
   overlay.id = "checkout-scan-overlay";
   overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-modal", "true");
   overlay.setAttribute("aria-label", "Checkout item scanning");
   applyStyles(overlay, {
     position: "fixed",
@@ -65,7 +67,8 @@ export function mountCheckoutScanDom(config: CheckoutScanDomConfig): CheckoutSca
     background: "rgba(3, 9, 6, 0.22)",
     fontFamily: "Arial, sans-serif",
     color: "#ffffff",
-    touchAction: "none"
+    touchAction: "none",
+    pointerEvents: "auto"
   });
 
   const panel = document.createElement("div");
@@ -182,7 +185,8 @@ export function mountCheckoutScanDom(config: CheckoutScanDomConfig): CheckoutSca
     color: "#aef3c4",
     fontSize: "10px",
     fontWeight: "900",
-    letterSpacing: "1px"
+    letterSpacing: "1px",
+    pointerEvents: "none"
   });
   scanner.append(beam, scannerLabel);
 
@@ -236,6 +240,9 @@ export function mountCheckoutScanDom(config: CheckoutScanDomConfig): CheckoutSca
   overlay.appendChild(panel);
   document.body.appendChild(overlay);
   document.body.dataset.checkoutScan = "waiting";
+  document.body.dataset.checkoutScanCustomer = "0";
+  document.body.dataset.checkoutScanScanned = "0";
+  document.body.dataset.checkoutScanItems = "0";
 
   let activeCustomer = -1;
   let cards: ProductCardState[] = [];
@@ -252,6 +259,10 @@ export function mountCheckoutScanDom(config: CheckoutScanDomConfig): CheckoutSca
 
   const snapshot = () => scenePort()?.controller?.snapshot?.();
   const isReady = () => Boolean(scenePort()?.isInteractionReady?.());
+  const setSceneInputEnabled = (enabled: boolean): void => {
+    const input = scenePort()?.input;
+    if (input) input.enabled = enabled;
+  };
 
   const setPaymentEnabled = (enabled: boolean): void => {
     payment.disabled = !enabled;
@@ -266,6 +277,7 @@ export function mountCheckoutScanDom(config: CheckoutScanDomConfig): CheckoutSca
 
   const updateFeedback = (): void => {
     const count = scannedCount();
+    document.body.dataset.checkoutScanScanned = String(count);
     feedback.textContent = count === cards.length
       ? "Basket complete. Confirm payment."
       : `Scanned ${count}/${cards.length}`;
@@ -349,6 +361,7 @@ export function mountCheckoutScanDom(config: CheckoutScanDomConfig): CheckoutSca
     card.addEventListener("pointerdown", (event) => {
       if (state.scanned) return;
       event.preventDefault();
+      event.stopPropagation();
       pointerId = event.pointerId;
       startX = event.clientX - translateX;
       startY = event.clientY - translateY;
@@ -360,6 +373,7 @@ export function mountCheckoutScanDom(config: CheckoutScanDomConfig): CheckoutSca
     card.addEventListener("pointermove", (event) => {
       if (pointerId !== event.pointerId || state.scanned) return;
       event.preventDefault();
+      event.stopPropagation();
       translateX = event.clientX - startX;
       translateY = event.clientY - startY;
       card.style.transform = `translate(${translateX}px, ${translateY}px)`;
@@ -368,6 +382,7 @@ export function mountCheckoutScanDom(config: CheckoutScanDomConfig): CheckoutSca
     card.addEventListener("pointerup", (event) => {
       if (pointerId !== event.pointerId || state.scanned) return;
       event.preventDefault();
+      event.stopPropagation();
       if (card.hasPointerCapture(event.pointerId)) card.releasePointerCapture(event.pointerId);
       if (centreInScanner()) scanCard(state);
       else {
@@ -376,6 +391,7 @@ export function mountCheckoutScanDom(config: CheckoutScanDomConfig): CheckoutSca
         reset();
       }
     });
+    card.addEventListener("pointercancel", reset);
     card.addEventListener("keydown", (event) => {
       if ((event.key !== "Enter" && event.key !== " ") || state.scanned) return;
       event.preventDefault();
@@ -401,13 +417,18 @@ export function mountCheckoutScanDom(config: CheckoutScanDomConfig): CheckoutSca
     });
     customerLabel.textContent = `CUSTOMER ${customerIndex + 1}/${config.totalCustomers}`;
     overlay.style.display = "flex";
+    setSceneInputEnabled(false);
     document.body.dataset.checkoutScan = "active";
+    document.body.dataset.checkoutScanCustomer = String(customerIndex + 1);
+    document.body.dataset.checkoutScanItems = String(itemCount);
+    document.body.dataset.checkoutScanScanned = "0";
     updateFeedback();
     cards[0]?.element.focus();
   };
 
   const hide = (): void => {
     overlay.style.display = "none";
+    setSceneInputEnabled(true);
     document.body.dataset.checkoutScan = "waiting";
     setPaymentEnabled(false);
   };
@@ -423,7 +444,9 @@ export function mountCheckoutScanDom(config: CheckoutScanDomConfig): CheckoutSca
     }
   };
 
-  payment.addEventListener("click", () => {
+  payment.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
     if (payment.disabled || scannedCount() !== cards.length || !isReady()) {
       feedback.textContent = "Scan every item before payment";
       feedback.style.color = "#ffad98";
@@ -437,6 +460,17 @@ export function mountCheckoutScanDom(config: CheckoutScanDomConfig): CheckoutSca
     }
     document.body.dataset.checkoutScan = "committing";
     action.emit("pointerdown");
+  });
+
+  const blockUnderlyingPointer = (event: Event): void => event.stopPropagation();
+  overlay.addEventListener("pointerdown", blockUnderlyingPointer);
+  overlay.addEventListener("pointermove", blockUnderlyingPointer);
+  overlay.addEventListener("pointerup", blockUnderlyingPointer);
+  overlay.addEventListener("click", blockUnderlyingPointer);
+  overlay.addEventListener("dblclick", blockUnderlyingPointer);
+  overlay.addEventListener("contextmenu", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
   });
 
   const disposers = [
@@ -464,8 +498,12 @@ export function mountCheckoutScanDom(config: CheckoutScanDomConfig): CheckoutSca
       destroyed = true;
       window.clearInterval(pollId);
       disposers.forEach((dispose) => dispose());
+      setSceneInputEnabled(true);
       overlay.remove();
       delete document.body.dataset.checkoutScan;
+      delete document.body.dataset.checkoutScanCustomer;
+      delete document.body.dataset.checkoutScanScanned;
+      delete document.body.dataset.checkoutScanItems;
     }
   });
 }
