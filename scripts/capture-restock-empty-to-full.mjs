@@ -119,10 +119,15 @@ try {
     await waitForInteractionReady(page);
     await clickGame(page, target.x, target.y);
     await waitForRowItemCount(page, rowIndex, itemNumber);
+    if (itemNumber === ITEMS_PER_SHELF) {
+      await waitForSnapshot(page, { stockedRows: 1 }, 15000);
+    }
     const state = await readVisualState(page, rowIndex);
     report.states.push(state);
     await captureCooler(page, `restock-visual-${itemNumber}-of-3.png`);
   }
+
+  await createContactSheet(context);
 
   const one = report.states[1];
   const two = report.states[2];
@@ -163,6 +168,39 @@ try {
 
 console.log(JSON.stringify({ assertions: report.assertions, fatalError: report.fatalError }, null, 2));
 if (thrownError) throw thrownError;
+
+async function createContactSheet(context) {
+  const evidencePage = await context.newPage();
+  await evidencePage.setViewportSize({ width: 1280, height: 535 });
+  const images = Array.from({ length: 4 }, (_, index) => {
+    const bytes = readFileSync(join(OUTPUT_DIR, `restock-visual-${index}-of-3.png`));
+    return `data:image/png;base64,${bytes.toString("base64")}`;
+  });
+  await evidencePage.setContent(`<!doctype html>
+<html>
+<head>
+<style>
+  html, body { margin: 0; width: 1280px; height: 535px; overflow: hidden; background: #101510; }
+  main { display: grid; grid-template-columns: repeat(4, 320px); width: 1280px; height: 535px; }
+  figure { position: relative; margin: 0; width: 320px; height: 535px; overflow: hidden; }
+  img { display: block; width: 320px; height: 535px; object-fit: cover; }
+  figcaption { position: absolute; left: 10px; top: 10px; min-width: 52px; padding: 6px 10px;
+    border-radius: 999px; background: rgba(5, 14, 10, .88); color: #ffd95e;
+    font: 900 16px Arial, sans-serif; text-align: center; }
+</style>
+</head>
+<body>
+<main>${images.map((src, index) => `<figure><img src="${src}"><figcaption>${index}/3</figcaption></figure>`).join("")}</main>
+</body>
+</html>`);
+  await evidencePage.screenshot({
+    path: join(OUTPUT_DIR, "restock-contact-sheet.jpg"),
+    type: "jpeg",
+    quality: 70,
+    fullPage: false
+  });
+  await evidencePage.close();
+}
 
 async function readVisualState(page, forcedRowIndex) {
   return page.evaluate(({ sceneKey, rowIndex }) => {
