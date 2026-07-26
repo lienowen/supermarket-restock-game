@@ -32,7 +32,7 @@ jobs:
               sha,
               state: "pending",
               context: "UI Regression Audit",
-              description: "Testing campaign, briefings, guided controls, memory gameplay and SDK lifecycle",
+              description: "Testing campaign, briefings, guided controls, memory and checkout gameplay",
               target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
             });
 
@@ -85,6 +85,11 @@ jobs:
           set -o pipefail
           node scripts/capture-promotion-memory.mjs 2>&1 | tee promotion-memory-audit.log
 
+      - name: Verify drag-to-scan checkout
+        run: |
+          set -o pipefail
+          node scripts/capture-checkout-scanning.mjs 2>&1 | tee checkout-scanning-audit.log
+
       - name: Upload CrazyGames release package
         uses: actions/upload-artifact@v4
         with:
@@ -104,6 +109,7 @@ jobs:
             level-briefing-audit.log
             guided-delivery-audit.log
             promotion-memory-audit.log
+            checkout-scanning-audit.log
             build.log
             release-check.log
             release-payload.log
@@ -120,7 +126,7 @@ jobs:
               ? context.payload.pull_request.head.sha
               : context.sha;
             const passed = "${{ job.status }}" === "success";
-            let description = "Campaign, briefings, guided controls, memory gameplay and SDK regressions passed";
+            let description = "Campaign, briefings, guided controls, memory and checkout regressions passed";
             let failureKey = "runtime";
 
             const failedAssertions = (path) => {
@@ -134,10 +140,14 @@ jobs:
 
             if (!passed) {
               try {
+                const checkout = failedAssertions("ui-audit/checkout-scanning-audit.json");
                 const memory = failedAssertions("ui-audit/promotion-memory-audit.json");
                 const guided = failedAssertions("ui-audit/guided-delivery-audit.json");
                 const briefing = failedAssertions("ui-audit/level-briefing-audit.json");
-                if (memory && (memory.report.fatalError || memory.failed.length > 0)) {
+                if (checkout && (checkout.report.fatalError || checkout.failed.length > 0)) {
+                  failureKey = `checkout:${checkout.failed.join("+") || "runtime"}`;
+                  description = checkout.report.fatalError || `Failed: ${failureKey}`;
+                } else if (memory && (memory.report.fatalError || memory.failed.length > 0)) {
                   failureKey = `memory:${memory.failed.join("+") || "runtime"}`;
                   description = memory.report.fatalError || `Failed: ${failureKey}`;
                 } else if (guided && (guided.report.fatalError || guided.failed.length > 0)) {
