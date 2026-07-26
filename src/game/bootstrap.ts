@@ -7,6 +7,10 @@ import { validateGameplayRuntime } from "./application/GameplayModeRegistry";
 import { validateLevelCampaignRuntime } from "./application/LevelRuntimeContent";
 import { PROJECT_CONFIG } from "./config/project";
 import {
+  CART_CAPACITY_EXPERIENCE_SPECS,
+  validateCartCapacityExperienceSpecs
+} from "./content/experience/CartCapacityExperienceSpec";
+import {
   STARTER_LEVEL_EXPERIENCE_SPECS,
   validateLevelExperienceSpecs
 } from "./content/experience/LevelExperienceSpec";
@@ -32,9 +36,15 @@ function validateProjectContracts(): void {
   const productIds = MAIN_LEVEL_CAMPAIGN_RUNTIME.levels.flatMap((entry) => (
     "product" in entry.runtime ? [entry.runtime.product.id] : []
   ));
-  const interactionAssetKeys = STARTER_LEVEL_EXPERIENCE_SPECS.flatMap((spec) => (
-    spec.checkoutScan?.productAssetKeys ?? []
-  ));
+  const interactionAssetKeys = [
+    ...STARTER_LEVEL_EXPERIENCE_SPECS.flatMap((spec) => [
+      ...(spec.checkoutScan?.productAssetKeys ?? []),
+      ...(spec.findItemsSearch?.decoys.map((decoy) => decoy.assetKey) ?? [])
+    ]),
+    ...CART_CAPACITY_EXPERIENCE_SPECS.flatMap((spec) => (
+      spec.options.map((option) => option.assetKey)
+    ))
+  ];
   const configuredAssetKeys = [
     ...presentationContexts.flatMap((context) => (
       context.levelAssets.preload.map((asset) => asset.key)
@@ -50,6 +60,7 @@ function validateProjectContracts(): void {
     ...STARTER_RUNTIME_ASSET_REGISTRY.validateKeys(configuredAssetKeys),
     ...validateLevelDefinitions(levelDefinitions),
     ...validateLevelExperienceSpecs(levelDefinitions),
+    ...validateCartCapacityExperienceSpecs(levelDefinitions),
     ...validateWorldLayout(STARTER_MARKET_LAYOUT),
     ...validateStarterMarketVisualSpec().errors,
     ...validateProductionAssetPlan(),
