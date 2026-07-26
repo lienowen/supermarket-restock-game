@@ -48,7 +48,6 @@ jobs:
         id: export
         if: always()
         run: |
-          test -f restock-visual-audit/restock-contact-sheet.jpg
           test -f restock-visual-audit/restock-visual-audit.json
           node - <<'NODE' > /tmp/restock-summary.json
           const fs = require('node:fs');
@@ -69,11 +68,15 @@ jobs:
           }));
           NODE
           echo "summary_b64=$(base64 -w0 /tmp/restock-summary.json)" >> "$GITHUB_OUTPUT"
-          {
-            echo 'contact_b64<<RESTOCK_CONTACT_EOF'
-            base64 -w76 restock-visual-audit/restock-contact-sheet.jpg
-            echo 'RESTOCK_CONTACT_EOF'
-          } >> "$GITHUB_OUTPUT"
+          if [ -f restock-visual-audit/restock-contact-sheet.jpg ]; then
+            {
+              echo 'contact_b64<<RESTOCK_CONTACT_EOF'
+              base64 -w76 restock-visual-audit/restock-contact-sheet.jpg
+              echo 'RESTOCK_CONTACT_EOF'
+            } >> "$GITHUB_OUTPUT"
+          else
+            echo 'contact_b64=' >> "$GITHUB_OUTPUT"
+          fi
 
   evidence:
     needs: capture
