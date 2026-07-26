@@ -55,11 +55,16 @@ jobs:
           total_parts = 4
           report_path = Path("restock-visual-audit/restock-visual-audit.json")
           contact_path = Path("restock-visual-audit/restock-contact-sheet.jpg")
-          if not report_path.is_file():
-              raise SystemExit("restock visual report is missing")
-          if not contact_path.is_file():
+          if not report_path.is_file() or not contact_path.is_file():
+              print("RESTOCK_CAPTURE_LOG_BEGIN")
               print(Path("/tmp/restock-capture.log").read_text(errors="replace"))
-              raise SystemExit("restock contact sheet is missing")
+              print("RESTOCK_CAPTURE_LOG_END")
+              missing = []
+              if not report_path.is_file():
+                  missing.append("report")
+              if not contact_path.is_file():
+                  missing.append("contact sheet")
+              raise SystemExit("missing restock evidence: " + ", ".join(missing))
 
           report = json.loads(report_path.read_text())
           contact = base64.b64encode(contact_path.read_bytes()).decode("ascii")
