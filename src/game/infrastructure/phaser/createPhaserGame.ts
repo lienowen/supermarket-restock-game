@@ -177,26 +177,21 @@ export async function createPhaserGame(
     document.body.dataset.cartCapacityLoad = cartCapacity ? "skipped" : "none";
   }
 
-  const scannerAssetFor = (): ReturnType<typeof presentation.levelAssets.equipment.find> => (
-    "equipment" in presentation.levelAssets
-      ? presentation.levelAssets.equipment.find((asset) => (
-          asset.key === "equipment-checkout-scanner" ||
-          asset.key === "equipment-barcode-scanner"
-        ))
-      : undefined
-  );
-  const posAssetFor = (): ReturnType<typeof presentation.levelAssets.equipment.find> => (
-    "equipment" in presentation.levelAssets
-      ? presentation.levelAssets.equipment.find((asset) => asset.key === "equipment-pos-terminal")
-      : undefined
-  );
+  const checkoutEquipment = "equipment" in presentation.levelAssets
+    ? presentation.levelAssets.equipment
+    : undefined;
+  const scannerAsset = checkoutEquipment?.find((asset) => (
+    asset.key === "equipment-checkout-scanner" ||
+    asset.key === "equipment-barcode-scanner"
+  ));
+  const posAsset = checkoutEquipment?.find((asset) => asset.key === "equipment-pos-terminal");
 
   const skipCheckoutScan = options.skipCheckoutScan ?? checkoutScanDisabledFromLocation();
   if (
     experience.checkoutScan &&
     !skipCheckoutScan &&
     "customerCount" in presentation.runtime &&
-    "equipment" in presentation.levelAssets
+    checkoutEquipment
   ) {
     mountCheckoutScanDom({
       game,
@@ -207,8 +202,8 @@ export async function createPhaserGame(
       productAssets: STARTER_RUNTIME_ASSET_REGISTRY.resolve(
         experience.checkoutScan.productAssetKeys
       ),
-      scannerAsset: scannerAssetFor(),
-      posAsset: posAssetFor()
+      scannerAsset,
+      posAsset
     });
   } else {
     document.body.dataset.checkoutScan = experience.checkoutScan ? "skipped" : "none";
@@ -219,7 +214,7 @@ export async function createPhaserGame(
     checkoutPatience &&
     !skipCheckoutPatience &&
     "customerCount" in presentation.runtime &&
-    "equipment" in presentation.levelAssets
+    checkoutEquipment
   ) {
     mountCheckoutPatienceDom({
       game,
@@ -233,8 +228,8 @@ export async function createPhaserGame(
       weighedProductAsset: STARTER_RUNTIME_ASSET_REGISTRY.require(
         checkoutPatience.weighedProductAssetKey
       ),
-      scannerAsset: scannerAssetFor(),
-      posAsset: posAssetFor()
+      scannerAsset,
+      posAsset
     });
   } else {
     document.body.dataset.checkoutPatience = checkoutPatience ? "skipped" : "none";
