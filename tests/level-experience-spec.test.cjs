@@ -78,3 +78,14 @@ test("Checkout basics requires multiple product drags before each payment", () =
   assert.equal(checkoutScan.scannerLabel, "SCAN ZONE");
   assert.equal(checkoutScan.paymentLabel, "CONFIRM PAYMENT");
 });
+
+test("Spill patrol requires sustained cleaning rather than one tap", () => {
+  const holdSpecs = STARTER_LEVEL_EXPERIENCE_SPECS.filter((spec) => spec.holdWork);
+  assert.equal(holdSpecs.length, 1);
+
+  const holdWork = holdSpecs[0].holdWork;
+  assert.equal(holdWork.action, "CLEAN_SPOT");
+  assert.equal(holdWork.durationMs, 1300);
+  assert.equal(holdWork.holdLabel, "HOLD TO CLEAN");
+  assert.match(holdWork.instruction, /Releasing early interrupts/);
+});
