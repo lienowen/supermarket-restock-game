@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import type { StarterMarketPresentationContext } from "../context/StarterMarketPresentationContext";
+import { resolveCoolerStockSlots } from "../visual/CoolerStockLayout";
 import { resolveLevelVisualPreset } from "../visual/LevelVisualPresetResolver";
 import type { MarketLevelVisualPreset } from "../visual/MarketLevelVisualPreset";
 
@@ -21,6 +22,7 @@ export class StarterMarketEnvironmentView {
   create(): void {
     this.createBase();
     this.createFloor();
+    this.createRestockEmptyCooler();
     this.registerSharedFixtureAvailability();
     this.createModeFocus();
     this.createAtmosphere();
@@ -50,6 +52,107 @@ export class StarterMarketEnvironmentView {
       0x10201b,
       0.08
     ).setDepth(-29);
+  }
+
+  /**
+   * The production sales-floor background contains a photographed, fully
+   * stocked drinks wall. Restock gameplay must never reveal those baked-in
+   * products inside the two task bays. This opaque fixture is rendered above
+   * the background and below all interactive stock items, creating a genuinely
+   * empty 0/3 state before the first product is placed.
+   */
+  private createRestockEmptyCooler(): void {
+    if (this.context.mode !== "restock") {
+      document.body.dataset.restockCoolerBackground = "not-applicable";
+      return;
+    }
+
+    const slots = resolveCoolerStockSlots(this.context.world.beverageCooler.x);
+    const xs = slots.map((slot) => slot.x);
+    const ys = slots.map((slot) => slot.y);
+    const left = Math.min(...xs) - 53;
+    const right = Math.max(...xs) + 53;
+    const top = Math.min(...ys) - 82;
+    const bottom = Math.max(...ys) + 86;
+    const width = right - left;
+    const height = bottom - top;
+    const centreX = left + width / 2;
+    const headerHeight = 48;
+    const baseHeight = 54;
+    const doorTop = top + headerHeight + 8;
+    const doorBottom = bottom - baseHeight - 7;
+    const doorHeight = doorBottom - doorTop;
+    const doorWidth = 80;
+
+    const shell = this.scene.add.graphics()
+      .setDepth(3)
+      .setName("beverage-cooler-empty-shell")
+      .setData("background-stock-occluded", true);
+
+    shell.fillStyle(0x0a0f0d, 1);
+    shell.fillRoundedRect(left, top, width, height, 12);
+    shell.lineStyle(4, 0x303a36, 1);
+    shell.strokeRoundedRect(left, top, width, height, 12);
+
+    shell.fillStyle(0x315f38, 1);
+    shell.fillRoundedRect(left + 6, top + 6, width - 12, headerHeight - 6, 8);
+    shell.lineStyle(2, 0x78a780, 0.72);
+    shell.strokeRoundedRect(left + 6, top + 6, width - 12, headerHeight - 6, 8);
+
+    const bayIndexes = [...new Set(slots.map((slot) => slot.bayIndex))];
+    bayIndexes.forEach((bayIndex) => {
+      const baySlots = slots.filter((slot) => slot.bayIndex === bayIndex);
+      const firstSlot = baySlots[0];
+      if (!firstSlot) return;
+
+      const doorLeft = firstSlot.x - doorWidth / 2;
+      shell.fillStyle(0x06110d, 1);
+      shell.fillRoundedRect(doorLeft, doorTop, doorWidth, doorHeight, 7);
+      shell.lineStyle(3, 0x303b37, 1);
+      shell.strokeRoundedRect(doorLeft, doorTop, doorWidth, doorHeight, 7);
+      shell.lineStyle(1, 0xa9c2b7, 0.22);
+      shell.strokeRoundedRect(doorLeft + 5, doorTop + 5, doorWidth - 10, doorHeight - 10, 5);
+
+      shell.fillStyle(0xa9d6c5, 0.045);
+      shell.fillRoundedRect(doorLeft + 8, doorTop + 8, 13, doorHeight - 16, 4);
+
+      shell.lineStyle(3, 0xc6d5cf, 0.48);
+      baySlots.forEach((slot) => {
+        const shelfY = slot.y + 30;
+        shell.lineBetween(doorLeft + 7, shelfY, doorLeft + doorWidth - 7, shelfY);
+      });
+    });
+
+    shell.fillStyle(0x111815, 1);
+    shell.fillRoundedRect(left + 7, bottom - baseHeight, width - 14, baseHeight - 7, 7);
+    shell.lineStyle(2, 0x2b3531, 1);
+    shell.strokeRoundedRect(left + 7, bottom - baseHeight, width - 14, baseHeight - 7, 7);
+    shell.lineStyle(2, 0x39443f, 0.85);
+    for (let y = bottom - baseHeight + 11; y < bottom - 13; y += 8) {
+      shell.lineBetween(left + 18, y, right - 18, y);
+    }
+
+    this.scene.add.text(centreX, top + 21, "BEVERAGES", {
+      fontFamily: "Arial, sans-serif",
+      fontSize: "16px",
+      fontStyle: "bold",
+      color: "#ffffff"
+    })
+      .setOrigin(0.5)
+      .setDepth(4)
+      .setName("beverage-cooler-empty-header");
+
+    this.scene.add.text(centreX, top + 37, "EMPTY TASK BAYS", {
+      fontFamily: "Arial, sans-serif",
+      fontSize: "8px",
+      fontStyle: "bold",
+      color: "#cfe7d8"
+    })
+      .setOrigin(0.5)
+      .setDepth(4)
+      .setName("beverage-cooler-empty-subtitle");
+
+    document.body.dataset.restockCoolerBackground = "occluded";
   }
 
   private registerSharedFixtureAvailability(): void {
