@@ -10,6 +10,7 @@ import {
 import { applyMarketUpgradesToPresentation } from "../../presentation/context/MarketUpgradePresentation";
 import type { SceneCampaignSessionContext } from "../../presentation/scenes/StarterMarketScene";
 import { mountLevelBriefingDomOverlay } from "../../presentation/ui/LevelBriefingDomOverlay";
+import { mountLevelOneChecklistDom } from "../../presentation/ui/LevelOneChecklistDom";
 import { BrowserCampaignSessionStore } from "../browser/BrowserCampaignSessionStore";
 import { createGameplayScene } from "./GameplaySceneRegistry";
 import { installSafeInteractiveGuard } from "./SafeInteractiveGuard";
@@ -104,6 +105,12 @@ export async function createPhaserGame(
   });
   game.registry.set("campaignSession", session);
   game.registry.set("levelExperience", experience);
+
+  if (presentation.campaignLevel.level.id === "starter-level-001") {
+    mountLevelOneChecklistDom();
+  } else {
+    delete document.body.dataset.levelChecklist;
+  }
 
   const exposeTestBridge = options.exposeTestBridge ?? (locationParameters().get("test") === "1");
   if (exposeTestBridge) {
