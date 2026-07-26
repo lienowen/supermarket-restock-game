@@ -20,7 +20,7 @@ export interface CartCapacityExperienceSpec {
   readonly options: readonly CartCaseOptionSpec[];
 }
 
-const SPECS: readonly CartCapacityExperienceSpec[] = Object.freeze([
+export const CART_CAPACITY_EXPERIENCE_SPECS: readonly CartCapacityExperienceSpec[] = Object.freeze([
   Object.freeze({
     levelId: "starter-level-006",
     mode: "restock" as const,
@@ -55,7 +55,7 @@ const SPECS: readonly CartCapacityExperienceSpec[] = Object.freeze([
 ]);
 
 const BY_LEVEL_ID: ReadonlyMap<string, CartCapacityExperienceSpec> = new Map(
-  SPECS.map((spec) => [spec.levelId, spec])
+  CART_CAPACITY_EXPERIENCE_SPECS.map((spec) => [spec.levelId, spec])
 );
 
 export function resolveCartCapacityExperienceSpec(
@@ -75,7 +75,7 @@ export function validateCartCapacityExperienceSpecs(
   const errors: string[] = [];
   const levelIds = new Set(levels.map((level) => level.id));
 
-  SPECS.forEach((spec) => {
+  CART_CAPACITY_EXPERIENCE_SPECS.forEach((spec) => {
     if (!levelIds.has(spec.levelId)) errors.push(`Cart capacity spec references missing level: ${spec.levelId}`);
     if (!Number.isInteger(spec.capacity) || spec.capacity < 2) {
       errors.push(`Cart capacity spec ${spec.levelId} requires capacity of at least two`);
