@@ -51,19 +51,24 @@ jobs:
           fi
 
       - name: Publish compact visual evidence branch
-        if: always() && steps.capture_restock.outcome == 'success'
+        if: always()
         env:
           GH_TOKEN: ${{ github.token }}
           EVIDENCE_BRANCH: restock-visual-evidence-pr35
         run: |
+          test -f restock-visual-audit/restock-visual-0-of-3.png
+          test -f restock-visual-audit/restock-visual-1-of-3.png
+          test -f restock-visual-audit/restock-visual-2-of-3.png
+          test -f restock-visual-audit/restock-visual-3-of-3.png
+
           montage \
             restock-visual-audit/restock-visual-0-of-3.png \
             restock-visual-audit/restock-visual-1-of-3.png \
             restock-visual-audit/restock-visual-2-of-3.png \
             restock-visual-audit/restock-visual-3-of-3.png \
-            -tile 4x1 -geometry 80x134+0+0 -background '#101510' \
+            -tile 4x1 -geometry 160x268+0+0 -background '#101510' \
             /tmp/restock-contact-sheet.png
-          convert /tmp/restock-contact-sheet.png -strip -quality 22 /tmp/restock-contact-sheet.jpg
+          convert /tmp/restock-contact-sheet.png -strip -quality 36 /tmp/restock-contact-sheet.jpg
           base64 -w0 /tmp/restock-contact-sheet.jpg > /tmp/restock-contact-sheet.b64
 
           HEAD_SHA="$(git rev-parse HEAD)"
