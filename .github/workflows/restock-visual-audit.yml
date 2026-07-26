@@ -1,0 +1,45 @@
+name: Restock Visual Audit
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Capture empty-to-full restock
+        run: node scripts/capture-restock-empty-to-full.mjs
+
+      - name: Upload restock visual evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: restock-empty-to-full-visual
+          path: restock-visual-audit
+          if-no-files-found: warn
