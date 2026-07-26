@@ -12,6 +12,7 @@ import { applyMarketUpgradesToPresentation } from "../../presentation/context/Ma
 import type { SceneCampaignSessionContext } from "../../presentation/scenes/StarterMarketScene";
 import { mountCheckoutScanDom } from "../../presentation/ui/CheckoutScanDom";
 import { mountGuidedDragActionDom } from "../../presentation/ui/GuidedDragActionDom";
+import { mountHoldWorkDom } from "../../presentation/ui/HoldWorkDom";
 import { mountLevelBriefingDomOverlay } from "../../presentation/ui/LevelBriefingDomOverlay";
 import { mountLevelChecklistDom } from "../../presentation/ui/LevelChecklistDom";
 import { BrowserCampaignSessionStore } from "../browser/BrowserCampaignSessionStore";
@@ -26,6 +27,7 @@ export interface PhaserGameFactoryOptions {
   readonly skipBriefing?: boolean;
   readonly skipGuidedInteractions?: boolean;
   readonly skipCheckoutScan?: boolean;
+  readonly skipHoldWork?: boolean;
 }
 
 const locationParameters = (): URLSearchParams => new URLSearchParams(window.location.search);
@@ -35,26 +37,17 @@ const requestedLevelFromLocation = (): string | undefined => {
   return parameters.get("level")?.trim() || parameters.get("shift")?.trim() || undefined;
 };
 
-const briefingDisabledFromLocation = (): boolean => {
+const featureDisabledFromLocation = (parameterName: string): boolean => {
   const parameters = locationParameters();
-  const explicitBriefing = parameters.get("briefing");
-  if (explicitBriefing === "1") return false;
-  return explicitBriefing === "0" || parameters.get("test") === "1";
+  const explicitValue = parameters.get(parameterName);
+  if (explicitValue === "1") return false;
+  return explicitValue === "0" || parameters.get("test") === "1";
 };
 
-const guidedInteractionsDisabledFromLocation = (): boolean => {
-  const parameters = locationParameters();
-  const explicitGuided = parameters.get("guided");
-  if (explicitGuided === "1") return false;
-  return explicitGuided === "0" || parameters.get("test") === "1";
-};
-
-const checkoutScanDisabledFromLocation = (): boolean => {
-  const parameters = locationParameters();
-  const explicitCheckout = parameters.get("checkout");
-  if (explicitCheckout === "1") return false;
-  return explicitCheckout === "0" || parameters.get("test") === "1";
-};
+const briefingDisabledFromLocation = (): boolean => featureDisabledFromLocation("briefing");
+const guidedInteractionsDisabledFromLocation = (): boolean => featureDisabledFromLocation("guided");
+const checkoutScanDisabledFromLocation = (): boolean => featureDisabledFromLocation("checkout");
+const holdWorkDisabledFromLocation = (): boolean => featureDisabledFromLocation("hold");
 
 export async function createPhaserGame(
   options: PhaserGameFactoryOptions = {}
@@ -180,6 +173,23 @@ export async function createPhaserGame(
     });
   } else {
     document.body.dataset.checkoutScan = experience.checkoutScan ? "skipped" : "none";
+  }
+
+  const skipHoldWork = options.skipHoldWork ?? holdWorkDisabledFromLocation();
+  if (
+    experience.holdWork &&
+    !skipHoldWork &&
+    "workerMop" in presentation.levelAssets
+  ) {
+    mountHoldWorkDom({
+      game,
+      sceneKey: presentation.scene.key,
+      levelId: presentation.campaignLevel.level.id,
+      spec: experience.holdWork,
+      toolImagePath: presentation.levelAssets.workerMop.path
+    });
+  } else {
+    document.body.dataset.holdWork = experience.holdWork ? "skipped" : "none";
   }
 
   const exposeTestBridge = options.exposeTestBridge ?? (locationParameters().get("test") === "1");
