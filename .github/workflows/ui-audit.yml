@@ -32,7 +32,7 @@ jobs:
               sha,
               state: "pending",
               context: "UI Regression Audit",
-              description: "Testing campaign, release payload, bundle and SDK lifecycle",
+              description: "Testing campaign, briefings, release payload, bundle and SDK lifecycle",
               target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
             });
 
@@ -70,6 +70,11 @@ jobs:
           set -o pipefail
           node scripts/capture-release-regressions.mjs 2>&1 | tee ui-audit-run.log
 
+      - name: Capture level briefing UI
+        run: |
+          set -o pipefail
+          node scripts/capture-level-briefings.mjs 2>&1 | tee level-briefing-audit.log
+
       - name: Upload CrazyGames release package
         uses: actions/upload-artifact@v4
         with:
@@ -86,6 +91,7 @@ jobs:
           path: |
             ui-audit
             ui-audit-run.log
+            level-briefing-audit.log
             build.log
             release-check.log
             release-payload.log
@@ -102,50 +108,66 @@ jobs:
               ? context.payload.pull_request.head.sha
               : context.sha;
             const passed = "${{ job.status }}" === "success";
-            let description = "Campaign, release payload, bundle and SDK regressions passed";
+            let description = "Campaign, briefings, release payload, bundle and SDK regressions passed";
             let failureKey = "runtime";
 
             if (!passed) {
               description = "UI regression audit failed";
               try {
-                const report = JSON.parse(fs.readFileSync("ui-audit/ui-audit-report.json", "utf8"));
-                const failed = Object.entries(report.regressions ?? {})
+                const briefing = JSON.parse(fs.readFileSync("ui-audit/level-briefing-audit.json", "utf8"));
+                const failedBriefings = Object.entries(briefing.assertions ?? {})
                   .filter(([, value]) => !value)
                   .map(([key]) => key);
-                failureKey = failed.join("+") || "runtime";
-                const browserIssues = (report.consoleErrors?.length ?? 0)
-                  + (report.pageErrors?.length ?? 0)
-                  + (report.failedRequests?.length ?? 0)
-                  + (report.badResponses?.length ?? 0);
-                description = `Failed: ${failureKey}; browser issues ${browserIssues}`;
-              } catch {
-                try {
-                  const payloadReport = JSON.parse(fs.readFileSync("release-payload-report.json", "utf8"));
-                  if (payloadReport.fatalError) {
-                    failureKey = "release-payload";
-                    description = payloadReport.fatalError;
-                  } else {
-                    const releaseLines = fs.readFileSync("release-check.log", "utf8").trim().split(/\r?\n/);
-                    const releaseFailure = releaseLines.find((line) => line.includes("Release check failed"));
-                    if (releaseFailure) {
-                      failureKey = "release-bundle";
-                      description = releaseFailure;
-                    } else {
-                      const buildLines = fs.readFileSync("build.log", "utf8").trim().split(/\r?\n/);
-                      const buildError = buildLines.find((line) => line.includes("error TS")) || buildLines.at(-1);
-                      if (buildError) {
-                        failureKey = "build";
-                        description = `Failed: ${buildError}`;
+                if (briefing.fatalError || failedBriefings.length > 0) {
+                  failureKey = `briefing:${failedBriefings.join("+") || "runtime"}`;
+                  description = briefing.fatalError || `Failed: ${failureKey}`;
+                  throw new Error("briefing failure selected");
+                }
+              } catch (briefingError) {
+                if (failureKey.startsWith("briefing:")) {
+                  // Keep the briefing-specific status selected above.
+                } else {
+                  try {
+                    const report = JSON.parse(fs.readFileSync("ui-audit/ui-audit-report.json", "utf8"));
+                    const failed = Object.entries(report.regressions ?? {})
+                      .filter(([, value]) => !value)
+                      .map(([key]) => key);
+                    failureKey = failed.join("+") || "runtime";
+                    const browserIssues = (report.consoleErrors?.length ?? 0)
+                      + (report.pageErrors?.length ?? 0)
+                      + (report.failedRequests?.length ?? 0)
+                      + (report.badResponses?.length ?? 0);
+                    description = `Failed: ${failureKey}; browser issues ${browserIssues}`;
+                  } catch {
+                    try {
+                      const payloadReport = JSON.parse(fs.readFileSync("release-payload-report.json", "utf8"));
+                      if (payloadReport.fatalError) {
+                        failureKey = "release-payload";
+                        description = payloadReport.fatalError;
                       } else {
-                        const lines = fs.readFileSync("ui-audit-run.log", "utf8").trim().split(/\r?\n/);
-                        const last = lines.at(-1) || "inspect audit log";
-                        failureKey = last.toLowerCase().includes("timeout") ? "timeout" : "runtime";
-                        description = `Failed: ${last}`;
+                        const releaseLines = fs.readFileSync("release-check.log", "utf8").trim().split(/\r?\n/);
+                        const releaseFailure = releaseLines.find((line) => line.includes("Release check failed"));
+                        if (releaseFailure) {
+                          failureKey = "release-bundle";
+                          description = releaseFailure;
+                        } else {
+                          const buildLines = fs.readFileSync("build.log", "utf8").trim().split(/\r?\n/);
+                          const buildError = buildLines.find((line) => line.includes("error TS")) || buildLines.at(-1);
+                          if (buildError) {
+                            failureKey = "build";
+                            description = `Failed: ${buildError}`;
+                          } else {
+                            const lines = fs.readFileSync("ui-audit-run.log", "utf8").trim().split(/\r?\n/);
+                            const last = lines.at(-1) || "inspect audit log";
+                            failureKey = last.toLowerCase().includes("timeout") ? "timeout" : "runtime";
+                            description = `Failed: ${last}`;
+                          }
+                        }
                       }
+                    } catch {
+                      description = "UI regression audit failed; inspect workflow log";
                     }
                   }
-                } catch {
-                  description = "UI regression audit failed; inspect workflow log";
                 }
               }
             }
