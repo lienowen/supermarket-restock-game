@@ -7,12 +7,14 @@ import {
   COOLER_STOCK_TARGET_WIDTH,
   resolveCoolerStockBounds,
   resolveCoolerStockSlots,
+  type CoolerStockPoint,
   type CoolerStockSlot
 } from "../visual/CoolerStockLayout";
 
 export interface BeverageCoolerViewConfig {
   readonly centreX: number;
   readonly restockProductKey: string;
+  readonly stockSource: CoolerStockPoint;
   readonly onRowSelected?: (rowIndex: number) => void;
   /** @deprecated The coherent background owns the cooler frame. */
   readonly baseY?: number;
@@ -48,6 +50,7 @@ export interface BeverageCoolerViewConfig {
 
 export interface BeverageCoolerRushState {
   readonly filledRowIndexes: readonly number[];
+  readonly rowItemCounts: readonly number[];
   readonly activeRowIndex?: number;
   readonly remainingRatio: number;
   readonly interactionEnabled: boolean;
@@ -55,14 +58,17 @@ export interface BeverageCoolerRushState {
 
 /**
  * Six interactive stock slots arranged as two real glass-door bays with three
- * shelf segments each. Product sprites are cropped to their visible pixels and
- * grounded on continuous shelf lips inside each door.
+ * shelf segments each. Empty shelves own no product sprites. Every successful
+ * stock action creates one cropped product sprite and moves it from the open
+ * case into its final grounded shelf position.
  */
 export class BeverageCoolerView {
-  private readonly rows: Phaser.GameObjects.Container[] = [];
+  private readonly rowHolders: Phaser.GameObjects.Container[] = [];
+  private readonly rowItems: Phaser.GameObjects.Image[][] = [];
   private readonly bayBackings: Phaser.GameObjects.Graphics[] = [];
   private readonly rowPlates: Phaser.GameObjects.Graphics[] = [];
   private readonly rowTargets: Phaser.GameObjects.Rectangle[] = [];
+  private readonly countLabels: Phaser.GameObjects.Text[] = [];
   private readonly slots: readonly CoolerStockSlot[];
   private inputBlocker?: Phaser.GameObjects.Rectangle;
   private previousFilledRows = new Set<number>();
@@ -108,11 +114,18 @@ export class BeverageCoolerView {
       );
       this.rowTargets.push(target);
       this.rowPlates.push(this.createRowPlate(slot, rowIndex, rowHeight));
-      this.rows.push(this.createRestockRow(slot, rowIndex, rowHeight));
+      this.rowHolders.push(
+        this.scene.add.container(slot.x, slot.y)
+          .setDepth(5)
+          .setName(`beverage-cooler-row-${rowIndex}`)
+      );
+      this.rowItems.push([]);
+      this.countLabels.push(this.createCountLabel(slot, rowIndex));
     });
 
     this.syncRush({
       filledRowIndexes: [],
+      rowItemCounts: Array.from({ length: this.slots.length }, () => 0),
       activeRowIndex: undefined,
       remainingRatio: 1,
       interactionEnabled: false
@@ -120,24 +133,19 @@ export class BeverageCoolerView {
   }
 
   sync(stockedRows: number): void {
-    this.syncRush({
-      filledRowIndexes: Array.from(
-        { length: Math.max(0, Math.min(stockedRows, this.rows.length)) },
-        (_, index) => index
-      ),
-      activeRowIndex: undefined,
-      remainingRatio: 1,
-      interactionEnabled: false
-    });
+    const safeRows = Math.max(0, Math.min(stockedRows, this.slots.length));
+    const counts = this.slots.map((_, index) => (
+      index < safeRows ? COOLER_STOCK_ITEMS_PER_SLOT : 0
+    ));
+    this.syncItemCounts(counts, false);
+    this.rowTargets.forEach((target) => target.disableInteractive());
+    this.rowPlates.forEach((plate) => plate.setAlpha(0));
+    this.countLabels.forEach((label) => label.setVisible(false));
   }
 
   syncRush(state: BeverageCoolerRushState): void {
     const filledRows = new Set(state.filledRowIndexes);
-    this.rows.forEach((row, index) => {
-      const filled = filledRows.has(index);
-      const active = state.activeRowIndex === index && !filled;
-      row.setAlpha(filled ? 1 : active ? 0.2 : 0.018);
-    });
+    this.syncItemCounts(state.rowItemCounts, true);
 
     this.rowTargets.forEach((target, index) => {
       const enabled = state.interactionEnabled && !filledRows.has(index);
@@ -152,6 +160,15 @@ export class BeverageCoolerView {
     this.rowPlates.forEach((plate, index) => {
       const active = state.activeRowIndex === index && !filledRows.has(index);
       plate.setAlpha(active ? 0.42 + (1 - state.remainingRatio) * 0.48 : 0);
+    });
+
+    this.countLabels.forEach((label, index) => {
+      const count = this.safeItemCount(state.rowItemCounts[index]);
+      const active = state.activeRowIndex === index && !filledRows.has(index);
+      label
+        .setText(`${count}/${COOLER_STOCK_ITEMS_PER_SLOT}`)
+        .setVisible(active)
+        .setAlpha(active ? 0.96 : 0);
     });
 
     filledRows.forEach((rowIndex) => {
@@ -185,10 +202,11 @@ export class BeverageCoolerView {
   }
 
   destroy(): void {
-    this.rows.forEach((row) => row.destroy(true));
+    this.rowHolders.forEach((holder) => holder.destroy(true));
     this.bayBackings.forEach((backing) => backing.destroy());
     this.rowPlates.forEach((plate) => plate.destroy());
     this.rowTargets.forEach((target) => target.destroy());
+    this.countLabels.forEach((label) => label.destroy());
     this.inputBlocker?.destroy();
   }
 
@@ -217,15 +235,16 @@ export class BeverageCoolerView {
   }
 
   private animateFilledRow(rowIndex: number): void {
-    const row = this.rows[rowIndex];
-    if (!row) return;
-    row.setScale(0.84).setAlpha(1);
+    const holder = this.rowHolders[rowIndex];
+    if (!holder) return;
+    holder.setScale(0.96);
     this.scene.tweens.add({
-      targets: row,
-      scaleX: 1,
-      scaleY: 1,
-      duration: 250,
-      ease: "Back.Out"
+      targets: holder,
+      scaleX: 1.04,
+      scaleY: 1.04,
+      yoyo: true,
+      duration: 120,
+      ease: "Sine.Out"
     });
     this.playRowSparkles(rowIndex);
   }
@@ -270,48 +289,135 @@ export class BeverageCoolerView {
     return plate;
   }
 
-  private createRestockRow(
-    slot: CoolerStockSlot,
+  private createCountLabel(slot: CoolerStockSlot, rowIndex: number): Phaser.GameObjects.Text {
+    return this.scene.add.text(
+      slot.x + this.shelfWidth(rowIndex) / 2 + 10,
+      slot.y - this.rowHeight() / 2 - 3,
+      `0/${COOLER_STOCK_ITEMS_PER_SLOT}`,
+      {
+        fontFamily: "Arial, sans-serif",
+        fontSize: "11px",
+        fontStyle: "bold",
+        color: "#26352d",
+        backgroundColor: "#ffd95e",
+        padding: { x: 5, y: 2 }
+      }
+    )
+      .setOrigin(1, 1)
+      .setDepth(13)
+      .setVisible(false)
+      .setName(`beverage-cooler-row-count-${rowIndex}`);
+  }
+
+  private syncItemCounts(counts: readonly number[], animateNewItems: boolean): void {
+    this.slots.forEach((_slot, rowIndex) => {
+      const desired = this.safeItemCount(counts[rowIndex]);
+      const items = this.rowItems[rowIndex];
+      if (!items) return;
+
+      while (items.length > desired) {
+        items.pop()?.destroy();
+      }
+      while (items.length < desired) {
+        const itemIndex = items.length;
+        const bottle = this.createStockBottle(rowIndex, itemIndex, animateNewItems);
+        items.push(bottle);
+      }
+    });
+  }
+
+  private createStockBottle(
     rowIndex: number,
-    rowHeight: number
-  ): Phaser.GameObjects.Container {
-    const count = COOLER_STOCK_ITEMS_PER_SLOT;
+    itemIndex: number,
+    animate: boolean
+  ): Phaser.GameObjects.Image {
+    const holder = this.rowHolders[rowIndex];
+    const slot = this.slots[rowIndex];
+    if (!holder || !slot) throw new Error(`Missing cooler shelf holder ${rowIndex}`);
+
+    const target = this.itemLocalPosition(rowIndex, itemIndex);
+    const targetScale = this.bottleScale(rowIndex);
+    const bottle = this.scene.add.image(
+      animate ? this.config.stockSource.x : target.x,
+      animate ? this.config.stockSource.y - 28 : target.y,
+      this.config.restockProductKey
+    )
+      .setCrop(
+        BEVERAGE_BOTTLE_CROP.x,
+        BEVERAGE_BOTTLE_CROP.y,
+        BEVERAGE_BOTTLE_CROP.width,
+        BEVERAGE_BOTTLE_CROP.height
+      )
+      .setDisplayOrigin(
+        BEVERAGE_BOTTLE_CROP.x + BEVERAGE_BOTTLE_CROP.width / 2,
+        BEVERAGE_BOTTLE_CROP.y + BEVERAGE_BOTTLE_CROP.height
+      )
+      .setScale(
+        animate ? targetScale.x * 0.72 : targetScale.x,
+        animate ? targetScale.y * 0.72 : targetScale.y
+      )
+      .setAlpha(animate ? 0.72 : 1)
+      .setDepth(14)
+      .setName(`beverage-cooler-row-${rowIndex}-item-${itemIndex}`);
+
+    if (!animate) {
+      holder.add(bottle);
+      bottle.setPosition(target.x, target.y).setDepth(0);
+      return bottle;
+    }
+
+    const worldTarget = { x: slot.x + target.x, y: slot.y + target.y };
+    const liftY = Math.min(this.config.stockSource.y - 90, worldTarget.y - 90);
+    this.scene.tweens.add({
+      targets: bottle,
+      x: worldTarget.x,
+      y: liftY,
+      alpha: 1,
+      scaleX: targetScale.x * 0.92,
+      scaleY: targetScale.y * 0.92,
+      duration: 170,
+      ease: "Quad.Out",
+      onComplete: () => {
+        this.scene.tweens.add({
+          targets: bottle,
+          y: worldTarget.y,
+          scaleX: targetScale.x,
+          scaleY: targetScale.y,
+          duration: 130,
+          ease: "Back.Out",
+          onComplete: () => {
+            holder.add(bottle);
+            bottle.setPosition(target.x, target.y).setDepth(0);
+            this.playItemLanding(worldTarget);
+          }
+        });
+      }
+    });
+    return bottle;
+  }
+
+  private itemLocalPosition(rowIndex: number, itemIndex: number): CoolerStockPoint {
     const shelfWidth = this.shelfWidth(rowIndex);
-    const spacing = shelfWidth / (count - 1);
-    const startX = -shelfWidth / 2;
+    const spacing = shelfWidth / (COOLER_STOCK_ITEMS_PER_SLOT - 1);
+    return Object.freeze({
+      x: -shelfWidth / 2 + itemIndex * spacing,
+      y: this.rowHeight() / 2 + 3
+    });
+  }
+
+  private bottleScale(rowIndex: number): CoolerStockPoint {
     const progress = this.verticalProgress(rowIndex);
     const bottleHeight = Phaser.Math.Linear(52, 58, progress);
     const bottleWidth = bottleHeight * (BEVERAGE_BOTTLE_CROP.width / BEVERAGE_BOTTLE_CROP.height);
-    const objects: Phaser.GameObjects.GameObject[] = [];
+    return Object.freeze({
+      x: bottleWidth / BEVERAGE_BOTTLE_CROP.width,
+      y: bottleHeight / BEVERAGE_BOTTLE_CROP.height
+    });
+  }
 
-    for (let index = 0; index < count; index += 1) {
-      const bottle = this.scene.add.image(
-        startX + index * spacing,
-        rowHeight / 2 + 3,
-        this.config.restockProductKey
-      )
-        .setCrop(
-          BEVERAGE_BOTTLE_CROP.x,
-          BEVERAGE_BOTTLE_CROP.y,
-          BEVERAGE_BOTTLE_CROP.width,
-          BEVERAGE_BOTTLE_CROP.height
-        )
-        .setDisplayOrigin(
-          BEVERAGE_BOTTLE_CROP.x + BEVERAGE_BOTTLE_CROP.width / 2,
-          BEVERAGE_BOTTLE_CROP.y + BEVERAGE_BOTTLE_CROP.height
-        )
-        .setScale(
-          bottleWidth / BEVERAGE_BOTTLE_CROP.width,
-          bottleHeight / BEVERAGE_BOTTLE_CROP.height
-        )
-        .setDepth(5);
-      objects.push(bottle);
-    }
-
-    return this.scene.add.container(slot.x, slot.y, objects)
-      .setAlpha(0.018)
-      .setDepth(5)
-      .setName(`beverage-cooler-row-${rowIndex}`);
+  private safeItemCount(value: number | undefined): number {
+    if (!Number.isFinite(value)) return 0;
+    return Phaser.Math.Clamp(Math.floor(value ?? 0), 0, COOLER_STOCK_ITEMS_PER_SLOT);
   }
 
   private shelfWidth(rowIndex: number): number {
@@ -326,6 +432,21 @@ export class BeverageCoolerView {
 
   private rowHeight(): number {
     return 54;
+  }
+
+  private playItemLanding(point: CoolerStockPoint): void {
+    const ring = this.scene.add.circle(point.x, point.y + 4, 8, 0xffd95e, 0.24)
+      .setDepth(13)
+      .setScale(0.5, 0.22);
+    this.scene.tweens.add({
+      targets: ring,
+      scaleX: 1.5,
+      scaleY: 0.5,
+      alpha: 0,
+      duration: 180,
+      ease: "Quad.Out",
+      onComplete: () => ring.destroy()
+    });
   }
 
   private playRowSparkles(rowIndex: number): void {
