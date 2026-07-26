@@ -10,68 +10,41 @@ permissions:
   contents: read
 
 jobs:
-  capture:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    outputs:
-      capture_outcome: ${{ steps.capture_restock.outcome }}
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          show-progress: false
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci > npm-ci.log 2>&1
-
-      - name: Install Playwright
-        run: npx playwright install --with-deps chromium > playwright-install.log 2>&1
-
-      - name: Build production bundle
-        run: npm run build > focused-build.log 2>&1
-
-      - name: Capture empty-to-full restock
-        id: capture_restock
-        continue-on-error: true
-        run: node scripts/capture-restock-empty-to-full.mjs
-
-      - name: Save focused restock evidence cache
-        if: always()
-        uses: actions/cache/save@v4
-        with:
-          path: restock-visual-audit
-          key: restock-visual-${{ github.run_id }}
-
   evidence:
-    needs: capture
-    if: always()
     runs-on: ubuntu-latest
-    timeout-minutes: 3
+    timeout-minutes: 12
     strategy:
       fail-fast: false
       matrix:
         part: [0, 1, 2, 3]
 
     steps:
-      - name: Restore focused restock evidence cache
-        uses: actions/cache/restore@v4
-        with:
-          path: restock-visual-audit
-          key: restock-visual-${{ github.run_id }}
-          fail-on-cache-miss: true
+      - name: Download repository snapshot
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -fsSL \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/tarball/$GITHUB_SHA" \
+            | tar -xz --strip-components=1
 
-      - name: Print restock evidence chunk
+      - name: Prepare focused browser audit
+        run: |
+          npm ci > /tmp/restock-npm-ci.log 2>&1
+          npx playwright install --with-deps chromium > /tmp/restock-playwright.log 2>&1
+          npm run build > /tmp/restock-build.log 2>&1
+
+      - name: Capture and print restock evidence chunk
         env:
           PART: ${{ matrix.part }}
-          CAPTURE_OUTCOME: ${{ needs.capture.outputs.capture_outcome }}
         run: |
+          set +e
+          node scripts/capture-restock-empty-to-full.mjs > /tmp/restock-capture.log 2>&1
+          CAPTURE_STATUS=$?
+          set -e
+
           python3 - <<'PY'
           import base64
           import json
@@ -80,15 +53,20 @@ jobs:
 
           part = int(os.environ["PART"])
           total_parts = 4
-          report = json.loads(Path("restock-visual-audit/restock-visual-audit.json").read_text())
-          contact = base64.b64encode(
-              Path("restock-visual-audit/restock-contact-sheet.jpg").read_bytes()
-          ).decode("ascii")
+          report_path = Path("restock-visual-audit/restock-visual-audit.json")
+          contact_path = Path("restock-visual-audit/restock-contact-sheet.jpg")
+          if not report_path.is_file():
+              raise SystemExit("restock visual report is missing")
+          if not contact_path.is_file():
+              print(Path("/tmp/restock-capture.log").read_text(errors="replace"))
+              raise SystemExit("restock contact sheet is missing")
+
+          report = json.loads(report_path.read_text())
+          contact = base64.b64encode(contact_path.read_bytes()).decode("ascii")
           start = len(contact) * part // total_parts
           end = len(contact) * (part + 1) // total_parts
           chunk = contact[start:end]
 
-          print(f"CAPTURE_OUTCOME={os.environ['CAPTURE_OUTCOME']}")
           if part == 0:
               compact_states = []
               for state in report.get("states", []):
@@ -113,4 +91,5 @@ jobs:
               print(chunk[offset:offset + 5000])
           print(f"CONTACT_PART_{part}_END")
           PY
-          test "$CAPTURE_OUTCOME" = "success"
+
+          exit "$CAPTURE_STATUS"
