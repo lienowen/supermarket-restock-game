@@ -204,7 +204,7 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     missionId: "clean-closing-aisles",
     title: "Closing Clean-up",
     randomSeed: "starter-level-008-v1",
-    navigation: { moveSpeed: 520, interactionRadius: 100 },
+    navigation: { moveSpeed: 520, interactionRadius: 115 },
     presentation: {
       assetPackId: "market-clean-v1",
       visualPresetId: "clean-standard-v1"
@@ -213,7 +213,7 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     tuning: {
       initialCoins: 860,
       cleanDurationMs: 700,
-      toolPoint: { x: 1190, y: 760 },
+      toolPoint: { x: 1170, y: 760 },
       spotPositions: [
         { x: 535, y: 720 },
         { x: 680, y: 660 },
