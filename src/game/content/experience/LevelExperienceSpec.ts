@@ -40,6 +40,19 @@ export interface HoldWorkExperienceSpec {
   readonly holdLabel: string;
 }
 
+export interface FindItemsSearchDecoySpec {
+  readonly id: string;
+  readonly assetKey: string;
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+export interface FindItemsSearchExperienceSpec {
+  readonly decoys: readonly FindItemsSearchDecoySpec[];
+}
+
 export interface LevelExperienceSpec {
   readonly levelId: string;
   readonly mode: LevelDefinition["mode"];
@@ -55,6 +68,7 @@ export interface LevelExperienceSpec {
   readonly guidedDrag?: GuidedDragActionSpec;
   readonly checkoutScan?: CheckoutScanExperienceSpec;
   readonly holdWork?: HoldWorkExperienceSpec;
+  readonly findItemsSearch?: FindItemsSearchExperienceSpec;
 }
 
 const define = (spec: LevelExperienceSpec): LevelExperienceSpec => Object.freeze(spec);
@@ -153,11 +167,55 @@ export const STARTER_LEVEL_EXPERIENCE_SPECS: readonly LevelExperienceSpec[] = Ob
     modeLabel: "ORDER HUNT",
     eyebrow: "PICKING TASK",
     title: "Order Hunt",
-    objective: "Find the milk, apple and cereal shown on the order ticket.",
-    mechanic: "Wrong products remove time from the customer order countdown.",
-    control: "Tap a requested product; the worker will walk to its shelf and collect it.",
-    successMetric: "Complete the order before the countdown expires.",
-    primaryInput: "tap"
+    objective: "Find the milk, apple and cereal hidden among eight visible store products.",
+    mechanic: "Five believable decoy products share the shelf area; every wrong selection removes time from the order.",
+    control: "Read the order ticket, inspect the full shelf and tap only the three requested products.",
+    successMetric: "Complete the order before the countdown expires with no more than one wrong product.",
+    primaryInput: "tap",
+    findItemsSearch: Object.freeze({
+      decoys: Object.freeze([
+        Object.freeze({
+          id: "decoy-oats",
+          assetKey: "product-oats-canister",
+          x: 675,
+          y: 632,
+          width: 58,
+          height: 82
+        }),
+        Object.freeze({
+          id: "decoy-yogurt",
+          assetKey: "product-yogurt-cup",
+          x: 575,
+          y: 655,
+          width: 58,
+          height: 58
+        }),
+        Object.freeze({
+          id: "decoy-chips",
+          assetKey: "product-chips-bag",
+          x: 940,
+          y: 646,
+          width: 68,
+          height: 82
+        }),
+        Object.freeze({
+          id: "decoy-detergent",
+          assetKey: "product-detergent-bottle",
+          x: 1045,
+          y: 706,
+          width: 62,
+          height: 94
+        }),
+        Object.freeze({
+          id: "decoy-paper-towels",
+          assetKey: "product-paper-towels",
+          x: 735,
+          y: 724,
+          width: 82,
+          height: 76
+        })
+      ])
+    })
   }),
   define({
     levelId: "starter-level-006",
@@ -294,6 +352,34 @@ export function validateLevelExperienceSpecs(levels: readonly LevelDefinition[])
       if (!Number.isFinite(spec.holdWork.durationMs) || spec.holdWork.durationMs < 800) {
         errors.push(`Experience spec ${spec.levelId} hold interaction must last at least 800ms`);
       }
+    }
+
+    if (spec.findItemsSearch) {
+      if (spec.mode !== "find-items") {
+        errors.push(`Experience spec ${spec.levelId} visual search requires find-items mode`);
+      }
+      if (spec.findItemsSearch.decoys.length < 4) {
+        errors.push(`Experience spec ${spec.levelId} visual search requires at least four decoys`);
+      }
+      const decoyIds = new Set<string>();
+      const occupiedPositions = new Set<string>();
+      spec.findItemsSearch.decoys.forEach((decoy) => {
+        if (!decoy.id.trim()) errors.push(`Experience spec ${spec.levelId} has a decoy without an id`);
+        if (decoyIds.has(decoy.id)) errors.push(`Experience spec ${spec.levelId} has duplicate decoy ${decoy.id}`);
+        decoyIds.add(decoy.id);
+        if (!decoy.assetKey.trim()) errors.push(`Experience spec ${spec.levelId} decoy ${decoy.id} requires an asset`);
+        if (![decoy.x, decoy.y, decoy.width, decoy.height].every(Number.isFinite)) {
+          errors.push(`Experience spec ${spec.levelId} decoy ${decoy.id} requires finite geometry`);
+        }
+        if (decoy.width < 36 || decoy.height < 36) {
+          errors.push(`Experience spec ${spec.levelId} decoy ${decoy.id} is too small to select`);
+        }
+        const positionKey = `${decoy.x}:${decoy.y}`;
+        if (occupiedPositions.has(positionKey)) {
+          errors.push(`Experience spec ${spec.levelId} has overlapping decoy centres at ${positionKey}`);
+        }
+        occupiedPositions.add(positionKey);
+      });
     }
   }
 
