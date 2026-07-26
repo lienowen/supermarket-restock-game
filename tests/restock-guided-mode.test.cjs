@@ -19,6 +19,7 @@ test("Guided restock keeps a fixed shelf order and never times out", () => {
     silverTimeMs: 20000
   });
 
+  assert.deepEqual(controller.plannedRowIndexes(), [0, 1, 2, 3]);
   assert.equal(controller.start(0).activeRowIndex, 0);
   const afterWait = controller.tick(60000);
   assert.equal(afterWait.event, "none");
@@ -43,7 +44,51 @@ test("Guided restock keeps a fixed shelf order and never times out", () => {
   assert.deepEqual(complete.filledRowIndexes, [0, 1, 2, 3]);
 });
 
-test("Timed shuffled restock still rotates an expired target", () => {
+test("Memory restock exposes a reproducible pattern and does not change the answer on failure", () => {
+  const controller = new RestockRushController({
+    rowCount: 6,
+    randomSeed: "memory-test",
+    sequenceMode: "shuffled",
+    timeoutEnabled: true,
+    keepTargetOnFailure: true,
+    targetDurationMs: 1000,
+    minimumTargetDurationMs: 500,
+    speedUpPerSuccessMs: 100,
+    streakWindowMs: 2000,
+    goldTimeMs: 10000,
+    silverTimeMs: 20000
+  });
+  const matchingController = new RestockRushController({
+    rowCount: 6,
+    randomSeed: "memory-test",
+    sequenceMode: "shuffled",
+    timeoutEnabled: true,
+    keepTargetOnFailure: true,
+    targetDurationMs: 1000,
+    minimumTargetDurationMs: 500,
+    speedUpPerSuccessMs: 100,
+    streakWindowMs: 2000,
+    goldTimeMs: 10000,
+    silverTimeMs: 20000
+  });
+
+  const pattern = controller.plannedRowIndexes();
+  assert.equal(pattern.length, 6);
+  assert.equal(new Set(pattern).size, 6);
+  assert.deepEqual(pattern, matchingController.plannedRowIndexes());
+
+  const firstTarget = controller.start(0).activeRowIndex;
+  const wrongRow = (firstTarget + 1) % 6;
+  const wrong = controller.selectRow(wrongRow, 100);
+  assert.equal(wrong.correct, false);
+  assert.equal(wrong.snapshot.activeRowIndex, firstTarget);
+
+  const timeout = controller.tick(1200);
+  assert.equal(timeout.event, "timeout");
+  assert.equal(timeout.snapshot.activeRowIndex, firstTarget);
+});
+
+test("Timed shuffled restock still rotates an expired target when no memory contract is enabled", () => {
   const controller = new RestockRushController({
     rowCount: 4,
     randomSeed: "rush-test",
