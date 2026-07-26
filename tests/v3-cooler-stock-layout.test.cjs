@@ -3,6 +3,8 @@ const assert = require("node:assert/strict");
 
 const {
   BEVERAGE_BOTTLE_CROP,
+  COOLER_STOCK_ITEMS_PER_SLOT,
+  COOLER_STOCK_SLOT_COUNT,
   COOLER_STOCK_SLOT_OFFSETS,
   COOLER_STOCK_TARGET_HEIGHT,
   COOLER_STOCK_TARGET_WIDTH,
@@ -12,6 +14,9 @@ const {
 
 test("Cooler stock uses two glass-door bays with three grounded shelves each", () => {
   assert.equal(COOLER_STOCK_SLOT_OFFSETS.length, 6);
+  assert.equal(COOLER_STOCK_SLOT_COUNT, 6);
+  assert.equal(COOLER_STOCK_ITEMS_PER_SLOT, 3);
+  assert.equal(COOLER_STOCK_SLOT_COUNT * COOLER_STOCK_ITEMS_PER_SLOT, 18);
 
   const slots = resolveCoolerStockSlots(1410);
   assert.deepEqual(slots.map((slot) => slot.x), [1405, 1405, 1405, 1490, 1490, 1490]);
