@@ -66,6 +66,68 @@ export const FIND_ORDER_ITEMS_MISSION: MissionDefinition = {
   rewards: { coins: 110, stars: 1, reputation: 3 }
 };
 
+export const RESTOCK_COLA_CLOSING_MISSION: MissionDefinition = {
+  id: "restock-cola-closing",
+  title: "Finish the Cola Cooler",
+  description: "Refill both cola bays before the evening traffic arrives.",
+  objectives: [{
+    type: "transfer-product",
+    productId: "cola-bottle",
+    targetFixtureId: "beverage-cooler-a",
+    amount: 24
+  }],
+  rewards: { coins: 140, stars: 1 }
+};
+
+export const SERVE_EVENING_RUSH_MISSION: MissionDefinition = {
+  id: "serve-evening-rush",
+  title: "Clear the Evening Queue",
+  description: "Serve eight baskets with a faster scanner and shorter queue gaps.",
+  objectives: [{
+    type: "operate-checkout",
+    checkoutId: "checkout-a",
+    customerCount: 8
+  }],
+  rewards: { coins: 120, stars: 1, reputation: 6 }
+};
+
+export const CLEAN_CLOSING_AISLES_MISSION: MissionDefinition = {
+  id: "clean-closing-aisles",
+  title: "Clean the Closing Aisles",
+  description: "Collect the tools and remove all six closing-time spills.",
+  objectives: [{
+    type: "clean-zone",
+    zoneId: "main-aisle",
+    amount: 6
+  }],
+  rewards: { coins: 130, stars: 1, reputation: 3 }
+};
+
+export const FIND_PRIORITY_ORDER_MISSION: MissionDefinition = {
+  id: "find-priority-order",
+  title: "Pick the Priority Order",
+  description: "Collect cereal, milk and an apple before the priority timer expires.",
+  objectives: [{
+    type: "find-items",
+    fixtureId: "dairy-breakfast-a",
+    productIds: ["cereal-box", "milk-bottle", "apple"]
+  }],
+  rewards: { coins: 150, stars: 1, reputation: 4 }
+};
+
+export const RESTOCK_WATER_FINALE_MISSION: MissionDefinition = {
+  id: "restock-water-finale",
+  title: "Complete the Final Cooler Rush",
+  description: "Finish all six water slots under the campaign's fastest rush window.",
+  objectives: [{
+    type: "transfer-product",
+    productId: "water-bottle",
+    targetFixtureId: "beverage-cooler-a",
+    amount: 24
+  }],
+  rewards: { coins: 200, stars: 2 }
+};
+
 export const STARTER_MARKET_CONTENT: GameContentCatalogue = {
   products: [
     {
@@ -145,7 +207,12 @@ export const STARTER_MARKET_CONTENT: GameContentCatalogue = {
     RESTOCK_WATER_PROMOTION_MISSION,
     ASSIST_CHECKOUT_RUSH_MISSION,
     CLEAN_STORE_FLOOR_MISSION,
-    FIND_ORDER_ITEMS_MISSION
+    FIND_ORDER_ITEMS_MISSION,
+    RESTOCK_COLA_CLOSING_MISSION,
+    SERVE_EVENING_RUSH_MISSION,
+    CLEAN_CLOSING_AISLES_MISSION,
+    FIND_PRIORITY_ORDER_MISSION,
+    RESTOCK_WATER_FINALE_MISSION
   ],
   stores: [{
     id: "starter-market",
@@ -193,6 +260,41 @@ export const STARTER_MARKET_CONTENT: GameContentCatalogue = {
       startTime: "14:00",
       missionIds: ["find-order-items"],
       unlockIds: ["order-picking"]
+    },
+    {
+      id: "starter-shift-005",
+      storeId: "starter-market",
+      startTime: "15:30",
+      missionIds: ["restock-cola-closing"],
+      unlockIds: ["closing-restock"]
+    },
+    {
+      id: "starter-shift-006",
+      storeId: "starter-market",
+      startTime: "17:00",
+      missionIds: ["serve-evening-rush"],
+      unlockIds: ["evening-checkout"]
+    },
+    {
+      id: "starter-shift-007",
+      storeId: "starter-market",
+      startTime: "18:15",
+      missionIds: ["clean-closing-aisles"],
+      unlockIds: ["closing-clean"]
+    },
+    {
+      id: "starter-shift-008",
+      storeId: "starter-market",
+      startTime: "19:15",
+      missionIds: ["find-priority-order"],
+      unlockIds: ["priority-order"]
+    },
+    {
+      id: "starter-shift-009",
+      storeId: "starter-market",
+      startTime: "20:30",
+      missionIds: ["restock-water-finale"],
+      unlockIds: ["campaign-finale"]
     }
   ],
   levels: STARTER_MARKET_LEVELS,
@@ -202,14 +304,24 @@ export const STARTER_MARKET_CONTENT: GameContentCatalogue = {
       "starter-shift-001",
       "starter-shift-002",
       "starter-shift-003",
-      "starter-shift-004"
+      "starter-shift-004",
+      "starter-shift-005",
+      "starter-shift-006",
+      "starter-shift-007",
+      "starter-shift-008",
+      "starter-shift-009"
     ],
     levelIds: [
       "starter-level-001",
       "starter-level-002",
       "starter-level-003",
       "starter-level-004",
-      "starter-level-005"
+      "starter-level-005",
+      "starter-level-006",
+      "starter-level-007",
+      "starter-level-008",
+      "starter-level-009",
+      "starter-level-010"
     ]
   }]
 };

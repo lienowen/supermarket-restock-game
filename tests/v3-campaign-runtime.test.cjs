@@ -12,21 +12,20 @@ const {
 } = require("../.test-dist/src/game/application/CampaignRuntime.js");
 
 const campaign = resolveCampaignRuntime(STARTER_MARKET_CONTENT, "main-campaign");
+const expectedShiftIds = Array.from(
+  { length: 9 },
+  (_, index) => `starter-shift-${String(index + 1).padStart(3, "0")}`
+);
 
 test("Main campaign contains all configured shifts in one ordered sequence", () => {
   assert.deepEqual(validateCampaignRuntime(campaign), []);
   assert.deepEqual(
     campaign.shifts.map((entry) => entry.shift.id),
-    [
-      "starter-shift-001",
-      "starter-shift-002",
-      "starter-shift-003",
-      "starter-shift-004"
-    ]
+    expectedShiftIds
   );
   assert.deepEqual(
     campaign.shifts.map((entry) => entry.dayLabel),
-    ["DAY 1", "DAY 2", "DAY 3", "DAY 4"]
+    expectedShiftIds.map((_, index) => `DAY ${index + 1}`)
   );
 });
 
@@ -52,11 +51,11 @@ test("A shift composes missions without creating a separate architecture", () =>
   );
 });
 
-test("Campaign selector defaults to the first shift and accepts configured IDs", () => {
+test("Campaign selector defaults to the first shift and accepts the final shift", () => {
   assert.equal(selectCampaignShift(campaign).shift.id, "starter-shift-001");
   assert.equal(
-    selectCampaignShift(campaign, "starter-shift-004").shift.id,
-    "starter-shift-004"
+    selectCampaignShift(campaign, "starter-shift-009").shift.id,
+    "starter-shift-009"
   );
   assert.throws(
     () => selectCampaignShift(campaign, "isolated-day-two"),

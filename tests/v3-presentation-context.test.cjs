@@ -43,15 +43,16 @@ const resolver = new RestockTargetResolver({
   coolerTargetWidth: STARTER_MARKET_PRESENTATION.visual.cooler.activeStockBounds.width
 });
 
+const contextForLevel = (levelId) => createStarterMarketPresentationContext(levelId);
 const contextForMode = (mode) => {
   const entry = MAIN_LEVEL_CAMPAIGN_RUNTIME.levels.find((level) => level.level.mode === mode);
   assert.ok(entry, `Missing configured ${mode} level`);
-  return createStarterMarketPresentationContext(entry.level.id);
+  return contextForLevel(entry.level.id);
 };
 
 test("Every configured level presentation context is internally consistent", () => {
   const contexts = MAIN_LEVEL_CAMPAIGN_RUNTIME.levels.map((entry) => (
-    createStarterMarketPresentationContext(entry.level.id)
+    contextForLevel(entry.level.id)
   ));
 
   contexts.forEach((context) => (
@@ -59,7 +60,18 @@ test("Every configured level presentation context is internally consistent", () 
   ));
   assert.deepEqual(
     contexts.map((context) => context.mode),
-    ["restock", "restock", "checkout", "clean", "find-items"]
+    [
+      "restock",
+      "restock",
+      "checkout",
+      "clean",
+      "find-items",
+      "restock",
+      "checkout",
+      "clean",
+      "find-items",
+      "restock"
+    ]
   );
 });
 
@@ -78,9 +90,9 @@ test("Checkout assets are resolved from the configured global asset pack", () =>
   );
 });
 
-test("All levels share the same world, registry, and scene boundary", () => {
+test("All ten levels share the same world, registry, and scene boundary", () => {
   const contexts = MAIN_LEVEL_CAMPAIGN_RUNTIME.levels.map((entry) => (
-    createStarterMarketPresentationContext(entry.level.id)
+    contextForLevel(entry.level.id)
   ));
   const first = contexts[0];
   const checkoutFixture = STARTER_MARKET_LAYOUT.fixtures.find((fixture) => (
@@ -104,24 +116,29 @@ test("All levels share the same world, registry, and scene boundary", () => {
 });
 
 test("Campaign order supplies labels while level mode supplies task differences", () => {
-  const levelOne = createStarterMarketPresentationContext("starter-level-001");
-  const levelTwo = createStarterMarketPresentationContext("starter-level-002");
-  const checkout = contextForMode("checkout");
-  const clean = contextForMode("clean");
-  const findItems = contextForMode("find-items");
+  const levelOne = contextForLevel("starter-level-001");
+  const levelTwo = contextForLevel("starter-level-002");
+  const levelSix = contextForLevel("starter-level-006");
+  const levelSeven = contextForLevel("starter-level-007");
+  const levelEight = contextForLevel("starter-level-008");
+  const levelNine = contextForLevel("starter-level-009");
+  const levelTen = contextForLevel("starter-level-010");
 
   assert.equal(levelOne.labels.day, "DAY 1");
   assert.equal(levelTwo.labels.day, "DAY 2");
+  assert.equal(levelTen.labels.level, "LEVEL 10");
   assert.equal(levelOne.runtime.product.id, "cola-bottle");
   assert.equal(levelTwo.runtime.product.id, "water-bottle");
-  assert.equal(checkout.runtime.mission.id, "assist-checkout-rush");
-  assert.equal(clean.runtime.mission.id, "clean-store-floor");
-  assert.equal(findItems.runtime.mission.id, "find-order-items");
+  assert.equal(levelSix.runtime.mission.id, "restock-cola-closing");
+  assert.equal(levelSeven.runtime.mission.id, "serve-evening-rush");
+  assert.equal(levelEight.runtime.mission.id, "clean-closing-aisles");
+  assert.equal(levelNine.runtime.mission.id, "find-priority-order");
+  assert.equal(levelTen.runtime.mission.id, "restock-water-finale");
   assert.notEqual(levelOne.productAssets.restockProductKey, levelTwo.productAssets.restockProductKey);
 });
 
 test("First Delivery starts outside the pickup interaction radius", () => {
-  const levelOne = createStarterMarketPresentationContext("starter-level-001");
+  const levelOne = contextForLevel("starter-level-001");
   const distance = Math.hypot(
     levelOne.world.workerStart.x - levelOne.world.backroomBox.x,
     levelOne.world.workerStart.y - levelOne.world.backroomBox.y

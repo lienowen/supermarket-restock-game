@@ -36,15 +36,15 @@ const createSession = () => new CampaignSession(
 
 test("A fresh direct level entry uses that level's configured fallback coins", () => {
   const session = createSession();
-  assert.deepEqual(session.initialEconomyFor("starter-level-002", 200), {
-    coins: 200,
+  assert.deepEqual(session.initialEconomyFor("starter-level-010", 1140), {
+    coins: 1140,
     stars: 0,
     reputation: 0
   });
   assert.deepEqual(session.upgrades(), { movement: 0, service: 0, profit: 0 });
 });
 
-test("Completing a level carries actual economy into the configured next level", () => {
+test("Completing levels carries actual economy through the ten-level chain", () => {
   const session = createSession();
   const saved = session.completeLevel(
     "starter-level-001",
@@ -61,14 +61,14 @@ test("Completing a level carries actual economy into the configured next level",
   });
 
   session.completeLevel(
-    "starter-level-002",
-    "starter-level-003",
-    { coins: 320, stars: 2, reputation: 0 }
+    "starter-level-009",
+    "starter-level-010",
+    { coins: 1140, stars: 9, reputation: 23 }
   );
-  assert.deepEqual(session.initialEconomyFor("starter-level-003", 999), {
-    coins: 320,
-    stars: 2,
-    reputation: 0
+  assert.deepEqual(session.initialEconomyFor("starter-level-010", 999), {
+    coins: 1140,
+    stars: 9,
+    reputation: 23
   });
 });
 
@@ -96,12 +96,12 @@ test("Purchased upgrades spend coins and change real gameplay values", () => {
   );
 });
 
-test("Campaign replay keeps store growth while a hard reset clears it", () => {
+test("Campaign replay begins only after Level 10 and keeps store growth", () => {
   const session = createSession();
   session.completeLevel(
-    "starter-level-005",
+    "starter-level-010",
     undefined,
-    { coins: 300, stars: 5, reputation: 10 }
+    { coins: 1340, stars: 11, reputation: 23 }
   );
   session.purchaseUpgrade("movement");
 
@@ -109,7 +109,7 @@ test("Campaign replay keeps store growth while a hard reset clears it", () => {
   assert.equal(replay.currentLevelId, "starter-level-001");
   assert.deepEqual(replay.completedLevelIds, []);
   assert.deepEqual(replay.upgrades, { movement: 1, service: 0, profit: 0 });
-  assert.equal(replay.coins, 180);
+  assert.equal(replay.coins, 1220);
 
   const hardReset = session.reset({ preserveMetaProgress: false });
   assert.equal(hardReset.currentLevelId, "starter-level-001");
@@ -126,18 +126,26 @@ test("Version 1 saves migrate without losing economy or campaign position", () =
   const migrated = migrateCampaignSessionSnapshot({
     version: 1,
     campaignId: "main-campaign",
-    currentLevelId: "starter-level-003",
-    completedLevelIds: ["starter-level-001", "starter-level-002"],
-    coins: 320,
-    stars: 2,
-    reputation: 4
+    currentLevelId: "starter-level-008",
+    completedLevelIds: [
+      "starter-level-001",
+      "starter-level-002",
+      "starter-level-003",
+      "starter-level-004",
+      "starter-level-005",
+      "starter-level-006",
+      "starter-level-007"
+    ],
+    coins: 860,
+    stars: 7,
+    reputation: 16
   }, "main-campaign");
 
   assert.ok(migrated);
   assert.equal(migrated.version, 2);
-  assert.equal(migrated.currentLevelId, "starter-level-003");
-  assert.equal(migrated.coins, 320);
-  assert.deepEqual(migrated.completedLevelIds, ["starter-level-001", "starter-level-002"]);
+  assert.equal(migrated.currentLevelId, "starter-level-008");
+  assert.equal(migrated.coins, 860);
+  assert.equal(migrated.completedLevelIds.length, 7);
   assert.deepEqual(migrated.upgrades, { movement: 0, service: 0, profit: 0 });
   assert.deepEqual(validateCampaignSessionSnapshot(migrated, "main-campaign"), []);
 });
