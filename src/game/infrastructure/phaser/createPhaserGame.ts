@@ -22,14 +22,18 @@ export interface PhaserGameFactoryOptions {
   readonly skipBriefing?: boolean;
 }
 
+const locationParameters = (): URLSearchParams => new URLSearchParams(window.location.search);
+
 const requestedLevelFromLocation = (): string | undefined => {
-  const parameters = new URLSearchParams(window.location.search);
+  const parameters = locationParameters();
   return parameters.get("level")?.trim() || parameters.get("shift")?.trim() || undefined;
 };
 
 const briefingDisabledFromLocation = (): boolean => {
-  const parameters = new URLSearchParams(window.location.search);
-  return parameters.get("briefing") === "0";
+  const parameters = locationParameters();
+  const explicitBriefing = parameters.get("briefing");
+  if (explicitBriefing === "1") return false;
+  return explicitBriefing === "0" || parameters.get("test") === "1";
 };
 
 export async function createPhaserGame(
@@ -101,9 +105,7 @@ export async function createPhaserGame(
   game.registry.set("campaignSession", session);
   game.registry.set("levelExperience", experience);
 
-  const exposeTestBridge = options.exposeTestBridge ?? (
-    new URLSearchParams(window.location.search).get("test") === "1"
-  );
+  const exposeTestBridge = options.exposeTestBridge ?? (locationParameters().get("test") === "1");
   if (exposeTestBridge) {
     const testWindow = window as Window & {
       __IMMERSIVE_GAME__?: Phaser.Game;
