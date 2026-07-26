@@ -6,6 +6,36 @@ export interface InteractionTargetBounds extends PresentationPoint {
   readonly height: number;
 }
 
+export interface CoolerStockSlot extends PresentationPoint {
+  readonly bayIndex: number;
+  readonly shelfIndex: number;
+}
+
+export const BEVERAGE_BOTTLE_CROP = Object.freeze({
+  x: 188,
+  y: 374,
+  width: 136,
+  height: 356
+});
+
+export const COOLER_STOCK_SLOT_OFFSETS = Object.freeze([
+  Object.freeze({ x: -5, y: 300, bayIndex: 0, shelfIndex: 0 }),
+  Object.freeze({ x: -5, y: 420, bayIndex: 0, shelfIndex: 1 }),
+  Object.freeze({ x: -5, y: 540, bayIndex: 0, shelfIndex: 2 }),
+  Object.freeze({ x: 80, y: 300, bayIndex: 1, shelfIndex: 0 }),
+  Object.freeze({ x: 80, y: 420, bayIndex: 1, shelfIndex: 1 }),
+  Object.freeze({ x: 80, y: 540, bayIndex: 1, shelfIndex: 2 })
+] as const);
+
+export function resolveCoolerStockSlots(centreX: number): readonly CoolerStockSlot[] {
+  return Object.freeze(COOLER_STOCK_SLOT_OFFSETS.map((slot) => Object.freeze({
+    x: centreX + slot.x,
+    y: slot.y,
+    bayIndex: slot.bayIndex,
+    shelfIndex: slot.shelfIndex
+  })));
+}
+
 export interface RestockTargetResolverConfig {
   readonly backroomBox: PresentationPoint;
   readonly cartStart: PresentationPoint;
@@ -54,12 +84,13 @@ export class RestockTargetResolver {
           height: 240
         });
       case "restock": {
-        const rowIndex = Math.min(snapshot.stockedRows, snapshot.totalRows - 1);
+        const slotIndex = Math.min(snapshot.stockedRows, COOLER_STOCK_SLOT_OFFSETS.length - 1);
+        const slot = resolveCoolerStockSlots(this.config.coolerCentreX)[slotIndex];
         return Object.freeze({
-          x: this.config.coolerCentreX,
-          y: this.config.coolerRowYs[rowIndex],
+          x: slot.x,
+          y: slot.y,
           width: this.config.coolerTargetWidth,
-          height: 68
+          height: 74
         });
       }
       case "complete":
