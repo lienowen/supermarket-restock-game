@@ -1,3 +1,8 @@
+import {
+  COOLER_STOCK_ITEMS_PER_SLOT,
+  COOLER_STOCK_ROW_YS,
+  COOLER_STOCK_TARGET_WIDTH
+} from "./CoolerStockLayout";
 import type { VisualPoint, VisualSize } from "./StarterMarketVisualSpec";
 
 export type MarketLevelMode = "restock" | "checkout" | "clean" | "find-items";
@@ -127,8 +132,8 @@ export const RESTOCK_VISUAL_PRESET: RestockLevelVisualPreset = Object.freeze({
     carrySize: Object.freeze({ width: 330, height: 325 })
   }),
   environment: Object.freeze({
-    focus: Object.freeze({ x: 1280, y: 700 }),
-    focusSize: Object.freeze({ width: 450, height: 340 }),
+    focus: Object.freeze({ x: 1420, y: 620 }),
+    focusSize: Object.freeze({ width: 350, height: 320 }),
     routeAlpha: 0,
     inactiveWashAlpha: 0,
     vignetteAlpha: 0.05
@@ -138,9 +143,9 @@ export const RESTOCK_VISUAL_PRESET: RestockLevelVisualPreset = Object.freeze({
     backgroundY: 530,
     frameSize: Object.freeze({ width: 620, height: 520 }),
     displaySize: Object.freeze({ width: 470, height: 700 }),
-    rowYs: Object.freeze([275, 335, 395, 455, 515, 575]),
-    activeStockWidth: 96,
-    restockItemCount: 3
+    rowYs: COOLER_STOCK_ROW_YS,
+    activeStockWidth: COOLER_STOCK_TARGET_WIDTH,
+    restockItemCount: COOLER_STOCK_ITEMS_PER_SLOT
   }),
   props: Object.freeze({
     caseSize: Object.freeze({ width: 180, height: 220 }),
