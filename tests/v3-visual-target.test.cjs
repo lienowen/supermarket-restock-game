@@ -16,8 +16,9 @@ const {
 } = require("../.test-dist/src/game/presentation/visual/MarketLevelVisualPreset.js");
 const {
   COOLER_STOCK_SLOT_OFFSETS,
+  resolveCoolerStockBounds,
   resolveCoolerStockSlots
-} = require("../.test-dist/src/game/presentation/interactions/RestockTargetResolver.js");
+} = require("../.test-dist/src/game/presentation/visual/CoolerStockLayout.js");
 const {
   STARTER_MARKET_PRODUCTION_ASSET_PLAN,
   validateProductionAssetPlan
@@ -60,6 +61,11 @@ test("Cola stock occupies two cooler doors and stays above the worker overlap zo
 
   assert.ok(coolerFixture);
   assert.ok(restockZone);
+  assert.deepEqual(STARTER_MARKET_VISUAL_SPEC.cooler.centre, coolerFixture.position);
+  assert.deepEqual(
+    STARTER_MARKET_VISUAL_SPEC.cooler.activeStockBounds,
+    resolveCoolerStockBounds(coolerFixture.position.x)
+  );
   assert.equal(cooler.rowYs.length, COOLER_STOCK_SLOT_OFFSETS.length);
   assert.equal(cooler.restockItemCount, 3);
   assert.ok(cooler.activeStockWidth <= 100);
