@@ -25,6 +25,13 @@ export interface GuidedDragActionSpec {
   readonly targetLabel: string;
 }
 
+export interface CheckoutScanExperienceSpec {
+  readonly itemCountPattern: readonly number[];
+  readonly productAssetKeys: readonly string[];
+  readonly scannerLabel: string;
+  readonly paymentLabel: string;
+}
+
 export interface LevelExperienceSpec {
   readonly levelId: string;
   readonly mode: LevelDefinition["mode"];
@@ -38,6 +45,7 @@ export interface LevelExperienceSpec {
   readonly primaryInput: LevelPrimaryInput;
   readonly checklist?: LevelChecklistSpec;
   readonly guidedDrag?: GuidedDragActionSpec;
+  readonly checkoutScan?: CheckoutScanExperienceSpec;
 }
 
 const define = (spec: LevelExperienceSpec): LevelExperienceSpec => Object.freeze(spec);
@@ -78,13 +86,13 @@ export const STARTER_LEVEL_EXPERIENCE_SPECS: readonly LevelExperienceSpec[] = Ob
   define({
     levelId: "starter-level-002",
     mode: "restock",
-    modeLabel: "PROMOTION RUSH",
+    modeLabel: "PROMOTION MEMORY",
     eyebrow: "SHELF CHALLENGE",
     title: "Promotion Restock",
-    objective: "Stock the promoted water into the active cooler slots before each window closes.",
-    mechanic: "The target shelf changes in a seeded random order and speeds up after each success.",
-    control: "Watch both cooler doors and tap only the active shelf slot.",
-    successMetric: "Build a clean streak and avoid wrong shelves or timeouts.",
+    objective: "Memorize the six-slot water display, then stock the cooler in that exact order.",
+    mechanic: "The numbered pattern appears once, disappears before play, and never changes after a mistake.",
+    control: "Read both cooler doors during the preview, then tap the remembered shelf sequence.",
+    successMetric: "Complete the hidden sequence with high accuracy before the shelf timers expire.",
     primaryInput: "sequence"
   }),
   define({
@@ -93,11 +101,23 @@ export const STARTER_LEVEL_EXPERIENCE_SPECS: readonly LevelExperienceSpec[] = Ob
     modeLabel: "CHECKOUT BASICS",
     eyebrow: "CUSTOMER SERVICE",
     title: "Checkout Rush",
-    objective: "Open the lane and process every waiting grocery basket.",
-    mechanic: "Each completed scan advances the queue and rewards accurate service.",
-    control: "Move to the checkout service point and use the highlighted register action.",
-    successMetric: "Serve all customers without leaving the register.",
-    primaryInput: "tap"
+    objective: "Scan every item in each waiting basket and confirm payment for every customer.",
+    mechanic: "Items must physically cross the scanner; the payment button stays locked until the basket is empty.",
+    control: "Drag each product into the scan zone, then press the POS payment button.",
+    successMetric: "Serve every customer without skipping an item or attempting an early payment.",
+    primaryInput: "drag",
+    checkoutScan: Object.freeze({
+      itemCountPattern: Object.freeze([2, 3, 2, 3, 2, 3]),
+      productAssetKeys: Object.freeze([
+        "product-milk-bottle",
+        "product-apple",
+        "product-cereal-box",
+        "product-oats-canister",
+        "product-chips-bag"
+      ]),
+      scannerLabel: "SCAN ZONE",
+      paymentLabel: "CONFIRM PAYMENT"
+    })
   }),
   define({
     levelId: "starter-level-004",
@@ -236,6 +256,19 @@ export function validateLevelExperienceSpecs(levels: readonly LevelDefinition[])
       }
       if (spec.guidedDrag.unlockAfterAction === spec.guidedDrag.confirmAction) {
         errors.push(`Experience spec ${spec.levelId} guided drag actions must differ`);
+      }
+    }
+
+    if (spec.checkoutScan) {
+      if (spec.mode !== "checkout") errors.push(`Experience spec ${spec.levelId} scan interaction requires checkout mode`);
+      if (spec.checkoutScan.itemCountPattern.length === 0) {
+        errors.push(`Experience spec ${spec.levelId} scan interaction requires an item count pattern`);
+      }
+      if (spec.checkoutScan.itemCountPattern.some((count) => !Number.isInteger(count) || count < 1 || count > 5)) {
+        errors.push(`Experience spec ${spec.levelId} scan item counts must be integers from 1 to 5`);
+      }
+      if (new Set(spec.checkoutScan.productAssetKeys).size < 3) {
+        errors.push(`Experience spec ${spec.levelId} scan interaction requires at least three product assets`);
       }
     }
   }
