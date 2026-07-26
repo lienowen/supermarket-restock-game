@@ -3,9 +3,13 @@ import {
   type RestockPaceGrade
 } from "./RestockPaceTracker";
 
+export type RestockSequenceMode = "fixed" | "shuffled";
+
 export interface RestockRushConfig {
   readonly rowCount: number;
   readonly randomSeed: string;
+  readonly sequenceMode?: RestockSequenceMode;
+  readonly timeoutEnabled?: boolean;
   readonly targetDurationMs?: number;
   readonly minimumTargetDurationMs?: number;
   readonly speedUpPerSuccessMs?: number;
@@ -85,8 +89,12 @@ const createRandom = (seed: string): (() => number) => {
   };
 };
 
+const fixedRows = (rowCount: number): number[] => (
+  Array.from({ length: rowCount }, (_, index) => index)
+);
+
 const shuffledRows = (rowCount: number, seed: string): number[] => {
-  const result = Array.from({ length: rowCount }, (_, index) => index);
+  const result = fixedRows(rowCount);
   const random = createRandom(seed);
   for (let index = result.length - 1; index > 0; index -= 1) {
     const swapIndex = Math.floor(random() * (index + 1));
@@ -103,6 +111,8 @@ export class RestockRushController {
   private readonly pace: RestockPaceTracker;
   private readonly queue: number[];
   private readonly filledRows = new Set<number>();
+  private readonly sequenceMode: RestockSequenceMode;
+  private readonly timeoutEnabled: boolean;
   private deadlineMs?: number;
   private currentTargetDurationMs: number;
   private introWindowActive = true;
@@ -110,6 +120,7 @@ export class RestockRushController {
   private logicalNowMs?: number;
   private lastExternalTimestampMs?: number;
   private stallProtectionArmed = false;
+  private started = false;
 
   constructor(readonly config: RestockRushConfig) {
     if (!Number.isInteger(config.rowCount) || config.rowCount <= 0) {
@@ -119,6 +130,8 @@ export class RestockRushController {
       throw new Error("Restock rush requires a random seed");
     }
 
+    this.sequenceMode = config.sequenceMode ?? "shuffled";
+    this.timeoutEnabled = config.timeoutEnabled ?? true;
     const timingScale = requirePositive(config.timingScale ?? 1, "Timing scale");
     this.baseTargetDurationMs = requirePositive(config.targetDurationMs ?? 3000, "Target duration") * timingScale;
     this.minimumTargetDurationMs = requirePositive(
@@ -135,7 +148,9 @@ export class RestockRushController {
     }
 
     this.currentTargetDurationMs = this.baseTargetDurationMs + this.introGraceMs;
-    this.queue = shuffledRows(config.rowCount, config.randomSeed);
+    this.queue = this.sequenceMode === "fixed"
+      ? fixedRows(config.rowCount)
+      : shuffledRows(config.rowCount, config.randomSeed);
     this.pace = new RestockPaceTracker({
       streakWindowMs: (config.streakWindowMs ?? 1450) * timingScale,
       goldTimeMs: (config.goldTimeMs ?? 30000) * timingScale,
@@ -156,14 +171,14 @@ export class RestockRushController {
       return Object.freeze({ event: "none", snapshot: this.createSnapshot(now) });
     }
     this.ensureStarted(now);
-    if (this.deadlineMs === undefined || now < this.deadlineMs) {
+    if (!this.timeoutEnabled || this.deadlineMs === undefined || now < this.deadlineMs) {
       return Object.freeze({ event: "none", snapshot: this.createSnapshot(now) });
     }
 
     this.mistakes += 1;
     this.pace.breakStreak(now);
     this.consumeIntroWindow();
-    this.rotateTarget();
+    if (this.sequenceMode === "shuffled") this.rotateTarget();
     this.resetDeadline(now);
     return Object.freeze({ event: "timeout", snapshot: this.createSnapshot(now) });
   }
@@ -189,8 +204,8 @@ export class RestockRushController {
       this.mistakes += 1;
       this.pace.breakStreak(now);
       this.consumeIntroWindow();
-      this.rotateTarget();
-      this.resetDeadline(now);
+      if (this.sequenceMode === "shuffled") this.rotateTarget();
+      if (this.timeoutEnabled) this.resetDeadline(now);
       return Object.freeze({
         correct: false,
         selectedRowIndex: rowIndex,
@@ -207,7 +222,7 @@ export class RestockRushController {
     if (this.queue.length === 0) {
       this.deadlineMs = undefined;
       this.pace.complete(now);
-    } else {
+    } else if (this.timeoutEnabled) {
       this.updateNormalTargetDuration();
       this.resetDeadline(now);
     }
@@ -225,19 +240,24 @@ export class RestockRushController {
   }
 
   private ensureStarted(nowMs: number): void {
-    if (this.deadlineMs !== undefined || this.queue.length === 0) return;
+    if (this.started || this.queue.length === 0) return;
+    this.started = true;
     this.pace.start(nowMs);
-    this.deadlineMs = nowMs + this.currentTargetDurationMs;
+    if (this.timeoutEnabled) this.deadlineMs = nowMs + this.currentTargetDurationMs;
   }
 
   private createSnapshot(nowMs: number): RestockRushSnapshot {
     const pace = this.pace.snapshot(nowMs);
-    const remainingMs = this.deadlineMs === undefined
+    const remainingMs = !this.timeoutEnabled || this.deadlineMs === undefined
       ? 0
       : Math.max(0, this.deadlineMs - nowMs);
-    const remainingRatio = this.deadlineMs === undefined
+    const remainingRatio = this.queue.length === 0
       ? 0
-      : Math.max(0, Math.min(1, remainingMs / this.currentTargetDurationMs));
+      : !this.timeoutEnabled
+        ? 1
+        : this.deadlineMs === undefined
+          ? 0
+          : Math.max(0, Math.min(1, remainingMs / this.currentTargetDurationMs));
 
     return Object.freeze({
       started: pace.started,
@@ -305,6 +325,10 @@ export class RestockRushController {
   }
 
   private resetDeadline(nowMs: number): void {
+    if (!this.timeoutEnabled) {
+      this.deadlineMs = undefined;
+      return;
+    }
     this.deadlineMs = nowMs + this.currentTargetDurationMs;
   }
 }
