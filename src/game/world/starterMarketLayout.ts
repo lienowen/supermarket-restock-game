@@ -53,7 +53,7 @@ export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
     },
     {
       fixtureId: "beverage-cooler-a",
-      position: { x: 1325, y: 500 },
+      position: { x: 1410, y: 500 },
       anchor: [0.5, 0.92],
       depth: 22
     },
@@ -83,7 +83,7 @@ export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
       id: "beverage-restock-zone",
       targetId: "beverage-cooler-a",
       actionGroup: "parking-zone",
-      position: { x: 1320, y: 755 },
+      position: { x: 1365, y: 755 },
       radius: 150
     },
     {
