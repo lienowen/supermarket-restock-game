@@ -9,6 +9,7 @@ import {
 } from "../../presentation/context/StarterMarketPresentationContext";
 import { applyMarketUpgradesToPresentation } from "../../presentation/context/MarketUpgradePresentation";
 import type { SceneCampaignSessionContext } from "../../presentation/scenes/StarterMarketScene";
+import { mountGuidedDragActionDom } from "../../presentation/ui/GuidedDragActionDom";
 import { mountLevelBriefingDomOverlay } from "../../presentation/ui/LevelBriefingDomOverlay";
 import { mountLevelChecklistDom } from "../../presentation/ui/LevelChecklistDom";
 import { BrowserCampaignSessionStore } from "../browser/BrowserCampaignSessionStore";
@@ -21,6 +22,7 @@ export interface PhaserGameFactoryOptions {
   readonly levelId?: string;
   readonly shiftId?: string;
   readonly skipBriefing?: boolean;
+  readonly skipGuidedInteractions?: boolean;
 }
 
 const locationParameters = (): URLSearchParams => new URLSearchParams(window.location.search);
@@ -35,6 +37,13 @@ const briefingDisabledFromLocation = (): boolean => {
   const explicitBriefing = parameters.get("briefing");
   if (explicitBriefing === "1") return false;
   return explicitBriefing === "0" || parameters.get("test") === "1";
+};
+
+const guidedInteractionsDisabledFromLocation = (): boolean => {
+  const parameters = locationParameters();
+  const explicitGuided = parameters.get("guided");
+  if (explicitGuided === "1") return false;
+  return explicitGuided === "0" || parameters.get("test") === "1";
 };
 
 export async function createPhaserGame(
@@ -113,6 +122,25 @@ export async function createPhaserGame(
     });
   } else {
     delete document.body.dataset.levelChecklist;
+  }
+
+  const skipGuidedInteractions = options.skipGuidedInteractions ?? guidedInteractionsDisabledFromLocation();
+  if (
+    experience.guidedDrag &&
+    !skipGuidedInteractions &&
+    "case" in presentation.levelAssets &&
+    "cart" in presentation.levelAssets
+  ) {
+    mountGuidedDragActionDom({
+      game,
+      sceneKey: presentation.scene.key,
+      levelId: presentation.campaignLevel.level.id,
+      spec: experience.guidedDrag,
+      sourceImagePath: presentation.levelAssets.case.path,
+      targetImagePath: presentation.levelAssets.cart.path
+    });
+  } else {
+    document.body.dataset.guidedDrag = experience.guidedDrag ? "skipped" : "none";
   }
 
   const exposeTestBridge = options.exposeTestBridge ?? (locationParameters().get("test") === "1");
