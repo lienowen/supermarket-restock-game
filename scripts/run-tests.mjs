@@ -39,7 +39,9 @@ const run = spawnSync(
     "tests/v3-presentation-context.test.cjs",
     "tests/v3-foundation-contracts.test.cjs",
     "tests/v3-standard-market-rules.test.cjs",
-    "tests/v3-boundaries.test.cjs"
+    "tests/v3-boundaries.test.cjs",
+    "tests/level-experience-spec.test.cjs",
+    "tests/restock-guided-mode.test.cjs"
   ],
   { encoding: "utf8" }
 );
@@ -56,6 +58,6 @@ process.exit(0);
 function printFailure(title, result) {
   const output = `${result.stdout ?? ""}\n${result.stderr ?? ""}`.trim();
   const lines = output.split(/\r?\n/);
-  const tail = lines.slice(-180).join("\n");
+  const tail = lines.slice(-220).join("\n");
   console.error(`${title}:\n${tail}`);
 }
