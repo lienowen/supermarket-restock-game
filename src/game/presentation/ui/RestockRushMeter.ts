@@ -5,6 +5,8 @@ export interface RestockRushMeterConfig {
   readonly x: number;
   readonly y: number;
   readonly accentColor: number;
+  readonly title?: string;
+  readonly instruction?: string;
 }
 
 export class RestockRushMeter {
@@ -13,12 +15,14 @@ export class RestockRushMeter {
   private readonly statusText: Phaser.GameObjects.Text;
   private readonly timerFill: Phaser.GameObjects.Rectangle;
   private readonly timerTrackWidth = 232;
+  private readonly defaultInstruction: string;
   private previousStreak = 0;
 
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly config: RestockRushMeterConfig
   ) {
+    this.defaultInstruction = config.instruction ?? "FIND THE GLOWING SHELF";
     const shadow = scene.add.graphics();
     shadow.fillStyle(0x06110d, 0.35);
     shadow.fillRoundedRect(-137, -36, 274, 82, 20);
@@ -31,7 +35,7 @@ export class RestockRushMeter {
     panel.fillStyle(0xffffff, 0.04);
     panel.fillRoundedRect(-135, -35, 264, 22, 14);
 
-    const title = scene.add.text(-118, -30, "RESTOCK RUSH", {
+    const title = scene.add.text(-118, -30, config.title ?? "RESTOCK RUSH", {
       fontFamily: "Arial",
       fontSize: "13px",
       color: "#cfe7d8",
@@ -52,7 +56,7 @@ export class RestockRushMeter {
     this.timerFill = scene.add.rectangle(-116, 16, this.timerTrackWidth, 10, 0x62c77d, 1)
       .setOrigin(0, 0.5);
 
-    this.statusText = scene.add.text(0, 16, "FIND THE GLOWING SHELF", {
+    this.statusText = scene.add.text(0, 16, this.defaultInstruction, {
       fontFamily: "Arial",
       fontSize: "11px",
       color: "#ffffff",
@@ -109,7 +113,7 @@ export class RestockRushMeter {
       yoyo: true,
       onComplete: () => {
         this.container.setX(this.config.x);
-        this.statusText.setText("FIND THE GLOWING SHELF").setColor("#ffffff");
+        this.statusText.setText(this.defaultInstruction).setColor("#ffffff");
       }
     });
   }
