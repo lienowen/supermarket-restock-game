@@ -1,11 +1,10 @@
 import Phaser from "phaser";
-
-const BEVERAGE_BOTTLE_CROP = Object.freeze({
-  x: 188,
-  y: 374,
-  width: 136,
-  height: 356
-});
+import {
+  BEVERAGE_BOTTLE_CROP,
+  COOLER_STOCK_SLOT_OFFSETS,
+  resolveCoolerStockSlots,
+  type CoolerStockSlot
+} from "../interactions/RestockTargetResolver";
 
 export interface BeverageCoolerViewConfig {
   readonly centreX: number;
@@ -17,7 +16,6 @@ export interface BeverageCoolerViewConfig {
   readonly displayHeight: number;
   readonly departmentLabel: string;
   readonly subtitleLabel: string;
-  readonly rowXs: readonly number[];
   readonly rowYs: readonly number[];
   readonly ambientPositions: readonly number[];
   readonly restockStartX: number;
@@ -46,30 +44,31 @@ export class BeverageCoolerView {
   private readonly rowBackings: Phaser.GameObjects.Graphics[] = [];
   private readonly rowPlates: Phaser.GameObjects.Graphics[] = [];
   private readonly rowTargets: Phaser.GameObjects.Rectangle[] = [];
+  private readonly slots: readonly CoolerStockSlot[];
   private previousFilledRows = new Set<number>();
 
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly config: BeverageCoolerViewConfig
   ) {
-    if (config.rowYs.length === 0) {
-      throw new Error("Beverage cooler view requires at least one shelf row");
-    }
-    if (config.rowXs.length !== config.rowYs.length) {
-      throw new Error("Beverage cooler row X/Y coordinates must have equal length");
+    this.slots = resolveCoolerStockSlots(config.centreX);
+    if (config.rowYs.length !== COOLER_STOCK_SLOT_OFFSETS.length) {
+      throw new Error(
+        `Beverage cooler requires ${COOLER_STOCK_SLOT_OFFSETS.length} task slots, ` +
+        `received ${config.rowYs.length}`
+      );
     }
   }
 
   create(): void {
     const rowHeight = this.rowHeight();
-    this.config.rowYs.forEach((y, rowIndex) => {
-      const x = this.rowX(rowIndex);
+    this.slots.forEach((slot, rowIndex) => {
       const shelfWidth = this.shelfWidth(rowIndex);
-      this.rowBackings.push(this.createRowBacking(x, y, rowIndex, rowHeight));
+      this.rowBackings.push(this.createRowBacking(slot, rowIndex, rowHeight));
 
       const target = this.scene.add.rectangle(
-        x,
-        y,
+        slot.x,
+        slot.y,
         shelfWidth + 34,
         rowHeight + 20,
         0xffffff,
@@ -77,10 +76,21 @@ export class BeverageCoolerView {
       )
         .setDepth(9)
         .setName(`beverage-cooler-row-target-${rowIndex}`);
-      target.on("pointerdown", () => this.config.onRowSelected?.(rowIndex));
+      target.on(
+        "pointerdown",
+        (
+          _pointer: Phaser.Input.Pointer,
+          _localX: number,
+          _localY: number,
+          event: Phaser.Types.Input.EventData
+        ) => {
+          event.stopPropagation();
+          this.config.onRowSelected?.(rowIndex);
+        }
+      );
       this.rowTargets.push(target);
-      this.rowPlates.push(this.createRowPlate(x, y, rowIndex, rowHeight));
-      this.rows.push(this.createRestockRow(x, y, rowIndex, rowHeight));
+      this.rowPlates.push(this.createRowPlate(slot, rowIndex, rowHeight));
+      this.rows.push(this.createRestockRow(slot, rowIndex, rowHeight));
     });
 
     this.syncRush({
@@ -139,9 +149,9 @@ export class BeverageCoolerView {
   }
 
   rowCentre(rowIndex: number): { readonly x: number; readonly y: number } {
-    const y = this.config.rowYs[rowIndex];
-    if (y === undefined) throw new Error(`Unknown cooler row ${rowIndex}`);
-    return Object.freeze({ x: this.rowX(rowIndex), y });
+    const slot = this.slots[rowIndex];
+    if (!slot) throw new Error(`Unknown cooler row ${rowIndex}`);
+    return Object.freeze({ x: slot.x, y: slot.y });
   }
 
   showMistake(rowIndex: number): void {
@@ -184,8 +194,7 @@ export class BeverageCoolerView {
   }
 
   private createRowBacking(
-    x: number,
-    y: number,
+    slot: CoolerStockSlot,
     rowIndex: number,
     rowHeight: number
   ): Phaser.GameObjects.Graphics {
@@ -193,17 +202,21 @@ export class BeverageCoolerView {
     const height = rowHeight + 14;
     const backing = this.scene.add.graphics().setDepth(4);
     backing.fillStyle(0x10211d, 0.72);
-    backing.fillRoundedRect(x - width / 2, y - height / 2, width, height, 7);
+    backing.fillRoundedRect(slot.x - width / 2, slot.y - height / 2, width, height, 7);
     backing.lineStyle(1, 0x9db7ad, 0.34);
-    backing.strokeRoundedRect(x - width / 2, y - height / 2, width, height, 7);
+    backing.strokeRoundedRect(slot.x - width / 2, slot.y - height / 2, width, height, 7);
     backing.lineStyle(3, 0xc7d7d0, 0.46);
-    backing.lineBetween(x - width / 2 + 5, y + height / 2 - 5, x + width / 2 - 5, y + height / 2 - 5);
+    backing.lineBetween(
+      slot.x - width / 2 + 5,
+      slot.y + height / 2 - 5,
+      slot.x + width / 2 - 5,
+      slot.y + height / 2 - 5
+    );
     return backing;
   }
 
   private createRowPlate(
-    x: number,
-    y: number,
+    slot: CoolerStockSlot,
     rowIndex: number,
     rowHeight: number
   ): Phaser.GameObjects.Graphics {
@@ -211,15 +224,14 @@ export class BeverageCoolerView {
     const height = rowHeight + 10;
     const plate = this.scene.add.graphics().setDepth(10).setAlpha(0);
     plate.fillStyle(0xffd95e, 0.07);
-    plate.fillRoundedRect(x - width / 2, y - height / 2, width, height, 7);
+    plate.fillRoundedRect(slot.x - width / 2, slot.y - height / 2, width, height, 7);
     plate.lineStyle(3, 0xffd95e, 0.92);
-    plate.strokeRoundedRect(x - width / 2, y - height / 2, width, height, 7);
+    plate.strokeRoundedRect(slot.x - width / 2, slot.y - height / 2, width, height, 7);
     return plate;
   }
 
   private createRestockRow(
-    x: number,
-    y: number,
+    slot: CoolerStockSlot,
     rowIndex: number,
     rowHeight: number
   ): Phaser.GameObjects.Container {
@@ -250,16 +262,10 @@ export class BeverageCoolerView {
       objects.push(bottle);
     }
 
-    return this.scene.add.container(x, y, objects)
+    return this.scene.add.container(slot.x, slot.y, objects)
       .setAlpha(0.025)
       .setDepth(5)
       .setName(`beverage-cooler-row-${rowIndex}`);
-  }
-
-  private rowX(rowIndex: number): number {
-    const x = this.config.rowXs[rowIndex];
-    if (x === undefined) throw new Error(`Unknown cooler row ${rowIndex}`);
-    return x;
   }
 
   private shelfWidth(rowIndex: number): number {
@@ -267,10 +273,9 @@ export class BeverageCoolerView {
   }
 
   private verticalProgress(rowIndex: number): number {
-    const rowsPerBay = Math.max(1, this.config.rowYs.length / 2);
-    return rowsPerBay <= 1
-      ? 0
-      : Phaser.Math.Clamp((rowIndex % rowsPerBay) / (rowsPerBay - 1), 0, 1);
+    const slot = this.slots[rowIndex];
+    if (!slot) return 0;
+    return Phaser.Math.Clamp(slot.shelfIndex / 2, 0, 1);
   }
 
   private rowHeight(): number {
