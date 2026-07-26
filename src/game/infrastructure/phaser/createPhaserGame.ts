@@ -3,6 +3,7 @@ import { crazyGamesPlatform } from "../../../platform/crazyGamesPlatform";
 import { CampaignSession } from "../../application/CampaignSession";
 import { STARTER_RUNTIME_ASSET_REGISTRY } from "../../assets/RuntimeAssetRegistry";
 import { resolveCartCapacityExperienceSpec } from "../../content/experience/CartCapacityExperienceSpec";
+import { resolveCheckoutPatienceExperienceSpec } from "../../content/experience/CheckoutPatienceExperienceSpec";
 import { resolveLevelExperienceSpec } from "../../content/experience/LevelExperienceSpec";
 import { gameDomainEvents } from "../../events/GameDomainEvents";
 import {
@@ -12,6 +13,7 @@ import {
 import { applyMarketUpgradesToPresentation } from "../../presentation/context/MarketUpgradePresentation";
 import type { SceneCampaignSessionContext } from "../../presentation/scenes/StarterMarketScene";
 import { mountCartCapacityLoadDom } from "../../presentation/ui/CartCapacityLoadDom";
+import { mountCheckoutPatienceDom } from "../../presentation/ui/CheckoutPatienceDom";
 import { mountCheckoutScanDom } from "../../presentation/ui/CheckoutScanDom";
 import { mountGuidedDragActionDom } from "../../presentation/ui/GuidedDragActionDom";
 import { mountHoldWorkDom } from "../../presentation/ui/HoldWorkDom";
@@ -30,6 +32,7 @@ export interface PhaserGameFactoryOptions {
   readonly skipGuidedInteractions?: boolean;
   readonly skipCartCapacity?: boolean;
   readonly skipCheckoutScan?: boolean;
+  readonly skipCheckoutPatience?: boolean;
   readonly skipHoldWork?: boolean;
 }
 
@@ -51,6 +54,7 @@ const briefingDisabledFromLocation = (): boolean => featureDisabledFromLocation(
 const guidedInteractionsDisabledFromLocation = (): boolean => featureDisabledFromLocation("guided");
 const cartCapacityDisabledFromLocation = (): boolean => featureDisabledFromLocation("cartload");
 const checkoutScanDisabledFromLocation = (): boolean => featureDisabledFromLocation("checkout");
+const checkoutPatienceDisabledFromLocation = (): boolean => featureDisabledFromLocation("patience");
 const holdWorkDisabledFromLocation = (): boolean => featureDisabledFromLocation("hold");
 
 export async function createPhaserGame(
@@ -67,6 +71,7 @@ export async function createPhaserGame(
   const basePresentation = createStarterMarketPresentationContext(levelId);
   const experience = resolveLevelExperienceSpec(basePresentation.campaignLevel.level);
   const cartCapacity = resolveCartCapacityExperienceSpec(basePresentation.campaignLevel.level);
+  const checkoutPatience = resolveCheckoutPatienceExperienceSpec(basePresentation.campaignLevel.level);
 
   const session = new CampaignSession(
     {
@@ -172,6 +177,20 @@ export async function createPhaserGame(
     document.body.dataset.cartCapacityLoad = cartCapacity ? "skipped" : "none";
   }
 
+  const scannerAssetFor = (): ReturnType<typeof presentation.levelAssets.equipment.find> => (
+    "equipment" in presentation.levelAssets
+      ? presentation.levelAssets.equipment.find((asset) => (
+          asset.key === "equipment-checkout-scanner" ||
+          asset.key === "equipment-barcode-scanner"
+        ))
+      : undefined
+  );
+  const posAssetFor = (): ReturnType<typeof presentation.levelAssets.equipment.find> => (
+    "equipment" in presentation.levelAssets
+      ? presentation.levelAssets.equipment.find((asset) => asset.key === "equipment-pos-terminal")
+      : undefined
+  );
+
   const skipCheckoutScan = options.skipCheckoutScan ?? checkoutScanDisabledFromLocation();
   if (
     experience.checkoutScan &&
@@ -179,12 +198,6 @@ export async function createPhaserGame(
     "customerCount" in presentation.runtime &&
     "equipment" in presentation.levelAssets
   ) {
-    const scannerAsset = presentation.levelAssets.equipment.find(
-      (asset) => asset.key === "equipment-barcode-scanner"
-    );
-    const posAsset = presentation.levelAssets.equipment.find(
-      (asset) => asset.key === "equipment-pos-terminal"
-    );
     mountCheckoutScanDom({
       game,
       sceneKey: presentation.scene.key,
@@ -194,11 +207,37 @@ export async function createPhaserGame(
       productAssets: STARTER_RUNTIME_ASSET_REGISTRY.resolve(
         experience.checkoutScan.productAssetKeys
       ),
-      scannerAsset,
-      posAsset
+      scannerAsset: scannerAssetFor(),
+      posAsset: posAssetFor()
     });
   } else {
     document.body.dataset.checkoutScan = experience.checkoutScan ? "skipped" : "none";
+  }
+
+  const skipCheckoutPatience = options.skipCheckoutPatience ?? checkoutPatienceDisabledFromLocation();
+  if (
+    checkoutPatience &&
+    !skipCheckoutPatience &&
+    "customerCount" in presentation.runtime &&
+    "equipment" in presentation.levelAssets
+  ) {
+    mountCheckoutPatienceDom({
+      game,
+      sceneKey: presentation.scene.key,
+      levelId: presentation.campaignLevel.level.id,
+      totalCustomers: presentation.runtime.customerCount,
+      spec: checkoutPatience,
+      standardProductAssets: STARTER_RUNTIME_ASSET_REGISTRY.resolve(
+        checkoutPatience.standardProductAssetKeys
+      ),
+      weighedProductAsset: STARTER_RUNTIME_ASSET_REGISTRY.require(
+        checkoutPatience.weighedProductAssetKey
+      ),
+      scannerAsset: scannerAssetFor(),
+      posAsset: posAssetFor()
+    });
+  } else {
+    document.body.dataset.checkoutPatience = checkoutPatience ? "skipped" : "none";
   }
 
   const skipHoldWork = options.skipHoldWork ?? holdWorkDisabledFromLocation();
