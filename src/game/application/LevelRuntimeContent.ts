@@ -202,6 +202,20 @@ export function validateLevelCampaignRuntime(
           ) {
             errors.push(`Level ${level.id} rush gold time must be lower than silver time`);
           }
+          if (rush.memoryPreview) {
+            if (!Number.isFinite(rush.memoryPreview.durationMs) || rush.memoryPreview.durationMs < 1000) {
+              errors.push(`Level ${level.id} memory preview duration must be at least 1000ms`);
+            }
+            if (!rush.memoryPreview.hideActiveTarget) {
+              errors.push(`Level ${level.id} memory challenge must hide the active shelf target`);
+            }
+            if (!rush.memoryPreview.keepTargetOnFailure) {
+              errors.push(`Level ${level.id} memory challenge must keep its answer stable after failure`);
+            }
+            if (rush.sequenceMode !== "shuffled") {
+              errors.push(`Level ${level.id} memory challenge requires a shuffled sequence`);
+            }
+          }
         }
         return;
       }
