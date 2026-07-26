@@ -210,7 +210,6 @@ const LEVELS = Object.freeze([
 if (!existsSync(join(DIST_DIR, "index.html"))) {
   throw new Error("dist/index.html is missing. Run npm run build first.");
 }
-
 mkdirSync(OUTPUT_DIR, { recursive: true });
 
 const server = createServer((request, response) => {
@@ -224,7 +223,6 @@ const server = createServer((request, response) => {
   response.setHeader("Cache-Control", "no-store");
   response.end(readFileSync(filePath));
 });
-
 await new Promise((resolveServer) => server.listen(PORT, "127.0.0.1", resolveServer));
 
 const report = {
@@ -270,7 +268,6 @@ try {
     viewport: { width: GAME_WIDTH, height: GAME_HEIGHT },
     deviceScaleFactor: 1
   });
-
   await context.addInitScript(() => {
     const events = [];
     window.__CRAZY_GAMES_TEST_EVENTS__ = events;
@@ -303,16 +300,16 @@ try {
     recordSnapshot(report, `level${level.number}-initial`, initial);
 
     if (level.number === 1) {
-      const runtimeMetadata = await readRuntimeMetadata(page);
+      const metadata = await readRuntimeMetadata(page);
       report.regressions.architectureV3 = (
-        runtimeMetadata.architecture === "architecture-v3" &&
-        runtimeMetadata.version === "architecture-v3"
+        metadata.architecture === "architecture-v3" &&
+        metadata.version === "architecture-v3"
       );
-      report.regressions.englishHud = runtimeMetadata.language === "en";
+      report.regressions.englishHud = metadata.language === "en";
       report.regressions.productionAssetRuntime = (
-        runtimeMetadata.visualTarget === "production-v1-five-mode-campaign" &&
-        runtimeMetadata.actorType === "Image" &&
-        runtimeMetadata.actorTexture === "worker-a-idle"
+        metadata.visualTarget === "production-v1-five-mode-campaign" &&
+        metadata.actorType === "Image" &&
+        metadata.actorTexture === "worker-a-idle"
       );
       report.regressions.movementRequired = await interactionReady(page) === false;
       await capture(page, report, screenshotName(level.number, "initial"), `${level.label} initial state`);
@@ -336,11 +333,11 @@ try {
     const events = await readSdkEvents(page);
     report.sdkEvents.push({ level: level.id, events });
     if (level.number === 1) {
-      const runtimeMetadata = await readRuntimeMetadata(page);
+      const metadata = await readRuntimeMetadata(page);
       report.regressions.crazyGamesSdkLifecycle = (
-        runtimeMetadata.sdk === "ready" &&
-        runtimeMetadata.loading === "stopped" &&
-        runtimeMetadata.gameplay === "stopped" &&
+        metadata.sdk === "ready" &&
+        metadata.loading === "stopped" &&
+        metadata.gameplay === "stopped" &&
         hasOrderedEvents(events, [
           "init",
           "loadingStart",
@@ -369,10 +366,16 @@ try {
     restockItemTotals.every((count) => count === SHELF_COUNT * ITEMS_PER_SHELF)
   );
 
-  const issueCount = report.consoleErrors.length + report.pageErrors.length + report.failedRequests.length + report.badResponses.length;
-  const failed = Object.entries(report.regressions).filter(([, value]) => !value).map(([key]) => key);
+  const issueCount = report.consoleErrors.length + report.pageErrors.length +
+    report.failedRequests.length + report.badResponses.length;
+  const failed = Object.entries(report.regressions)
+    .filter(([, value]) => !value)
+    .map(([key]) => key);
   if (issueCount > 0 || failed.length > 0) {
-    throw new Error(`Production ten-level regressions failed: ${failed.join(", ") || "browser runtime"}; browser issues ${issueCount}`);
+    throw new Error(
+      `Production ten-level regressions failed: ${failed.join(", ") || "browser runtime"}; ` +
+      `browser issues ${issueCount}`
+    );
   }
 } catch (error) {
   thrownError = error;
@@ -389,8 +392,10 @@ if (thrownError) throw thrownError;
 async function openLevel(context, auditReport, level) {
   const page = await context.newPage();
   attachRuntimeListeners(page, auditReport);
-  const url = `${ORIGIN}/?test=1&level=${encodeURIComponent(level.id)}`;
-  await page.goto(url, { waitUntil: "networkidle", timeout: 90000 });
+  await page.goto(`${ORIGIN}/?test=1&level=${encodeURIComponent(level.id)}`, {
+    waitUntil: "networkidle",
+    timeout: 90000
+  });
   await waitForGame(page, level.id, level.mode);
   return page;
 }
@@ -413,13 +418,16 @@ async function completeConfiguredLevel(page, auditReport, level) {
 async function completeRestockLevel(page, auditReport, prefix, captureGrowth) {
   await clickGame(page, 1228, 850);
   await waitForSnapshot(page, { step: "load", boxCollected: true });
-
   await clickGame(page, 1228, 850);
   await waitForSnapshot(page, { step: "restock", boxLoaded: true, boxOpened: true });
 
+  // Memory levels expose their planned row before the preview closes. The shelf
+  // must only be inspected after the overlay and interaction lock are gone.
+  await waitForInteractionReady(page);
   const initialRush = await waitForRushTarget(page);
   const firstRowIndex = initialRush.activeRowIndex;
   const emptyShelf = await readRenderedShelf(page, firstRowIndex);
+
   if (captureGrowth) {
     auditReport.regressions.emptyShelfHasNoGhostProducts = (
       initialRush.totalItemsStocked === 0 &&
@@ -430,6 +438,7 @@ async function completeRestockLevel(page, auditReport, prefix, captureGrowth) {
   }
 
   for (let completedRows = 0; completedRows < SHELF_COUNT; completedRows += 1) {
+    await waitForInteractionReady(page);
     const rowStart = await waitForRushTarget(page);
     const rowIndex = rowStart.activeRowIndex;
     const target = await readRushTarget(page, rowIndex);
@@ -462,13 +471,13 @@ async function completeRestockLevel(page, auditReport, prefix, captureGrowth) {
         throw new Error(`Shelf ${rowIndex} state did not reach ${itemNumber}/${ITEMS_PER_SHELF}`);
       }
 
-      const expectedCompletedRows = itemNumber === ITEMS_PER_SHELF
+      const expectedRows = itemNumber === ITEMS_PER_SHELF
         ? completedRows + 1
         : completedRows;
-      if (afterController?.stockedRows !== expectedCompletedRows) {
+      if (afterController?.stockedRows !== expectedRows) {
         throw new Error(
           `Shelf completion advanced at the wrong item: ` +
-          JSON.stringify({ completedRows, itemNumber, expectedCompletedRows, afterController, afterRush })
+          JSON.stringify({ completedRows, itemNumber, expectedRows, afterController, afterRush })
         );
       }
       if (itemNumber < ITEMS_PER_SHELF && afterRush.activeRowIndex !== rowIndex) {
@@ -580,13 +589,17 @@ function attachRuntimeListeners(page, auditReport) {
       auditReport.consoleErrors.push({ text: message.text(), location: message.location() });
     }
   });
-  page.on("pageerror", (error) => auditReport.pageErrors.push({ message: error.message, stack: error.stack ?? null }));
+  page.on("pageerror", (error) => {
+    auditReport.pageErrors.push({ message: error.message, stack: error.stack ?? null });
+  });
   page.on("requestfailed", (request) => {
     const error = request.failure()?.errorText ?? "unknown";
     if (!error.includes("ERR_ABORTED")) auditReport.failedRequests.push({ url: request.url(), error });
   });
   page.on("response", (response) => {
-    if (response.status() >= 400) auditReport.badResponses.push({ url: response.url(), status: response.status() });
+    if (response.status() >= 400) {
+      auditReport.badResponses.push({ url: response.url(), status: response.status() });
+    }
   });
 }
 
@@ -627,11 +640,11 @@ async function readRenderedShelf(page, rowIndex) {
   return page.evaluate(({ sceneKey, index }) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
     const holder = scene?.children?.getByName?.(`beverage-cooler-row-${index}`);
-    const countLabel = scene?.children?.getByName?.(`beverage-cooler-row-count-${index}`);
+    const label = scene?.children?.getByName?.(`beverage-cooler-row-count-${index}`);
     return {
       itemCount: Array.isArray(holder?.list) ? holder.list.length : -1,
-      countText: countLabel?.text ?? null,
-      countVisible: countLabel?.visible ?? false
+      countText: label?.text ?? null,
+      countVisible: label?.visible ?? false
     };
   }, { sceneKey: GAME_SCENE_KEY, index: rowIndex });
 }
@@ -665,7 +678,7 @@ async function readRushTarget(page, rowIndex) {
 
   if (!target) throw new Error(`Missing rendered cooler target for row ${rowIndex}`);
   if (!target.interactionEnabled) {
-    throw new Error(`Rendered cooler target for row ${rowIndex} is not interactive`);
+    throw new Error(`Rendered cooler target for row ${rowIndex} is not interactive after readiness`);
   }
   return target;
 }
