@@ -66,3 +66,15 @@ test("A guided level checklist is configured by signals rather than gameplay ID 
   ]);
   assert.equal(checklist.steps.at(-1).tracksProgress, true);
 });
+
+test("Checkout basics requires multiple product drags before each payment", () => {
+  const scanSpecs = STARTER_LEVEL_EXPERIENCE_SPECS.filter((spec) => spec.checkoutScan);
+  assert.equal(scanSpecs.length, 1);
+
+  const checkoutScan = scanSpecs[0].checkoutScan;
+  assert.deepEqual(checkoutScan.itemCountPattern, [2, 3, 2, 3, 2, 3]);
+  assert.equal(checkoutScan.itemCountPattern.reduce((sum, count) => sum + count, 0), 15);
+  assert.ok(new Set(checkoutScan.productAssetKeys).size >= 5);
+  assert.equal(checkoutScan.scannerLabel, "SCAN ZONE");
+  assert.equal(checkoutScan.paymentLabel, "CONFIRM PAYMENT");
+});
