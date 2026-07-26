@@ -14,8 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
-      contact_b64: ${{ steps.export.outputs.contact_b64 }}
-      summary_b64: ${{ steps.export.outputs.summary_b64 }}
+      contact_b64: ${{ steps.export_contact.outputs.contact_b64 }}
+      summary_b64: ${{ steps.export_summary.outputs.summary_b64 }}
       capture_outcome: ${{ steps.capture_restock.outcome }}
 
     steps:
@@ -44,8 +44,8 @@ jobs:
         continue-on-error: true
         run: node scripts/capture-restock-empty-to-full.mjs
 
-      - name: Export visual evidence
-        id: export
+      - name: Export restock summary
+        id: export_summary
         if: always()
         run: |
           test -f restock-visual-audit/restock-visual-audit.json
@@ -68,6 +68,12 @@ jobs:
           }));
           NODE
           echo "summary_b64=$(base64 -w0 /tmp/restock-summary.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Export restock contact sheet
+        id: export_contact
+        if: always()
+        continue-on-error: true
+        run: |
           if [ -f restock-visual-audit/restock-contact-sheet.jpg ]; then
             {
               echo 'contact_b64<<RESTOCK_CONTACT_EOF'
