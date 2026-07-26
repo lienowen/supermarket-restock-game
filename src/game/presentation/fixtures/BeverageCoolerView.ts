@@ -29,9 +29,8 @@ export interface BeverageCoolerRushState {
 }
 
 /**
- * Interactive stock rows layered over the cooler already present in the
- * commercial salesfloor. Product sprites are anchored to the photographed
- * shelf lips and use a narrow, perspective-aware bay instead of a flat grid.
+ * Interactive stock rows layered over one glass-door bay in the photographed
+ * cooler. Bottles sit on the real shelf lips and never cross a door mullion.
  */
 export class BeverageCoolerView {
   private readonly rows: Phaser.GameObjects.Container[] = [];
@@ -53,10 +52,10 @@ export class BeverageCoolerView {
     this.config.rowYs.forEach((y, rowIndex) => {
       const shelfWidth = this.shelfWidth(rowIndex);
       const target = this.scene.add.rectangle(
-        this.config.centreX,
+        this.stockCentreX(),
         y,
-        shelfWidth + 54,
-        Math.max(54, rowHeight + 10),
+        shelfWidth + 30,
+        Math.max(50, rowHeight + 8),
         0xffffff,
         0.001
       )
@@ -120,19 +119,20 @@ export class BeverageCoolerView {
   rowCentre(rowIndex: number): { readonly x: number; readonly y: number } {
     const y = this.config.rowYs[rowIndex];
     if (y === undefined) throw new Error(`Unknown cooler row ${rowIndex}`);
-    return Object.freeze({ x: this.config.centreX, y });
+    return Object.freeze({ x: this.stockCentreX(), y });
   }
 
   showMistake(rowIndex: number): void {
     const y = this.config.rowYs[rowIndex];
     if (y === undefined) return;
-    const width = this.shelfWidth(rowIndex) + 48;
-    const height = this.rowHeight() + 8;
+    const width = this.shelfWidth(rowIndex) + 28;
+    const height = this.rowHeight() + 6;
+    const x = this.stockCentreX();
     const flash = this.scene.add.graphics().setDepth(14);
     flash.fillStyle(0xe45d52, 0.14);
-    flash.fillRoundedRect(this.config.centreX - width / 2, y - height / 2, width, height, 10);
-    flash.lineStyle(4, 0xff8f86, 0.9);
-    flash.strokeRoundedRect(this.config.centreX - width / 2, y - height / 2, width, height, 10);
+    flash.fillRoundedRect(x - width / 2, y - height / 2, width, height, 8);
+    flash.lineStyle(3, 0xff8f86, 0.9);
+    flash.strokeRoundedRect(x - width / 2, y - height / 2, width, height, 8);
     this.scene.tweens.add({
       targets: flash,
       alpha: 0,
@@ -151,12 +151,12 @@ export class BeverageCoolerView {
   private animateFilledRow(rowIndex: number): void {
     const row = this.rows[rowIndex];
     if (!row) return;
-    row.setScale(0.82).setAlpha(1);
+    row.setScale(0.84).setAlpha(1);
     this.scene.tweens.add({
       targets: row,
       scaleX: 1,
       scaleY: 1,
-      duration: 260,
+      duration: 250,
       ease: "Back.Out"
     });
     this.playRowSparkles(this.config.rowYs[rowIndex]);
@@ -167,13 +167,14 @@ export class BeverageCoolerView {
     rowIndex: number,
     rowHeight: number
   ): Phaser.GameObjects.Graphics {
-    const width = this.shelfWidth(rowIndex) + 42;
-    const height = rowHeight + 5;
+    const width = this.shelfWidth(rowIndex) + 26;
+    const height = rowHeight + 4;
+    const x = this.stockCentreX();
     const plate = this.scene.add.graphics().setDepth(10).setAlpha(0);
     plate.fillStyle(0xffd95e, 0.07);
-    plate.fillRoundedRect(this.config.centreX - width / 2, y - height / 2, width, height, 8);
+    plate.fillRoundedRect(x - width / 2, y - height / 2, width, height, 7);
     plate.lineStyle(3, 0xffd95e, 0.92);
-    plate.strokeRoundedRect(this.config.centreX - width / 2, y - height / 2, width, height, 8);
+    plate.strokeRoundedRect(x - width / 2, y - height / 2, width, height, 7);
     return plate;
   }
 
@@ -182,13 +183,13 @@ export class BeverageCoolerView {
     rowIndex: number,
     rowHeight: number
   ): Phaser.GameObjects.Container {
-    const count = Phaser.Math.Clamp(this.config.restockItemCount, 3, 5);
+    const count = Phaser.Math.Clamp(this.config.restockItemCount, 3, 3);
     const shelfWidth = this.shelfWidth(rowIndex);
-    const spacing = count > 1 ? shelfWidth / (count - 1) : 0;
+    const spacing = shelfWidth / (count - 1);
     const startX = -shelfWidth / 2;
     const progress = this.rowProgress(rowIndex);
-    const bottleHeight = Phaser.Math.Linear(58, 64, progress);
-    const bottleWidth = bottleHeight * 0.7;
+    const bottleHeight = Phaser.Math.Linear(52, 58, progress);
+    const bottleWidth = bottleHeight * 0.62;
     const objects: Phaser.GameObjects.GameObject[] = [];
 
     for (let index = 0; index < count; index += 1) {
@@ -204,14 +205,18 @@ export class BeverageCoolerView {
       );
     }
 
-    return this.scene.add.container(this.config.centreX, y, objects)
+    return this.scene.add.container(this.stockCentreX(), y, objects)
       .setAlpha(0.035)
       .setDepth(5)
       .setName(`beverage-cooler-row-${rowIndex}`);
   }
 
+  private stockCentreX(): number {
+    return this.config.centreX - 15;
+  }
+
   private shelfWidth(rowIndex: number): number {
-    return Phaser.Math.Linear(90, 112, this.rowProgress(rowIndex));
+    return Phaser.Math.Linear(48, 54, this.rowProgress(rowIndex));
   }
 
   private rowProgress(rowIndex: number): number {
@@ -226,13 +231,14 @@ export class BeverageCoolerView {
       .map((y, index) => y - this.config.rowYs[index])
       .filter((spacing) => spacing > 0);
     const minimumSpacing = spacings.length > 0 ? Math.min(...spacings) : 60;
-    return Phaser.Math.Clamp(minimumSpacing * 0.76, 42, 52);
+    return Phaser.Math.Clamp(minimumSpacing * 0.76, 42, 48);
   }
 
   private playRowSparkles(y: number): void {
-    [-44, -22, 0, 22, 44].forEach((offset, index) => {
+    const x = this.stockCentreX();
+    [-30, -15, 0, 15, 30].forEach((offset, index) => {
       const sparkle = this.scene.add.circle(
-        this.config.centreX + offset,
+        x + offset,
         y - 3,
         3 + (index % 2),
         0xffe18a,
@@ -240,11 +246,11 @@ export class BeverageCoolerView {
       ).setDepth(15);
       this.scene.tweens.add({
         targets: sparkle,
-        y: y - 26 - (index % 3) * 5,
+        y: y - 24 - (index % 3) * 5,
         alpha: 0,
         scaleX: 0.4,
         scaleY: 0.4,
-        duration: 340 + index * 28,
+        duration: 330 + index * 26,
         ease: "Cubic.Out",
         onComplete: () => sparkle.destroy()
       });
