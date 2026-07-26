@@ -10,7 +10,7 @@ import {
 import { applyMarketUpgradesToPresentation } from "../../presentation/context/MarketUpgradePresentation";
 import type { SceneCampaignSessionContext } from "../../presentation/scenes/StarterMarketScene";
 import { mountLevelBriefingDomOverlay } from "../../presentation/ui/LevelBriefingDomOverlay";
-import { mountLevelOneChecklistDom } from "../../presentation/ui/LevelOneChecklistDom";
+import { mountLevelChecklistDom } from "../../presentation/ui/LevelChecklistDom";
 import { BrowserCampaignSessionStore } from "../browser/BrowserCampaignSessionStore";
 import { createGameplayScene } from "./GameplaySceneRegistry";
 import { installSafeInteractiveGuard } from "./SafeInteractiveGuard";
@@ -106,8 +106,11 @@ export async function createPhaserGame(
   game.registry.set("campaignSession", session);
   game.registry.set("levelExperience", experience);
 
-  if (presentation.campaignLevel.level.id === "starter-level-001") {
-    mountLevelOneChecklistDom();
+  if (experience.checklist) {
+    mountLevelChecklistDom({
+      levelId: presentation.campaignLevel.level.id,
+      checklist: experience.checklist
+    });
   } else {
     delete document.body.dataset.levelChecklist;
   }
