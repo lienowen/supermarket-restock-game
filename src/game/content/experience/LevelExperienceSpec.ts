@@ -1,0 +1,179 @@
+import type { LevelDefinition } from "../GameContent";
+
+export type LevelPrimaryInput = "tap" | "hold" | "drag" | "timing" | "sequence" | "mixed";
+
+export interface LevelExperienceSpec {
+  readonly levelId: string;
+  readonly mode: LevelDefinition["mode"];
+  readonly modeLabel: string;
+  readonly eyebrow: string;
+  readonly title: string;
+  readonly objective: string;
+  readonly mechanic: string;
+  readonly control: string;
+  readonly successMetric: string;
+  readonly primaryInput: LevelPrimaryInput;
+}
+
+const define = (spec: LevelExperienceSpec): LevelExperienceSpec => Object.freeze(spec);
+
+export const STARTER_LEVEL_EXPERIENCE_SPECS: readonly LevelExperienceSpec[] = Object.freeze([
+  define({
+    levelId: "starter-level-001",
+    mode: "restock",
+    modeLabel: "GUIDED DELIVERY",
+    eyebrow: "TRAINING SHIFT",
+    title: "First Delivery",
+    objective: "Move the cola case to the cooler and stock all six shelf slots.",
+    mechanic: "The shelf order is fixed and there is no shelf timeout in this training level.",
+    control: "Move with a floor tap or the arrow keys, then tap the active shelf slot.",
+    successMetric: "Finish the full delivery with as few wrong shelf taps as possible.",
+    primaryInput: "sequence"
+  }),
+  define({
+    levelId: "starter-level-002",
+    mode: "restock",
+    modeLabel: "PROMOTION RUSH",
+    eyebrow: "SHELF CHALLENGE",
+    title: "Promotion Restock",
+    objective: "Stock the promoted water into the active cooler slots before each window closes.",
+    mechanic: "The target shelf changes in a seeded random order and speeds up after each success.",
+    control: "Watch both cooler doors and tap only the active shelf slot.",
+    successMetric: "Build a clean streak and avoid wrong shelves or timeouts.",
+    primaryInput: "sequence"
+  }),
+  define({
+    levelId: "starter-level-003",
+    mode: "checkout",
+    modeLabel: "CHECKOUT BASICS",
+    eyebrow: "CUSTOMER SERVICE",
+    title: "Checkout Rush",
+    objective: "Open the lane and process every waiting grocery basket.",
+    mechanic: "Each completed scan advances the queue and rewards accurate service.",
+    control: "Move to the checkout service point and use the highlighted register action.",
+    successMetric: "Serve all customers without leaving the register.",
+    primaryInput: "tap"
+  }),
+  define({
+    levelId: "starter-level-004",
+    mode: "clean",
+    modeLabel: "SPILL PATROL",
+    eyebrow: "STORE SAFETY",
+    title: "Spill Patrol",
+    objective: "Collect the cleaning tools and clear every marked spill.",
+    mechanic: "The spills are handled in a guided route so the player learns the cleaning workflow.",
+    control: "Move near the highlighted tool or spill and confirm the action.",
+    successMetric: "Clean every spill and finish the safety route.",
+    primaryInput: "tap"
+  }),
+  define({
+    levelId: "starter-level-005",
+    mode: "find-items",
+    modeLabel: "ORDER HUNT",
+    eyebrow: "PICKING TASK",
+    title: "Order Hunt",
+    objective: "Find the milk, apple and cereal shown on the order ticket.",
+    mechanic: "Wrong products remove time from the customer order countdown.",
+    control: "Tap a requested product; the worker will walk to its shelf and collect it.",
+    successMetric: "Complete the order before the countdown expires.",
+    primaryInput: "tap"
+  }),
+  define({
+    levelId: "starter-level-006",
+    mode: "restock",
+    modeLabel: "CLOSING SPRINT",
+    eyebrow: "SPEED SHIFT",
+    title: "Closing Stock Sprint",
+    objective: "Complete the cola cooler before closing time.",
+    mechanic: "Shelf windows are shorter and streak recovery is less forgiving.",
+    control: "Track the active slot across both cooler doors and respond quickly.",
+    successMetric: "Finish with a fast grade and a strong best streak.",
+    primaryInput: "sequence"
+  }),
+  define({
+    levelId: "starter-level-007",
+    mode: "checkout",
+    modeLabel: "EVENING CHECKOUT",
+    eyebrow: "PEAK SERVICE",
+    title: "Evening Checkout",
+    objective: "Process the larger evening queue at the express lane.",
+    mechanic: "More customers arrive while scan and queue transitions happen faster.",
+    control: "Stay at the register and keep the service action moving.",
+    successMetric: "Serve all eight customers and preserve the carried reputation.",
+    primaryInput: "tap"
+  }),
+  define({
+    levelId: "starter-level-008",
+    mode: "clean",
+    modeLabel: "CLOSING CLEAN-UP",
+    eyebrow: "FINAL FLOOR CHECK",
+    title: "Closing Clean-up",
+    objective: "Collect the cart and clear all six closing-time spills.",
+    mechanic: "A longer route and tighter interaction spacing demand deliberate movement.",
+    control: "Move close to each marked spill before confirming the clean action.",
+    successMetric: "Complete all six stops without skipping a spill.",
+    primaryInput: "tap"
+  }),
+  define({
+    levelId: "starter-level-009",
+    mode: "find-items",
+    modeLabel: "PRIORITY ORDER",
+    eyebrow: "EXPRESS PICK",
+    title: "Priority Order",
+    objective: "Collect the priority cereal, milk and apple order before time runs out.",
+    mechanic: "The order uses a different required sequence with a stronger mistake penalty.",
+    control: "Read the ticket, tap only requested products and avoid repeat selections.",
+    successMetric: "Clear the order with time remaining and zero mistakes.",
+    primaryInput: "tap"
+  }),
+  define({
+    levelId: "starter-level-010",
+    mode: "restock",
+    modeLabel: "FINAL COOLER RUSH",
+    eyebrow: "CHAPTER FINALE",
+    title: "Final Cooler Rush",
+    objective: "Finish the final water restock through the fastest shelf windows in the chapter.",
+    mechanic: "The random shelf sequence reaches its minimum response window quickly.",
+    control: "Follow the active shelf marker and commit to fast, accurate taps.",
+    successMetric: "Complete the campaign and earn the best final rush grade possible.",
+    primaryInput: "sequence"
+  })
+]);
+
+const SPECS_BY_LEVEL_ID: ReadonlyMap<string, LevelExperienceSpec> = new Map(
+  STARTER_LEVEL_EXPERIENCE_SPECS.map((spec) => [spec.levelId, spec])
+);
+
+export function resolveLevelExperienceSpec(level: LevelDefinition): LevelExperienceSpec {
+  const spec = SPECS_BY_LEVEL_ID.get(level.id);
+  if (!spec) throw new Error(`Missing level experience spec for ${level.id}`);
+  if (spec.mode !== level.mode) {
+    throw new Error(`Level experience spec ${level.id} expects ${spec.mode}, received ${level.mode}`);
+  }
+  return spec;
+}
+
+export function validateLevelExperienceSpecs(levels: readonly LevelDefinition[]): readonly string[] {
+  const errors: string[] = [];
+  const levelIds = new Set(levels.map((level) => level.id));
+  const specIds = new Set<string>();
+
+  for (const spec of STARTER_LEVEL_EXPERIENCE_SPECS) {
+    if (specIds.has(spec.levelId)) errors.push(`Duplicate level experience spec: ${spec.levelId}`);
+    specIds.add(spec.levelId);
+    if (!levelIds.has(spec.levelId)) errors.push(`Experience spec references missing level: ${spec.levelId}`);
+    if (!spec.modeLabel.trim()) errors.push(`Experience spec ${spec.levelId} requires a mode label`);
+    if (!spec.objective.trim()) errors.push(`Experience spec ${spec.levelId} requires an objective`);
+    if (!spec.mechanic.trim()) errors.push(`Experience spec ${spec.levelId} requires a mechanic explanation`);
+    if (!spec.control.trim()) errors.push(`Experience spec ${spec.levelId} requires a control explanation`);
+    if (!spec.successMetric.trim()) errors.push(`Experience spec ${spec.levelId} requires a success metric`);
+  }
+
+  for (const level of levels) {
+    const spec = SPECS_BY_LEVEL_ID.get(level.id);
+    if (!spec) errors.push(`Level ${level.id} has no experience spec`);
+    else if (spec.mode !== level.mode) errors.push(`Level ${level.id} experience mode does not match level mode`);
+  }
+
+  return Object.freeze(errors);
+}
