@@ -11,6 +11,7 @@ const GAME_CANVAS_SELECTOR = "#app > canvas:not(#mobile-game-backdrop)";
 const GAME_SCENE_KEY = "starter-market-shift";
 const GAME_WIDTH = 1600;
 const GAME_HEIGHT = 900;
+const ITEMS_PER_SHELF = 3;
 
 if (!existsSync(join(DIST_DIR, "index.html"))) {
   throw new Error("dist/index.html is missing. Run npm run build first.");
@@ -33,12 +34,16 @@ await new Promise((resolveServer) => server.listen(PORT, "127.0.0.1", resolveSer
 const report = {
   generatedAt: new Date().toISOString(),
   sequence: [],
+  shelfSteps: [],
   assertions: {
     previewAppears: false,
     sixUniqueSteps: false,
     challengeStartsAfterPreview: false,
     activeTargetHidden: false,
     wrongTapKeepsAnswer: false,
+    partialShelfKeepsAnswer: false,
+    threeItemsRequiredPerShelf: false,
+    eighteenItemsStocked: false,
     memorySequenceCompletes: false
   },
   consoleErrors: [],
@@ -89,12 +94,17 @@ try {
   await waitForSnapshot(page, { step: "restock", boxLoaded: true, boxOpened: true }, 25000);
 
   await page.waitForSelector("#restock-memory-preview", { state: "visible", timeout: 10000 });
-  report.assertions.previewAppears = documentState(await page.evaluate(() => document.body.dataset.restockMemory)) === "preview";
+  report.assertions.previewAppears = documentState(
+    await page.evaluate(() => document.body.dataset.restockMemory)
+  ) === "preview";
   report.sequence = await page.evaluate((sceneKey) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
     return [...(scene?.rush?.plannedRowIndexes?.() ?? [])];
   }, GAME_SCENE_KEY);
-  report.assertions.sixUniqueSteps = report.sequence.length === 6 && new Set(report.sequence).size === 6;
+  report.assertions.sixUniqueSteps = (
+    report.sequence.length === 6 &&
+    new Set(report.sequence).size === 6
+  );
   await page.screenshot({
     path: join(OUTPUT_DIR, "promotion-memory-preview.png"),
     fullPage: true
@@ -107,20 +117,16 @@ try {
   );
   await waitForInteractionReady(page);
   const firstRush = await readRush(page);
-  report.assertions.challengeStartsAfterPreview = Boolean(firstRush?.started && Number.isInteger(firstRush.activeRowIndex));
+  report.assertions.challengeStartsAfterPreview = Boolean(
+    firstRush?.started &&
+    Number.isInteger(firstRush.activeRowIndex) &&
+    firstRush.totalItemsStocked === 0
+  );
 
-  const visualState = await page.evaluate(({ sceneKey, activeRowIndex }) => {
-    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
-    const row = scene?.children?.getByName?.(`beverage-cooler-row-${activeRowIndex}`);
-    const target = scene?.children?.getByName?.(`beverage-cooler-row-target-${activeRowIndex}`);
-    return {
-      rowAlpha: row?.alpha ?? null,
-      targetEnabled: Boolean(target?.input?.enabled)
-    };
-  }, { sceneKey: GAME_SCENE_KEY, activeRowIndex: firstRush.activeRowIndex });
+  const visualState = await readRenderedShelf(page, firstRush.activeRowIndex);
   report.assertions.activeTargetHidden = (
-    visualState.rowAlpha !== null &&
-    visualState.rowAlpha <= 0.03 &&
+    visualState.itemCount === 0 &&
+    visualState.countVisible === false &&
     visualState.targetEnabled
   );
   await page.screenshot({
@@ -135,17 +141,81 @@ try {
   const afterWrong = await readRush(page);
   report.assertions.wrongTapKeepsAnswer = (
     afterWrong.activeRowIndex === firstRush.activeRowIndex &&
-    afterWrong.mistakes === firstRush.mistakes + 1
+    afterWrong.mistakes === firstRush.mistakes + 1 &&
+    afterWrong.totalItemsStocked === 0
   );
 
-  for (let index = 0; index < report.sequence.length; index += 1) {
-    await waitForInteractionReady(page);
-    const target = await readRenderedTarget(page, report.sequence[index]);
-    await clickGame(page, target.x, target.y);
-    await waitForSnapshot(page, { stockedRows: index + 1 }, 15000);
+  for (let shelfIndex = 0; shelfIndex < report.sequence.length; shelfIndex += 1) {
+    const rowIndex = report.sequence[shelfIndex];
+    const target = await readRenderedTarget(page, rowIndex);
+
+    for (let itemNumber = 1; itemNumber <= ITEMS_PER_SHELF; itemNumber += 1) {
+      await waitForInteractionReady(page);
+      const before = await readRush(page);
+      const beforeController = await readSnapshot(page);
+      await clickGame(page, target.x, target.y);
+      await waitForRowItemCount(page, rowIndex, itemNumber);
+      const after = await readRush(page);
+      const afterController = await readSnapshot(page);
+      const rendered = await readRenderedShelf(page, rowIndex);
+
+      report.shelfSteps.push({
+        shelfIndex,
+        rowIndex,
+        itemNumber,
+        before,
+        after,
+        beforeController,
+        afterController,
+        rendered
+      });
+
+      if (rendered.itemCount !== itemNumber) {
+        throw new Error(`Memory shelf ${rowIndex} rendered ${rendered.itemCount} items at ${itemNumber}/3`);
+      }
+      if (itemNumber < ITEMS_PER_SHELF) {
+        if (
+          after.activeRowIndex !== rowIndex ||
+          afterController.stockedRows !== shelfIndex
+        ) {
+          throw new Error(`Memory shelf ${rowIndex} advanced before 3/3`);
+        }
+      } else {
+        await waitForSnapshot(page, { stockedRows: shelfIndex + 1 }, 15000);
+        if (!after.filledRowIndexes.includes(rowIndex)) {
+          throw new Error(`Memory shelf ${rowIndex} did not complete at 3/3`);
+        }
+      }
+
+      if (shelfIndex === 0 && itemNumber === 1) {
+        report.assertions.partialShelfKeepsAnswer = (
+          beforeController.stockedRows === 0 &&
+          afterController.stockedRows === 0 &&
+          after.activeRowIndex === rowIndex &&
+          rendered.itemCount === 1
+        );
+      }
+      if (shelfIndex === 0 && itemNumber === ITEMS_PER_SHELF) {
+        report.assertions.threeItemsRequiredPerShelf = (
+          afterController.stockedRows === 1 &&
+          rendered.itemCount === ITEMS_PER_SHELF &&
+          after.filledRowIndexes.includes(rowIndex)
+        );
+      }
+    }
   }
+
   const complete = await waitForSnapshot(page, { step: "complete", stockedRows: 6 }, 15000);
-  report.assertions.memorySequenceCompletes = Boolean(complete && complete.step === "complete");
+  const finalRush = await readRush(page);
+  report.assertions.eighteenItemsStocked = (
+    finalRush.totalItemsStocked === 18 &&
+    finalRush.rowItemCounts.every((count) => count === 3)
+  );
+  report.assertions.memorySequenceCompletes = Boolean(
+    complete &&
+    complete.step === "complete" &&
+    finalRush.complete
+  );
   await page.screenshot({
     path: join(OUTPUT_DIR, "promotion-memory-complete.png"),
     fullPage: true
@@ -192,6 +262,34 @@ async function readSnapshot(page) {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
     return scene?.controller?.snapshot?.() ?? null;
   }, GAME_SCENE_KEY);
+}
+
+async function readRenderedShelf(page, rowIndex) {
+  return page.evaluate(({ sceneKey, index }) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+    const holder = scene?.children?.getByName?.(`beverage-cooler-row-${index}`);
+    const label = scene?.children?.getByName?.(`beverage-cooler-row-count-${index}`);
+    const target = scene?.children?.getByName?.(`beverage-cooler-row-target-${index}`);
+    return {
+      itemCount: Array.isArray(holder?.list) ? holder.list.length : -1,
+      countText: label?.text ?? null,
+      countVisible: label?.visible ?? false,
+      targetEnabled: Boolean(target?.input?.enabled)
+    };
+  }, { sceneKey: GAME_SCENE_KEY, index: rowIndex });
+}
+
+async function waitForRowItemCount(page, rowIndex, expectedCount) {
+  await page.waitForFunction(({ sceneKey, index, count }) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+    const rush = scene?.rush?.snapshot?.(scene.time.now);
+    const holder = scene?.children?.getByName?.(`beverage-cooler-row-${index}`);
+    return (
+      rush?.rowItemCounts?.[index] === count &&
+      Array.isArray(holder?.list) &&
+      holder.list.length === count
+    );
+  }, { sceneKey: GAME_SCENE_KEY, index: rowIndex, count: expectedCount }, { timeout: 15000 });
 }
 
 async function waitForSnapshot(page, expected, timeout = 15000) {
