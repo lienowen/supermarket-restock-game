@@ -17,6 +17,7 @@ import {
   type RestockSceneSnapshot,
   type RestockSceneStep
 } from "../../application/RestockSceneController";
+import { resolveLevelExperienceSpec } from "../../content/experience/LevelExperienceSpec";
 import { gameDomainEvents } from "../../events/GameDomainEvents";
 import { navigateToLevel } from "../../infrastructure/browser/BrowserLevelNavigator";
 import { RestockActorView } from "../actors/RestockActorView";
@@ -31,6 +32,10 @@ import { InteractionGate } from "../interactions/InteractionGate";
 import { InteractionTargetView } from "../interactions/InteractionTargetView";
 import { RestockTargetResolver } from "../interactions/RestockTargetResolver";
 import { LevelCompleteOverlay } from "../ui/LevelCompleteOverlay";
+import {
+  mountRestockMemoryPreviewDom,
+  type RestockMemoryPreviewDomHandle
+} from "../ui/RestockMemoryPreviewDom";
 import { RestockRushMeter } from "../ui/RestockRushMeter";
 import { ShiftHud } from "../ui/ShiftHud";
 import { resolveLevelVisualPreset } from "../visual/LevelVisualPresetResolver";
@@ -57,6 +62,9 @@ export class StarterMarketScene extends Phaser.Scene {
   private target?: InteractionTargetView;
   private rushMeter?: RestockRushMeter;
   private completionOverlay?: LevelCompleteOverlay;
+  private memoryPreview?: RestockMemoryPreviewDomHandle;
+  private memoryPreviewActive = false;
+  private memoryPreviewShown = false;
   private previousStep?: RestockSceneStep;
   private previousProgress = -1;
   private pendingAction = false;
@@ -87,10 +95,12 @@ export class StarterMarketScene extends Phaser.Scene {
       coolerRowYs: this.visualPreset.cooler.rowYs,
       coolerTargetWidth: this.visualPreset.cooler.activeStockWidth
     });
+    const rushTuning = context.campaignLevel.level.tuning.rush;
     this.rush = new RestockRushController({
       rowCount: this.visualPreset.cooler.rowYs.length,
       randomSeed: context.campaignLevel.level.randomSeed,
-      ...(context.campaignLevel.level.tuning.rush ?? {})
+      ...(rushTuning ?? {}),
+      keepTargetOnFailure: rushTuning?.memoryPreview?.keepTargetOnFailure
     });
   }
 
@@ -100,12 +110,15 @@ export class StarterMarketScene extends Phaser.Scene {
 
   create(): void {
     const context = this.context;
+    const experience = resolveLevelExperienceSpec(context.campaignLevel.level);
+    const memoryConfig = this.memoryConfig();
     document.body.dataset.gameScene = context.scene.datasetName;
     document.body.dataset.gameArchitecture = context.scene.architecture;
     document.body.dataset.activeShift = context.runtime.shift.id;
     document.body.dataset.activeDay = String(context.campaignShift.dayNumber);
     document.body.dataset.activeLevel = context.campaignLevel.level.id;
     document.body.dataset.activeMode = context.mode;
+    document.body.dataset.restockChallenge = memoryConfig ? "memory" : "rush";
     this.cameras.main.setBackgroundColor("#171712");
 
     new StarterMarketEnvironmentView(this, context).create();
@@ -113,7 +126,17 @@ export class StarterMarketScene extends Phaser.Scene {
     this.rushMeter = new RestockRushMeter(this, {
       x: context.world.beverageCooler.x,
       y: 770,
-      accentColor: context.palette.gold
+      accentColor: context.palette.gold,
+      title: memoryConfig
+        ? "SHELF MEMORY"
+        : context.campaignLevel.level.tuning.rush?.timeoutEnabled === false
+          ? "GUIDED STOCK"
+          : "RESTOCK RUSH",
+      instruction: memoryConfig
+        ? "FOLLOW THE MEMORIZED ORDER"
+        : context.campaignLevel.level.tuning.rush?.timeoutEnabled === false
+          ? "FOLLOW THE GUIDED ORDER"
+          : "FIND THE GLOWING SHELF"
     });
     this.actors = this.createActors();
     this.target = new InteractionTargetView(
@@ -129,9 +152,9 @@ export class StarterMarketScene extends Phaser.Scene {
       this,
       {
         dayLabel: `${context.labels.day} · ${context.labels.level}`,
-        timeLabel: `${context.runtime.shift.startTime} AM`,
+        timeLabel: this.shiftTimeLabel(),
         initialObjective: context.runtime.mission.title,
-        modeLabel: "RESTOCK",
+        modeLabel: experience.modeLabel,
         palette: context.palette
       },
       () => this.requestCurrentAction()
@@ -162,14 +185,14 @@ export class StarterMarketScene extends Phaser.Scene {
     this.actors?.update(delta);
     this.advancePendingAction();
     const snapshot = this.controller.snapshot();
-    if (snapshot.step === "restock") this.updateRush();
+    if (snapshot.step === "restock" && !this.memoryPreviewActive) this.updateRush();
     this.syncTarget(snapshot);
   }
 
   isInteractionReady(): boolean {
     const snapshot = this.controller.snapshot();
     return snapshot.step === "restock"
-      ? this.interactionGate.isReady()
+      ? !this.memoryPreviewActive && this.interactionGate.isReady()
       : this.canInteract(snapshot);
   }
 
@@ -302,6 +325,7 @@ export class StarterMarketScene extends Phaser.Scene {
   private readonly handleRushPointerDown = (pointer: Phaser.Input.Pointer): void => {
     if (
       this.controller.snapshot().step !== "restock" ||
+      this.memoryPreviewActive ||
       !this.interactionGate.isReady()
     ) return;
 
@@ -328,6 +352,7 @@ export class StarterMarketScene extends Phaser.Scene {
     const sceneSnapshot = this.controller.snapshot();
     if (
       sceneSnapshot.step !== "restock" ||
+      this.memoryPreviewActive ||
       !this.cooler ||
       !this.interactionGate.isReady()
     ) return;
@@ -368,13 +393,46 @@ export class StarterMarketScene extends Phaser.Scene {
   }
 
   private syncRushPresentation(snapshot: RestockRushSnapshot): void {
+    const memoryConfig = this.memoryConfig();
     this.cooler?.syncRush({
       filledRowIndexes: snapshot.filledRowIndexes,
-      activeRowIndex: snapshot.activeRowIndex,
+      activeRowIndex: memoryConfig?.hideActiveTarget ? undefined : snapshot.activeRowIndex,
       remainingRatio: snapshot.remainingRatio,
-      interactionEnabled: !snapshot.complete && this.interactionGate.isReady()
+      interactionEnabled:
+        !snapshot.complete &&
+        !this.memoryPreviewActive &&
+        this.interactionGate.isReady()
     });
     this.rushMeter?.sync(snapshot);
+  }
+
+  private startMemoryPreview(): boolean {
+    const memoryConfig = this.memoryConfig();
+    if (!memoryConfig || this.memoryPreviewShown) return false;
+    this.memoryPreviewShown = true;
+    this.memoryPreviewActive = true;
+    this.interactionGate.lockFor(memoryConfig.durationMs + 220);
+    this.cooler?.syncRush({
+      filledRowIndexes: [],
+      activeRowIndex: undefined,
+      remainingRatio: 1,
+      interactionEnabled: false
+    });
+    this.memoryPreview = mountRestockMemoryPreviewDom({
+      sequence: this.rush.plannedRowIndexes(),
+      durationMs: memoryConfig.durationMs,
+      onComplete: () => {
+        if (!this.sys.isActive()) return;
+        this.memoryPreviewActive = false;
+        const rushSnapshot = this.rush.start(this.time.now);
+        this.syncRushPresentation(rushSnapshot);
+      }
+    });
+    return true;
+  }
+
+  private memoryConfig() {
+    return this.context.campaignLevel.level.tuning.rush?.memoryPreview;
   }
 
   private dispatchSceneAction(action: RestockSceneAction, feedback = true): boolean {
@@ -405,10 +463,14 @@ export class StarterMarketScene extends Phaser.Scene {
     this.actors?.sync(snapshot);
 
     if (snapshot.step === "restock") {
-      const rushSnapshot = this.previousStep === "restock"
-        ? this.rush.snapshot(this.time.now)
-        : this.rush.start(this.time.now);
-      this.syncRushPresentation(rushSnapshot);
+      if (this.previousStep !== "restock" && this.startMemoryPreview()) {
+        // The challenge clock starts only after the memorization window closes.
+      } else if (!this.memoryPreviewActive) {
+        const rushSnapshot = this.previousStep === "restock"
+          ? this.rush.snapshot(this.time.now)
+          : this.rush.start(this.time.now);
+        this.syncRushPresentation(rushSnapshot);
+      }
     } else if (snapshot.step === "complete" && this.rush.snapshot(this.time.now).started) {
       this.syncRushPresentation(this.rush.snapshot(this.time.now));
     } else {
@@ -530,9 +592,15 @@ export class StarterMarketScene extends Phaser.Scene {
     }
   }
 
+  private shiftTimeLabel(): string {
+    const hour = Number(this.context.runtime.shift.startTime.slice(0, 2));
+    return `${this.context.runtime.shift.startTime} ${hour < 12 ? "AM" : "PM"}`;
+  }
+
   private dispose(): void {
     this.disposers.splice(0).forEach((dispose) => dispose());
     this.input.off("pointerdown", this.handleRushPointerDown, this);
+    this.memoryPreview?.destroy();
     this.completionOverlay?.destroy();
     this.actors?.destroy();
     this.cooler?.destroy();
