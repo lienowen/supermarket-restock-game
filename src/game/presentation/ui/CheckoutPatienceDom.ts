@@ -7,6 +7,7 @@ export interface CheckoutPatienceDomConfig {
   readonly game: Phaser.Game;
   readonly sceneKey: string;
   readonly levelId: string;
+  readonly totalCustomers: number;
   readonly spec: CheckoutPatienceExperienceSpec;
   readonly standardProductAssets: readonly AssetDescriptor[];
   readonly weighedProductAsset: AssetDescriptor;
@@ -44,6 +45,9 @@ export function mountCheckoutPatienceDom(
 ): CheckoutPatienceDomHandle {
   if (config.standardProductAssets.length < 3) {
     throw new Error("Checkout patience interaction requires at least three standard products");
+  }
+  if (config.totalCustomers !== config.spec.customerCount) {
+    throw new Error("Checkout patience customer count must match the resolved level runtime");
   }
 
   const overlay = document.createElement("section");
@@ -462,6 +466,7 @@ export function mountCheckoutPatienceDom(
     standardCard.style.transform = "translate(0,0)";
     standardCard.style.zIndex = "";
     standardCard.style.cursor = standardScanned ? "default" : "grab";
+    standardCard.style.borderColor = "rgba(255,255,255,0.2)";
     scanner.style.transform = "scale(1)";
     scanner.style.background = "rgba(57, 132, 84, 0.12)";
   };
@@ -488,6 +493,8 @@ export function mountCheckoutPatienceDom(
     weightCorrect = false;
     remainingMs = config.spec.patienceDurationMs;
     lastFrameMs = performance.now();
+    document.body.dataset.checkoutPatienceScanned = "false";
+    document.body.dataset.checkoutPatienceWeightCorrect = "false";
     resetDrag();
 
     const standardAsset = config.standardProductAssets[
@@ -500,7 +507,7 @@ export function mountCheckoutPatienceDom(
     standardImage.src = assetUrl(standardAsset.path);
     standardLabel.textContent = `SCAN ${standardAsset.key.replace(/^product-/, "").replaceAll("-", " ").toUpperCase()}`;
     weightTicket.textContent = `APPLE LABEL  ${targetWeight.toFixed(1)} kg`;
-    customerLabel.textContent = `CUSTOMER ${customerIndex + 1} / ${config.totalCustomers ?? config.spec.customerCount}`;
+    customerLabel.textContent = `CUSTOMER ${customerIndex + 1} / ${config.totalCustomers}`;
     feedback.textContent = "Scan the standard item and enter the apple weight.";
     feedback.style.color = "#a9cfb7";
     updatePatienceUi();
@@ -645,9 +652,9 @@ export function mountCheckoutPatienceDom(
       if (remainingMs === 0) {
         abandonments += 1;
         document.body.dataset.checkoutPatienceAbandonments = String(abandonments);
-        feedback.textContent = "Customer lost patience. The basket must be started again.";
-        feedback.style.color = "#ff786e";
         prepareCustomer(activeCustomer);
+        feedback.textContent = "Customer lost patience. The current basket has restarted.";
+        feedback.style.color = "#ff786e";
       }
     }
     animationId = requestAnimationFrame(patienceLoop);
