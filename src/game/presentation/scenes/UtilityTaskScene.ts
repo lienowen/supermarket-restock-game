@@ -11,6 +11,12 @@ import {
   type UtilityTaskCopy,
   type UtilityTaskSnapshot
 } from "../../application/UtilityTaskSceneController";
+import { STARTER_RUNTIME_ASSET_REGISTRY } from "../../assets/RuntimeAssetRegistry";
+import {
+  resolveLevelExperienceSpec,
+  type FindItemsSearchDecoySpec,
+  type LevelExperienceSpec
+} from "../../content/experience/LevelExperienceSpec";
 import { navigateToLevel } from "../../infrastructure/browser/BrowserLevelNavigator";
 import { PlayerNavigationView } from "../actors/PlayerNavigationView";
 import { CleaningTaskView } from "../cleaning/CleaningTaskView";
@@ -46,6 +52,7 @@ export class UtilityTaskScene extends Phaser.Scene {
 
   private readonly interactionGate = new InteractionGate();
   private readonly visualPreset: UtilityVisualPreset;
+  private readonly experience: LevelExperienceSpec;
   private readonly findChallenge?: FindItemsChallengeController;
   private readonly disposers: Array<() => void> = [];
   private readonly findItemsByProduct = new Map<string, Phaser.GameObjects.Image>();
@@ -69,6 +76,7 @@ export class UtilityTaskScene extends Phaser.Scene {
   ) {
     super(context.scene.key);
     this.visualPreset = resolveLevelVisualPreset(context.campaignLevel.level);
+    this.experience = resolveLevelExperienceSpec(context.campaignLevel.level);
     const initialEconomy = campaignSession?.initialEconomy ?? {
       coins: context.campaignLevel.level.tuning.initialCoins,
       stars: 0,
@@ -86,6 +94,11 @@ export class UtilityTaskScene extends Phaser.Scene {
 
   preload(): void {
     this.context.levelAssets.preload.forEach((asset) => this.load.image(asset.key, asset.path));
+    if (this.context.mode !== "find-items") return;
+    this.experience.findItemsSearch?.decoys.forEach((decoy) => {
+      const asset = STARTER_RUNTIME_ASSET_REGISTRY.require(decoy.assetKey);
+      if (!this.textures.exists(asset.key)) this.load.image(asset.key, asset.path);
+    });
   }
 
   create(): void {
@@ -96,6 +109,9 @@ export class UtilityTaskScene extends Phaser.Scene {
     document.body.dataset.activeDay = String(context.campaignShift.dayNumber);
     document.body.dataset.activeLevel = context.campaignLevel.level.id;
     document.body.dataset.activeMode = context.mode;
+    document.body.dataset.findItemsVisibleCount = context.mode === "find-items"
+      ? String(context.runtime.itemTargets.length + (this.experience.findItemsSearch?.decoys.length ?? 0))
+      : "0";
     this.cameras.main.setBackgroundColor("#171712");
 
     new StarterMarketEnvironmentView(this, context).create();
@@ -135,6 +151,7 @@ export class UtilityTaskScene extends Phaser.Scene {
         dayLabel: `${context.labels.day} · ${context.labels.level}`,
         timeLabel: `${context.runtime.shift.startTime} ${Number(context.runtime.shift.startTime.slice(0, 2)) < 12 ? "AM" : "PM"}`,
         initialObjective: context.runtime.mission.title,
+        modeLabel: this.experience.modeLabel,
         palette: context.palette
       },
       () => this.performCurrentAction()
@@ -183,6 +200,11 @@ export class UtilityTaskScene extends Phaser.Scene {
     return this.player?.position();
   }
 
+  /** Public scene boundary used by product sprites and browser interaction audits. */
+  attemptFindProduct(productId: string): void {
+    this.requestFindProduct(productId);
+  }
+
   private createCleanTask(
     context: CleanStarterMarketPresentationContext,
     visual: CleanLevelVisualPreset
@@ -202,9 +224,6 @@ export class UtilityTaskScene extends Phaser.Scene {
     context: FindItemsStarterMarketPresentationContext,
     visual: FindItemsLevelVisualPreset
   ): void {
-    // The environment already contains coherent dairy, grocery and produce
-    // shelving. Keep the configured fixture available, but never draw a second
-    // freestanding shelf over the salesfloor.
     this.textures.exists(context.levelAssets.fixture.key);
 
     const basket = this.add.image(
@@ -226,40 +245,20 @@ export class UtilityTaskScene extends Phaser.Scene {
       if (!dimensions) throw new Error(`Missing find-items visual size for ${target.productId}`);
       const shelfPosition = visual.itemPositions[target.productId];
       if (!shelfPosition) throw new Error(`Missing find-items shelf position for ${target.productId}`);
-
-      const item = this.add.image(shelfPosition.x, shelfPosition.y, asset.key)
-        .setOrigin(0.5, 0.96)
-        .setDisplaySize(dimensions.width, dimensions.height)
-        .setDepth(12 + shelfPosition.y / 1000)
-        .setName(`find-item-${target.productId}`)
-        .setInteractive({ useHandCursor: true })
-        .on("pointerover", () => {
-          this.tweens.killTweensOf(item);
-          this.tweens.add({
-            targets: item,
-            scaleX: item.scaleX * 1.08,
-            scaleY: item.scaleY * 1.08,
-            duration: 100,
-            ease: "Sine.Out"
-          });
-        })
-        .on("pointerout", () => {
-          item.setDisplaySize(dimensions.width, dimensions.height);
-        })
-        .on(
-          "pointerdown",
-          (
-            _pointer: Phaser.Input.Pointer,
-            _localX: number,
-            _localY: number,
-            event: Phaser.Types.Input.EventData
-          ) => {
-            event.stopPropagation();
-            this.requestFindProduct(target.productId);
-          }
-        );
+      const item = this.createFindProductSprite({
+        id: target.productId,
+        assetKey: asset.key,
+        x: shelfPosition.x,
+        y: shelfPosition.y,
+        width: dimensions.width,
+        height: dimensions.height,
+        requested: true
+      });
       this.findItemsByProduct.set(target.productId, item);
-      this.progressObjects.push(item);
+    });
+
+    this.experience.findItemsSearch?.decoys.forEach((decoy) => {
+      this.createFindDecoySprite(decoy);
     });
 
     this.orderTicket = new OrderTicketView(this, {
@@ -280,6 +279,67 @@ export class UtilityTaskScene extends Phaser.Scene {
       initialSeconds: context.runtime.timeLimitSeconds
     });
     this.findCountdown.create();
+  }
+
+  private createFindDecoySprite(decoy: FindItemsSearchDecoySpec): void {
+    STARTER_RUNTIME_ASSET_REGISTRY.require(decoy.assetKey);
+    this.createFindProductSprite({
+      id: decoy.id,
+      assetKey: decoy.assetKey,
+      x: decoy.x,
+      y: decoy.y,
+      width: decoy.width,
+      height: decoy.height,
+      requested: false
+    });
+  }
+
+  private createFindProductSprite(config: {
+    readonly id: string;
+    readonly assetKey: string;
+    readonly x: number;
+    readonly y: number;
+    readonly width: number;
+    readonly height: number;
+    readonly requested: boolean;
+  }): Phaser.GameObjects.Image {
+    const item = this.add.image(config.x, config.y, config.assetKey)
+      .setOrigin(0.5, 0.96)
+      .setDisplaySize(config.width, config.height)
+      .setDepth(12 + config.y / 1000)
+      .setName(`${config.requested ? "find-item" : "find-decoy"}-${config.id}`)
+      .setData("find-product-id", config.id)
+      .setData("requested", config.requested)
+      .setInteractive({ useHandCursor: true })
+      .on("pointerover", () => {
+        this.tweens.killTweensOf(item);
+        item.setDisplaySize(config.width, config.height);
+        this.tweens.add({
+          targets: item,
+          scaleX: item.scaleX * 1.08,
+          scaleY: item.scaleY * 1.08,
+          duration: 100,
+          ease: "Sine.Out"
+        });
+      })
+      .on("pointerout", () => {
+        this.tweens.killTweensOf(item);
+        item.setDisplaySize(config.width, config.height);
+      })
+      .on(
+        "pointerdown",
+        (
+          _pointer: Phaser.Input.Pointer,
+          _localX: number,
+          _localY: number,
+          event: Phaser.Types.Input.EventData
+        ) => {
+          event.stopPropagation();
+          this.attemptFindProduct(config.id);
+        }
+      );
+    this.progressObjects.push(item);
+    return item;
   }
 
   private performCurrentAction(): void {
@@ -601,5 +661,6 @@ export class UtilityTaskScene extends Phaser.Scene {
     this.player?.destroy();
     this.target?.destroy();
     this.interactionGate.destroy();
+    delete document.body.dataset.findItemsVisibleCount;
   }
 }
