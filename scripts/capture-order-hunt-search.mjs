@@ -189,7 +189,10 @@ async function readSearchState(page) {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
     const list = scene?.children?.list ?? [];
     const products = list
-      .filter((entry) => typeof entry?.name === "string" && entry.name.startsWith("find-"))
+      .filter((entry) => {
+        if (typeof entry?.name !== "string") return false;
+        return entry.name.startsWith("find-item-") || entry.name.startsWith("find-decoy-");
+      })
       .filter((entry) => entry.visible !== false && entry.active !== false)
       .map((entry) => ({
         name: entry.name,
