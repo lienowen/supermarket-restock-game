@@ -32,6 +32,14 @@ export interface CheckoutScanExperienceSpec {
   readonly paymentLabel: string;
 }
 
+export interface HoldWorkExperienceSpec {
+  readonly action: string;
+  readonly durationMs: number;
+  readonly title: string;
+  readonly instruction: string;
+  readonly holdLabel: string;
+}
+
 export interface LevelExperienceSpec {
   readonly levelId: string;
   readonly mode: LevelDefinition["mode"];
@@ -46,6 +54,7 @@ export interface LevelExperienceSpec {
   readonly checklist?: LevelChecklistSpec;
   readonly guidedDrag?: GuidedDragActionSpec;
   readonly checkoutScan?: CheckoutScanExperienceSpec;
+  readonly holdWork?: HoldWorkExperienceSpec;
 }
 
 const define = (spec: LevelExperienceSpec): LevelExperienceSpec => Object.freeze(spec);
@@ -125,11 +134,18 @@ export const STARTER_LEVEL_EXPERIENCE_SPECS: readonly LevelExperienceSpec[] = Ob
     modeLabel: "SPILL PATROL",
     eyebrow: "STORE SAFETY",
     title: "Spill Patrol",
-    objective: "Collect the cleaning tools and clear every marked spill.",
-    mechanic: "The spills are handled in a guided route so the player learns the cleaning workflow.",
-    control: "Move near the highlighted tool or spill and confirm the action.",
-    successMetric: "Clean every spill and finish the safety route.",
-    primaryInput: "tap"
+    objective: "Collect the cleaning tools and scrub every marked spill until the floor is dry.",
+    mechanic: "Each spill needs sustained cleaning pressure; releasing early pauses the work instead of completing it.",
+    control: "Move close to the highlighted spill, then hold the cleaning control until the progress ring is full.",
+    successMetric: "Clean every spill without repeatedly releasing the tool early.",
+    primaryInput: "hold",
+    holdWork: Object.freeze({
+      action: "CLEAN_SPOT",
+      durationMs: 1300,
+      title: "Scrub the spill",
+      instruction: "Press and hold until the cleaning ring reaches 100%. Releasing early interrupts the scrub.",
+      holdLabel: "HOLD TO CLEAN"
+    })
   }),
   define({
     levelId: "starter-level-005",
@@ -269,6 +285,14 @@ export function validateLevelExperienceSpecs(levels: readonly LevelDefinition[])
       }
       if (new Set(spec.checkoutScan.productAssetKeys).size < 3) {
         errors.push(`Experience spec ${spec.levelId} scan interaction requires at least three product assets`);
+      }
+    }
+
+    if (spec.holdWork) {
+      if (spec.mode !== "clean") errors.push(`Experience spec ${spec.levelId} hold interaction requires clean mode`);
+      if (!spec.holdWork.action.trim()) errors.push(`Experience spec ${spec.levelId} hold interaction requires an action`);
+      if (!Number.isFinite(spec.holdWork.durationMs) || spec.holdWork.durationMs < 800) {
+        errors.push(`Experience spec ${spec.levelId} hold interaction must last at least 800ms`);
       }
     }
   }
