@@ -28,13 +28,24 @@ jobs:
         run: npm ci
 
       - name: Install Playwright
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium > playwright-install.log 2>&1
 
       - name: Build production bundle
         run: npm run build
 
       - name: Capture empty-to-full restock
+        id: capture-restock
+        continue-on-error: true
         run: node scripts/capture-restock-empty-to-full.mjs
+
+      - name: Print restock visual report
+        if: always()
+        run: |
+          if [ -f restock-visual-audit/restock-visual-audit.json ]; then
+            cat restock-visual-audit/restock-visual-audit.json
+          else
+            echo "restock visual report was not created"
+          fi
 
       - name: Upload restock visual evidence
         if: always()
@@ -42,4 +53,8 @@ jobs:
         with:
           name: restock-empty-to-full-visual
           path: restock-visual-audit
-          if-no-files-found: warn
+          if-no-files-found: error
+
+      - name: Enforce restock visual result
+        if: always()
+        run: test "${{ steps.capture-restock.outcome }}" = "success"
