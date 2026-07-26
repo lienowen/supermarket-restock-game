@@ -25,22 +25,23 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci > npm-ci.log 2>&1
 
       - name: Install Playwright
         run: npx playwright install --with-deps chromium > playwright-install.log 2>&1
 
       - name: Build production bundle
-        run: npm run build
+        run: npm run build > focused-build.log 2>&1
 
       - name: Capture empty-to-full restock
-        id: capture-restock
+        id: capture_restock
         continue-on-error: true
         run: node scripts/capture-restock-empty-to-full.mjs
 
-      - name: Print restock visual report
+      - name: Print restock visual report and files
         if: always()
         run: |
+          find restock-visual-audit -maxdepth 1 -type f -printf '%f %s bytes\n' || true
           if [ -f restock-visual-audit/restock-visual-audit.json ]; then
             cat restock-visual-audit/restock-visual-audit.json
           else
@@ -51,10 +52,12 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: restock-empty-to-full-visual
-          path: restock-visual-audit
+          name: restock-empty-to-full-visual-${{ github.run_id }}
+          path: |
+            restock-visual-audit/*.png
+            restock-visual-audit/*.json
           if-no-files-found: error
 
       - name: Enforce restock visual result
         if: always()
-        run: test "${{ steps.capture-restock.outcome }}" = "success"
+        run: test "${{ steps.capture_restock.outcome }}" = "success"
