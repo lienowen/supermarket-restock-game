@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { crazyGamesPlatform } from "../../../platform/crazyGamesPlatform";
 import { CampaignSession } from "../../application/CampaignSession";
+import { STARTER_RUNTIME_ASSET_REGISTRY } from "../../assets/RuntimeAssetRegistry";
 import { resolveLevelExperienceSpec } from "../../content/experience/LevelExperienceSpec";
 import { gameDomainEvents } from "../../events/GameDomainEvents";
 import {
@@ -9,6 +10,7 @@ import {
 } from "../../presentation/context/StarterMarketPresentationContext";
 import { applyMarketUpgradesToPresentation } from "../../presentation/context/MarketUpgradePresentation";
 import type { SceneCampaignSessionContext } from "../../presentation/scenes/StarterMarketScene";
+import { mountCheckoutScanDom } from "../../presentation/ui/CheckoutScanDom";
 import { mountGuidedDragActionDom } from "../../presentation/ui/GuidedDragActionDom";
 import { mountLevelBriefingDomOverlay } from "../../presentation/ui/LevelBriefingDomOverlay";
 import { mountLevelChecklistDom } from "../../presentation/ui/LevelChecklistDom";
@@ -23,6 +25,7 @@ export interface PhaserGameFactoryOptions {
   readonly shiftId?: string;
   readonly skipBriefing?: boolean;
   readonly skipGuidedInteractions?: boolean;
+  readonly skipCheckoutScan?: boolean;
 }
 
 const locationParameters = (): URLSearchParams => new URLSearchParams(window.location.search);
@@ -44,6 +47,13 @@ const guidedInteractionsDisabledFromLocation = (): boolean => {
   const explicitGuided = parameters.get("guided");
   if (explicitGuided === "1") return false;
   return explicitGuided === "0" || parameters.get("test") === "1";
+};
+
+const checkoutScanDisabledFromLocation = (): boolean => {
+  const parameters = locationParameters();
+  const explicitCheckout = parameters.get("checkout");
+  if (explicitCheckout === "1") return false;
+  return explicitCheckout === "0" || parameters.get("test") === "1";
 };
 
 export async function createPhaserGame(
@@ -141,6 +151,35 @@ export async function createPhaserGame(
     });
   } else {
     document.body.dataset.guidedDrag = experience.guidedDrag ? "skipped" : "none";
+  }
+
+  const skipCheckoutScan = options.skipCheckoutScan ?? checkoutScanDisabledFromLocation();
+  if (
+    experience.checkoutScan &&
+    !skipCheckoutScan &&
+    "customerCount" in presentation.runtime &&
+    "equipment" in presentation.levelAssets
+  ) {
+    const scannerAsset = presentation.levelAssets.equipment.find(
+      (asset) => asset.key === "equipment-barcode-scanner"
+    );
+    const posAsset = presentation.levelAssets.equipment.find(
+      (asset) => asset.key === "equipment-pos-terminal"
+    );
+    mountCheckoutScanDom({
+      game,
+      sceneKey: presentation.scene.key,
+      levelId: presentation.campaignLevel.level.id,
+      totalCustomers: presentation.runtime.customerCount,
+      spec: experience.checkoutScan,
+      productAssets: STARTER_RUNTIME_ASSET_REGISTRY.resolve(
+        experience.checkoutScan.productAssetKeys
+      ),
+      scannerAsset,
+      posAsset
+    });
+  } else {
+    document.body.dataset.checkoutScan = experience.checkoutScan ? "skipped" : "none";
   }
 
   const exposeTestBridge = options.exposeTestBridge ?? (locationParameters().get("test") === "1");
