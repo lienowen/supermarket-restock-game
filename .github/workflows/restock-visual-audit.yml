@@ -10,13 +10,9 @@ permissions:
   contents: read
 
 jobs:
-  evidence:
+  diagnose:
     runs-on: ubuntu-latest
     timeout-minutes: 12
-    strategy:
-      fail-fast: false
-      matrix:
-        part: [0, 1, 2, 3]
 
     steps:
       - name: Download repository snapshot
@@ -36,65 +32,19 @@ jobs:
           npx playwright install --with-deps chromium > /tmp/restock-playwright.log 2>&1
           npm run build > /tmp/restock-build.log 2>&1
 
-      - name: Capture and print restock evidence chunk
-        env:
-          PART: ${{ matrix.part }}
+      - name: Run focused capture
+        id: capture
+        continue-on-error: true
+        run: node scripts/capture-restock-empty-to-full.mjs > /tmp/restock-capture.log 2>&1
+
+      - name: Print focused capture result
+        if: always()
         run: |
-          set +e
-          node scripts/capture-restock-empty-to-full.mjs > /tmp/restock-capture.log 2>&1
-          CAPTURE_STATUS=$?
-          set -e
-
-          python3 - <<'PY'
-          import base64
-          import json
-          import os
-          from pathlib import Path
-
-          part = int(os.environ["PART"])
-          total_parts = 4
-          report_path = Path("restock-visual-audit/restock-visual-audit.json")
-          contact_path = Path("restock-visual-audit/restock-contact-sheet.jpg")
-          if not report_path.is_file() or not contact_path.is_file():
-              print("RESTOCK_CAPTURE_LOG_BEGIN")
-              print(Path("/tmp/restock-capture.log").read_text(errors="replace"))
-              print("RESTOCK_CAPTURE_LOG_END")
-              missing = []
-              if not report_path.is_file():
-                  missing.append("report")
-              if not contact_path.is_file():
-                  missing.append("contact sheet")
-              raise SystemExit("missing restock evidence: " + ", ".join(missing))
-
-          report = json.loads(report_path.read_text())
-          contact = base64.b64encode(contact_path.read_bytes()).decode("ascii")
-          start = len(contact) * part // total_parts
-          end = len(contact) * (part + 1) // total_parts
-          chunk = contact[start:end]
-
-          if part == 0:
-              compact_states = []
-              for state in report.get("states", []):
-                  compact_states.append({
-                      "itemCount": state.get("itemCount"),
-                      "stockedRows": (state.get("controller") or {}).get("stockedRows"),
-                      "activeRowItemCount": (state.get("rush") or {}).get("activeRowItemCount"),
-                      "filledRowIndexes": (state.get("rush") or {}).get("filledRowIndexes"),
-                      "shell": state.get("shell"),
-                      "backgroundState": state.get("backgroundState"),
-                  })
-              summary = {
-                  "assertions": report.get("assertions"),
-                  "fatalError": report.get("fatalError"),
-                  "rowIndex": report.get("rowIndex"),
-                  "states": compact_states,
-                  "contactBase64Length": len(contact),
-              }
-              print("SUMMARY_JSON=" + json.dumps(summary, separators=(",", ":")))
-          print(f"CONTACT_PART_{part}_BEGIN")
-          for offset in range(0, len(chunk), 5000):
-              print(chunk[offset:offset + 5000])
-          print(f"CONTACT_PART_{part}_END")
-          PY
-
-          exit "$CAPTURE_STATUS"
+          echo "CAPTURE_OUTCOME=${{ steps.capture.outcome }}"
+          echo "GENERATED_FILES_BEGIN"
+          find restock-visual-audit -maxdepth 1 -type f -printf '%f %s bytes\n' 2>/dev/null || true
+          echo "GENERATED_FILES_END"
+          echo "CAPTURE_ERROR_TAIL_BEGIN"
+          tail -n 40 /tmp/restock-capture.log || true
+          echo "CAPTURE_ERROR_TAIL_END"
+          test "${{ steps.capture.outcome }}" = "success"
