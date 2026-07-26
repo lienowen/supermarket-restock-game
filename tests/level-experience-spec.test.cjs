@@ -89,3 +89,24 @@ test("Spill patrol requires sustained cleaning rather than one tap", () => {
   assert.equal(holdWork.holdLabel, "HOLD TO CLEAN");
   assert.match(holdWork.instruction, /Releasing early interrupts/);
 });
+
+test("Order hunt mixes three requested products with five selectable decoys", () => {
+  const searchSpecs = STARTER_LEVEL_EXPERIENCE_SPECS.filter((spec) => spec.findItemsSearch);
+  assert.equal(searchSpecs.length, 1);
+
+  const search = searchSpecs[0].findItemsSearch;
+  assert.equal(search.decoys.length, 5);
+  assert.equal(new Set(search.decoys.map((decoy) => decoy.id)).size, 5);
+  assert.equal(new Set(search.decoys.map((decoy) => decoy.assetKey)).size, 5);
+  assert.ok(search.decoys.every((decoy) => decoy.width >= 36 && decoy.height >= 36));
+  assert.deepEqual(
+    search.decoys.map((decoy) => decoy.assetKey),
+    [
+      "product-oats-canister",
+      "product-yogurt-cup",
+      "product-chips-bag",
+      "product-detergent-bottle",
+      "product-paper-towels"
+    ]
+  );
+});
