@@ -32,7 +32,7 @@ jobs:
               sha,
               state: "pending",
               context: "UI Regression Audit",
-              description: "Testing campaign, briefings, guided controls, memory and checkout gameplay",
+              description: "Testing campaign, briefings, guided controls, memory, checkout and cleaning gameplay",
               target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
             });
 
@@ -90,6 +90,11 @@ jobs:
           set -o pipefail
           node scripts/capture-checkout-scanning.mjs 2>&1 | tee checkout-scanning-audit.log
 
+      - name: Verify hold-to-clean patrol
+        run: |
+          set -o pipefail
+          node scripts/capture-hold-cleaning.mjs 2>&1 | tee hold-cleaning-audit.log
+
       - name: Upload CrazyGames release package
         uses: actions/upload-artifact@v4
         with:
@@ -110,6 +115,7 @@ jobs:
             guided-delivery-audit.log
             promotion-memory-audit.log
             checkout-scanning-audit.log
+            hold-cleaning-audit.log
             build.log
             release-check.log
             release-payload.log
@@ -126,7 +132,7 @@ jobs:
               ? context.payload.pull_request.head.sha
               : context.sha;
             const passed = "${{ job.status }}" === "success";
-            let description = "Campaign, briefings, guided controls, memory and checkout regressions passed";
+            let description = "Campaign, briefings, guided controls, memory, checkout and cleaning regressions passed";
             let failureKey = "runtime";
 
             const failedAssertions = (path) => {
@@ -140,11 +146,15 @@ jobs:
 
             if (!passed) {
               try {
+                const cleaning = failedAssertions("ui-audit/hold-cleaning-audit.json");
                 const checkout = failedAssertions("ui-audit/checkout-scanning-audit.json");
                 const memory = failedAssertions("ui-audit/promotion-memory-audit.json");
                 const guided = failedAssertions("ui-audit/guided-delivery-audit.json");
                 const briefing = failedAssertions("ui-audit/level-briefing-audit.json");
-                if (checkout && (checkout.report.fatalError || checkout.failed.length > 0)) {
+                if (cleaning && (cleaning.report.fatalError || cleaning.failed.length > 0)) {
+                  failureKey = `cleaning:${cleaning.failed.join("+") || "runtime"}`;
+                  description = cleaning.report.fatalError || `Failed: ${failureKey}`;
+                } else if (checkout && (checkout.report.fatalError || checkout.failed.length > 0)) {
                   failureKey = `checkout:${checkout.failed.join("+") || "runtime"}`;
                   description = checkout.report.fatalError || `Failed: ${failureKey}`;
                 } else if (memory && (memory.report.fatalError || memory.failed.length > 0)) {
