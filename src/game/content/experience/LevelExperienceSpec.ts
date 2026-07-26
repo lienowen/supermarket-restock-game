@@ -174,46 +174,11 @@ export const STARTER_LEVEL_EXPERIENCE_SPECS: readonly LevelExperienceSpec[] = Ob
     primaryInput: "tap",
     findItemsSearch: Object.freeze({
       decoys: Object.freeze([
-        Object.freeze({
-          id: "decoy-oats",
-          assetKey: "product-oats-canister",
-          x: 675,
-          y: 632,
-          width: 58,
-          height: 82
-        }),
-        Object.freeze({
-          id: "decoy-yogurt",
-          assetKey: "product-yogurt-cup",
-          x: 575,
-          y: 655,
-          width: 58,
-          height: 58
-        }),
-        Object.freeze({
-          id: "decoy-chips",
-          assetKey: "product-chips-bag",
-          x: 940,
-          y: 646,
-          width: 68,
-          height: 82
-        }),
-        Object.freeze({
-          id: "decoy-detergent",
-          assetKey: "product-detergent-bottle",
-          x: 1045,
-          y: 706,
-          width: 62,
-          height: 94
-        }),
-        Object.freeze({
-          id: "decoy-paper-towels",
-          assetKey: "product-paper-towels",
-          x: 735,
-          y: 724,
-          width: 82,
-          height: 76
-        })
+        Object.freeze({ id: "decoy-oats", assetKey: "product-oats-canister", x: 675, y: 632, width: 58, height: 82 }),
+        Object.freeze({ id: "decoy-yogurt", assetKey: "product-yogurt-cup", x: 575, y: 655, width: 58, height: 58 }),
+        Object.freeze({ id: "decoy-chips", assetKey: "product-chips-bag", x: 940, y: 646, width: 68, height: 82 }),
+        Object.freeze({ id: "decoy-detergent", assetKey: "product-detergent-bottle", x: 1045, y: 706, width: 62, height: 94 }),
+        Object.freeze({ id: "decoy-paper-towels", assetKey: "product-paper-towels", x: 735, y: 724, width: 82, height: 76 })
       ])
     })
   }),
@@ -232,14 +197,14 @@ export const STARTER_LEVEL_EXPERIENCE_SPECS: readonly LevelExperienceSpec[] = Ob
   define({
     levelId: "starter-level-007",
     mode: "checkout",
-    modeLabel: "EVENING CHECKOUT",
+    modeLabel: "PATIENCE & WEIGHT",
     eyebrow: "PEAK SERVICE",
     title: "Evening Checkout",
-    objective: "Process the larger evening queue at the express lane.",
-    mechanic: "More customers arrive while scan and queue transitions happen faster.",
-    control: "Stay at the register and keep the service action moving.",
-    successMetric: "Serve all eight customers and preserve the carried reputation.",
-    primaryInput: "tap"
+    objective: "Serve all eight evening customers before their individual patience bars expire.",
+    mechanic: "Every basket combines a standard scan with an apple weight decision; a wrong weight removes three seconds of patience.",
+    control: "Drag the standard item through the scanner, match the produce label to the correct weight, then take payment.",
+    successMetric: "Complete all eight orders with no abandoned customers and as few weight mistakes as possible.",
+    primaryInput: "mixed"
   }),
   define({
     levelId: "starter-level-008",
@@ -315,52 +280,32 @@ export function validateLevelExperienceSpecs(levels: readonly LevelDefinition[])
         if (stepIds.has(step.id)) errors.push(`Experience spec ${spec.levelId} has duplicate checklist step ${step.id}`);
         stepIds.add(step.id);
         if (!step.label.trim()) errors.push(`Experience spec ${spec.levelId} checklist step ${step.id} requires a label`);
-        if (!step.action && !step.tracksProgress) {
-          errors.push(`Experience spec ${spec.levelId} checklist step ${step.id} has no completion signal`);
-        }
+        if (!step.action && !step.tracksProgress) errors.push(`Experience spec ${spec.levelId} checklist step ${step.id} has no completion signal`);
       });
     }
 
     if (spec.guidedDrag) {
-      if (!spec.guidedDrag.unlockAfterAction.trim()) {
-        errors.push(`Experience spec ${spec.levelId} guided drag requires an unlock action`);
-      }
-      if (!spec.guidedDrag.confirmAction.trim()) {
-        errors.push(`Experience spec ${spec.levelId} guided drag requires a confirm action`);
-      }
-      if (spec.guidedDrag.unlockAfterAction === spec.guidedDrag.confirmAction) {
-        errors.push(`Experience spec ${spec.levelId} guided drag actions must differ`);
-      }
+      if (!spec.guidedDrag.unlockAfterAction.trim()) errors.push(`Experience spec ${spec.levelId} guided drag requires an unlock action`);
+      if (!spec.guidedDrag.confirmAction.trim()) errors.push(`Experience spec ${spec.levelId} guided drag requires a confirm action`);
+      if (spec.guidedDrag.unlockAfterAction === spec.guidedDrag.confirmAction) errors.push(`Experience spec ${spec.levelId} guided drag actions must differ`);
     }
 
     if (spec.checkoutScan) {
       if (spec.mode !== "checkout") errors.push(`Experience spec ${spec.levelId} scan interaction requires checkout mode`);
-      if (spec.checkoutScan.itemCountPattern.length === 0) {
-        errors.push(`Experience spec ${spec.levelId} scan interaction requires an item count pattern`);
-      }
-      if (spec.checkoutScan.itemCountPattern.some((count) => !Number.isInteger(count) || count < 1 || count > 5)) {
-        errors.push(`Experience spec ${spec.levelId} scan item counts must be integers from 1 to 5`);
-      }
-      if (new Set(spec.checkoutScan.productAssetKeys).size < 3) {
-        errors.push(`Experience spec ${spec.levelId} scan interaction requires at least three product assets`);
-      }
+      if (spec.checkoutScan.itemCountPattern.length === 0) errors.push(`Experience spec ${spec.levelId} scan interaction requires an item count pattern`);
+      if (spec.checkoutScan.itemCountPattern.some((count) => !Number.isInteger(count) || count < 1 || count > 5)) errors.push(`Experience spec ${spec.levelId} scan item counts must be integers from 1 to 5`);
+      if (new Set(spec.checkoutScan.productAssetKeys).size < 3) errors.push(`Experience spec ${spec.levelId} scan interaction requires at least three product assets`);
     }
 
     if (spec.holdWork) {
       if (spec.mode !== "clean") errors.push(`Experience spec ${spec.levelId} hold interaction requires clean mode`);
       if (!spec.holdWork.action.trim()) errors.push(`Experience spec ${spec.levelId} hold interaction requires an action`);
-      if (!Number.isFinite(spec.holdWork.durationMs) || spec.holdWork.durationMs < 800) {
-        errors.push(`Experience spec ${spec.levelId} hold interaction must last at least 800ms`);
-      }
+      if (!Number.isFinite(spec.holdWork.durationMs) || spec.holdWork.durationMs < 800) errors.push(`Experience spec ${spec.levelId} hold interaction must last at least 800ms`);
     }
 
     if (spec.findItemsSearch) {
-      if (spec.mode !== "find-items") {
-        errors.push(`Experience spec ${spec.levelId} visual search requires find-items mode`);
-      }
-      if (spec.findItemsSearch.decoys.length < 4) {
-        errors.push(`Experience spec ${spec.levelId} visual search requires at least four decoys`);
-      }
+      if (spec.mode !== "find-items") errors.push(`Experience spec ${spec.levelId} visual search requires find-items mode`);
+      if (spec.findItemsSearch.decoys.length < 4) errors.push(`Experience spec ${spec.levelId} visual search requires at least four decoys`);
       const decoyIds = new Set<string>();
       const occupiedPositions = new Set<string>();
       spec.findItemsSearch.decoys.forEach((decoy) => {
@@ -368,16 +313,10 @@ export function validateLevelExperienceSpecs(levels: readonly LevelDefinition[])
         if (decoyIds.has(decoy.id)) errors.push(`Experience spec ${spec.levelId} has duplicate decoy ${decoy.id}`);
         decoyIds.add(decoy.id);
         if (!decoy.assetKey.trim()) errors.push(`Experience spec ${spec.levelId} decoy ${decoy.id} requires an asset`);
-        if (![decoy.x, decoy.y, decoy.width, decoy.height].every(Number.isFinite)) {
-          errors.push(`Experience spec ${spec.levelId} decoy ${decoy.id} requires finite geometry`);
-        }
-        if (decoy.width < 36 || decoy.height < 36) {
-          errors.push(`Experience spec ${spec.levelId} decoy ${decoy.id} is too small to select`);
-        }
+        if (![decoy.x, decoy.y, decoy.width, decoy.height].every(Number.isFinite)) errors.push(`Experience spec ${spec.levelId} decoy ${decoy.id} requires finite geometry`);
+        if (decoy.width < 36 || decoy.height < 36) errors.push(`Experience spec ${spec.levelId} decoy ${decoy.id} is too small to select`);
         const positionKey = `${decoy.x}:${decoy.y}`;
-        if (occupiedPositions.has(positionKey)) {
-          errors.push(`Experience spec ${spec.levelId} has overlapping decoy centres at ${positionKey}`);
-        }
+        if (occupiedPositions.has(positionKey)) errors.push(`Experience spec ${spec.levelId} has overlapping decoy centres at ${positionKey}`);
         occupiedPositions.add(positionKey);
       });
     }
