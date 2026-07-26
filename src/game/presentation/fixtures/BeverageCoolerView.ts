@@ -36,12 +36,12 @@ export interface BeverageCoolerRushState {
 
 /**
  * Six interactive stock slots arranged as two real glass-door bays with three
- * shelf segments each. Product sprites are cropped to their visible pixels,
- * masked against the busy photographed stock, and grounded on shelf lips.
+ * shelf segments each. Product sprites are cropped to their visible pixels and
+ * grounded on continuous shelf lips inside each door.
  */
 export class BeverageCoolerView {
   private readonly rows: Phaser.GameObjects.Container[] = [];
-  private readonly rowBackings: Phaser.GameObjects.Graphics[] = [];
+  private readonly bayBackings: Phaser.GameObjects.Graphics[] = [];
   private readonly rowPlates: Phaser.GameObjects.Graphics[] = [];
   private readonly rowTargets: Phaser.GameObjects.Rectangle[] = [];
   private readonly slots: readonly CoolerStockSlot[];
@@ -62,15 +62,15 @@ export class BeverageCoolerView {
 
   create(): void {
     const rowHeight = this.rowHeight();
+    this.createBayBackings(rowHeight);
+
     this.slots.forEach((slot, rowIndex) => {
       const shelfWidth = this.shelfWidth(rowIndex);
-      this.rowBackings.push(this.createRowBacking(slot, rowIndex, rowHeight));
-
       const target = this.scene.add.rectangle(
         slot.x,
         slot.y,
-        shelfWidth + 34,
-        rowHeight + 20,
+        shelfWidth + 28,
+        rowHeight + 18,
         0xffffff,
         0.001
       )
@@ -118,13 +118,7 @@ export class BeverageCoolerView {
     this.rows.forEach((row, index) => {
       const filled = filledRows.has(index);
       const active = state.activeRowIndex === index && !filled;
-      row.setAlpha(filled ? 1 : active ? 0.22 : 0.025);
-    });
-
-    this.rowBackings.forEach((backing, index) => {
-      const filled = filledRows.has(index);
-      const active = state.activeRowIndex === index && !filled;
-      backing.setAlpha(filled ? 0.84 : active ? 0.95 : 0.56);
+      row.setAlpha(filled ? 1 : active ? 0.2 : 0.018);
     });
 
     this.rowTargets.forEach((target, index) => {
@@ -156,13 +150,13 @@ export class BeverageCoolerView {
 
   showMistake(rowIndex: number): void {
     const centre = this.rowCentre(rowIndex);
-    const width = this.shelfWidth(rowIndex) + 30;
-    const height = this.rowHeight() + 12;
+    const width = this.shelfWidth(rowIndex) + 28;
+    const height = this.rowHeight() + 10;
     const flash = this.scene.add.graphics().setDepth(14);
     flash.fillStyle(0xe45d52, 0.14);
-    flash.fillRoundedRect(centre.x - width / 2, centre.y - height / 2, width, height, 8);
+    flash.fillRoundedRect(centre.x - width / 2, centre.y - height / 2, width, height, 7);
     flash.lineStyle(3, 0xff8f86, 0.9);
-    flash.strokeRoundedRect(centre.x - width / 2, centre.y - height / 2, width, height, 8);
+    flash.strokeRoundedRect(centre.x - width / 2, centre.y - height / 2, width, height, 7);
     this.scene.tweens.add({
       targets: flash,
       alpha: 0,
@@ -174,7 +168,7 @@ export class BeverageCoolerView {
 
   destroy(): void {
     this.rows.forEach((row) => row.destroy(true));
-    this.rowBackings.forEach((backing) => backing.destroy());
+    this.bayBackings.forEach((backing) => backing.destroy());
     this.rowPlates.forEach((plate) => plate.destroy());
     this.rowTargets.forEach((target) => target.destroy());
   }
@@ -193,26 +187,29 @@ export class BeverageCoolerView {
     this.playRowSparkles(rowIndex);
   }
 
-  private createRowBacking(
-    slot: CoolerStockSlot,
-    rowIndex: number,
-    rowHeight: number
-  ): Phaser.GameObjects.Graphics {
-    const width = this.shelfWidth(rowIndex) + 24;
-    const height = rowHeight + 14;
-    const backing = this.scene.add.graphics().setDepth(4);
-    backing.fillStyle(0x10211d, 0.72);
-    backing.fillRoundedRect(slot.x - width / 2, slot.y - height / 2, width, height, 7);
-    backing.lineStyle(1, 0x9db7ad, 0.34);
-    backing.strokeRoundedRect(slot.x - width / 2, slot.y - height / 2, width, height, 7);
-    backing.lineStyle(3, 0xc7d7d0, 0.46);
-    backing.lineBetween(
-      slot.x - width / 2 + 5,
-      slot.y + height / 2 - 5,
-      slot.x + width / 2 - 5,
-      slot.y + height / 2 - 5
-    );
-    return backing;
+  private createBayBackings(rowHeight: number): void {
+    const bayIndexes = [...new Set(this.slots.map((slot) => slot.bayIndex))];
+    bayIndexes.forEach((bayIndex) => {
+      const baySlots = this.slots.filter((slot) => slot.bayIndex === bayIndex);
+      const firstSlot = baySlots[0];
+      const lastSlot = baySlots.at(-1);
+      if (!firstSlot || !lastSlot) return;
+
+      const width = 76;
+      const top = firstSlot.y - rowHeight / 2 - 8;
+      const bottom = lastSlot.y + rowHeight / 2 + 8;
+      const backing = this.scene.add.graphics().setDepth(4).setAlpha(0.78);
+      backing.fillStyle(0x10251f, 0.36);
+      backing.fillRoundedRect(firstSlot.x - width / 2, top, width, bottom - top, 8);
+      backing.lineStyle(1, 0x9db7ad, 0.22);
+      backing.strokeRoundedRect(firstSlot.x - width / 2, top, width, bottom - top, 8);
+      backing.lineStyle(2, 0xc6d5cf, 0.32);
+      baySlots.forEach((slot) => {
+        const shelfY = slot.y + rowHeight / 2 + 3;
+        backing.lineBetween(firstSlot.x - width / 2 + 6, shelfY, firstSlot.x + width / 2 - 6, shelfY);
+      });
+      this.bayBackings.push(backing);
+    });
   }
 
   private createRowPlate(
@@ -220,10 +217,10 @@ export class BeverageCoolerView {
     rowIndex: number,
     rowHeight: number
   ): Phaser.GameObjects.Graphics {
-    const width = this.shelfWidth(rowIndex) + 28;
-    const height = rowHeight + 10;
+    const width = this.shelfWidth(rowIndex) + 26;
+    const height = rowHeight + 8;
     const plate = this.scene.add.graphics().setDepth(10).setAlpha(0);
-    plate.fillStyle(0xffd95e, 0.07);
+    plate.fillStyle(0xffd95e, 0.06);
     plate.fillRoundedRect(slot.x - width / 2, slot.y - height / 2, width, height, 7);
     plate.lineStyle(3, 0xffd95e, 0.92);
     plate.strokeRoundedRect(slot.x - width / 2, slot.y - height / 2, width, height, 7);
@@ -240,14 +237,14 @@ export class BeverageCoolerView {
     const spacing = shelfWidth / (count - 1);
     const startX = -shelfWidth / 2;
     const progress = this.verticalProgress(rowIndex);
-    const bottleHeight = Phaser.Math.Linear(50, 56, progress);
+    const bottleHeight = Phaser.Math.Linear(52, 58, progress);
     const bottleWidth = bottleHeight * (BEVERAGE_BOTTLE_CROP.width / BEVERAGE_BOTTLE_CROP.height);
     const objects: Phaser.GameObjects.GameObject[] = [];
 
     for (let index = 0; index < count; index += 1) {
       const bottle = this.scene.add.image(
         startX + index * spacing,
-        rowHeight / 2 + 2,
+        rowHeight / 2 + 3,
         this.config.restockProductKey
       )
         .setCrop(
@@ -256,20 +253,26 @@ export class BeverageCoolerView {
           BEVERAGE_BOTTLE_CROP.width,
           BEVERAGE_BOTTLE_CROP.height
         )
-        .setOrigin(0.5, 1)
-        .setDisplaySize(bottleWidth, bottleHeight)
+        .setDisplayOrigin(
+          BEVERAGE_BOTTLE_CROP.x + BEVERAGE_BOTTLE_CROP.width / 2,
+          BEVERAGE_BOTTLE_CROP.y + BEVERAGE_BOTTLE_CROP.height
+        )
+        .setScale(
+          bottleWidth / BEVERAGE_BOTTLE_CROP.width,
+          bottleHeight / BEVERAGE_BOTTLE_CROP.height
+        )
         .setDepth(5);
       objects.push(bottle);
     }
 
     return this.scene.add.container(slot.x, slot.y, objects)
-      .setAlpha(0.025)
+      .setAlpha(0.018)
       .setDepth(5)
       .setName(`beverage-cooler-row-${rowIndex}`);
   }
 
   private shelfWidth(rowIndex: number): number {
-    return Phaser.Math.Linear(50, 56, this.verticalProgress(rowIndex));
+    return Phaser.Math.Linear(48, 54, this.verticalProgress(rowIndex));
   }
 
   private verticalProgress(rowIndex: number): number {
@@ -284,7 +287,7 @@ export class BeverageCoolerView {
 
   private playRowSparkles(rowIndex: number): void {
     const centre = this.rowCentre(rowIndex);
-    [-28, -14, 0, 14, 28].forEach((offset, index) => {
+    [-26, -13, 0, 13, 26].forEach((offset, index) => {
       const sparkle = this.scene.add.circle(
         centre.x + offset,
         centre.y - 3,
