@@ -9,6 +9,7 @@ const {
   validateStarterMarketVisualSpec
 } = require("../.test-dist/src/game/presentation/visual/StarterMarketVisualSpec.js");
 const {
+  RESTOCK_VISUAL_PRESET,
   CHECKOUT_VISUAL_PRESET,
   CLEAN_VISUAL_PRESET,
   FIND_ITEMS_VISUAL_PRESET
@@ -42,6 +43,18 @@ test("Visual spec and world layout share the same locked composition", () => {
   assert.deepEqual(zones.get("produce-zone"), STARTER_MARKET_VISUAL_SPEC.composition.produceZone);
   assert.deepEqual(zones.get("staff-backroom"), STARTER_MARKET_VISUAL_SPEC.composition.backroomZone);
   assert.deepEqual(zones.get("beverage-zone"), STARTER_MARKET_VISUAL_SPEC.composition.beverageZone);
+});
+
+test("Cola restock rows stay inside one photographed cooler door", () => {
+  const cooler = RESTOCK_VISUAL_PRESET.cooler;
+  assert.deepEqual(cooler.rowYs, [275, 335, 395, 455, 515, 575]);
+  assert.equal(cooler.restockItemCount, 3);
+  assert.ok(cooler.activeStockWidth <= 100);
+  assert.ok(cooler.rowYs[0] >= 270);
+  assert.ok(cooler.rowYs.at(-1) <= 580);
+  cooler.rowYs.slice(1).forEach((rowY, index) => {
+    assert.equal(rowY - cooler.rowYs[index], 60);
+  });
 });
 
 test("Checkout uses a compact grocery basket queue instead of pasted customer cutouts", () => {
