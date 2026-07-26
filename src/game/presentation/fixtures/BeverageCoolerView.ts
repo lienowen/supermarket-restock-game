@@ -1,28 +1,16 @@
 import Phaser from "phaser";
 import {
   BEVERAGE_BOTTLE_CROP,
-  COOLER_STOCK_SLOT_OFFSETS,
+  COOLER_STOCK_ITEMS_PER_SLOT,
+  COOLER_STOCK_SLOT_COUNT,
+  COOLER_STOCK_TARGET_HEIGHT,
+  COOLER_STOCK_TARGET_WIDTH,
   resolveCoolerStockSlots,
   type CoolerStockSlot
-} from "../interactions/RestockTargetResolver";
+} from "../visual/CoolerStockLayout";
 
 export interface BeverageCoolerViewConfig {
   readonly centreX: number;
-  readonly baseY: number;
-  readonly backgroundY: number;
-  readonly frameWidth: number;
-  readonly frameHeight: number;
-  readonly displayWidth: number;
-  readonly displayHeight: number;
-  readonly departmentLabel: string;
-  readonly subtitleLabel: string;
-  readonly rowYs: readonly number[];
-  readonly ambientPositions: readonly number[];
-  readonly restockStartX: number;
-  readonly restockStepX: number;
-  readonly restockItemCount: number;
-  readonly coolerAssetKey: string;
-  readonly ambientProductKeys: readonly string[];
   readonly restockProductKey: string;
   readonly onRowSelected?: (rowIndex: number) => void;
 }
@@ -52,11 +40,8 @@ export class BeverageCoolerView {
     private readonly config: BeverageCoolerViewConfig
   ) {
     this.slots = resolveCoolerStockSlots(config.centreX);
-    if (config.rowYs.length !== COOLER_STOCK_SLOT_OFFSETS.length) {
-      throw new Error(
-        `Beverage cooler requires ${COOLER_STOCK_SLOT_OFFSETS.length} task slots, ` +
-        `received ${config.rowYs.length}`
-      );
+    if (this.slots.length !== COOLER_STOCK_SLOT_COUNT) {
+      throw new Error(`Beverage cooler requires ${COOLER_STOCK_SLOT_COUNT} task slots`);
     }
   }
 
@@ -69,8 +54,8 @@ export class BeverageCoolerView {
       const target = this.scene.add.rectangle(
         slot.x,
         slot.y,
-        shelfWidth + 28,
-        rowHeight + 18,
+        Math.max(COOLER_STOCK_TARGET_WIDTH, shelfWidth + 28),
+        COOLER_STOCK_TARGET_HEIGHT,
         0xffffff,
         0.001
       )
@@ -232,7 +217,7 @@ export class BeverageCoolerView {
     rowIndex: number,
     rowHeight: number
   ): Phaser.GameObjects.Container {
-    const count = Phaser.Math.Clamp(this.config.restockItemCount, 3, 3);
+    const count = COOLER_STOCK_ITEMS_PER_SLOT;
     const shelfWidth = this.shelfWidth(rowIndex);
     const spacing = shelfWidth / (count - 1);
     const startX = -shelfWidth / 2;
