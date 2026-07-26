@@ -136,9 +136,16 @@ export interface LevelNavigationDefinition {
 
 export type RestockSequenceMode = "fixed" | "shuffled";
 
+export interface RestockMemoryPreviewDefinition {
+  readonly durationMs: number;
+  readonly hideActiveTarget: boolean;
+  readonly keepTargetOnFailure: boolean;
+}
+
 export interface RestockRushTuningDefinition {
   readonly sequenceMode?: RestockSequenceMode;
   readonly timeoutEnabled?: boolean;
+  readonly memoryPreview?: RestockMemoryPreviewDefinition;
   readonly targetDurationMs?: number;
   readonly minimumTargetDurationMs?: number;
   readonly speedUpPerSuccessMs?: number;
