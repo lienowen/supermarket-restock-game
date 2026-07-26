@@ -15,6 +15,16 @@ export interface LevelChecklistSpec {
   readonly steps: readonly LevelChecklistStepSpec[];
 }
 
+export interface GuidedDragActionSpec {
+  readonly unlockAfterAction: string;
+  readonly confirmAction: string;
+  readonly eyebrow: string;
+  readonly title: string;
+  readonly instruction: string;
+  readonly sourceLabel: string;
+  readonly targetLabel: string;
+}
+
 export interface LevelExperienceSpec {
   readonly levelId: string;
   readonly mode: LevelDefinition["mode"];
@@ -27,6 +37,7 @@ export interface LevelExperienceSpec {
   readonly successMetric: string;
   readonly primaryInput: LevelPrimaryInput;
   readonly checklist?: LevelChecklistSpec;
+  readonly guidedDrag?: GuidedDragActionSpec;
 }
 
 const define = (spec: LevelExperienceSpec): LevelExperienceSpec => Object.freeze(spec);
@@ -40,9 +51,9 @@ export const STARTER_LEVEL_EXPERIENCE_SPECS: readonly LevelExperienceSpec[] = Ob
     title: "First Delivery",
     objective: "Move the cola case to the cooler and stock all six shelf slots.",
     mechanic: "The shelf order is fixed and there is no shelf timeout in this training level.",
-    control: "Move with a floor tap or the arrow keys, then tap the active shelf slot.",
+    control: "Move with a floor tap or the arrow keys, drag the case onto the cart, then stock each shelf.",
     successMetric: "Finish the full delivery with as few wrong shelf taps as possible.",
-    primaryInput: "sequence",
+    primaryInput: "mixed",
     checklist: Object.freeze({
       eyebrow: "FIRST DELIVERY",
       heading: "Shift checklist",
@@ -53,6 +64,15 @@ export const STARTER_LEVEL_EXPERIENCE_SPECS: readonly LevelExperienceSpec[] = Ob
         Object.freeze({ id: "open", label: "Open the case at the cooler", action: "OPEN_BOX" }),
         Object.freeze({ id: "stock", label: "Stock the cooler shelves", tracksProgress: true })
       ])
+    }),
+    guidedDrag: Object.freeze({
+      unlockAfterAction: "PICK_BOX",
+      confirmAction: "LOAD_CART",
+      eyebrow: "HANDS-ON STEP",
+      title: "Load the restock cart",
+      instruction: "Drag the cola case into the empty cart. A normal tap will not complete this step.",
+      sourceLabel: "COLA CASE",
+      targetLabel: "RESTOCK CART"
     })
   }),
   define({
@@ -205,6 +225,18 @@ export function validateLevelExperienceSpecs(levels: readonly LevelDefinition[])
           errors.push(`Experience spec ${spec.levelId} checklist step ${step.id} has no completion signal`);
         }
       });
+    }
+
+    if (spec.guidedDrag) {
+      if (!spec.guidedDrag.unlockAfterAction.trim()) {
+        errors.push(`Experience spec ${spec.levelId} guided drag requires an unlock action`);
+      }
+      if (!spec.guidedDrag.confirmAction.trim()) {
+        errors.push(`Experience spec ${spec.levelId} guided drag requires a confirm action`);
+      }
+      if (spec.guidedDrag.unlockAfterAction === spec.guidedDrag.confirmAction) {
+        errors.push(`Experience spec ${spec.levelId} guided drag actions must differ`);
+      }
     }
   }
 
