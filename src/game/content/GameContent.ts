@@ -134,7 +134,11 @@ export interface LevelNavigationDefinition {
   readonly interactionRadius: number;
 }
 
+export type RestockSequenceMode = "fixed" | "shuffled";
+
 export interface RestockRushTuningDefinition {
+  readonly sequenceMode?: RestockSequenceMode;
+  readonly timeoutEnabled?: boolean;
   readonly targetDurationMs?: number;
   readonly minimumTargetDurationMs?: number;
   readonly speedUpPerSuccessMs?: number;
