@@ -43,11 +43,17 @@ test("Cooler stock uses two glass-door bays with three grounded shelves each", (
   assert.equal(COOLER_STOCK_TARGET_HEIGHT, 74);
 });
 
-test("Restock mode covers photographed background stock with opaque empty bays", () => {
+test("Restock mode covers the entire photographed drinks wall with an opaque fixture", () => {
   const source = read("src/game/presentation/world/StarterMarketEnvironmentView.ts");
   assert.equal(source.includes('setName("beverage-cooler-empty-shell")'), true);
   assert.equal(source.includes('setData("background-stock-occluded", true)'), true);
+  assert.equal(source.includes('setData("occluded-wall-bounds"'), true);
+  assert.equal(source.includes("Math.min(...xs) - 135"), true);
+  assert.equal(source.includes("Math.max(...xs) + 108"), true);
+  assert.equal(source.includes("drawCoolerServicePanel"), true);
   assert.equal(source.includes("shell.fillStyle(0x06110d, 1)"), true);
+  assert.equal(source.includes('"RESTOCK ZONE"'), true);
+  assert.equal(source.includes('"EMPTY TASK BAYS"'), false);
   assert.equal(
     source.includes('document.body.dataset.restockCoolerBackground = "occluded"'),
     true
