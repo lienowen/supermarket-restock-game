@@ -111,8 +111,9 @@ try {
   const variantInfo = await openBriefing(variantPage, "starter-level-007");
   report.assertions.distinctLevelSeven = (
     variantInfo.title === "Evening Checkout" &&
-    variantInfo.modeLabel === "EVENING CHECKOUT" &&
-    variantInfo.objective.includes("evening queue") &&
+    variantInfo.modeLabel === "PATIENCE & WEIGHT" &&
+    variantInfo.objective.includes("eight evening customers") &&
+    variantInfo.objective.includes("patience bars") &&
     variantInfo.modeLabel !== desktopInfo.modeLabel
   );
   await variantPage.screenshot({
