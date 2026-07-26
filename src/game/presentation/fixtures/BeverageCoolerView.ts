@@ -5,6 +5,7 @@ import {
   COOLER_STOCK_SLOT_COUNT,
   COOLER_STOCK_TARGET_HEIGHT,
   COOLER_STOCK_TARGET_WIDTH,
+  resolveCoolerStockBounds,
   resolveCoolerStockSlots,
   type CoolerStockSlot
 } from "../visual/CoolerStockLayout";
@@ -13,6 +14,36 @@ export interface BeverageCoolerViewConfig {
   readonly centreX: number;
   readonly restockProductKey: string;
   readonly onRowSelected?: (rowIndex: number) => void;
+  /** @deprecated The coherent background owns the cooler frame. */
+  readonly baseY?: number;
+  /** @deprecated The coherent background owns the cooler frame. */
+  readonly backgroundY?: number;
+  /** @deprecated The coherent background owns the cooler frame. */
+  readonly frameWidth?: number;
+  /** @deprecated The coherent background owns the cooler frame. */
+  readonly frameHeight?: number;
+  /** @deprecated The coherent background owns the cooler frame. */
+  readonly displayWidth?: number;
+  /** @deprecated The coherent background owns the cooler frame. */
+  readonly displayHeight?: number;
+  /** @deprecated Department labels are rendered by the environment. */
+  readonly departmentLabel?: string;
+  /** @deprecated Department labels are rendered by the environment. */
+  readonly subtitleLabel?: string;
+  /** @deprecated Slot geometry is owned by CoolerStockLayout. */
+  readonly rowYs?: readonly number[];
+  /** @deprecated Ambient products are already part of the background. */
+  readonly ambientPositions?: readonly number[];
+  /** @deprecated Slot geometry is owned by CoolerStockLayout. */
+  readonly restockStartX?: number;
+  /** @deprecated Slot geometry is owned by CoolerStockLayout. */
+  readonly restockStepX?: number;
+  /** @deprecated Item count is owned by CoolerStockLayout. */
+  readonly restockItemCount?: number;
+  /** @deprecated The coherent background owns the cooler fixture. */
+  readonly coolerAssetKey?: string;
+  /** @deprecated Ambient products are already part of the background. */
+  readonly ambientProductKeys?: readonly string[];
 }
 
 export interface BeverageCoolerRushState {
@@ -33,6 +64,7 @@ export class BeverageCoolerView {
   private readonly rowPlates: Phaser.GameObjects.Graphics[] = [];
   private readonly rowTargets: Phaser.GameObjects.Rectangle[] = [];
   private readonly slots: readonly CoolerStockSlot[];
+  private inputBlocker?: Phaser.GameObjects.Rectangle;
   private previousFilledRows = new Set<number>();
 
   constructor(
@@ -47,6 +79,7 @@ export class BeverageCoolerView {
 
   create(): void {
     const rowHeight = this.rowHeight();
+    this.createInputBlocker();
     this.createBayBackings(rowHeight);
 
     this.slots.forEach((slot, rowIndex) => {
@@ -156,6 +189,31 @@ export class BeverageCoolerView {
     this.bayBackings.forEach((backing) => backing.destroy());
     this.rowPlates.forEach((plate) => plate.destroy());
     this.rowTargets.forEach((target) => target.destroy());
+    this.inputBlocker?.destroy();
+  }
+
+  private createInputBlocker(): void {
+    const bounds = resolveCoolerStockBounds(this.config.centreX);
+    this.inputBlocker = this.scene.add.rectangle(
+      bounds.x + bounds.width / 2,
+      bounds.y + bounds.height / 2,
+      bounds.width,
+      bounds.height,
+      0xffffff,
+      0.001
+    )
+      .setDepth(8)
+      .setInteractive()
+      .setName("beverage-cooler-stock-input-blocker");
+    this.inputBlocker.on(
+      "pointerdown",
+      (
+        _pointer: Phaser.Input.Pointer,
+        _localX: number,
+        _localY: number,
+        event: Phaser.Types.Input.EventData
+      ) => event.stopPropagation()
+    );
   }
 
   private animateFilledRow(rowIndex: number): void {
