@@ -138,9 +138,9 @@ export const RESTOCK_VISUAL_PRESET: RestockLevelVisualPreset = Object.freeze({
     backgroundY: 530,
     frameSize: Object.freeze({ width: 620, height: 520 }),
     displaySize: Object.freeze({ width: 470, height: 700 }),
-    rowYs: Object.freeze([270, 348, 426, 504, 582, 660]),
-    activeStockWidth: 420,
-    restockItemCount: 5
+    rowYs: Object.freeze([275, 335, 395, 455, 515, 575]),
+    activeStockWidth: 96,
+    restockItemCount: 3
   }),
   props: Object.freeze({
     caseSize: Object.freeze({ width: 180, height: 220 }),
