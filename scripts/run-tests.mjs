@@ -57,7 +57,5 @@ process.exit(0);
 
 function printFailure(title, result) {
   const output = `${result.stdout ?? ""}\n${result.stderr ?? ""}`.trim();
-  const lines = output.split(/\r?\n/);
-  const tail = lines.slice(-220).join("\n");
-  console.error(`${title}:\n${tail}`);
+  console.error(`${title}:\n${output}`);
 }
