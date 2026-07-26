@@ -1,6 +1,14 @@
-import type { VisualPoint, VisualRect } from "./StarterMarketVisualSpec";
+export interface CoolerStockPoint {
+  readonly x: number;
+  readonly y: number;
+}
 
-export interface CoolerStockSlot extends VisualPoint {
+export interface CoolerStockRect extends CoolerStockPoint {
+  readonly width: number;
+  readonly height: number;
+}
+
+export interface CoolerStockSlot extends CoolerStockPoint {
   readonly bayIndex: number;
   readonly shelfIndex: number;
 }
@@ -38,7 +46,7 @@ export function resolveCoolerStockSlots(centreX: number): readonly CoolerStockSl
   })));
 }
 
-export function resolveCoolerStockBounds(centreX: number): VisualRect {
+export function resolveCoolerStockBounds(centreX: number): CoolerStockRect {
   const slots = resolveCoolerStockSlots(centreX);
   const xs = slots.map((slot) => slot.x);
   const ys = slots.map((slot) => slot.y);
