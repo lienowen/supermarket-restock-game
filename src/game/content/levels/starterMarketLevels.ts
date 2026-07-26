@@ -68,6 +68,11 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
       rush: {
         sequenceMode: "shuffled",
         timeoutEnabled: true,
+        memoryPreview: {
+          durationMs: 3200,
+          hideActiveTarget: true,
+          keepTargetOnFailure: true
+        },
         targetDurationMs: 8500,
         minimumTargetDurationMs: 7000,
         speedUpPerSuccessMs: 300,
