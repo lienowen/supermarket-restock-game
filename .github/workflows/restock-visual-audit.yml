@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   capture:
@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          show-progress: false
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -48,15 +50,50 @@ jobs:
             echo "restock visual report was not created"
           fi
 
-      - name: Upload restock visual evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: restock-empty-to-full-visual-${{ github.run_id }}
-          path: |
-            restock-visual-audit/*.png
-            restock-visual-audit/*.json
-          if-no-files-found: error
+      - name: Publish compact visual evidence branch
+        if: always() && steps.capture_restock.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVIDENCE_BRANCH: restock-visual-evidence-pr35
+        run: |
+          montage \
+            restock-visual-audit/restock-visual-0-of-3.png \
+            restock-visual-audit/restock-visual-1-of-3.png \
+            restock-visual-audit/restock-visual-2-of-3.png \
+            restock-visual-audit/restock-visual-3-of-3.png \
+            -tile 4x1 -geometry 80x134+0+0 -background '#101510' \
+            /tmp/restock-contact-sheet.png
+          convert /tmp/restock-contact-sheet.png -strip -quality 22 /tmp/restock-contact-sheet.jpg
+          base64 -w0 /tmp/restock-contact-sheet.jpg > /tmp/restock-contact-sheet.b64
+
+          HEAD_SHA="$(git rev-parse HEAD)"
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/$EVIDENCE_BRANCH" >/dev/null 2>&1; then
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/heads/$EVIDENCE_BRANCH" \
+              -f sha="$HEAD_SHA" -F force=true >/dev/null
+          else
+            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/heads/$EVIDENCE_BRANCH" -f sha="$HEAD_SHA" >/dev/null
+          fi
+
+          JPG_CONTENT="$(base64 -w0 /tmp/restock-contact-sheet.jpg)"
+          gh api --method PUT "repos/$GITHUB_REPOSITORY/contents/restock-contact-sheet.jpg" \
+            -f message="Update restock visual evidence" \
+            -f content="$JPG_CONTENT" \
+            -f branch="$EVIDENCE_BRANCH" >/dev/null
+
+          B64_CONTENT="$(base64 -w0 /tmp/restock-contact-sheet.b64)"
+          gh api --method PUT "repos/$GITHUB_REPOSITORY/contents/restock-contact-sheet.b64" \
+            -f message="Add restock visual evidence transport" \
+            -f content="$B64_CONTENT" \
+            -f branch="$EVIDENCE_BRANCH" >/dev/null
+
+          REPORT_CONTENT="$(base64 -w0 restock-visual-audit/restock-visual-audit.json)"
+          gh api --method PUT "repos/$GITHUB_REPOSITORY/contents/restock-visual-audit.json" \
+            -f message="Add restock visual audit report" \
+            -f content="$REPORT_CONTENT" \
+            -f branch="$EVIDENCE_BRANCH" >/dev/null
+
+          wc -c /tmp/restock-contact-sheet.jpg /tmp/restock-contact-sheet.b64
 
       - name: Enforce restock visual result
         if: always()
