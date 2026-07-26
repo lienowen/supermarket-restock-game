@@ -53,6 +53,7 @@ jobs:
           path: |
             restock-visual-audit/restock-contact-sheet.jpg
             restock-visual-audit/restock-visual-audit.json
+            public/assets/game/environments/stores/starter-market/salesfloor-v2.webp
           if-no-files-found: error
           retention-days: 3
 
