@@ -220,14 +220,14 @@ export const STARTER_LEVEL_EXPERIENCE_SPECS: readonly LevelExperienceSpec[] = Ob
   define({
     levelId: "starter-level-006",
     mode: "restock",
-    modeLabel: "CLOSING SPRINT",
-    eyebrow: "SPEED SHIFT",
+    modeLabel: "CART CAPACITY",
+    eyebrow: "CLOSING LOAD",
     title: "Closing Stock Sprint",
-    objective: "Complete the cola cooler before closing time.",
-    mechanic: "Shelf windows are shorter and streak recovery is less forgiving.",
-    control: "Track the active slot across both cooler doors and respond quickly.",
-    successMetric: "Finish with a fast grade and a strong best streak.",
-    primaryInput: "sequence"
+    objective: "Use the two-slot restock cart to deliver both cola cases needed for the closing refill.",
+    mechanic: "Three cases are available, but the cart holds only two; the water case is a wrong load and must stay behind.",
+    control: "Drag both cola cases into the two cart slots, reject the water case, then complete the cooler refill.",
+    successMetric: "Leave the backroom with two correct cola cases and finish the cooler without a loading mistake.",
+    primaryInput: "mixed"
   }),
   define({
     levelId: "starter-level-007",
