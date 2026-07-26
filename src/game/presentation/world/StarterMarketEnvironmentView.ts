@@ -55,11 +55,11 @@ export class StarterMarketEnvironmentView {
   }
 
   /**
-   * The production sales-floor background contains a photographed, fully
-   * stocked drinks wall. Restock gameplay must never reveal those baked-in
-   * products inside the two task bays. This opaque fixture is rendered above
-   * the background and below all interactive stock items, creating a genuinely
-   * empty 0/3 state before the first product is placed.
+   * The sales-floor background contains a photographed drinks wall whose stock
+   * is baked into the image. Restock mode covers that whole wall segment with
+   * one opaque cooler fixture. Two central glass doors are the playable bays;
+   * sealed service panels at both sides prevent any background merchandise from
+   * leaking around the empty 0/3 task shelves.
    */
   private createRestockEmptyCooler(): void {
     if (this.context.mode !== "restock") {
@@ -70,8 +70,9 @@ export class StarterMarketEnvironmentView {
     const slots = resolveCoolerStockSlots(this.context.world.beverageCooler.x);
     const xs = slots.map((slot) => slot.x);
     const ys = slots.map((slot) => slot.y);
-    const left = Math.min(...xs) - 53;
-    const right = Math.max(...xs) + 53;
+    const worldRight = this.context.world.width - 2;
+    const left = Math.max(0, Math.min(...xs) - 135);
+    const right = Math.min(worldRight, Math.max(...xs) + 108);
     const top = Math.min(...ys) - 82;
     const bottom = Math.max(...ys) + 86;
     const width = right - left;
@@ -83,13 +84,16 @@ export class StarterMarketEnvironmentView {
     const doorBottom = bottom - baseHeight - 7;
     const doorHeight = doorBottom - doorTop;
     const doorWidth = 80;
+    const firstDoorLeft = Math.min(...xs) - doorWidth / 2;
+    const lastDoorRight = Math.max(...xs) + doorWidth / 2;
 
     const shell = this.scene.add.graphics()
       .setDepth(3)
       .setName("beverage-cooler-empty-shell")
-      .setData("background-stock-occluded", true);
+      .setData("background-stock-occluded", true)
+      .setData("occluded-wall-bounds", { left, right, top, bottom });
 
-    shell.fillStyle(0x0a0f0d, 1);
+    shell.fillStyle(0x080d0b, 1);
     shell.fillRoundedRect(left, top, width, height, 12);
     shell.lineStyle(4, 0x303a36, 1);
     shell.strokeRoundedRect(left, top, width, height, 12);
@@ -98,6 +102,21 @@ export class StarterMarketEnvironmentView {
     shell.fillRoundedRect(left + 6, top + 6, width - 12, headerHeight - 6, 8);
     shell.lineStyle(2, 0x78a780, 0.72);
     shell.strokeRoundedRect(left + 6, top + 6, width - 12, headerHeight - 6, 8);
+
+    this.drawCoolerServicePanel(shell, {
+      left: left + 7,
+      right: firstDoorLeft - 7,
+      top: doorTop,
+      bottom: doorBottom,
+      label: "COLD\nSTORAGE"
+    });
+    this.drawCoolerServicePanel(shell, {
+      left: lastDoorRight + 7,
+      right: right - 7,
+      top: doorTop,
+      bottom: doorBottom,
+      label: "SERVICE"
+    });
 
     const bayIndexes = [...new Set(slots.map((slot) => slot.bayIndex))];
     bayIndexes.forEach((bayIndex) => {
@@ -132,7 +151,7 @@ export class StarterMarketEnvironmentView {
       shell.lineBetween(left + 18, y, right - 18, y);
     }
 
-    this.scene.add.text(centreX, top + 21, "BEVERAGES", {
+    this.scene.add.text(centreX, top + 20, "BEVERAGES", {
       fontFamily: "Arial, sans-serif",
       fontSize: "16px",
       fontStyle: "bold",
@@ -142,7 +161,7 @@ export class StarterMarketEnvironmentView {
       .setDepth(4)
       .setName("beverage-cooler-empty-header");
 
-    this.scene.add.text(centreX, top + 37, "EMPTY TASK BAYS", {
+    this.scene.add.text(centreX, top + 36, "RESTOCK ZONE", {
       fontFamily: "Arial, sans-serif",
       fontSize: "8px",
       fontStyle: "bold",
@@ -153,6 +172,48 @@ export class StarterMarketEnvironmentView {
       .setName("beverage-cooler-empty-subtitle");
 
     document.body.dataset.restockCoolerBackground = "occluded";
+  }
+
+  private drawCoolerServicePanel(
+    shell: Phaser.GameObjects.Graphics,
+    bounds: {
+      readonly left: number;
+      readonly right: number;
+      readonly top: number;
+      readonly bottom: number;
+      readonly label: string;
+    }
+  ): void {
+    const width = Math.max(0, bounds.right - bounds.left);
+    const height = Math.max(0, bounds.bottom - bounds.top);
+    if (width < 18 || height < 18) return;
+
+    shell.fillStyle(0x101815, 1);
+    shell.fillRoundedRect(bounds.left, bounds.top, width, height, 7);
+    shell.lineStyle(2, 0x2f3a35, 1);
+    shell.strokeRoundedRect(bounds.left, bounds.top, width, height, 7);
+
+    const insetLeft = bounds.left + 8;
+    const insetRight = bounds.right - 8;
+    shell.lineStyle(2, 0x35423d, 0.72);
+    for (let y = bounds.top + 20; y < bounds.bottom - 18; y += 11) {
+      shell.lineBetween(insetLeft, y, insetRight, y);
+    }
+
+    this.scene.add.text(
+      bounds.left + width / 2,
+      bounds.top + height / 2,
+      bounds.label,
+      {
+        fontFamily: "Arial, sans-serif",
+        fontSize: width < 62 ? "7px" : "9px",
+        fontStyle: "bold",
+        align: "center",
+        color: "#71847b"
+      }
+    )
+      .setOrigin(0.5)
+      .setDepth(4);
   }
 
   private registerSharedFixtureAvailability(): void {
