@@ -11,6 +11,10 @@ import {
   validateCartCapacityExperienceSpecs
 } from "./content/experience/CartCapacityExperienceSpec";
 import {
+  CHECKOUT_PATIENCE_EXPERIENCE_SPECS,
+  validateCheckoutPatienceExperienceSpecs
+} from "./content/experience/CheckoutPatienceExperienceSpec";
+import {
   STARTER_LEVEL_EXPERIENCE_SPECS,
   validateLevelExperienceSpecs
 } from "./content/experience/LevelExperienceSpec";
@@ -43,7 +47,11 @@ function validateProjectContracts(): void {
     ]),
     ...CART_CAPACITY_EXPERIENCE_SPECS.flatMap((spec) => (
       spec.options.map((option) => option.assetKey)
-    ))
+    )),
+    ...CHECKOUT_PATIENCE_EXPERIENCE_SPECS.flatMap((spec) => [
+      ...spec.standardProductAssetKeys,
+      spec.weighedProductAssetKey
+    ])
   ];
   const configuredAssetKeys = [
     ...presentationContexts.flatMap((context) => (
@@ -61,6 +69,7 @@ function validateProjectContracts(): void {
     ...validateLevelDefinitions(levelDefinitions),
     ...validateLevelExperienceSpecs(levelDefinitions),
     ...validateCartCapacityExperienceSpecs(levelDefinitions),
+    ...validateCheckoutPatienceExperienceSpecs(levelDefinitions),
     ...validateWorldLayout(STARTER_MARKET_LAYOUT),
     ...validateStarterMarketVisualSpec().errors,
     ...validateProductionAssetPlan(),
