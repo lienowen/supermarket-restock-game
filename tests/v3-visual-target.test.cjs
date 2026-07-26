@@ -15,6 +15,10 @@ const {
   FIND_ITEMS_VISUAL_PRESET
 } = require("../.test-dist/src/game/presentation/visual/MarketLevelVisualPreset.js");
 const {
+  COOLER_STOCK_SLOT_OFFSETS,
+  resolveCoolerStockSlots
+} = require("../.test-dist/src/game/presentation/interactions/RestockTargetResolver.js");
+const {
   STARTER_MARKET_PRODUCTION_ASSET_PLAN,
   validateProductionAssetPlan
 } = require("../.test-dist/src/game/presentation/assets/ProductionAssetPlan.js");
@@ -45,7 +49,7 @@ test("Visual spec and world layout share the same locked composition", () => {
   assert.deepEqual(zones.get("beverage-zone"), STARTER_MARKET_VISUAL_SPEC.composition.beverageZone);
 });
 
-test("Cola restock rows stay inside the photographed six-shelf cooler door", () => {
+test("Cola stock occupies two cooler doors and stays above the worker overlap zone", () => {
   const cooler = RESTOCK_VISUAL_PRESET.cooler;
   const coolerFixture = STARTER_MARKET_LAYOUT.fixtures.find(
     (entry) => entry.fixtureId === "beverage-cooler-a"
@@ -56,16 +60,17 @@ test("Cola restock rows stay inside the photographed six-shelf cooler door", () 
 
   assert.ok(coolerFixture);
   assert.ok(restockZone);
-  assert.deepEqual(cooler.rowYs, [275, 335, 395, 455, 515, 575]);
+  assert.equal(cooler.rowYs.length, COOLER_STOCK_SLOT_OFFSETS.length);
   assert.equal(cooler.restockItemCount, 3);
   assert.ok(cooler.activeStockWidth <= 100);
   assert.ok(coolerFixture.position.x >= 1390 && coolerFixture.position.x <= 1420);
   assert.ok(restockZone.position.x >= 1340 && restockZone.position.x <= 1390);
-  assert.ok(cooler.rowYs[0] >= 270);
-  assert.ok(cooler.rowYs.at(-1) <= 580);
-  cooler.rowYs.slice(1).forEach((rowY, index) => {
-    assert.equal(rowY - cooler.rowYs[index], 60);
-  });
+
+  const slots = resolveCoolerStockSlots(coolerFixture.position.x);
+  assert.deepEqual(slots.map((slot) => slot.x), [1405, 1405, 1405, 1490, 1490, 1490]);
+  assert.deepEqual(slots.map((slot) => slot.y), [300, 420, 540, 300, 420, 540]);
+  assert.equal(new Set(slots.map((slot) => `${slot.x}:${slot.y}`)).size, 6);
+  assert.ok(slots.every((slot) => slot.y <= 540));
 });
 
 test("Checkout uses a compact grocery basket queue instead of pasted customer cutouts", () => {
