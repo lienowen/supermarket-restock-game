@@ -25,6 +25,7 @@
     "src/game/content/GameContent.ts",
     "src/game/content/starterMarket.ts",
     "src/game/content/levels/starterMarketLevels.ts",
+    "src/game/content/experience/LevelExperienceSpec.ts",
     "src/game/content/validation/LevelConfigValidator.ts",
     "src/game/application/CampaignRuntime.ts",
     "src/game/application/CampaignSession.ts",
