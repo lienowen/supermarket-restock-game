@@ -47,6 +47,7 @@ jobs:
       - name: Export restock summary
         id: export_summary
         if: always()
+        continue-on-error: true
         run: |
           test -f restock-visual-audit/restock-visual-audit.json
           node - <<'NODE' > /tmp/restock-summary.json
