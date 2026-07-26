@@ -44,3 +44,25 @@ test("Repeated modes no longer share one generic briefing label", () => {
   assert.equal(labelsByMode.get("clean").size, 2);
   assert.equal(labelsByMode.get("find-items").size, 2);
 });
+
+test("A guided level checklist is configured by signals rather than gameplay ID branches", () => {
+  const guidedSpecs = STARTER_LEVEL_EXPERIENCE_SPECS.filter((spec) => spec.checklist);
+  assert.equal(guidedSpecs.length, 1);
+
+  const checklist = guidedSpecs[0].checklist;
+  assert.deepEqual(checklist.steps.map((step) => step.id), [
+    "pickup",
+    "load",
+    "deliver",
+    "open",
+    "stock"
+  ]);
+  assert.deepEqual(checklist.steps.map((step) => step.action), [
+    "PICK_BOX",
+    "LOAD_CART",
+    "PUSH_CART",
+    "OPEN_BOX",
+    undefined
+  ]);
+  assert.equal(checklist.steps.at(-1).tracksProgress, true);
+});
