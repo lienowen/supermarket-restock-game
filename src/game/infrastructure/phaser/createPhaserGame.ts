@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { crazyGamesPlatform } from "../../../platform/crazyGamesPlatform";
 import { CampaignSession } from "../../application/CampaignSession";
+import { resolveLevelExperienceSpec } from "../../content/experience/LevelExperienceSpec";
 import { gameDomainEvents } from "../../events/GameDomainEvents";
 import {
   createStarterMarketPresentationContext,
@@ -8,6 +9,7 @@ import {
 } from "../../presentation/context/StarterMarketPresentationContext";
 import { applyMarketUpgradesToPresentation } from "../../presentation/context/MarketUpgradePresentation";
 import type { SceneCampaignSessionContext } from "../../presentation/scenes/StarterMarketScene";
+import { mountLevelBriefingDomOverlay } from "../../presentation/ui/LevelBriefingDomOverlay";
 import { BrowserCampaignSessionStore } from "../browser/BrowserCampaignSessionStore";
 import { createGameplayScene } from "./GameplaySceneRegistry";
 import { installSafeInteractiveGuard } from "./SafeInteractiveGuard";
@@ -17,11 +19,17 @@ export interface PhaserGameFactoryOptions {
   readonly exposeTestBridge?: boolean;
   readonly levelId?: string;
   readonly shiftId?: string;
+  readonly skipBriefing?: boolean;
 }
 
 const requestedLevelFromLocation = (): string | undefined => {
   const parameters = new URLSearchParams(window.location.search);
   return parameters.get("level")?.trim() || parameters.get("shift")?.trim() || undefined;
+};
+
+const briefingDisabledFromLocation = (): boolean => {
+  const parameters = new URLSearchParams(window.location.search);
+  return parameters.get("briefing") === "0";
 };
 
 export async function createPhaserGame(
@@ -36,6 +44,7 @@ export async function createPhaserGame(
   const requestedId = options.levelId ?? options.shiftId ?? requestedLevelFromLocation();
   const levelId = requestedId ?? firstLevel.level.id;
   const basePresentation = createStarterMarketPresentationContext(levelId);
+  const experience = resolveLevelExperienceSpec(basePresentation.campaignLevel.level);
 
   const session = new CampaignSession(
     {
@@ -64,9 +73,9 @@ export async function createPhaserGame(
   document.body.dataset.activeDay = String(presentation.campaignShift.dayNumber);
   document.body.dataset.activeLevel = presentation.campaignLevel.level.id;
   document.body.dataset.activeMode = presentation.mode;
+  document.body.dataset.levelExperience = experience.modeLabel;
 
   const activeScene = createGameplayScene(presentation, campaignSession);
-
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: options.parent ?? "app",
@@ -90,6 +99,7 @@ export async function createPhaserGame(
     scene: [activeScene]
   });
   game.registry.set("campaignSession", session);
+  game.registry.set("levelExperience", experience);
 
   const exposeTestBridge = options.exposeTestBridge ?? (
     new URLSearchParams(window.location.search).get("test") === "1"
@@ -101,6 +111,41 @@ export async function createPhaserGame(
     };
     testWindow.__IMMERSIVE_GAME__ = game;
     testWindow.__CAMPAIGN_SESSION__ = session;
+  }
+
+  const skipBriefing = options.skipBriefing ?? briefingDisabledFromLocation();
+  if (skipBriefing) {
+    document.body.dataset.levelBriefing = "skipped";
+  } else {
+    let coreReady = false;
+    let startRequested = false;
+
+    const resumeShift = (): void => {
+      if (!coreReady || !startRequested) return;
+      game.scene.resume(presentation.scene.key);
+      crazyGamesPlatform.gameplayStart();
+      document.body.dataset.levelBriefing = "closed";
+    };
+
+    mountLevelBriefingDomOverlay(
+      {
+        levelLabel: presentation.campaignLevel.levelLabel,
+        dayLabel: presentation.campaignShift.dayLabel,
+        startTime: presentation.runtime.shift.startTime,
+        experience
+      },
+      () => {
+        startRequested = true;
+        resumeShift();
+      }
+    );
+
+    game.events.once(Phaser.Core.Events.READY, () => {
+      coreReady = true;
+      game.scene.pause(presentation.scene.key);
+      crazyGamesPlatform.gameplayStop();
+      resumeShift();
+    });
   }
 
   crazyGamesPlatform.bindGame(game);
