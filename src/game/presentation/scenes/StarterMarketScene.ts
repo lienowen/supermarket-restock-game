@@ -40,6 +40,7 @@ import { RestockRushMeter } from "../ui/RestockRushMeter";
 import { ShiftHud } from "../ui/ShiftHud";
 import { resolveLevelVisualPreset } from "../visual/LevelVisualPresetResolver";
 import type { RestockLevelVisualPreset } from "../visual/MarketLevelVisualPreset";
+import { COOLER_STOCK_ITEMS_PER_SLOT } from "../visual/CoolerStockLayout";
 import { StarterMarketEnvironmentView } from "../world/StarterMarketEnvironmentView";
 
 export interface SceneCampaignSessionContext {
@@ -98,6 +99,7 @@ export class StarterMarketScene extends Phaser.Scene {
     const rushTuning = context.campaignLevel.level.tuning.rush;
     this.rush = new RestockRushController({
       rowCount: this.visualPreset.cooler.rowYs.length,
+      itemsPerRow: COOLER_STOCK_ITEMS_PER_SLOT,
       randomSeed: context.campaignLevel.level.randomSeed,
       ...(rushTuning ?? {}),
       keepTargetOnFailure: rushTuning?.memoryPreview?.keepTargetOnFailure
@@ -133,10 +135,10 @@ export class StarterMarketScene extends Phaser.Scene {
           ? "GUIDED STOCK"
           : "RESTOCK RUSH",
       instruction: memoryConfig
-        ? "FOLLOW THE MEMORIZED ORDER"
+        ? "FOLLOW THE MEMORIZED ORDER · STOCK 3 ITEMS"
         : context.campaignLevel.level.tuning.rush?.timeoutEnabled === false
-          ? "FOLLOW THE GUIDED ORDER"
-          : "FIND THE GLOWING SHELF"
+          ? "FOLLOW THE GUIDED ORDER · STOCK 3 ITEMS"
+          : "FIND THE GLOWING SHELF · STOCK 3 ITEMS"
     });
     this.actors = this.createActors();
     this.target = new InteractionTargetView(
@@ -205,6 +207,10 @@ export class StarterMarketScene extends Phaser.Scene {
     const preset = this.visualPreset.cooler;
     const cooler = new BeverageCoolerView(this, {
       centreX: context.world.beverageCooler.x,
+      stockSource: {
+        x: context.world.cartCooler.x,
+        y: context.world.cartCooler.y - 18
+      },
       baseY: preset.baseY,
       backgroundY: preset.backgroundY,
       frameWidth: preset.frameSize.width,
@@ -368,14 +374,16 @@ export class StarterMarketScene extends Phaser.Scene {
       return;
     }
 
-    if (!this.dispatchSceneAction("RESTOCK_ROW", false)) return;
-    const streak = result.snapshot.currentStreak;
-    playActionFeedback(this, rowCentre, "restock", {
-      label: streak > 1 ? `FAST STOCK x${streak}` : "STOCKED!",
-      emphasis: 1 + Math.min(0.4, Math.max(0, streak - 1) * 0.09)
-    });
-    this.cameras.main.shake(55, 0.0014);
+    this.interactionGate.lockFor(320);
+    if (result.rowCompleted && !this.dispatchSceneAction("RESTOCK_ROW", false)) return;
     this.syncRushPresentation(result.snapshot);
+
+    const itemLabel = `${result.stockedItemCount}/${result.snapshot.itemsPerRow}`;
+    playActionFeedback(this, rowCentre, "restock", {
+      label: result.rowCompleted ? `SHELF FULL ${itemLabel}` : `STOCKED ${itemLabel}`,
+      emphasis: result.rowCompleted ? 1.22 : 1.04
+    });
+    this.cameras.main.shake(result.rowCompleted ? 55 : 30, result.rowCompleted ? 0.0014 : 0.0008);
   }
 
   private updateRush(): void {
@@ -396,6 +404,7 @@ export class StarterMarketScene extends Phaser.Scene {
     const memoryConfig = this.memoryConfig();
     this.cooler?.syncRush({
       filledRowIndexes: snapshot.filledRowIndexes,
+      rowItemCounts: snapshot.rowItemCounts,
       activeRowIndex: memoryConfig?.hideActiveTarget ? undefined : snapshot.activeRowIndex,
       remainingRatio: snapshot.remainingRatio,
       interactionEnabled:
@@ -414,6 +423,7 @@ export class StarterMarketScene extends Phaser.Scene {
     this.interactionGate.lockFor(memoryConfig.durationMs + 220);
     this.cooler?.syncRush({
       filledRowIndexes: [],
+      rowItemCounts: Array.from({ length: this.visualPreset.cooler.rowYs.length }, () => 0),
       activeRowIndex: undefined,
       remainingRatio: 1,
       interactionEnabled: false
@@ -538,7 +548,7 @@ export class StarterMarketScene extends Phaser.Scene {
           statusLabel: progression.statusLabel,
           levelTitle: context.labels.levelTitle,
           rewardLabel:
-            `${grade} RUSH  •  BEST STREAK x${rushPerformance.bestStreak}  •  ${seconds}s\n` +
+            `${grade} RUSH  •  ${rushPerformance.totalItemsStocked} ITEMS  •  ${seconds}s\n` +
             `+${context.runtime.reward.totalStars} STAR   +${context.runtime.reward.totalCoins} COINS`,
           actionLabel: progression.actionLabel,
           panelColor: context.palette.hud,
