@@ -64,7 +64,7 @@ test("Every level is versioned, seeded and references global registries", () => 
   });
 });
 
-test("Level tuning increases challenge without creating new gameplay engines", () => {
+test("Level one is guided while later repetitions use explicit challenge profiles", () => {
   const [
     levelOne,
     levelTwo,
@@ -79,7 +79,12 @@ test("Level tuning increases challenge without creating new gameplay engines", (
   ] = campaign.levels;
 
   assert.equal(levelOne.level.navigation.moveSpeed, 520);
+  assert.equal(levelOne.level.tuning.rush.sequenceMode, "fixed");
+  assert.equal(levelOne.level.tuning.rush.timeoutEnabled, false);
+  assert.equal(levelOne.level.tuning.rush.streakWindowMs, 2400);
   assert.equal(levelTwo.level.navigation.moveSpeed, 560);
+  assert.equal(levelTwo.level.tuning.rush.sequenceMode, "shuffled");
+  assert.equal(levelTwo.level.tuning.rush.timeoutEnabled, true);
   assert.equal(levelThree.runtime.customerCount, 6);
   assert.equal(levelFour.runtime.spotCount, 4);
   assert.deepEqual(levelFive.runtime.products.map((product) => product.id), [
@@ -91,6 +96,7 @@ test("Level tuning increases challenge without creating new gameplay engines", (
   assert.equal(levelSix.runtime.product.id, "cola-bottle");
   assert.equal(levelSix.level.tuning.rush.targetDurationMs, 7200);
   assert.equal(levelSix.level.tuning.rush.minimumTargetDurationMs, 5000);
+  assert.equal(levelSix.level.tuning.rush.sequenceMode, "shuffled");
   assert.equal(levelSeven.runtime.customerCount, 8);
   assert.equal(levelSeven.level.tuning.scanDurationMs, 420);
   assert.equal(levelEight.runtime.spotCount, 6);
@@ -104,11 +110,11 @@ test("Level tuning increases challenge without creating new gameplay engines", (
   assert.equal(levelNine.level.tuning.mistakePenaltySeconds, 7);
   assert.equal(levelTen.runtime.product.id, "water-bottle");
   assert.equal(levelTen.level.tuning.rush.targetDurationMs, 6500);
+  assert.equal(levelTen.level.tuning.rush.sequenceMode, "shuffled");
   assert.equal(levelTen.runtime.reward.totalStars, 2);
 
   assert.equal(levelOne.runtime.reward.completionCoins, 40);
   assert.equal(levelTwo.runtime.reward.completionCoins, 60);
-  assert.equal(levelOne.level.tuning.rush.streakWindowMs, 1900);
 });
 
 test("All resolved level assets come from the canonical global registry", () => {
