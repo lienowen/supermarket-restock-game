@@ -12,11 +12,8 @@ const NO_RULE_OVERRIDES = Object.freeze([]);
 
 /**
  * Pure level data. A level never owns methods or asset paths.
- * - mode chooses a gameplay handler
- * - assetPackId chooses globally registered assets
- * - visualPresetId chooses a globally registered composition
- * - mission/tuning/navigation provide the changing values
- * - rules references typed reusable components; algorithms remain in code
+ * Difficulty grows through quantities, service time, movement, penalties and
+ * rush windows while all reusable algorithms remain in registered mode code.
  */
 export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
   {
@@ -147,6 +144,138 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
         { productId: "apple", x: 1180, y: 720 },
         { productId: "cereal-box", x: 820, y: 650 }
       ]
+    }
+  },
+  {
+    schemaVersion: CURRENT_LEVEL_SCHEMA_VERSION,
+    id: "starter-level-006",
+    mode: "restock",
+    shiftId: "starter-shift-005",
+    missionId: "restock-cola-closing",
+    title: "Closing Stock Sprint",
+    randomSeed: "starter-level-006-v1",
+    navigation: { moveSpeed: 600, interactionRadius: 150 },
+    presentation: {
+      assetPackId: "market-restock-v1",
+      visualPresetId: "restock-standard-v1"
+    },
+    rules: NO_RULE_OVERRIDES,
+    tuning: {
+      initialCoins: 600,
+      slotCount: 6,
+      progressRewardRatio: 0.55,
+      rush: {
+        targetDurationMs: 7200,
+        minimumTargetDurationMs: 5000,
+        speedUpPerSuccessMs: 350,
+        introGraceMs: 2500,
+        streakWindowMs: 1250,
+        goldTimeMs: 24000,
+        silverTimeMs: 35000
+      }
+    }
+  },
+  {
+    schemaVersion: CURRENT_LEVEL_SCHEMA_VERSION,
+    id: "starter-level-007",
+    mode: "checkout",
+    shiftId: "starter-shift-006",
+    missionId: "serve-evening-rush",
+    title: "Evening Checkout",
+    randomSeed: "starter-level-007-v1",
+    navigation: { moveSpeed: 500, interactionRadius: 150 },
+    presentation: {
+      assetPackId: "market-checkout-v1",
+      visualPresetId: "checkout-standard-v1"
+    },
+    rules: NO_RULE_OVERRIDES,
+    tuning: {
+      initialCoins: 740,
+      serviceRewardRatio: 0.8,
+      scanDurationMs: 420,
+      queueAdvanceDurationMs: 280
+    }
+  },
+  {
+    schemaVersion: CURRENT_LEVEL_SCHEMA_VERSION,
+    id: "starter-level-008",
+    mode: "clean",
+    shiftId: "starter-shift-007",
+    missionId: "clean-closing-aisles",
+    title: "Closing Clean-up",
+    randomSeed: "starter-level-008-v1",
+    navigation: { moveSpeed: 520, interactionRadius: 145 },
+    presentation: {
+      assetPackId: "market-clean-v1",
+      visualPresetId: "clean-standard-v1"
+    },
+    rules: NO_RULE_OVERRIDES,
+    tuning: {
+      initialCoins: 860,
+      cleanDurationMs: 700,
+      toolPoint: { x: 1190, y: 760 },
+      spotPositions: [
+        { x: 535, y: 720 },
+        { x: 680, y: 660 },
+        { x: 820, y: 742 },
+        { x: 955, y: 675 },
+        { x: 1085, y: 748 },
+        { x: 1195, y: 690 }
+      ]
+    }
+  },
+  {
+    schemaVersion: CURRENT_LEVEL_SCHEMA_VERSION,
+    id: "starter-level-009",
+    mode: "find-items",
+    shiftId: "starter-shift-008",
+    missionId: "find-priority-order",
+    title: "Priority Order",
+    randomSeed: "starter-level-009-v1",
+    navigation: { moveSpeed: 535, interactionRadius: 150 },
+    presentation: {
+      assetPackId: "market-find-items-v1",
+      visualPresetId: "find-items-standard-v1"
+    },
+    rules: NO_RULE_OVERRIDES,
+    tuning: {
+      initialCoins: 990,
+      timeLimitSeconds: 40,
+      mistakePenaltySeconds: 7,
+      itemTargets: [
+        { productId: "cereal-box", x: 820, y: 650 },
+        { productId: "milk-bottle", x: 520, y: 700 },
+        { productId: "apple", x: 1180, y: 720 }
+      ]
+    }
+  },
+  {
+    schemaVersion: CURRENT_LEVEL_SCHEMA_VERSION,
+    id: "starter-level-010",
+    mode: "restock",
+    shiftId: "starter-shift-009",
+    missionId: "restock-water-finale",
+    title: "Final Cooler Rush",
+    randomSeed: "starter-level-010-v1",
+    navigation: { moveSpeed: 620, interactionRadius: 145 },
+    presentation: {
+      assetPackId: "market-restock-v1",
+      visualPresetId: "restock-standard-v1"
+    },
+    rules: NO_RULE_OVERRIDES,
+    tuning: {
+      initialCoins: 1140,
+      slotCount: 6,
+      progressRewardRatio: 0.5,
+      rush: {
+        targetDurationMs: 6500,
+        minimumTargetDurationMs: 4200,
+        speedUpPerSuccessMs: 320,
+        introGraceMs: 2200,
+        streakWindowMs: 1100,
+        goldTimeMs: 21000,
+        silverTimeMs: 31000
+      }
     }
   }
 ]);
