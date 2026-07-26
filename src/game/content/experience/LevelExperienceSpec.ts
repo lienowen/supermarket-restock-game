@@ -2,6 +2,19 @@ import type { LevelDefinition } from "../GameContent";
 
 export type LevelPrimaryInput = "tap" | "hold" | "drag" | "timing" | "sequence" | "mixed";
 
+export interface LevelChecklistStepSpec {
+  readonly id: string;
+  readonly label: string;
+  readonly action?: string;
+  readonly tracksProgress?: boolean;
+}
+
+export interface LevelChecklistSpec {
+  readonly eyebrow: string;
+  readonly heading: string;
+  readonly steps: readonly LevelChecklistStepSpec[];
+}
+
 export interface LevelExperienceSpec {
   readonly levelId: string;
   readonly mode: LevelDefinition["mode"];
@@ -13,6 +26,7 @@ export interface LevelExperienceSpec {
   readonly control: string;
   readonly successMetric: string;
   readonly primaryInput: LevelPrimaryInput;
+  readonly checklist?: LevelChecklistSpec;
 }
 
 const define = (spec: LevelExperienceSpec): LevelExperienceSpec => Object.freeze(spec);
@@ -28,7 +42,18 @@ export const STARTER_LEVEL_EXPERIENCE_SPECS: readonly LevelExperienceSpec[] = Ob
     mechanic: "The shelf order is fixed and there is no shelf timeout in this training level.",
     control: "Move with a floor tap or the arrow keys, then tap the active shelf slot.",
     successMetric: "Finish the full delivery with as few wrong shelf taps as possible.",
-    primaryInput: "sequence"
+    primaryInput: "sequence",
+    checklist: Object.freeze({
+      eyebrow: "FIRST DELIVERY",
+      heading: "Shift checklist",
+      steps: Object.freeze([
+        Object.freeze({ id: "pickup", label: "Pick up the cola case", action: "PICK_BOX" }),
+        Object.freeze({ id: "load", label: "Load the case onto the cart", action: "LOAD_CART" }),
+        Object.freeze({ id: "deliver", label: "Deliver the cart to the cooler", action: "PUSH_CART" }),
+        Object.freeze({ id: "open", label: "Open the case at the cooler", action: "OPEN_BOX" }),
+        Object.freeze({ id: "stock", label: "Stock the cooler shelves", tracksProgress: true })
+      ])
+    })
   }),
   define({
     levelId: "starter-level-002",
@@ -167,6 +192,20 @@ export function validateLevelExperienceSpecs(levels: readonly LevelDefinition[])
     if (!spec.mechanic.trim()) errors.push(`Experience spec ${spec.levelId} requires a mechanic explanation`);
     if (!spec.control.trim()) errors.push(`Experience spec ${spec.levelId} requires a control explanation`);
     if (!spec.successMetric.trim()) errors.push(`Experience spec ${spec.levelId} requires a success metric`);
+
+    if (spec.checklist) {
+      const stepIds = new Set<string>();
+      if (!spec.checklist.heading.trim()) errors.push(`Experience spec ${spec.levelId} checklist requires a heading`);
+      if (spec.checklist.steps.length < 2) errors.push(`Experience spec ${spec.levelId} checklist requires at least two steps`);
+      spec.checklist.steps.forEach((step) => {
+        if (stepIds.has(step.id)) errors.push(`Experience spec ${spec.levelId} has duplicate checklist step ${step.id}`);
+        stepIds.add(step.id);
+        if (!step.label.trim()) errors.push(`Experience spec ${spec.levelId} checklist step ${step.id} requires a label`);
+        if (!step.action && !step.tracksProgress) {
+          errors.push(`Experience spec ${spec.levelId} checklist step ${step.id} has no completion signal`);
+        }
+      });
+    }
   }
 
   for (const level of levels) {
