@@ -31,6 +31,8 @@ await new Promise((resolveServer) => server.listen(PORT, "127.0.0.1", resolveSer
 const report = {
   generatedAt: new Date().toISOString(),
   scannedItems: 0,
+  oldTapState: null,
+  customerStates: [],
   assertions: {
     scanOverlayAppears: false,
     earlyPaymentLocked: false,
@@ -85,41 +87,47 @@ try {
   await waitForInteractionReady(page);
   await clickGame(page, 1035, 690);
   await waitForSnapshot(page, { step: "serve", customersServed: 0 });
-  await page.waitForFunction(
-    () => document.body.dataset.checkoutScan === "active",
-    null,
-    { timeout: 10000 }
-  );
+  await waitForCheckoutCustomer(page, 1);
+
   report.assertions.scanOverlayAppears = await page.locator("#checkout-scan-overlay").isVisible();
   report.assertions.earlyPaymentLocked = await page.locator("#checkout-payment-button").isDisabled();
   await page.screenshot({ path: join(OUTPUT_DIR, "checkout-scan-active.png"), fullPage: true });
 
-  const beforeOldTap = await readSnapshot(page);
+  const beforeOldTap = await readCheckoutState(page);
   await clickGame(page, 1035, 690);
   await page.waitForTimeout(300);
-  const afterOldTap = await readSnapshot(page);
+  const afterOldTap = await readCheckoutState(page);
+  report.oldTapState = { before: beforeOldTap, after: afterOldTap };
   report.assertions.oldRegisterTapBlocked = (
-    beforeOldTap.customersServed === 0 &&
-    afterOldTap.customersServed === 0 &&
-    documentState(await page.evaluate(() => document.body.dataset.checkoutScan)) === "active"
+    beforeOldTap.snapshot?.customersServed === 0 &&
+    afterOldTap.snapshot?.customersServed === 0 &&
+    beforeOldTap.overlayState === "active" &&
+    afterOldTap.overlayState === "active" &&
+    beforeOldTap.customer === "1" &&
+    afterOldTap.customer === "1" &&
+    beforeOldTap.scanned === "0" &&
+    afterOldTap.scanned === "0" &&
+    afterOldTap.sceneInputEnabled === false
   );
 
   for (let customer = 0; customer < 6; customer += 1) {
-    await page.waitForFunction(
-      (expectedCustomer) => {
-        const label = document.querySelector("#checkout-scan-overlay")?.textContent ?? "";
-        return document.body.dataset.checkoutScan === "active" && label.includes(`CUSTOMER ${expectedCustomer + 1}/6`);
-      },
-      customer,
-      { timeout: 15000 }
+    await waitForCheckoutCustomer(page, customer + 1);
+    const expectedCount = Number(
+      await page.evaluate(() => document.body.dataset.checkoutScanItems)
     );
     const cards = page.locator(".checkout-product-card");
-    const count = await cards.count();
-    if (count < 2 || count > 3) throw new Error(`Unexpected product count ${count}`);
+    const renderedCount = await cards.count();
+    if (expectedCount < 2 || expectedCount > 3 || renderedCount !== expectedCount) {
+      throw new Error(
+        `Unexpected product count for customer ${customer + 1}: ` +
+        JSON.stringify({ expectedCount, renderedCount })
+      );
+    }
+
     const targetBox = await page.locator("#checkout-scan-zone").boundingBox();
     if (!targetBox) throw new Error("Scan zone has no bounds");
 
-    for (let item = 0; item < count; item += 1) {
+    for (let item = 0; item < expectedCount; item += 1) {
       const card = cards.nth(item);
       const cardBox = await card.boundingBox();
       if (!cardBox) throw new Error(`Product card ${item} has no bounds`);
@@ -131,12 +139,22 @@ try {
         { steps: 10 }
       );
       await page.mouse.up();
+      await page.waitForFunction(
+        (expectedScanned) => document.body.dataset.checkoutScanScanned === String(expectedScanned),
+        item + 1,
+        { timeout: 5000 }
+      );
       report.scannedItems += 1;
     }
 
     const payment = page.locator("#checkout-payment-button");
     await payment.waitFor({ state: "visible", timeout: 5000 });
-    if (await payment.isDisabled()) throw new Error(`Payment did not unlock for customer ${customer + 1}`);
+    await page.waitForFunction(() => {
+      const button = document.querySelector("#checkout-payment-button");
+      return button instanceof HTMLButtonElement && button.disabled === false;
+    }, null, { timeout: 5000 });
+
+    report.customerStates.push(await readCheckoutState(page));
     await payment.click();
     await waitForSnapshot(page, { customersServed: customer + 1 }, 15000);
     if (customer === 0) report.assertions.paymentAdvancesOneCustomer = true;
@@ -147,7 +165,11 @@ try {
     customersServed: 6
   }, 15000);
   report.assertions.allItemsRequireDrag = report.scannedItems === 15;
-  report.assertions.allCustomersComplete = Boolean(complete && complete.step === "complete");
+  report.assertions.allCustomersComplete = Boolean(
+    complete &&
+    complete.step === "complete" &&
+    documentState(await page.evaluate(() => document.body.dataset.checkoutScan)) === "complete"
+  );
   await page.screenshot({ path: join(OUTPUT_DIR, "checkout-scan-complete.png"), fullPage: true });
 
   const issueCount = report.consoleErrors.length + report.pageErrors.length + report.failedRequests.length;
@@ -172,7 +194,11 @@ try {
   await new Promise((resolveServer) => server.close(resolveServer));
 }
 
-console.log(JSON.stringify({ assertions: report.assertions, scannedItems: report.scannedItems, fatalError: report.fatalError }, null, 2));
+console.log(JSON.stringify({
+  assertions: report.assertions,
+  scannedItems: report.scannedItems,
+  fatalError: report.fatalError
+}, null, 2));
 if (thrownError) throw thrownError;
 
 function documentState(value) {
@@ -184,6 +210,32 @@ async function readSnapshot(page) {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
     return scene?.controller?.snapshot?.() ?? null;
   }, GAME_SCENE_KEY);
+}
+
+async function readCheckoutState(page) {
+  return page.evaluate((sceneKey) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+    return {
+      snapshot: scene?.controller?.snapshot?.() ?? null,
+      overlayState: document.body.dataset.checkoutScan,
+      customer: document.body.dataset.checkoutScanCustomer,
+      items: document.body.dataset.checkoutScanItems,
+      scanned: document.body.dataset.checkoutScanScanned,
+      sceneInputEnabled: scene?.input?.enabled ?? null
+    };
+  }, GAME_SCENE_KEY);
+}
+
+async function waitForCheckoutCustomer(page, customerNumber) {
+  await page.waitForFunction(
+    (expectedCustomer) => (
+      document.body.dataset.checkoutScan === "active" &&
+      document.body.dataset.checkoutScanCustomer === String(expectedCustomer) &&
+      Number(document.body.dataset.checkoutScanItems) >= 2
+    ),
+    customerNumber,
+    { timeout: 15000 }
+  );
 }
 
 async function waitForSnapshot(page, expected, timeout = 15000) {
