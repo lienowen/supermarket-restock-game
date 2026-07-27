@@ -8,6 +8,10 @@ import {
 import { COMMERCIAL_VERTICAL_SLICE_LEVELS } from "../../content/commercial/commercialShelfSortLevels";
 import { BrowserCommercialProfileStore } from "../../infrastructure/browser/BrowserCommercialProfileStore";
 import {
+  commercialProductAsset,
+  commercialProductAssetsForLevels
+} from "../assets/CommercialProductAssets";
+import {
   createShelfSortState,
   moveShelfProduct,
   shelfSortProgress,
@@ -42,7 +46,7 @@ const levelIndexFromLocation = (): number | undefined => {
   return clampLevelIndex(Number(value) - 1);
 };
 
-const productColor = (productId: string): number => {
+const fallbackProductColor = (productId: string): number => {
   let hash = 2166136261;
   for (let index = 0; index < productId.length; index += 1) {
     hash ^= productId.charCodeAt(index);
@@ -54,7 +58,7 @@ const productColor = (productId: string): number => {
   return (red << 16) | (green << 8) | blue;
 };
 
-const productLabel = (productId: string): string => productId
+const fallbackProductLabel = (productId: string): string => productId
   .split("-")
   .map((part) => part.slice(0, 1).toUpperCase())
   .join("")
@@ -73,6 +77,7 @@ export class CommercialShelfSortScene extends Phaser.Scene {
   private feedbackText?: Phaser.GameObjects.Text;
   private progressBar?: Phaser.GameObjects.Graphics;
   private completionLayer?: Phaser.GameObjects.Container;
+  private levelPickerLayer?: Phaser.GameObjects.Container;
 
   constructor() {
     super("commercial-shelf-sort");
@@ -97,6 +102,12 @@ export class CommercialShelfSortScene extends Phaser.Scene {
     this.history.length = 0;
   }
 
+  preload(): void {
+    for (const asset of commercialProductAssetsForLevels(COMMERCIAL_VERTICAL_SLICE_LEVELS)) {
+      if (!this.textures.exists(asset.textureKey)) this.load.image(asset.textureKey, asset.path);
+    }
+  }
+
   create(): void {
     document.body.dataset.gameScene = "commercial-shelf-sort";
     document.body.dataset.activeMode = "shelf-restock-puzzle";
@@ -104,13 +115,17 @@ export class CommercialShelfSortScene extends Phaser.Scene {
     document.body.dataset.commercialLevel = String(this.levelIndex + 1);
     document.body.dataset.commercialCoins = String(this.profile.coins);
     document.body.dataset.commercialStars = String(this.profile.totalStars);
+    document.body.dataset.commercialVisuals = "production-products";
     this.cameras.main.setBackgroundColor("#13231f");
 
     this.createBackground();
     this.createHeader();
     this.createControls();
     this.renderBoard();
-    this.syncHud("Tap a product bay, then choose a destination.");
+    this.syncHud(this.levelIndex === 0
+      ? "Tap a shelf with products, then choose an open destination."
+      : "Group three matching products to clear every shelf.");
+    this.createTutorialPulse();
 
     crazyGamesPlatform.loadingStop();
     crazyGamesPlatform.gameplayStart();
@@ -178,7 +193,7 @@ export class CommercialShelfSortScene extends Phaser.Scene {
   private createControls(): void {
     this.createTextButton(48, 1240, 190, 62, "UNDO", () => this.undo());
     this.createTextButton(280, 1240, 190, 62, "RESTART", () => this.restartLevel());
-    this.createTextButton(512, 1240, 190, 62, "NEXT OPEN", () => this.openNextUnlockedLevel());
+    this.createTextButton(512, 1240, 190, 62, "LEVELS", () => this.showLevelPicker());
   }
 
   private createTextButton(
@@ -249,12 +264,17 @@ export class CommercialShelfSortScene extends Phaser.Scene {
     shelf.fillStyle(0x0d1c18, 0.75);
     shelf.fillRoundedRect(-width / 2 + 10, height / 2 - 26, width - 20, 14, 7);
 
-    const label = this.add.text(-width / 2 + 14, -height / 2 + 10, bayState.locked ? "LOCKED" : bayState.id.toUpperCase(), {
-      fontFamily: "Arial, sans-serif",
-      fontSize: "12px",
-      fontStyle: "bold",
-      color: bayState.locked ? "#f08a8a" : "#8fb4a7"
-    });
+    const label = this.add.text(
+      -width / 2 + 14,
+      -height / 2 + 10,
+      bayState.locked ? "LOCKED" : bayState.id.toUpperCase(),
+      {
+        fontFamily: "Arial, sans-serif",
+        fontSize: "12px",
+        fontStyle: "bold",
+        color: bayState.locked ? "#f08a8a" : "#8fb4a7"
+      }
+    );
 
     container.add([frame, shelf, label]);
     this.addProductSlots(container, bayState, width, height);
@@ -287,28 +307,64 @@ export class CommercialShelfSortScene extends Phaser.Scene {
 
       const productId = bayState.items[index];
       if (!productId) continue;
+      const asset = commercialProductAsset(productId);
 
-      const product = this.add.graphics();
-      product.fillStyle(productColor(productId), 1);
-      product.fillRoundedRect(-slotWidth / 2 + 5, -slotHeight / 2 + 6, slotWidth - 10, slotHeight - 12, 12);
-      product.lineStyle(3, 0xffffff, 0.25);
-      product.strokeRoundedRect(-slotWidth / 2 + 5, -slotHeight / 2 + 6, slotWidth - 10, slotHeight - 12, 12);
-      product.setPosition(slotX, slotY);
-
-      const text = this.add.text(slotX, slotY, productLabel(productId), {
-        fontFamily: "Arial, sans-serif",
-        fontSize: `${Math.max(16, Math.min(24, slotWidth * 0.25))}px`,
-        fontStyle: "bold",
-        color: "#ffffff",
-        align: "center"
-      }).setOrigin(0.5);
-
-      container.add([product, text]);
+      if (asset && this.textures.exists(asset.textureKey)) {
+        const shadow = this.add.ellipse(
+          slotX,
+          slotY + slotHeight * 0.34,
+          slotWidth * 0.72,
+          Math.max(8, slotHeight * 0.09),
+          0x000000,
+          0.28
+        );
+        const image = this.add.image(slotX, slotY, asset.textureKey).setOrigin(0.5);
+        const textureWidth = Math.max(1, image.width);
+        const textureHeight = Math.max(1, image.height);
+        const scale = Math.min(
+          (slotWidth - 8) / textureWidth,
+          (slotHeight - 10) / textureHeight
+        );
+        image.setScale(scale);
+        image.setData("productId", productId);
+        image.setData("displayName", asset.displayName);
+        container.add([shadow, image]);
+      } else {
+        const product = this.add.graphics();
+        product.fillStyle(fallbackProductColor(productId), 1);
+        product.fillRoundedRect(-slotWidth / 2 + 5, -slotHeight / 2 + 6, slotWidth - 10, slotHeight - 12, 12);
+        product.lineStyle(3, 0xffffff, 0.25);
+        product.strokeRoundedRect(-slotWidth / 2 + 5, -slotHeight / 2 + 6, slotWidth - 10, slotHeight - 12, 12);
+        product.setPosition(slotX, slotY);
+        const text = this.add.text(slotX, slotY, fallbackProductLabel(productId), {
+          fontFamily: "Arial, sans-serif",
+          fontSize: `${Math.max(16, Math.min(24, slotWidth * 0.25))}px`,
+          fontStyle: "bold",
+          color: "#ffffff",
+          align: "center"
+        }).setOrigin(0.5);
+        container.add([product, text]);
+      }
     }
   }
 
+  private createTutorialPulse(): void {
+    if (this.levelIndex !== 0 || this.profile.completedLevelIds.includes(this.level.id)) return;
+    const firstBay = this.bayViews[0]?.container;
+    if (!firstBay) return;
+    this.tweens.add({
+      targets: firstBay,
+      scaleX: 1.035,
+      scaleY: 1.035,
+      duration: 650,
+      yoyo: true,
+      repeat: 5,
+      ease: "Sine.easeInOut"
+    });
+  }
+
   private handleBaySelection(bayId: string): void {
-    if (this.state.status !== "playing") return;
+    if (this.state.status !== "playing" || this.levelPickerLayer) return;
     const bay = this.state.bays.find((candidate) => candidate.id === bayId);
     if (!bay || bay.locked) return;
 
@@ -378,7 +434,7 @@ export class CommercialShelfSortScene extends Phaser.Scene {
   }
 
   private undo(): void {
-    if (this.state.status !== "playing") return;
+    if (this.state.status !== "playing" || this.levelPickerLayer) return;
     const previous = this.history.pop();
     if (!previous) {
       this.syncHud("No move to undo.");
@@ -391,18 +447,102 @@ export class CommercialShelfSortScene extends Phaser.Scene {
   }
 
   private restartLevel(): void {
+    if (this.levelPickerLayer) return;
     crazyGamesPlatform.gameplayStop();
     this.scene.restart({ levelIndex: this.levelIndex });
   }
 
-  private openNextUnlockedLevel(): void {
-    const unlockedCount = Math.max(1, Math.min(
-      COMMERCIAL_VERTICAL_SLICE_LEVELS.length,
-      this.profile.unlockedLevelIndex + 1
-    ));
-    const nextIndex = (this.levelIndex + 1) % unlockedCount;
+  private showLevelPicker(): void {
+    if (this.levelPickerLayer || this.completionLayer) return;
     crazyGamesPlatform.gameplayStop();
-    this.scene.restart({ levelIndex: nextIndex });
+    const layer = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2).setDepth(900);
+    const shade = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x07100d, 0.93).setInteractive();
+    const card = this.add.graphics();
+    card.fillStyle(0x24463c, 1);
+    card.fillRoundedRect(-325, -500, 650, 1000, 34);
+    card.lineStyle(3, 0x5c8f7f, 1);
+    card.strokeRoundedRect(-325, -500, 650, 1000, 34);
+    const title = this.add.text(0, -440, "CHOOSE A LEVEL", {
+      fontFamily: "Arial, sans-serif",
+      fontSize: "34px",
+      fontStyle: "bold",
+      color: "#ffffff"
+    }).setOrigin(0.5);
+    const progress = this.add.text(
+      0,
+      -390,
+      `${this.profile.completedLevelIds.length}/${COMMERCIAL_VERTICAL_SLICE_LEVELS.length} complete · ${this.profile.totalStars} stars`,
+      {
+        fontFamily: "Arial, sans-serif",
+        fontSize: "18px",
+        color: "#b9d0c7"
+      }
+    ).setOrigin(0.5);
+    layer.add([shade, card, title, progress]);
+
+    COMMERCIAL_VERTICAL_SLICE_LEVELS.forEach((level, index) => {
+      const column = index % 2;
+      const row = Math.floor(index / 2);
+      const x = column === 0 ? -155 : 155;
+      const y = -300 + row * 135;
+      const unlocked = index <= this.profile.unlockedLevelIndex;
+      const stars = this.profile.starsByLevel[level.id] ?? 0;
+      const button = this.add.container(x, y);
+      const background = this.add.graphics();
+      background.fillStyle(unlocked ? 0x315f4b : 0x26352f, 1);
+      background.fillRoundedRect(-135, -50, 270, 100, 18);
+      background.lineStyle(2, index === this.levelIndex ? 0xf2c14e : 0x557a6e, 1);
+      background.strokeRoundedRect(-135, -50, 270, 100, 18);
+      const number = this.add.text(-105, -25, unlocked ? String(index + 1) : "🔒", {
+        fontFamily: "Arial, sans-serif",
+        fontSize: "26px",
+        fontStyle: "bold",
+        color: unlocked ? "#ffffff" : "#819088"
+      });
+      const name = this.add.text(-55, -27, level.title, {
+        fontFamily: "Arial, sans-serif",
+        fontSize: "15px",
+        fontStyle: "bold",
+        color: unlocked ? "#ffffff" : "#819088",
+        wordWrap: { width: 170 }
+      });
+      const rating = this.add.text(-55, 18, stars > 0 ? `${"★".repeat(stars)}${"☆".repeat(3 - stars)}` : "Not cleared", {
+        fontFamily: "Arial, sans-serif",
+        fontSize: "14px",
+        color: stars > 0 ? "#f2c14e" : "#9fb2aa"
+      });
+      button.add([background, number, name, rating]);
+      button.setSize(270, 100);
+      if (unlocked) {
+        button.setInteractive({ useHandCursor: true });
+        button.on("pointerdown", () => {
+          layer.destroy(true);
+          this.levelPickerLayer = undefined;
+          this.scene.restart({ levelIndex: index });
+        });
+      }
+      layer.add(button);
+    });
+
+    const close = this.add.container(0, 430);
+    const closeBackground = this.add.graphics();
+    closeBackground.fillStyle(0xf2c14e, 1);
+    closeBackground.fillRoundedRect(-170, -36, 340, 72, 18);
+    const closeText = this.add.text(0, 0, "BACK TO GAME", {
+      fontFamily: "Arial, sans-serif",
+      fontSize: "22px",
+      fontStyle: "bold",
+      color: "#13231f"
+    }).setOrigin(0.5);
+    close.add([closeBackground, closeText]);
+    close.setSize(340, 72).setInteractive({ useHandCursor: true });
+    close.on("pointerdown", () => {
+      layer.destroy(true);
+      this.levelPickerLayer = undefined;
+      crazyGamesPlatform.gameplayStart();
+    });
+    layer.add(close);
+    this.levelPickerLayer = layer;
   }
 
   private showCompletion(success: boolean): void {
@@ -430,9 +570,7 @@ export class CommercialShelfSortScene extends Phaser.Scene {
 
     this.completionLayer?.destroy(true);
     const layer = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2).setDepth(1000);
-    const shade = this.add.graphics();
-    shade.fillStyle(0x07100d, 0.9);
-    shade.fillRect(-GAME_WIDTH / 2, -GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT);
+    const shade = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x07100d, 0.93).setInteractive();
     const card = this.add.graphics();
     card.fillStyle(0x24463c, 1);
     card.fillRoundedRect(-300, -250, 600, 500, 34);
