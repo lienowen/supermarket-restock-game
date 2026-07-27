@@ -18,6 +18,13 @@ const {
   validateCommercialProfile
 } = require("../.test-dist/src/game/application/CommercialProfile.js");
 const {
+  commercialLevelCoinReward,
+  commercialMoveLimitBonus,
+  commercialUndoLimit,
+  purchaseCommercialUpgrade,
+  validateCommercialUpgradeDefinitions
+} = require("../.test-dist/src/game/application/CommercialUpgrades.js");
+const {
   COMMERCIAL_CONFIG,
   validateCommercialConfig
 } = require("../.test-dist/src/game/config/commercial.js");
@@ -30,6 +37,7 @@ test("Commercial product contract keeps one primary mode and valid launch budget
   assert.equal(COMMERCIAL_CONFIG.product.primaryMode, "shelf-restock-puzzle");
   assert.equal(COMMERCIAL_CONFIG.progression.launchLevelCount, 60);
   assert.deepEqual(validateCommercialConfig(), []);
+  assert.deepEqual(validateCommercialUpgradeDefinitions(), []);
 });
 
 test("All ten vertical-slice levels satisfy shelf inventory contracts", () => {
@@ -133,8 +141,45 @@ test("Commercial profile rewards first completion once and preserves better resu
   assert.deepEqual(replay.completedLevelIds, ["commercial-level-001"]);
 });
 
+test("Commercial upgrades spend coins once and change real gameplay limits", () => {
+  let profile = createDefaultCommercialProfile("2026-07-27T00:00:00.000Z");
+  profile = applyCommercialLevelCompletion(profile, {
+    levelId: "commercial-level-001",
+    levelIndex: 0,
+    moves: 5,
+    stars: 3,
+    coins: 500,
+    campaignLevelCount: 10,
+    completedAt: "2026-07-27T00:01:00.000Z"
+  });
+
+  const moveUpgrade = purchaseCommercialUpgrade(profile, "moveBuffer", "2026-07-27T00:02:00.000Z");
+  assert.equal(moveUpgrade.accepted, true);
+  assert.equal(moveUpgrade.profile.coins, 380);
+  assert.equal(moveUpgrade.profile.upgrades.moveBuffer, 1);
+  assert.equal(commercialMoveLimitBonus(moveUpgrade.profile), 1);
+
+  const undoUpgrade = purchaseCommercialUpgrade(moveUpgrade.profile, "undoCapacity");
+  assert.equal(undoUpgrade.accepted, true);
+  assert.equal(commercialUndoLimit(undoUpgrade.profile), 2);
+
+  const coinUpgrade = purchaseCommercialUpgrade(undoUpgrade.profile, "coinBoost");
+  assert.equal(coinUpgrade.accepted, true);
+  assert.equal(commercialLevelCoinReward(coinUpgrade.profile, 100), 110);
+  assert.deepEqual(validateCommercialProfile(coinUpgrade.profile), []);
+});
+
+test("Commercial store rejects purchases when coins are insufficient", () => {
+  const profile = createDefaultCommercialProfile("2026-07-27T00:00:00.000Z");
+  const result = purchaseCommercialUpgrade(profile, "coinBoost");
+  assert.equal(result.accepted, false);
+  assert.equal(result.reason, "insufficient-coins");
+  assert.equal(result.profile, profile);
+});
+
 test("Legacy-shaped commercial profile data migrates into a valid versioned snapshot", () => {
   const migrated = migrateCommercialProfile({
+    schemaVersion: 1,
     productId: "shelf-rush-market",
     currentLevelIndex: 2,
     unlockedLevelIndex: 2,
@@ -148,6 +193,12 @@ test("Legacy-shaped commercial profile data migrates into a valid versioned snap
 
   assert.ok(migrated);
   assert.deepEqual(validateCommercialProfile(migrated), []);
+  assert.equal(migrated.schemaVersion, 2);
   assert.equal(migrated.totalStars, 3);
   assert.deepEqual(migrated.completedLevelIds, ["commercial-level-001"]);
+  assert.deepEqual(migrated.upgrades, {
+    moveBuffer: 0,
+    undoCapacity: 0,
+    coinBoost: 0
+  });
 });
