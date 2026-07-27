@@ -21,6 +21,10 @@ const {
   COMMERCIAL_CONFIG,
   validateCommercialConfig
 } = require("../.test-dist/src/game/config/commercial.js");
+const {
+  commercialProductAssetsForLevels,
+  validateCommercialProductAssetCoverage
+} = require("../.test-dist/src/game/presentation/assets/CommercialProductAssets.js");
 
 test("Commercial product contract keeps one primary mode and valid launch budgets", () => {
   assert.equal(COMMERCIAL_CONFIG.product.primaryMode, "shelf-restock-puzzle");
@@ -34,6 +38,14 @@ test("All ten vertical-slice levels satisfy shelf inventory contracts", () => {
   for (const level of COMMERCIAL_VERTICAL_SLICE_LEVELS) {
     assert.deepEqual(validateShelfSortLevel(level), []);
   }
+});
+
+test("Every commercial product has a production sprite mapping", () => {
+  assert.deepEqual(validateCommercialProductAssetCoverage(COMMERCIAL_VERTICAL_SLICE_LEVELS), []);
+  const assets = commercialProductAssetsForLevels(COMMERCIAL_VERTICAL_SLICE_LEVELS);
+  assert.ok(assets.length >= 10);
+  assert.equal(new Set(assets.map((asset) => asset.textureKey)).size, assets.length);
+  assert.equal(assets.every((asset) => asset.path.endsWith(".png")), true);
 });
 
 test("Level 1 completes through the real immutable move rules in five moves", () => {
