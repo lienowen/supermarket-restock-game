@@ -117,32 +117,6 @@ export class StarterMarketEnvironmentView {
       .setAlpha(0.78)
       .setName("beverage-cooler-glass-overlay");
 
-    if (this.context.campaignLevel.level.id === "starter-level-002") {
-      this.scene.add.image(left + 48, top + 42, "prop-promo-tag-red")
-        .setDisplaySize(70, 46)
-        .setDepth(16)
-        .setAngle(-4)
-        .setName("beverage-promotion-tag-red");
-      this.scene.add.image(right - 46, top + 46, "prop-promo-tag-yellow")
-        .setDisplaySize(70, 46)
-        .setDepth(16)
-        .setAngle(4)
-        .setName("beverage-promotion-tag-yellow");
-    }
-
-    if (this.context.campaignLevel.level.id === "starter-level-010") {
-      this.scene.add.image(
-        centreX,
-        centreY,
-        "fixture-beverage-cooler-night-tint"
-      )
-        .setOrigin(0.5)
-        .setDisplaySize(width, height)
-        .setDepth(16)
-        .setAlpha(0.68)
-        .setName("beverage-cooler-night-tint");
-    }
-
     document.body.dataset.restockCoolerBackground = "occluded";
     document.body.dataset.restockCoolerAsset = "fixture-beverage-cooler-empty";
   }
