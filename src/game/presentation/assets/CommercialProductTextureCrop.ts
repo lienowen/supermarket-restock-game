@@ -17,7 +17,7 @@ export function tightenCommercialProductImage(image: Phaser.GameObjects.Image): 
   if (typeof productId !== "string" || !productId.trim()) return false;
 
   const sourceTextureKey = String(image.texture.key);
-  const source = image.texture.getSourceImage(image.frame.sourceIndex);
+  const source = image.texture.getSourceImage(image.frame.sourceIndex) as CanvasImageSource;
   const sourceWidth = Number((source as CanvasImageSource & { width?: number }).width ?? 0);
   const sourceHeight = Number((source as CanvasImageSource & { height?: number }).height ?? 0);
   const bounds = resolveTextureBounds(source, sourceTextureKey, sourceWidth, sourceHeight);
