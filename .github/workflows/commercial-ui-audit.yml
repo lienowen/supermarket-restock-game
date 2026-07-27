@@ -14,7 +14,7 @@ permissions:
 jobs:
   commercial-browser-audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repository
@@ -36,7 +36,10 @@ jobs:
         run: npm run build
 
       - name: Measure and complete commercial Level 1
-        run: node scripts/measure-release-payload.mjs
+        shell: bash
+        run: |
+          set -o pipefail
+          node scripts/measure-release-payload.mjs 2>&1 | tee commercial-ui-audit.log
 
       - name: Upload commercial audit
         if: always()
@@ -44,6 +47,7 @@ jobs:
         with:
           name: commercial-ui-audit
           path: |
+            commercial-ui-audit.log
             release-payload-report.json
             ui-audit/commercial-level-001-initial.png
             ui-audit/commercial-level-001-complete.png
