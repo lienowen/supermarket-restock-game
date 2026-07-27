@@ -36,15 +36,15 @@ export const COMMERCIAL_VERTICAL_SLICE_LEVELS: readonly ShelfSortLevelDefinition
   }),
   level({
     id: "commercial-level-002",
-    title: "Snack Delivery",
+    title: "Drink Delivery",
     layoutId: "2x2",
     targetSetCount: 2,
     moveLimit: 11,
     reward: { coins: 70, stars: 3 },
     bays: [
-      bay("bay-1", ["bread", "cola-bottle"]),
-      bay("bay-2", ["cola-bottle", "bread"]),
-      bay("bay-3", ["bread", "cola-bottle"]),
+      bay("bay-1", ["water-bottle", "cola-bottle"]),
+      bay("bay-2", ["cola-bottle", "water-bottle"]),
+      bay("bay-3", ["water-bottle", "cola-bottle"]),
       bay("bay-4")
     ]
   }),
@@ -70,10 +70,10 @@ export const COMMERCIAL_VERTICAL_SLICE_LEVELS: readonly ShelfSortLevelDefinition
     moveLimit: 24,
     reward: { coins: 110, stars: 3 },
     bays: [
-      bay("bay-1", ["jam-jar", "milk-bottle", "cola-bottle"]),
-      bay("bay-2", ["cola-bottle", "bread", "jam-jar"]),
-      bay("bay-3", ["bread", "cola-bottle", "milk-bottle"]),
-      bay("bay-4", ["milk-bottle", "jam-jar", "bread"]),
+      bay("bay-1", ["peanut-butter", "milk-bottle", "cola-bottle"]),
+      bay("bay-2", ["cola-bottle", "oats-canister", "peanut-butter"]),
+      bay("bay-3", ["oats-canister", "cola-bottle", "milk-bottle"]),
+      bay("bay-4", ["milk-bottle", "peanut-butter", "oats-canister"]),
       ...emptyBays(5, 6)
     ]
   }),
@@ -86,27 +86,27 @@ export const COMMERCIAL_VERTICAL_SLICE_LEVELS: readonly ShelfSortLevelDefinition
     reward: { coins: 130, stars: 3 },
     bays: [
       bay("bay-1", ["apple", "milk-bottle", "cereal-box"]),
-      bay("bay-2", ["milk-bottle", "cereal-box", "bread"]),
-      bay("bay-3", ["cereal-box", "bread", "cola-bottle"]),
-      bay("bay-4", ["bread", "cola-bottle", "apple"]),
+      bay("bay-2", ["milk-bottle", "cereal-box", "oats-canister"]),
+      bay("bay-3", ["cereal-box", "oats-canister", "cola-bottle"]),
+      bay("bay-4", ["oats-canister", "cola-bottle", "apple"]),
       bay("bay-5", ["cola-bottle", "apple", "milk-bottle"]),
       ...emptyBays(6, 9)
     ]
   }),
   level({
     id: "commercial-level-006",
-    title: "Freezer Rush",
+    title: "Household Rush",
     layoutId: "3x3",
     targetSetCount: 6,
     moveLimit: 38,
     reward: { coins: 150, stars: 3 },
     bays: [
-      bay("bay-1", ["ice-cream", "orange-juice", "yogurt"]),
-      bay("bay-2", ["orange-juice", "yogurt", "cookies"]),
-      bay("bay-3", ["yogurt", "cookies", "chips"]),
-      bay("bay-4", ["cookies", "chips", "frozen-peas"]),
-      bay("bay-5", ["chips", "frozen-peas", "ice-cream"]),
-      bay("bay-6", ["frozen-peas", "ice-cream", "orange-juice"]),
+      bay("bay-1", ["detergent-bottle", "orange-soda", "yogurt-cup"]),
+      bay("bay-2", ["orange-soda", "yogurt-cup", "chips-bag"]),
+      bay("bay-3", ["yogurt-cup", "chips-bag", "paper-towels"]),
+      bay("bay-4", ["chips-bag", "paper-towels", "water-bottle"]),
+      bay("bay-5", ["paper-towels", "water-bottle", "detergent-bottle"]),
+      bay("bay-6", ["water-bottle", "detergent-bottle", "orange-soda"]),
       ...emptyBays(7, 9)
     ]
   }),
@@ -119,12 +119,12 @@ export const COMMERCIAL_VERTICAL_SLICE_LEVELS: readonly ShelfSortLevelDefinition
     reward: { coins: 180, stars: 3 },
     bays: [
       bay("bay-1", ["apple", "milk-bottle", "cereal-box"]),
-      bay("bay-2", ["milk-bottle", "cereal-box", "bread"]),
-      bay("bay-3", ["cereal-box", "bread", "cola-bottle"]),
-      bay("bay-4", ["bread", "cola-bottle", "jam-jar"]),
-      bay("bay-5", ["cola-bottle", "jam-jar", "cookies"]),
-      bay("bay-6", ["jam-jar", "cookies", "apple"]),
-      bay("bay-7", ["cookies", "apple", "milk-bottle"]),
+      bay("bay-2", ["milk-bottle", "cereal-box", "oats-canister"]),
+      bay("bay-3", ["cereal-box", "oats-canister", "cola-bottle"]),
+      bay("bay-4", ["oats-canister", "cola-bottle", "peanut-butter"]),
+      bay("bay-5", ["cola-bottle", "peanut-butter", "chips-bag"]),
+      bay("bay-6", ["peanut-butter", "chips-bag", "apple"]),
+      bay("bay-7", ["chips-bag", "apple", "milk-bottle"]),
       ...emptyBays(8, 12)
     ]
   }),
@@ -137,13 +137,13 @@ export const COMMERCIAL_VERTICAL_SLICE_LEVELS: readonly ShelfSortLevelDefinition
     reward: { coins: 210, stars: 3 },
     bays: [
       bay("bay-1", ["apple", "milk-bottle", "cereal-box"]),
-      bay("bay-2", ["milk-bottle", "cereal-box", "bread"]),
-      bay("bay-3", ["cereal-box", "bread", "cola-bottle"]),
-      bay("bay-4", ["bread", "cola-bottle", "jam-jar"]),
-      bay("bay-5", ["cola-bottle", "jam-jar", "cookies"]),
-      bay("bay-6", ["jam-jar", "cookies", "orange-juice"]),
-      bay("bay-7", ["cookies", "orange-juice", "apple"]),
-      bay("bay-8", ["orange-juice", "apple", "milk-bottle"]),
+      bay("bay-2", ["milk-bottle", "cereal-box", "oats-canister"]),
+      bay("bay-3", ["cereal-box", "oats-canister", "cola-bottle"]),
+      bay("bay-4", ["oats-canister", "cola-bottle", "peanut-butter"]),
+      bay("bay-5", ["cola-bottle", "peanut-butter", "chips-bag"]),
+      bay("bay-6", ["peanut-butter", "chips-bag", "orange-soda"]),
+      bay("bay-7", ["chips-bag", "orange-soda", "apple"]),
+      bay("bay-8", ["orange-soda", "apple", "milk-bottle"]),
       ...emptyBays(9, 12)
     ]
   }),
@@ -156,14 +156,14 @@ export const COMMERCIAL_VERTICAL_SLICE_LEVELS: readonly ShelfSortLevelDefinition
     reward: { coins: 240, stars: 3 },
     bays: [
       bay("bay-1", ["apple", "milk-bottle", "cereal-box"]),
-      bay("bay-2", ["milk-bottle", "cereal-box", "bread"]),
-      bay("bay-3", ["cereal-box", "bread", "cola-bottle"]),
-      bay("bay-4", ["bread", "cola-bottle", "jam-jar"]),
-      bay("bay-5", ["cola-bottle", "jam-jar", "cookies"]),
-      bay("bay-6", ["jam-jar", "cookies", "orange-juice"]),
-      bay("bay-7", ["cookies", "orange-juice", "yogurt"]),
-      bay("bay-8", ["orange-juice", "yogurt", "apple"]),
-      bay("bay-9", ["yogurt", "apple", "milk-bottle"]),
+      bay("bay-2", ["milk-bottle", "cereal-box", "oats-canister"]),
+      bay("bay-3", ["cereal-box", "oats-canister", "cola-bottle"]),
+      bay("bay-4", ["oats-canister", "cola-bottle", "peanut-butter"]),
+      bay("bay-5", ["cola-bottle", "peanut-butter", "chips-bag"]),
+      bay("bay-6", ["peanut-butter", "chips-bag", "orange-soda"]),
+      bay("bay-7", ["chips-bag", "orange-soda", "yogurt-cup"]),
+      bay("bay-8", ["orange-soda", "yogurt-cup", "apple"]),
+      bay("bay-9", ["yogurt-cup", "apple", "milk-bottle"]),
       ...emptyBays(10, 15)
     ]
   }),
@@ -176,15 +176,15 @@ export const COMMERCIAL_VERTICAL_SLICE_LEVELS: readonly ShelfSortLevelDefinition
     reward: { coins: 300, stars: 3 },
     bays: [
       bay("bay-1", ["apple", "milk-bottle", "cereal-box"]),
-      bay("bay-2", ["milk-bottle", "cereal-box", "bread"]),
-      bay("bay-3", ["cereal-box", "bread", "cola-bottle"]),
-      bay("bay-4", ["bread", "cola-bottle", "jam-jar"]),
-      bay("bay-5", ["cola-bottle", "jam-jar", "cookies"]),
-      bay("bay-6", ["jam-jar", "cookies", "orange-juice"]),
-      bay("bay-7", ["cookies", "orange-juice", "yogurt"]),
-      bay("bay-8", ["orange-juice", "yogurt", "chips"]),
-      bay("bay-9", ["yogurt", "chips", "apple"]),
-      bay("bay-10", ["chips", "apple", "milk-bottle"]),
+      bay("bay-2", ["milk-bottle", "cereal-box", "oats-canister"]),
+      bay("bay-3", ["cereal-box", "oats-canister", "cola-bottle"]),
+      bay("bay-4", ["oats-canister", "cola-bottle", "peanut-butter"]),
+      bay("bay-5", ["cola-bottle", "peanut-butter", "chips-bag"]),
+      bay("bay-6", ["peanut-butter", "chips-bag", "orange-soda"]),
+      bay("bay-7", ["chips-bag", "orange-soda", "yogurt-cup"]),
+      bay("bay-8", ["orange-soda", "yogurt-cup", "water-bottle"]),
+      bay("bay-9", ["yogurt-cup", "water-bottle", "apple"]),
+      bay("bay-10", ["water-bottle", "apple", "milk-bottle"]),
       ...emptyBays(11, 15)
     ]
   })
