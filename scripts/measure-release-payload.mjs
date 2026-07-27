@@ -1,10 +1,11 @@
 import { createServer } from "node:http";
-import { existsSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { extname, join, normalize, relative, resolve } from "node:path";
 import { chromium } from "playwright";
 
 const DIST_DIR = resolve("dist");
 const OUTPUT_FILE = resolve("release-payload-report.json");
+const UI_AUDIT_DIR = resolve("ui-audit");
 const PORT = 4174;
 const BASE_URL = `http://127.0.0.1:${PORT}/?test=1`;
 const GAME_CANVAS_SELECTOR = "#app > canvas:not(#mobile-game-backdrop)";
@@ -25,6 +26,7 @@ const TIMING_LIMITS_MS = {
 if (!existsSync(join(DIST_DIR, "index.html"))) {
   throw new Error("dist/index.html is missing. Run npm run build first.");
 }
+mkdirSync(UI_AUDIT_DIR, { recursive: true });
 
 let activePhase = null;
 const requestsByPhase = {
@@ -161,8 +163,12 @@ try {
     );
   }
   const firstShiftReadyMs = Date.now() - firstShiftStartedAt;
-  await page.waitForTimeout(2500);
+  await page.waitForTimeout(800);
   activePhase = null;
+
+  const commercialFirstLevel = runtimeMode === "commercial"
+    ? await auditCommercialFirstLevel(page)
+    : null;
 
   report = {
     generatedAt: new Date().toISOString(),
@@ -177,6 +183,7 @@ try {
     },
     homepageCold: summarize(requestsByPhase.homepageCold),
     firstShiftAdditional: summarize(requestsByPhase.firstShiftAdditional),
+    commercialFirstLevel,
     runtimeIssues
   };
 
@@ -190,6 +197,9 @@ try {
 
   if (runtimeIssues.length > 0) {
     throw new Error(`Payload measurement encountered ${runtimeIssues.length} browser issue(s).`);
+  }
+  if (runtimeMode === "commercial" && !commercialFirstLevel?.passed) {
+    throw new Error("Commercial first-level browser audit did not complete.");
   }
   const failedBudgets = Object.entries(report.budgets)
     .filter(([, budget]) => !budget.passed)
@@ -205,6 +215,7 @@ try {
     timings: null,
     homepageCold: summarize(requestsByPhase.homepageCold),
     firstShiftAdditional: summarize(requestsByPhase.firstShiftAdditional),
+    commercialFirstLevel: null,
     runtimeIssues: []
   };
   report.fatalError = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
@@ -219,12 +230,77 @@ console.log(`Release payload and speed measurement (${MOBILE_NETWORK_PROFILE.lab
 printSummary("Cold homepage", report.homepageCold);
 printSummary("First shift additional", report.firstShiftAdditional);
 if (report.timings) printTimingSummary(report.timings);
+if (report.commercialFirstLevel) {
+  console.log(
+    `Commercial Level 1: ${report.commercialFirstLevel.passed ? "PASS" : "FAIL"} ` +
+    `(${report.commercialFirstLevel.moves} moves, ${report.commercialFirstLevel.completedSets} sets)`
+  );
+}
 if (report.budgets) {
   Object.entries(report.budgets).forEach(([name, budget]) => {
     console.log(`${name}: ${budget.passed ? "PASS" : "OVER"}`);
   });
 }
 if (thrownError) throw thrownError;
+
+async function auditCommercialFirstLevel(page) {
+  const initialScreenshot = join(UI_AUDIT_DIR, "commercial-level-001-initial.png");
+  const completionScreenshot = join(UI_AUDIT_DIR, "commercial-level-001-complete.png");
+  await page.locator(GAME_CANVAS_SELECTOR).screenshot({ path: initialScreenshot });
+
+  const solution = [
+    ["bay-1", "bay-4"],
+    ["bay-3", "bay-4"],
+    ["bay-2", "bay-1"],
+    ["bay-2", "bay-4"],
+    ["bay-3", "bay-1"]
+  ];
+
+  for (const [fromBayId, toBayId] of solution) {
+    await page.evaluate(({ fromBayId, toBayId }) => {
+      const game = window.__IMMERSIVE_GAME__;
+      const scene = game?.scene?.getScene?.("commercial-shelf-sort");
+      if (!scene) throw new Error("Commercial shelf-sort scene is unavailable");
+      const select = scene["handleBaySelection"];
+      if (typeof select !== "function") throw new Error("Commercial shelf test interaction is unavailable");
+      select.call(scene, fromBayId);
+      select.call(scene, toBayId);
+    }, { fromBayId, toBayId });
+    await page.waitForTimeout(80);
+  }
+
+  await page.waitForFunction(() => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene?.("commercial-shelf-sort");
+    return scene?.["state"]?.status === "complete";
+  }, null, { timeout: 10000 });
+  await page.waitForTimeout(300);
+  await page.locator(GAME_CANVAS_SELECTOR).screenshot({ path: completionScreenshot });
+
+  const result = await page.evaluate(() => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene?.("commercial-shelf-sort");
+    const state = scene?.["state"];
+    return {
+      status: state?.status ?? "missing",
+      moves: state?.moves ?? -1,
+      completedSets: state?.completedSets ?? -1,
+      remainingItems: Array.isArray(state?.bays)
+        ? state.bays.reduce((sum, bay) => sum + bay.items.length, 0)
+        : -1,
+      coins: Number(document.body.dataset.commercialCoins ?? "-1"),
+      stars: Number(document.body.dataset.commercialStars ?? "-1")
+    };
+  });
+
+  return {
+    passed: result.status === "complete" && result.moves === 5 &&
+      result.completedSets === 2 && result.remainingItems === 0 && result.coins === 60,
+    ...result,
+    screenshots: {
+      initial: relative(resolve(), initialScreenshot),
+      complete: relative(resolve(), completionScreenshot)
+    }
+  };
+}
 
 function summarize(requests) {
   const totals = new Map();
