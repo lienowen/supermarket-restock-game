@@ -3,8 +3,17 @@ import { crazyGamesPlatform } from "../../../platform/crazyGamesPlatform";
 import {
   applyCommercialLevelCompletion,
   createDefaultCommercialProfile,
-  type CommercialProfileSnapshot
+  type CommercialProfileSnapshot,
+  type CommercialUpgradeId
 } from "../../application/CommercialProfile";
+import {
+  COMMERCIAL_UPGRADES,
+  commercialLevelCoinReward,
+  commercialMoveLimitBonus,
+  commercialUndoLimit,
+  commercialUpgradeCost,
+  purchaseCommercialUpgrade
+} from "../../application/CommercialUpgrades";
 import { COMMERCIAL_VERTICAL_SLICE_LEVELS } from "../../content/commercial/commercialShelfSortLevels";
 import { BrowserCommercialProfileStore } from "../../infrastructure/browser/BrowserCommercialProfileStore";
 import {
@@ -73,11 +82,13 @@ export class CommercialShelfSortScene extends Phaser.Scene {
   private readonly bayViews: ShelfBayView[] = [];
   private readonly profileStore = new BrowserCommercialProfileStore();
   private profile: CommercialProfileSnapshot = createDefaultCommercialProfile();
+  private undoUses = 0;
   private statsText?: Phaser.GameObjects.Text;
   private feedbackText?: Phaser.GameObjects.Text;
   private progressBar?: Phaser.GameObjects.Graphics;
   private completionLayer?: Phaser.GameObjects.Container;
   private levelPickerLayer?: Phaser.GameObjects.Container;
+  private storeLayer?: Phaser.GameObjects.Container;
 
   constructor() {
     super("commercial-shelf-sort");
@@ -94,11 +105,18 @@ export class CommercialShelfSortScene extends Phaser.Scene {
       ? requestedLevelIndex
       : Math.min(requestedLevelIndex, this.profile.unlockedLevelIndex));
 
-    const level = COMMERCIAL_VERTICAL_SLICE_LEVELS[this.levelIndex];
-    if (!level) throw new Error(`Commercial shelf-sort level ${this.levelIndex + 1} is missing`);
-    this.level = level;
-    this.state = createShelfSortState(level);
+    const configuredLevel = COMMERCIAL_VERTICAL_SLICE_LEVELS[this.levelIndex];
+    if (!configuredLevel) throw new Error(`Commercial shelf-sort level ${this.levelIndex + 1} is missing`);
+    const moveLimitBonus = commercialMoveLimitBonus(this.profile);
+    this.level = Object.freeze({
+      ...configuredLevel,
+      moveLimit: configuredLevel.moveLimit === undefined
+        ? undefined
+        : configuredLevel.moveLimit + moveLimitBonus
+    });
+    this.state = createShelfSortState(this.level);
     this.selectedBayId = undefined;
+    this.undoUses = 0;
     this.history.length = 0;
   }
 
@@ -116,6 +134,7 @@ export class CommercialShelfSortScene extends Phaser.Scene {
     document.body.dataset.commercialCoins = String(this.profile.coins);
     document.body.dataset.commercialStars = String(this.profile.totalStars);
     document.body.dataset.commercialVisuals = "production-products";
+    document.body.dataset.commercialUpgrades = JSON.stringify(this.profile.upgrades);
     this.cameras.main.setBackgroundColor("#13231f");
 
     this.createBackground();
@@ -174,7 +193,7 @@ export class CommercialShelfSortScene extends Phaser.Scene {
 
     this.statsText = this.add.text(704, 48, "", {
       fontFamily: "Arial, sans-serif",
-      fontSize: "18px",
+      fontSize: "17px",
       fontStyle: "bold",
       color: "#ffffff",
       align: "right"
@@ -191,9 +210,10 @@ export class CommercialShelfSortScene extends Phaser.Scene {
   }
 
   private createControls(): void {
-    this.createTextButton(48, 1240, 190, 62, "UNDO", () => this.undo());
-    this.createTextButton(280, 1240, 190, 62, "RESTART", () => this.restartLevel());
-    this.createTextButton(512, 1240, 190, 62, "LEVELS", () => this.showLevelPicker());
+    this.createTextButton(30, 1240, 158, 62, "UNDO", () => this.undo());
+    this.createTextButton(207, 1240, 158, 62, "RESTART", () => this.restartLevel());
+    this.createTextButton(384, 1240, 158, 62, "LEVELS", () => this.showLevelPicker());
+    this.createTextButton(561, 1240, 158, 62, "STORE", () => this.showStore());
   }
 
   private createTextButton(
@@ -212,7 +232,7 @@ export class CommercialShelfSortScene extends Phaser.Scene {
     background.strokeRoundedRect(-width / 2, -height / 2, width, height, 16);
     const text = this.add.text(0, 0, label, {
       fontFamily: "Arial, sans-serif",
-      fontSize: "18px",
+      fontSize: "17px",
       fontStyle: "bold",
       color: "#ffffff"
     }).setOrigin(0.5);
@@ -363,8 +383,12 @@ export class CommercialShelfSortScene extends Phaser.Scene {
     });
   }
 
+  private modalOpen(): boolean {
+    return Boolean(this.levelPickerLayer || this.storeLayer || this.completionLayer);
+  }
+
   private handleBaySelection(bayId: string): void {
-    if (this.state.status !== "playing" || this.levelPickerLayer) return;
+    if (this.state.status !== "playing" || this.modalOpen()) return;
     const bay = this.state.bays.find((candidate) => candidate.id === bayId);
     if (!bay || bay.locked) return;
 
@@ -415,16 +439,19 @@ export class CommercialShelfSortScene extends Phaser.Scene {
   private syncHud(message: string): void {
     const limit = this.state.moveLimit === undefined ? "∞" : String(this.state.moveLimit);
     const bestMoves = this.profile.bestMovesByLevel[this.level.id];
+    const undoRemaining = Math.max(0, commercialUndoLimit(this.profile) - this.undoUses);
     this.statsText?.setText([
       `COINS ${this.profile.coins} · STARS ${this.profile.totalStars}`,
       `MOVES ${this.state.moves} / ${limit}`,
       `SETS ${this.state.completedSets} / ${this.state.targetSetCount}`,
-      `BEST ${bestMoves ?? "—"} · SCORE ${this.state.score}`
+      `UNDO ${undoRemaining} · BEST ${bestMoves ?? "—"}`,
+      `SCORE ${this.state.score}`
     ]);
     this.feedbackText?.setText(message);
 
     document.body.dataset.commercialCoins = String(this.profile.coins);
     document.body.dataset.commercialStars = String(this.profile.totalStars);
+    document.body.dataset.commercialUpgrades = JSON.stringify(this.profile.upgrades);
     const progress = shelfSortProgress(this.state);
     this.progressBar?.clear();
     this.progressBar?.fillStyle(0x0d1c18, 0.9);
@@ -434,12 +461,18 @@ export class CommercialShelfSortScene extends Phaser.Scene {
   }
 
   private undo(): void {
-    if (this.state.status !== "playing" || this.levelPickerLayer) return;
+    if (this.state.status !== "playing" || this.modalOpen()) return;
+    const undoLimit = commercialUndoLimit(this.profile);
+    if (this.undoUses >= undoLimit) {
+      this.syncHud("No undo charges left. Upgrade Smart Scanner in the Store.");
+      return;
+    }
     const previous = this.history.pop();
     if (!previous) {
       this.syncHud("No move to undo.");
       return;
     }
+    this.undoUses += 1;
     this.state = previous;
     this.selectedBayId = undefined;
     this.renderBoard();
@@ -447,13 +480,13 @@ export class CommercialShelfSortScene extends Phaser.Scene {
   }
 
   private restartLevel(): void {
-    if (this.levelPickerLayer) return;
+    if (this.modalOpen()) return;
     crazyGamesPlatform.gameplayStop();
     this.scene.restart({ levelIndex: this.levelIndex });
   }
 
   private showLevelPicker(): void {
-    if (this.levelPickerLayer || this.completionLayer) return;
+    if (this.modalOpen()) return;
     crazyGamesPlatform.gameplayStop();
     const layer = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2).setDepth(900);
     const shade = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x07100d, 0.93).setInteractive();
@@ -493,9 +526,9 @@ export class CommercialShelfSortScene extends Phaser.Scene {
       background.fillRoundedRect(-135, -50, 270, 100, 18);
       background.lineStyle(2, index === this.levelIndex ? 0xf2c14e : 0x557a6e, 1);
       background.strokeRoundedRect(-135, -50, 270, 100, 18);
-      const number = this.add.text(-105, -25, unlocked ? String(index + 1) : "🔒", {
+      const number = this.add.text(-105, -25, unlocked ? String(index + 1) : "LOCK", {
         fontFamily: "Arial, sans-serif",
-        fontSize: "26px",
+        fontSize: unlocked ? "26px" : "14px",
         fontStyle: "bold",
         color: unlocked ? "#ffffff" : "#819088"
       });
@@ -545,6 +578,128 @@ export class CommercialShelfSortScene extends Phaser.Scene {
     this.levelPickerLayer = layer;
   }
 
+  private showStore(): void {
+    if (this.modalOpen()) return;
+    crazyGamesPlatform.gameplayStop();
+    const layer = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2).setDepth(920);
+    const shade = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x07100d, 0.94).setInteractive();
+    const card = this.add.graphics();
+    card.fillStyle(0x24463c, 1);
+    card.fillRoundedRect(-325, -500, 650, 1000, 34);
+    card.lineStyle(3, 0xf2c14e, 0.9);
+    card.strokeRoundedRect(-325, -500, 650, 1000, 34);
+    const title = this.add.text(0, -438, "STORE UPGRADES", {
+      fontFamily: "Arial, sans-serif",
+      fontSize: "34px",
+      fontStyle: "bold",
+      color: "#ffffff"
+    }).setOrigin(0.5);
+    const balance = this.add.text(0, -385, `${this.profile.coins} COINS`, {
+      fontFamily: "Arial, sans-serif",
+      fontSize: "23px",
+      fontStyle: "bold",
+      color: "#f2c14e"
+    }).setOrigin(0.5);
+    const hint = this.add.text(0, 360, "Upgrades apply from the next level start.", {
+      fontFamily: "Arial, sans-serif",
+      fontSize: "16px",
+      color: "#a9c7bc"
+    }).setOrigin(0.5);
+    layer.add([shade, card, title, balance, hint]);
+
+    const upgradeIds: readonly CommercialUpgradeId[] = ["moveBuffer", "undoCapacity", "coinBoost"];
+    upgradeIds.forEach((upgradeId, index) => {
+      const definition = COMMERCIAL_UPGRADES[upgradeId];
+      const currentLevel = this.profile.upgrades[upgradeId];
+      const cost = commercialUpgradeCost(this.profile, upgradeId);
+      const y = -235 + index * 220;
+      const panel = this.add.container(0, y);
+      const panelBackground = this.add.graphics();
+      panelBackground.fillStyle(0x18342b, 1);
+      panelBackground.fillRoundedRect(-275, -82, 550, 164, 24);
+      panelBackground.lineStyle(2, 0x557a6e, 1);
+      panelBackground.strokeRoundedRect(-275, -82, 550, 164, 24);
+      const name = this.add.text(-235, -48, definition.title, {
+        fontFamily: "Arial, sans-serif",
+        fontSize: "25px",
+        fontStyle: "bold",
+        color: "#ffffff"
+      });
+      const description = this.add.text(-235, -10, definition.description, {
+        fontFamily: "Arial, sans-serif",
+        fontSize: "18px",
+        color: "#b9d0c7"
+      });
+      const levelText = this.add.text(-235, 30, `LEVEL ${currentLevel} / ${definition.maxLevel}`, {
+        fontFamily: "Arial, sans-serif",
+        fontSize: "16px",
+        fontStyle: "bold",
+        color: "#f2c14e"
+      });
+      const buy = this.add.container(175, 5);
+      const buyBackground = this.add.graphics();
+      const affordable = cost !== undefined && this.profile.coins >= cost;
+      buyBackground.fillStyle(cost === undefined ? 0x40514b : affordable ? 0xf2c14e : 0x6d6040, 1);
+      buyBackground.fillRoundedRect(-82, -38, 164, 76, 18);
+      const buyText = this.add.text(0, 0, cost === undefined ? "MAX" : `${cost} COINS`, {
+        fontFamily: "Arial, sans-serif",
+        fontSize: "17px",
+        fontStyle: "bold",
+        color: cost === undefined ? "#a9b5b0" : "#13231f",
+        align: "center"
+      }).setOrigin(0.5);
+      buy.add([buyBackground, buyText]);
+      buy.setSize(164, 76);
+      if (cost !== undefined) {
+        buy.setInteractive({ useHandCursor: true });
+        buy.on("pointerdown", () => this.buyUpgrade(upgradeId));
+      }
+      panel.add([panelBackground, name, description, levelText, buy]);
+      layer.add(panel);
+    });
+
+    const close = this.add.container(0, 435);
+    const closeBackground = this.add.graphics();
+    closeBackground.fillStyle(0xf2c14e, 1);
+    closeBackground.fillRoundedRect(-170, -36, 340, 72, 18);
+    const closeText = this.add.text(0, 0, "BACK TO GAME", {
+      fontFamily: "Arial, sans-serif",
+      fontSize: "22px",
+      fontStyle: "bold",
+      color: "#13231f"
+    }).setOrigin(0.5);
+    close.add([closeBackground, closeText]);
+    close.setSize(340, 72).setInteractive({ useHandCursor: true });
+    close.on("pointerdown", () => {
+      layer.destroy(true);
+      this.storeLayer = undefined;
+      crazyGamesPlatform.gameplayStart();
+      this.syncHud("Store closed. New upgrades apply next level.");
+    });
+    layer.add(close);
+    this.storeLayer = layer;
+  }
+
+  private buyUpgrade(upgradeId: CommercialUpgradeId): void {
+    const result = purchaseCommercialUpgrade(this.profile, upgradeId);
+    if (!result.accepted) {
+      this.storeLayer?.destroy(true);
+      this.storeLayer = undefined;
+      this.syncHud(result.reason === "max-level"
+        ? "That store upgrade is already maxed."
+        : `Not enough coins for ${COMMERCIAL_UPGRADES[upgradeId].title}.`);
+      crazyGamesPlatform.gameplayStart();
+      return;
+    }
+
+    this.profile = result.profile;
+    this.profileStore.save(this.profile);
+    this.storeLayer?.destroy(true);
+    this.storeLayer = undefined;
+    this.syncHud(`${COMMERCIAL_UPGRADES[upgradeId].title} upgraded!`);
+    this.showStore();
+  }
+
   private showCompletion(success: boolean): void {
     crazyGamesPlatform.gameplayStop();
     let stars: 0 | 1 | 2 | 3 = 0;
@@ -553,12 +708,13 @@ export class CommercialShelfSortScene extends Phaser.Scene {
     if (success) {
       stars = this.starsForCurrentRun();
       const previousCoins = this.profile.coins;
+      const rewardCoins = commercialLevelCoinReward(this.profile, this.level.reward.coins);
       this.profile = applyCommercialLevelCompletion(this.profile, {
         levelId: this.level.id,
         levelIndex: this.levelIndex,
         moves: this.state.moves,
         stars,
-        coins: this.level.reward.coins,
+        coins: rewardCoins,
         campaignLevelCount: COMMERCIAL_VERTICAL_SLICE_LEVELS.length
       });
       this.profileStore.save(this.profile);
@@ -623,10 +779,11 @@ export class CommercialShelfSortScene extends Phaser.Scene {
   }
 
   private starsForCurrentRun(): 1 | 2 | 3 {
-    const limit = this.state.moveLimit;
-    if (!limit) return 3;
-    if (this.state.moves <= Math.floor(limit * 0.6)) return 3;
-    if (this.state.moves <= Math.floor(limit * 0.85)) return 2;
+    const configuredLimit = COMMERCIAL_VERTICAL_SLICE_LEVELS[this.levelIndex]?.moveLimit;
+    const ratingLimit = configuredLimit ?? this.state.moveLimit;
+    if (!ratingLimit) return 3;
+    if (this.state.moves <= Math.floor(ratingLimit * 0.6)) return 3;
+    if (this.state.moves <= Math.floor(ratingLimit * 0.85)) return 2;
     return 1;
   }
 }
