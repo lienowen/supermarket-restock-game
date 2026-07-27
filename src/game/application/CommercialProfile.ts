@@ -59,7 +59,7 @@ const stringArray = (value: unknown): readonly string[] => {
   if (!Array.isArray(value)) return Object.freeze([]);
   return Object.freeze([...new Set(value.filter((item): item is string => (
     typeof item === "string" && item.trim().length > 0
-  )))];
+  )))]);
 };
 
 export function createDefaultCommercialProfile(now = new Date().toISOString()): CommercialProfileSnapshot {
