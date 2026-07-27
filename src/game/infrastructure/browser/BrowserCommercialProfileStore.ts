@@ -1,3 +1,4 @@
+import { crazyGamesPlatform, type PlatformKeyValueStorage } from "../../../platform/crazyGamesPlatform";
 import {
   COMMERCIAL_PRODUCT_ID,
   createDefaultCommercialProfile,
@@ -8,70 +9,130 @@ import {
 
 const STORAGE_KEY = `supermarket-restock:commercial-profile:${COMMERCIAL_PRODUCT_ID}`;
 
+export interface CommercialProfileStorageOptions {
+  readonly primary?: PlatformKeyValueStorage;
+  readonly legacy?: PlatformKeyValueStorage;
+}
+
+const browserLocalStorage = (): PlatformKeyValueStorage | undefined => {
+  try {
+    return window.localStorage;
+  } catch {
+    return undefined;
+  }
+};
+
 export class BrowserCommercialProfileStore {
   private memory?: string;
-  private readonly storage?: Storage;
+  private readonly primary?: PlatformKeyValueStorage;
+  private readonly legacy?: PlatformKeyValueStorage;
+  private readonly cloudBacked: boolean;
 
-  constructor(storage?: Storage) {
-    if (storage) {
-      this.storage = storage;
-      return;
-    }
-    try {
-      this.storage = window.localStorage;
-    } catch {
-      this.storage = undefined;
-    }
+  constructor(options: CommercialProfileStorageOptions = {}) {
+    const platformStorage = options.primary ?? crazyGamesPlatform.dataStorage();
+    const localStorage = options.legacy ?? browserLocalStorage();
+    this.primary = platformStorage ?? localStorage;
+    this.legacy = platformStorage && localStorage && platformStorage !== localStorage
+      ? localStorage
+      : undefined;
+    this.cloudBacked = Boolean(platformStorage);
   }
 
   load(): CommercialProfileSnapshot {
-    const raw = this.read();
-    if (!raw) return createDefaultCommercialProfile();
-
-    try {
-      const profile = migrateCommercialProfile(JSON.parse(raw));
-      if (!profile || validateCommercialProfile(profile).length > 0) {
-        this.clear();
-        return createDefaultCommercialProfile();
+    const primaryRaw = this.readFrom(this.primary);
+    if (primaryRaw) {
+      const profile = this.decode(primaryRaw);
+      if (profile) {
+        if (JSON.stringify(profile) !== primaryRaw) this.save(profile);
+        this.publishStorageMode();
+        return profile;
       }
-      if (JSON.stringify(profile) !== raw) this.save(profile);
-      return profile;
-    } catch {
-      this.clear();
-      return createDefaultCommercialProfile();
+      this.removeFrom(this.primary);
     }
+
+    const legacyRaw = this.readFrom(this.legacy);
+    if (legacyRaw) {
+      const migrated = this.decode(legacyRaw);
+      if (migrated) {
+        const savedToPrimary = this.save(migrated);
+        if (savedToPrimary && this.cloudBacked) this.removeFrom(this.legacy);
+        document.body.dataset.commercialSaveMigration = savedToPrimary
+          ? "local-to-account-complete"
+          : "local-to-account-pending";
+        return migrated;
+      }
+      this.removeFrom(this.legacy);
+    }
+
+    const memoryProfile = this.memory ? this.decode(this.memory) : undefined;
+    this.publishStorageMode();
+    return memoryProfile ?? createDefaultCommercialProfile();
   }
 
-  save(profile: CommercialProfileSnapshot): void {
+  save(profile: CommercialProfileSnapshot): boolean {
     const errors = validateCommercialProfile(profile);
     if (errors.length > 0) {
       throw new Error(`Cannot persist invalid commercial profile:\n${errors.map((error) => `- ${error}`).join("\n")}`);
     }
+
     const raw = JSON.stringify(profile);
     this.memory = raw;
-    try {
-      this.storage?.setItem(STORAGE_KEY, raw);
-    } catch {
-      // In-memory fallback preserves progress for the active browser session.
-    }
+    const persisted = this.writeTo(this.primary, raw);
+    this.publishStorageMode(persisted);
+    return persisted;
   }
 
   clear(): void {
     this.memory = undefined;
+    this.removeFrom(this.primary);
+    this.removeFrom(this.legacy);
+  }
+
+  isCloudBacked(): boolean {
+    return this.cloudBacked;
+  }
+
+  private decode(raw: string): CommercialProfileSnapshot | undefined {
     try {
-      this.storage?.removeItem(STORAGE_KEY);
+      const profile = migrateCommercialProfile(JSON.parse(raw));
+      if (!profile || validateCommercialProfile(profile).length > 0) return undefined;
+      return profile;
     } catch {
-      // Storage may be unavailable in private or embedded browser contexts.
+      return undefined;
     }
   }
 
-  private read(): string | null {
+  private readFrom(storage?: PlatformKeyValueStorage): string | null {
+    if (!storage) return null;
     try {
-      const stored = this.storage?.getItem(STORAGE_KEY);
-      if (stored !== undefined && stored !== null) return stored;
+      return storage.getItem(STORAGE_KEY);
     } catch {
-      // Fall through to the active-session memory value.
+      return null;
     }
-    return this.memory ?? null;
+  }
+
+  private writeTo(storage: PlatformKeyValueStorage | undefined, raw: string): boolean {
+    if (!storage) return false;
+    try {
+      storage.setItem(STORAGE_KEY, raw);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private removeFrom(storage?: PlatformKeyValueStorage): void {
+    if (!storage) return;
+    try {
+      storage.removeItem(STORAGE_KEY);
+    } catch {
+      // Storage can be unavailable in private, embedded, or offline browser contexts.
+    }
+  }
+
+  private publishStorageMode(persisted = true): void {
+    document.body.dataset.commercialSave = this.cloudBacked
+      ? persisted ? "account" : "memory-fallback"
+      : this.primary ? persisted ? "local" : "memory-fallback" : "memory-only";
   }
 }
