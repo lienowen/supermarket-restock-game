@@ -5,6 +5,7 @@ import { STARTER_ASSET_CATALOGUE } from "./assets/starterAssetCatalogue";
 import { validateCampaignRuntime } from "./application/CampaignRuntime";
 import { validateGameplayRuntime } from "./application/GameplayModeRegistry";
 import { validateLevelCampaignRuntime } from "./application/LevelRuntimeContent";
+import { validateCommercialUpgradeDefinitions } from "./application/CommercialUpgrades";
 import { COMMERCIAL_CONFIG, validateCommercialConfig } from "./config/commercial";
 import { PROJECT_CONFIG } from "./config/project";
 import {
@@ -44,6 +45,7 @@ function validateProjectContracts(): void {
     ...validateCommercialConfig(),
     ...validateCommercialVerticalSliceLevels(),
     ...validateCommercialProductAssetCoverage(COMMERCIAL_VERTICAL_SLICE_LEVELS),
+    ...validateCommercialUpgradeDefinitions(),
     ...validateAssetCatalogue(STARTER_ASSET_CATALOGUE),
     ...STARTER_RUNTIME_ASSET_REGISTRY.validateKeys(configuredAssetKeys),
     ...validateLevelDefinitions(MAIN_LEVEL_CAMPAIGN_RUNTIME.levels.map((entry) => entry.level)),
