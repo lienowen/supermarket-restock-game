@@ -7,8 +7,13 @@ interface TextureBounds {
   readonly height: number;
 }
 
+interface ProjectionBand {
+  readonly start: number;
+  readonly end: number;
+  readonly score: number;
+}
+
 const ALPHA_THRESHOLD = 18;
-const MIN_COMPONENT_PIXELS = 24;
 const boundsByTextureKey = new Map<string, TextureBounds | null>();
 
 export function tightenCommercialProductImage(image: Phaser.GameObjects.Image): boolean {
@@ -67,7 +72,7 @@ function resolveTextureBounds(
     context.clearRect(0, 0, width, height);
     context.drawImage(source as CanvasImageSource, 0, 0, width, height);
     const pixels = context.getImageData(0, 0, width, height).data;
-    const bounds = largestOpaqueComponentBounds(pixels, width, height);
+    const bounds = dominantOpaqueSubjectBounds(pixels, width, height);
     boundsByTextureKey.set(textureKey, bounds);
     return bounds;
   } catch (error) {
@@ -77,83 +82,110 @@ function resolveTextureBounds(
   }
 }
 
-function largestOpaqueComponentBounds(
+function dominantOpaqueSubjectBounds(
   pixels: Uint8ClampedArray,
   width: number,
   height: number
 ): TextureBounds | null {
-  const pixelCount = width * height;
-  const visited = new Uint8Array(pixelCount);
-  const stack = new Int32Array(pixelCount);
-  let bestCount = 0;
-  let bestLeft = 0;
-  let bestTop = 0;
-  let bestRight = 0;
-  let bestBottom = 0;
+  const rowCounts = new Uint32Array(height);
+  let opaquePixels = 0;
 
-  for (let start = 0; start < pixelCount; start += 1) {
-    if (visited[start] === 1 || pixels[start * 4 + 3] <= ALPHA_THRESHOLD) continue;
+  for (let y = 0; y < height; y += 1) {
+    const rowOffset = y * width;
+    let count = 0;
+    for (let x = 0; x < width; x += 1) {
+      if (pixels[(rowOffset + x) * 4 + 3] > ALPHA_THRESHOLD) count += 1;
+    }
+    rowCounts[y] = count;
+    opaquePixels += count;
+  }
 
-    let stackSize = 1;
-    stack[0] = start;
-    visited[start] = 1;
-    let componentCount = 0;
-    let left = width;
-    let top = height;
-    let right = 0;
-    let bottom = 0;
+  if (opaquePixels < 24) return null;
+  const maximumRowCount = maximumValue(rowCounts);
+  const rowActivityThreshold = Math.max(2, Math.floor(maximumRowCount * 0.025));
+  const rowBand = strongestBand(rowCounts, rowActivityThreshold);
+  if (!rowBand) return null;
 
-    while (stackSize > 0) {
-      const index = stack[--stackSize];
-      if (index === undefined) continue;
-      const x = index % width;
-      const y = Math.floor(index / width);
-      componentCount += 1;
+  const columnCounts = new Uint32Array(width);
+  for (let y = rowBand.start; y <= rowBand.end; y += 1) {
+    const rowOffset = y * width;
+    for (let x = 0; x < width; x += 1) {
+      if (pixels[(rowOffset + x) * 4 + 3] > ALPHA_THRESHOLD) columnCounts[x] += 1;
+    }
+  }
+
+  const maximumColumnCount = maximumValue(columnCounts);
+  const columnActivityThreshold = Math.max(2, Math.floor(maximumColumnCount * 0.025));
+  const columnBand = strongestBand(columnCounts, columnActivityThreshold);
+  if (!columnBand) return null;
+
+  let left = width;
+  let top = height;
+  let right = -1;
+  let bottom = -1;
+  for (let y = rowBand.start; y <= rowBand.end; y += 1) {
+    const rowOffset = y * width;
+    for (let x = columnBand.start; x <= columnBand.end; x += 1) {
+      if (pixels[(rowOffset + x) * 4 + 3] <= ALPHA_THRESHOLD) continue;
       if (x < left) left = x;
       if (x > right) right = x;
       if (y < top) top = y;
       if (y > bottom) bottom = y;
-
-      visitOpaque(index - 1, x > 0);
-      visitOpaque(index + 1, x + 1 < width);
-      visitOpaque(index - width, y > 0);
-      visitOpaque(index + width, y + 1 < height);
-      visitOpaque(index - width - 1, x > 0 && y > 0);
-      visitOpaque(index - width + 1, x + 1 < width && y > 0);
-      visitOpaque(index + width - 1, x > 0 && y + 1 < height);
-      visitOpaque(index + width + 1, x + 1 < width && y + 1 < height);
-    }
-
-    if (componentCount > bestCount) {
-      bestCount = componentCount;
-      bestLeft = left;
-      bestTop = top;
-      bestRight = right;
-      bestBottom = bottom;
-    }
-
-    function visitOpaque(index: number, inBounds: boolean): void {
-      if (!inBounds || visited[index] === 1 || pixels[index * 4 + 3] <= ALPHA_THRESHOLD) return;
-      visited[index] = 1;
-      stack[stackSize] = index;
-      stackSize += 1;
     }
   }
 
-  if (bestCount < MIN_COMPONENT_PIXELS) return null;
-  const rawWidth = bestRight - bestLeft + 1;
-  const rawHeight = bestBottom - bestTop + 1;
+  if (right < left || bottom < top) return null;
+  const rawWidth = right - left + 1;
+  const rawHeight = bottom - top + 1;
   const paddingX = Math.max(2, Math.round(rawWidth * 0.06));
   const paddingY = Math.max(2, Math.round(rawHeight * 0.06));
-  const x = Math.max(0, bestLeft - paddingX);
-  const y = Math.max(0, bestTop - paddingY);
-  const right = Math.min(width - 1, bestRight + paddingX);
-  const bottom = Math.min(height - 1, bestBottom + paddingY);
+  const x = Math.max(0, left - paddingX);
+  const y = Math.max(0, top - paddingY);
+  const paddedRight = Math.min(width - 1, right + paddingX);
+  const paddedBottom = Math.min(height - 1, bottom + paddingY);
 
   return Object.freeze({
     x,
     y,
-    width: right - x + 1,
-    height: bottom - y + 1
+    width: paddedRight - x + 1,
+    height: paddedBottom - y + 1
   });
+}
+
+function strongestBand(
+  counts: Uint32Array,
+  activityThreshold: number
+): ProjectionBand | undefined {
+  let best: ProjectionBand | undefined;
+  let start = -1;
+  let score = 0;
+
+  for (let index = 0; index <= counts.length; index += 1) {
+    const count = index < counts.length ? counts[index] ?? 0 : 0;
+    if (count >= activityThreshold) {
+      if (start < 0) start = index;
+      score += count;
+      continue;
+    }
+
+    if (start < 0) continue;
+    const candidate: ProjectionBand = {
+      start,
+      end: index - 1,
+      score
+    };
+    if (!best || candidate.score > best.score) best = candidate;
+    start = -1;
+    score = 0;
+  }
+
+  return best;
+}
+
+function maximumValue(values: Uint32Array): number {
+  let maximum = 0;
+  for (const value of values) {
+    if (value > maximum) maximum = value;
+  }
+  return maximum;
 }
