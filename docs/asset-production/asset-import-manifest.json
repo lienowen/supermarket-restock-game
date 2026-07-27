@@ -1,0 +1,173 @@
+{
+  "version": "1.1",
+  "runtimeRoot": "public/assets/game/production-v1",
+  "sourceRoot": "asset-source/production-v1",
+  "rules": [
+    "运行目录只放WebP，不放P0/P1/P2目录。",
+    "PNG源文件放asset-source，供后续修改。",
+    "优先级只记录在清单中，不参与资源路径。",
+    "关卡只引用全局assetKey，不拥有独占素材目录。"
+  ],
+  "assets": [
+    {
+      "file": "fixture-beverage-cooler-empty",
+      "assetKey": "fixture-beverage-cooler-empty",
+      "priority": "P0",
+      "runtimePath": "public/assets/game/production-v1/fixtures/fixture-beverage-cooler-empty.webp",
+      "sourcePath": "asset-source/production-v1/fixtures/fixture-beverage-cooler-empty.png",
+      "usage": "全局空冷柜底图；L1/L2/L6/L10复用"
+    },
+    {
+      "file": "fixture-checkout-scale",
+      "assetKey": "fixture-checkout-scale",
+      "priority": "P0",
+      "runtimePath": "public/assets/game/production-v1/fixtures/fixture-checkout-scale.webp",
+      "sourcePath": "asset-source/production-v1/fixtures/fixture-checkout-scale.png",
+      "usage": "收银称重设备；L7/L10复用"
+    },
+    {
+      "file": "fixture-beverage-cooler-glass-overlay",
+      "assetKey": "fixture-beverage-cooler-glass-overlay",
+      "priority": "P0",
+      "runtimePath": "public/assets/game/production-v1/overlays/cooler/fixture-beverage-cooler-glass-overlay.webp",
+      "sourcePath": "asset-source/production-v1/overlays/cooler/fixture-beverage-cooler-glass-overlay.png",
+      "usage": "冷柜玻璃反光层；叠在商品层上方"
+    },
+    {
+      "file": "spill-small",
+      "assetKey": "spill-small",
+      "priority": "P0",
+      "runtimePath": "public/assets/game/production-v1/effects/spills/spill-small.webp",
+      "sourcePath": "asset-source/production-v1/effects/spills/spill-small.png",
+      "usage": "清洁污渍small状态；L4/L8/L10"
+    },
+    {
+      "file": "spill-medium",
+      "assetKey": "spill-medium",
+      "priority": "P0",
+      "runtimePath": "public/assets/game/production-v1/effects/spills/spill-medium.webp",
+      "sourcePath": "asset-source/production-v1/effects/spills/spill-medium.png",
+      "usage": "清洁污渍medium状态；L4/L8/L10"
+    },
+    {
+      "file": "spill-large",
+      "assetKey": "spill-large",
+      "priority": "P0",
+      "runtimePath": "public/assets/game/production-v1/effects/spills/spill-large.webp",
+      "sourcePath": "asset-source/production-v1/effects/spills/spill-large.png",
+      "usage": "清洁污渍large状态；L4/L8/L10"
+    },
+    {
+      "file": "spill-danger",
+      "assetKey": "spill-danger",
+      "priority": "P0",
+      "runtimePath": "public/assets/game/production-v1/effects/spills/spill-danger.webp",
+      "sourcePath": "asset-source/production-v1/effects/spills/spill-danger.png",
+      "usage": "清洁污渍danger状态；L8/L10"
+    },
+    {
+      "file": "spill-wet-sheen",
+      "assetKey": "spill-wet-sheen",
+      "priority": "P0",
+      "runtimePath": "public/assets/game/production-v1/effects/spills/spill-wet-sheen.webp",
+      "sourcePath": "asset-source/production-v1/effects/spills/spill-wet-sheen.png",
+      "usage": "清洁完成后的湿光反馈；L4/L8/L10"
+    },
+    {
+      "file": "ui-produce-weight-ticket",
+      "assetKey": "ui-produce-weight-ticket",
+      "priority": "P0",
+      "runtimePath": "public/assets/game/production-v1/ui/checkout/ui-produce-weight-ticket.webp",
+      "sourcePath": "asset-source/production-v1/ui/checkout/ui-produce-weight-ticket.png",
+      "usage": "称重结果选择票据；L7/L10"
+    },
+    {
+      "file": "fixture-beverage-cooler-night-tint",
+      "assetKey": "fixture-beverage-cooler-night-tint",
+      "priority": "P1",
+      "runtimePath": "public/assets/game/production-v1/overlays/cooler/fixture-beverage-cooler-night-tint.webp",
+      "sourcePath": "asset-source/production-v1/overlays/cooler/fixture-beverage-cooler-night-tint.png",
+      "usage": "冷柜夜间氛围叠层；L10"
+    },
+    {
+      "file": "prop-promo-tag-red",
+      "assetKey": "prop-promo-tag-red",
+      "priority": "P1",
+      "runtimePath": "public/assets/game/production-v1/props/promotions/prop-promo-tag-red.webp",
+      "sourcePath": "asset-source/production-v1/props/promotions/prop-promo-tag-red.png",
+      "usage": "全局促销价签；L2/L6/L10"
+    },
+    {
+      "file": "prop-promo-tag-yellow",
+      "assetKey": "prop-promo-tag-yellow",
+      "priority": "P1",
+      "runtimePath": "public/assets/game/production-v1/props/promotions/prop-promo-tag-yellow.webp",
+      "sourcePath": "asset-source/production-v1/props/promotions/prop-promo-tag-yellow.png",
+      "usage": "全局促销价签；L2/L6/L10"
+    },
+    {
+      "file": "ui-customer-mood-neutral",
+      "assetKey": "ui-customer-mood-neutral",
+      "priority": "P1",
+      "runtimePath": "public/assets/game/production-v1/ui/customer-moods/ui-customer-mood-neutral.webp",
+      "sourcePath": "asset-source/production-v1/ui/customer-moods/ui-customer-mood-neutral.png",
+      "usage": "顾客正常情绪图标；L7/L10"
+    },
+    {
+      "file": "ui-customer-mood-impatient",
+      "assetKey": "ui-customer-mood-impatient",
+      "priority": "P1",
+      "runtimePath": "public/assets/game/production-v1/ui/customer-moods/ui-customer-mood-impatient.webp",
+      "sourcePath": "asset-source/production-v1/ui/customer-moods/ui-customer-mood-impatient.png",
+      "usage": "顾客焦急情绪图标；L7/L10"
+    },
+    {
+      "file": "ui-customer-mood-angry",
+      "assetKey": "ui-customer-mood-angry",
+      "priority": "P1",
+      "runtimePath": "public/assets/game/production-v1/ui/customer-moods/ui-customer-mood-angry.webp",
+      "sourcePath": "asset-source/production-v1/ui/customer-moods/ui-customer-mood-angry.png",
+      "usage": "顾客生气情绪图标；L7/L10"
+    },
+    {
+      "file": "ui-order-ticket-online",
+      "assetKey": "ui-order-ticket-online",
+      "priority": "P1",
+      "runtimePath": "public/assets/game/production-v1/ui/orders/ui-order-ticket-online.webp",
+      "sourcePath": "asset-source/production-v1/ui/orders/ui-order-ticket-online.png",
+      "usage": "线上订单票据；L5/L9"
+    },
+    {
+      "file": "employee-carry-basket",
+      "assetKey": "worker-carry-basket",
+      "priority": "P1",
+      "runtimePath": "public/assets/game/production-v1/characters/worker/employee-carry-basket.webp",
+      "sourcePath": "asset-source/production-v1/characters/worker/employee-carry-basket.png",
+      "usage": "员工拣货手持购物篮状态；L5/L9"
+    },
+    {
+      "file": "overlay-closing-light-mask",
+      "assetKey": "overlay-closing-light-mask",
+      "priority": "P2",
+      "runtimePath": "public/assets/game/production-v1/overlays/lighting/overlay-closing-light-mask.webp",
+      "sourcePath": "asset-source/production-v1/overlays/lighting/overlay-closing-light-mask.png",
+      "usage": "全局打烊灯光遮罩；L8/L10"
+    },
+    {
+      "file": "prop-warning-sign-highlight",
+      "assetKey": "prop-warning-sign-highlight",
+      "priority": "P2",
+      "runtimePath": "public/assets/game/production-v1/props/cleaning/prop-warning-sign-highlight.webp",
+      "sourcePath": "asset-source/production-v1/props/cleaning/prop-warning-sign-highlight.png",
+      "usage": "高亮警示牌状态；L8/L10"
+    },
+    {
+      "file": "ui-final-shift-complete-stamp",
+      "assetKey": "ui-final-shift-complete-stamp",
+      "priority": "P2",
+      "runtimePath": "public/assets/game/production-v1/ui/feedback/ui-final-shift-complete-stamp.webp",
+      "sourcePath": "asset-source/production-v1/ui/feedback/ui-final-shift-complete-stamp.png",
+      "usage": "最终班次完成反馈；L10"
+    }
+  ]
+}
