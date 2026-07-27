@@ -89,13 +89,13 @@ export const COMMERCIAL_CONFIG: CommercialConfig = Object.freeze({
     launchLevelCount: 60,
     tutorialLevelCount: 3,
     productsAtLaunch: 30,
-    shelfLayouts: Object.freeze(["2x2", "3x2", "3x3", "4x3", "3x5"]),
-    currencies: Object.freeze(["coins", "stars"])
+    shelfLayouts: Object.freeze(["2x2", "3x2", "3x3", "4x3", "3x5"] as const),
+    currencies: Object.freeze(["coins", "stars"] as const)
   }),
   monetization: Object.freeze({
     rewardedAds: Object.freeze({
       enabled: true,
-      placements: Object.freeze(["revive", "double-reward", "bonus-order"])
+      placements: Object.freeze(["revive", "double-reward", "bonus-order"] as const)
     }),
     interstitials: Object.freeze({
       enabled: true,
@@ -119,7 +119,7 @@ export const COMMERCIAL_CONFIG: CommercialConfig = Object.freeze({
       "interstitial_shown",
       "upgrade_purchase",
       "session_end"
-    ])
+    ] as const)
   }),
   quality: Object.freeze({
     maximumInitialDownloadMiB: 15,
@@ -132,8 +132,8 @@ export const COMMERCIAL_CONFIG: CommercialConfig = Object.freeze({
   }),
   legacyContentPolicy: Object.freeze({
     runtimeStatus: "quarantined",
-    allowedForReuse: Object.freeze(["assets", "navigation", "platform-adapter", "save-store"]),
-    prohibitedAsPrimaryLoop: Object.freeze(["checkout", "clean", "find-items", "walking-simulator"])
+    allowedForReuse: Object.freeze(["assets", "navigation", "platform-adapter", "save-store"] as const),
+    prohibitedAsPrimaryLoop: Object.freeze(["checkout", "clean", "find-items", "walking-simulator"] as const)
   })
 });
 
