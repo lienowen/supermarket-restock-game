@@ -1,5 +1,13 @@
-export const CURRENT_COMMERCIAL_PROFILE_SCHEMA_VERSION = 1 as const;
+export const CURRENT_COMMERCIAL_PROFILE_SCHEMA_VERSION = 2 as const;
 export const COMMERCIAL_PRODUCT_ID = "shelf-rush-market" as const;
+
+export type CommercialUpgradeId = "moveBuffer" | "undoCapacity" | "coinBoost";
+
+export interface CommercialUpgradeLevels {
+  readonly moveBuffer: number;
+  readonly undoCapacity: number;
+  readonly coinBoost: number;
+}
 
 export interface CommercialProfileSnapshot {
   readonly schemaVersion: typeof CURRENT_COMMERCIAL_PROFILE_SCHEMA_VERSION;
@@ -11,6 +19,7 @@ export interface CommercialProfileSnapshot {
   readonly completedLevelIds: readonly string[];
   readonly bestMovesByLevel: Readonly<Record<string, number>>;
   readonly starsByLevel: Readonly<Record<string, 1 | 2 | 3>>;
+  readonly upgrades: CommercialUpgradeLevels;
   readonly updatedAt: string;
 }
 
@@ -23,6 +32,8 @@ export interface CommercialLevelCompletion {
   readonly campaignLevelCount: number;
   readonly completedAt?: string;
 }
+
+const MAX_UPGRADE_LEVEL = 3;
 
 const isRecord = (value: unknown): value is Record<string, unknown> => (
   typeof value === "object" && value !== null && !Array.isArray(value)
@@ -62,17 +73,43 @@ const stringArray = (value: unknown): readonly string[] => {
   )))]);
 };
 
-export function createDefaultCommercialProfile(now = new Date().toISOString()): CommercialProfileSnapshot {
+const upgradeLevel = (value: unknown): number => (
+  finiteNonNegativeInteger(value) ? Math.min(MAX_UPGRADE_LEVEL, value) : 0
+);
+
+const upgradeLevels = (value: unknown): CommercialUpgradeLevels => {
+  const record = isRecord(value) ? value : {};
   return Object.freeze({
+    moveBuffer: upgradeLevel(record.moveBuffer),
+    undoCapacity: upgradeLevel(record.undoCapacity),
+    coinBoost: upgradeLevel(record.coinBoost)
+  });
+};
+
+const freezeProfile = (profile: CommercialProfileSnapshot): CommercialProfileSnapshot => Object.freeze({
+  ...profile,
+  completedLevelIds: Object.freeze([...profile.completedLevelIds]),
+  bestMovesByLevel: Object.freeze({ ...profile.bestMovesByLevel }),
+  starsByLevel: Object.freeze({ ...profile.starsByLevel }),
+  upgrades: Object.freeze({ ...profile.upgrades })
+});
+
+export function createDefaultCommercialProfile(now = new Date().toISOString()): CommercialProfileSnapshot {
+  return freezeProfile({
     schemaVersion: CURRENT_COMMERCIAL_PROFILE_SCHEMA_VERSION,
     productId: COMMERCIAL_PRODUCT_ID,
     currentLevelIndex: 0,
     unlockedLevelIndex: 0,
     coins: 0,
     totalStars: 0,
-    completedLevelIds: Object.freeze([]),
-    bestMovesByLevel: Object.freeze({}),
-    starsByLevel: Object.freeze({}),
+    completedLevelIds: [],
+    bestMovesByLevel: {},
+    starsByLevel: {},
+    upgrades: {
+      moveBuffer: 0,
+      undoCapacity: 0,
+      coinBoost: 0
+    },
     updatedAt: now
   });
 }
@@ -82,23 +119,32 @@ export function migrateCommercialProfile(value: unknown): CommercialProfileSnaps
   if (value.productId !== undefined && value.productId !== COMMERCIAL_PRODUCT_ID) return undefined;
 
   const schemaVersion = value.schemaVersion;
-  if (schemaVersion !== undefined && schemaVersion !== CURRENT_COMMERCIAL_PROFILE_SCHEMA_VERSION) {
-    return undefined;
-  }
+  if (
+    schemaVersion !== undefined &&
+    schemaVersion !== 1 &&
+    schemaVersion !== CURRENT_COMMERCIAL_PROFILE_SCHEMA_VERSION
+  ) return undefined;
 
   const starsByLevel = starRecord(value.starsByLevel);
   const totalStars = Object.values(starsByLevel).reduce((sum, stars) => sum + stars, 0);
+  const unlockedLevelIndex = finiteNonNegativeInteger(value.unlockedLevelIndex)
+    ? value.unlockedLevelIndex
+    : 0;
+  const requestedCurrentLevel = finiteNonNegativeInteger(value.currentLevelIndex)
+    ? value.currentLevelIndex
+    : 0;
 
-  return Object.freeze({
+  return freezeProfile({
     schemaVersion: CURRENT_COMMERCIAL_PROFILE_SCHEMA_VERSION,
     productId: COMMERCIAL_PRODUCT_ID,
-    currentLevelIndex: finiteNonNegativeInteger(value.currentLevelIndex) ? value.currentLevelIndex : 0,
-    unlockedLevelIndex: finiteNonNegativeInteger(value.unlockedLevelIndex) ? value.unlockedLevelIndex : 0,
+    currentLevelIndex: Math.min(requestedCurrentLevel, unlockedLevelIndex),
+    unlockedLevelIndex,
     coins: finiteNonNegativeInteger(value.coins) ? value.coins : 0,
     totalStars,
     completedLevelIds: stringArray(value.completedLevelIds),
     bestMovesByLevel: numericRecord(value.bestMovesByLevel),
     starsByLevel,
+    upgrades: upgradeLevels(value.upgrades),
     updatedAt: isoTimestamp(value.updatedAt)
   });
 }
@@ -120,6 +166,12 @@ export function validateCommercialProfile(profile: CommercialProfileSnapshot): r
 
   const calculatedStars = Object.values(profile.starsByLevel).reduce((sum, stars) => sum + stars, 0);
   if (calculatedStars !== profile.totalStars) errors.push("Profile totalStars does not match starsByLevel");
+
+  for (const [upgradeId, level] of Object.entries(profile.upgrades)) {
+    if (!finiteNonNegativeInteger(level) || level > MAX_UPGRADE_LEVEL) {
+      errors.push(`Invalid ${upgradeId} upgrade level`);
+    }
+  }
 
   return Object.freeze(errors);
 }
@@ -150,28 +202,50 @@ export function applyCommercialLevelCompletion(
     Math.max(profile.unlockedLevelIndex, completion.levelIndex + 1)
   );
 
-  const nextProfile: CommercialProfileSnapshot = Object.freeze({
+  const nextProfile = freezeProfile({
     schemaVersion: CURRENT_COMMERCIAL_PROFILE_SCHEMA_VERSION,
     productId: COMMERCIAL_PRODUCT_ID,
     currentLevelIndex: nextUnlocked,
     unlockedLevelIndex: nextUnlocked,
     coins: profile.coins + (firstCompletion ? completion.coins : 0),
     totalStars: profile.totalStars - previousStars + Math.max(previousStars, completion.stars),
-    completedLevelIds: Object.freeze(completedLevelIds),
-    bestMovesByLevel: Object.freeze({
+    completedLevelIds,
+    bestMovesByLevel: {
       ...profile.bestMovesByLevel,
       [completion.levelId]: previousMoves === undefined ? completion.moves : Math.min(previousMoves, completion.moves)
-    }),
-    starsByLevel: Object.freeze({
+    },
+    starsByLevel: {
       ...profile.starsByLevel,
       [completion.levelId]: Math.max(previousStars, completion.stars) as 1 | 2 | 3
-    }),
+    },
+    upgrades: profile.upgrades,
     updatedAt: completion.completedAt ?? new Date().toISOString()
   });
 
   const errors = validateCommercialProfile(nextProfile);
   if (errors.length > 0) {
     throw new Error(`Commercial profile update failed:\n${errors.map((error) => `- ${error}`).join("\n")}`);
+  }
+  return nextProfile;
+}
+
+export function replaceCommercialProfileEconomy(
+  profile: CommercialProfileSnapshot,
+  changes: {
+    readonly coins: number;
+    readonly upgrades?: CommercialUpgradeLevels;
+    readonly updatedAt?: string;
+  }
+): CommercialProfileSnapshot {
+  const nextProfile = freezeProfile({
+    ...profile,
+    coins: changes.coins,
+    upgrades: changes.upgrades ?? profile.upgrades,
+    updatedAt: changes.updatedAt ?? new Date().toISOString()
+  });
+  const errors = validateCommercialProfile(nextProfile);
+  if (errors.length > 0) {
+    throw new Error(`Commercial economy update failed:\n${errors.map((error) => `- ${error}`).join("\n")}`);
   }
   return nextProfile;
 }
