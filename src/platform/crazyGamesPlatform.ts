@@ -2,6 +2,12 @@ type CrazyGamesSettings = {
   muteAudio?: boolean;
 };
 
+export interface PlatformKeyValueStorage {
+  getItem: (key: string) => string | null;
+  setItem: (key: string, value: string) => void;
+  removeItem: (key: string) => void;
+}
+
 type CrazyGamesGameModule = {
   settings?: CrazyGamesSettings;
   gameplayStart: () => void;
@@ -18,6 +24,7 @@ type CrazyGamesGameModule = {
 type CrazyGamesSdk = {
   init: () => Promise<void>;
   game: CrazyGamesGameModule;
+  data?: PlatformKeyValueStorage;
 };
 
 type SoundManagerLike = {
@@ -100,6 +107,14 @@ class CrazyGamesPlatform {
     this.sdk?.game.reportGameCompletedPercentage?.(value);
   }
 
+  dataStorage(): PlatformKeyValueStorage | undefined {
+    return this.sdk?.data;
+  }
+
+  isCloudDataAvailable(): boolean {
+    return Boolean(this.sdk?.data);
+  }
+
   isReady(): boolean {
     return Boolean(this.sdk);
   }
@@ -113,16 +128,19 @@ class CrazyGamesPlatform {
       const sdk = window.CrazyGames?.SDK;
       if (!sdk) {
         document.body.dataset.crazyGamesSdk = "unavailable";
+        document.body.dataset.crazyGamesData = "local-fallback";
         return false;
       }
 
       await withTimeout(sdk.init(), SDK_TIMEOUT_MS);
       this.sdk = sdk;
       document.body.dataset.crazyGamesSdk = "ready";
+      document.body.dataset.crazyGamesData = sdk.data ? "account-storage" : "local-fallback";
       this.installSettingsListener();
       return true;
     } catch (error) {
       document.body.dataset.crazyGamesSdk = "error";
+      document.body.dataset.crazyGamesData = "local-fallback";
       console.warn("CrazyGames SDK unavailable; continuing in local platform mode.", error);
       return false;
     }
