@@ -73,6 +73,21 @@ const commonGameConfiguration = (
   scene: [scene]
 });
 
+const publishCommercialRuntimeMetadata = (): void => {
+  document.body.dataset.activeCampaign = "commercial-vertical-slice";
+  document.body.dataset.runtimeTrack = "commercial";
+  document.body.dataset.gameArchitecture = "commercial-rebuild-v1";
+  document.body.dataset.gameVersion = "commercial-rebuild-v1";
+  document.body.dataset.visualTarget = "shelf-restock-puzzle";
+};
+
+const publishLegacyRuntimeMetadata = (): void => {
+  document.body.dataset.runtimeTrack = "legacy";
+  document.body.dataset.gameArchitecture = "architecture-v3";
+  document.body.dataset.gameVersion = "architecture-v3";
+  document.body.dataset.visualTarget = "production-v1-five-mode-campaign";
+};
+
 export async function createPhaserGame(
   options: PhaserGameFactoryOptions = {}
 ): Promise<Phaser.Game> {
@@ -86,8 +101,7 @@ export async function createPhaserGame(
   );
 
   if (!shouldRunLegacyCampaign(requestedId)) {
-    document.body.dataset.activeCampaign = "commercial-vertical-slice";
-    document.body.dataset.runtimeTrack = "commercial";
+    publishCommercialRuntimeMetadata();
     const game = new Phaser.Game(commonGameConfiguration(
       options.parent ?? "app",
       750,
@@ -99,7 +113,7 @@ export async function createPhaserGame(
     return game;
   }
 
-  document.body.dataset.runtimeTrack = "legacy";
+  publishLegacyRuntimeMetadata();
   const firstLevel = MAIN_LEVEL_CAMPAIGN_RUNTIME.levels[0];
   if (!firstLevel) throw new Error("Main campaign has no playable levels");
   const levelId = requestedId ?? firstLevel.level.id;
