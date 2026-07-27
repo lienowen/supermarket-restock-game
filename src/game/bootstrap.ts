@@ -5,7 +5,9 @@ import { STARTER_ASSET_CATALOGUE } from "./assets/starterAssetCatalogue";
 import { validateCampaignRuntime } from "./application/CampaignRuntime";
 import { validateGameplayRuntime } from "./application/GameplayModeRegistry";
 import { validateLevelCampaignRuntime } from "./application/LevelRuntimeContent";
+import { COMMERCIAL_CONFIG, validateCommercialConfig } from "./config/commercial";
 import { PROJECT_CONFIG } from "./config/project";
+import { validateCommercialVerticalSliceLevels } from "./content/commercial/commercialShelfSortLevels";
 import { validateLevelDefinitions } from "./content/validation/LevelConfigValidator";
 import { validateProductionAssetPlan } from "./presentation/assets/ProductionAssetPlan";
 import { validateProductAssetMappings } from "./presentation/assets/ProductAssetResolver";
@@ -35,6 +37,8 @@ function validateProjectContracts(): void {
   ));
 
   const errors = [
+    ...validateCommercialConfig(),
+    ...validateCommercialVerticalSliceLevels(),
     ...validateAssetCatalogue(STARTER_ASSET_CATALOGUE),
     ...STARTER_RUNTIME_ASSET_REGISTRY.validateKeys(configuredAssetKeys),
     ...validateLevelDefinitions(MAIN_LEVEL_CAMPAIGN_RUNTIME.levels.map((entry) => entry.level)),
@@ -59,7 +63,10 @@ export async function bootstrapGame(): Promise<Phaser.Game> {
   document.body.dataset.uiLanguage = PROJECT_CONFIG.language;
   document.body.dataset.gameArchitecture = PROJECT_CONFIG.version;
   document.body.dataset.gameVersion = PROJECT_CONFIG.version;
-  document.body.dataset.visualTarget = "production-v1-five-mode-campaign";
+  document.body.dataset.visualTarget = PROJECT_CONFIG.visualTarget;
   document.body.dataset.activeCampaign = MAIN_CAMPAIGN_RUNTIME.campaign.id;
+  document.body.dataset.commercialProduct = COMMERCIAL_CONFIG.product.productId;
+  document.body.dataset.commercialStage = COMMERCIAL_CONFIG.product.releaseStage;
+  document.body.dataset.commercialPrimaryMode = COMMERCIAL_CONFIG.product.primaryMode;
   return createPhaserGame();
 }
