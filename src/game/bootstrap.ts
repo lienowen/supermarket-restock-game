@@ -7,8 +7,12 @@ import { validateGameplayRuntime } from "./application/GameplayModeRegistry";
 import { validateLevelCampaignRuntime } from "./application/LevelRuntimeContent";
 import { COMMERCIAL_CONFIG, validateCommercialConfig } from "./config/commercial";
 import { PROJECT_CONFIG } from "./config/project";
-import { validateCommercialVerticalSliceLevels } from "./content/commercial/commercialShelfSortLevels";
+import {
+  COMMERCIAL_VERTICAL_SLICE_LEVELS,
+  validateCommercialVerticalSliceLevels
+} from "./content/commercial/commercialShelfSortLevels";
 import { validateLevelDefinitions } from "./content/validation/LevelConfigValidator";
+import { validateCommercialProductAssetCoverage } from "./presentation/assets/CommercialProductAssets";
 import { validateProductionAssetPlan } from "./presentation/assets/ProductionAssetPlan";
 import { validateProductAssetMappings } from "./presentation/assets/ProductAssetResolver";
 import {
@@ -39,6 +43,7 @@ function validateProjectContracts(): void {
   const errors = [
     ...validateCommercialConfig(),
     ...validateCommercialVerticalSliceLevels(),
+    ...validateCommercialProductAssetCoverage(COMMERCIAL_VERTICAL_SLICE_LEVELS),
     ...validateAssetCatalogue(STARTER_ASSET_CATALOGUE),
     ...STARTER_RUNTIME_ASSET_REGISTRY.validateKeys(configuredAssetKeys),
     ...validateLevelDefinitions(MAIN_LEVEL_CAMPAIGN_RUNTIME.levels.map((entry) => entry.level)),
