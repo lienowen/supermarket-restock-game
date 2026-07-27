@@ -20,7 +20,10 @@ const product = (
 });
 
 export const COMMERCIAL_PRODUCT_ASSETS: Readonly<Record<string, CommercialProductAsset>> = Object.freeze({
-  apple: product("apple", PRODUCTION_V1_ASSETS.product_apple, "Apple"),
+  // The legacy apple PNG contains a disconnected generation fragment. Keep the
+  // gameplay product ID stable for save/level compatibility while presenting
+  // the approved grapes pack until a clean apple sprite is delivered.
+  apple: product("apple", PRODUCTION_V1_ASSETS.product_grapes_pack, "Grapes"),
   "banana-bunch": product("banana-bunch", PRODUCTION_V1_ASSETS.product_banana_bunch, "Bananas"),
   "cereal-box": product("cereal-box", PRODUCTION_V1_ASSETS.product_cereal_box, "Cereal"),
   "chips-bag": product("chips-bag", PRODUCTION_V1_ASSETS.product_chips_bag, "Chips"),
