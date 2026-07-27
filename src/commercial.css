@@ -1,0 +1,43 @@
+body[data-runtime-track="commercial"] #app {
+  background:
+    radial-gradient(circle at 50% 20%, #2d5547 0, #152821 48%, #09110e 100%);
+}
+
+body[data-runtime-track="commercial"] canvas {
+  max-width: min(100vw, 750px);
+  max-height: min(100dvh, 1334px);
+  border-radius: 18px;
+  box-shadow: 0 22px 70px rgb(0 0 0 / 55%);
+}
+
+body[data-runtime-track="commercial"] #mobile-orientation-hint,
+body[data-runtime-track="commercial"] #mobile-game-hud,
+body[data-runtime-track="commercial"] #mobile-game-task,
+body[data-runtime-track="commercial"] #mobile-storefront-actions,
+body[data-runtime-track="commercial"] #mobile-storefront-close,
+body[data-runtime-track="commercial"] #mobile-fullscreen-button {
+  display: none !important;
+}
+
+@media (max-width: 760px) and (orientation: portrait) {
+  body[data-runtime-track="commercial"] canvas {
+    opacity: 1;
+    filter: none;
+    pointer-events: auto;
+    width: auto !important;
+    height: auto !important;
+    max-width: calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right));
+    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+
+  body[data-runtime-track="commercial"] #mobile-orientation-hint {
+    display: none !important;
+  }
+}
+
+@media (max-height: 760px) and (orientation: landscape) {
+  body[data-runtime-track="commercial"] canvas {
+    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    max-width: calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right));
+  }
+}
