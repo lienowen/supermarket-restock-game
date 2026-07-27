@@ -1,6 +1,12 @@
 import Phaser from "phaser";
 import { crazyGamesPlatform } from "../../../platform/crazyGamesPlatform";
+import {
+  applyCommercialLevelCompletion,
+  createDefaultCommercialProfile,
+  type CommercialProfileSnapshot
+} from "../../application/CommercialProfile";
 import { COMMERCIAL_VERTICAL_SLICE_LEVELS } from "../../content/commercial/commercialShelfSortLevels";
+import { BrowserCommercialProfileStore } from "../../infrastructure/browser/BrowserCommercialProfileStore";
 import {
   createShelfSortState,
   moveShelfProduct,
@@ -30,9 +36,9 @@ const clampLevelIndex = (index: number): number => {
   return Math.max(0, Math.min(COMMERCIAL_VERTICAL_SLICE_LEVELS.length - 1, Math.floor(index)));
 };
 
-const levelIndexFromLocation = (): number => {
+const levelIndexFromLocation = (): number | undefined => {
   const value = new URLSearchParams(window.location.search).get("commercialLevel");
-  if (!value) return 0;
+  if (!value) return undefined;
   return clampLevelIndex(Number(value) - 1);
 };
 
@@ -61,7 +67,8 @@ export class CommercialShelfSortScene extends Phaser.Scene {
   private selectedBayId?: string;
   private readonly history: ShelfSortState[] = [];
   private readonly bayViews: ShelfBayView[] = [];
-  private headerText?: Phaser.GameObjects.Text;
+  private readonly profileStore = new BrowserCommercialProfileStore();
+  private profile: CommercialProfileSnapshot = createDefaultCommercialProfile();
   private statsText?: Phaser.GameObjects.Text;
   private feedbackText?: Phaser.GameObjects.Text;
   private progressBar?: Phaser.GameObjects.Graphics;
@@ -72,7 +79,16 @@ export class CommercialShelfSortScene extends Phaser.Scene {
   }
 
   init(data: SceneStartData = {}): void {
-    this.levelIndex = clampLevelIndex(data.levelIndex ?? levelIndexFromLocation());
+    this.profile = this.profileStore.load();
+    const queryLevelIndex = levelIndexFromLocation();
+    const requestedLevelIndex = data.levelIndex ?? queryLevelIndex ?? this.profile.currentLevelIndex;
+    const canOpenLockedLevel = queryLevelIndex !== undefined || (
+      new URLSearchParams(window.location.search).get("test") === "1"
+    );
+    this.levelIndex = clampLevelIndex(canOpenLockedLevel
+      ? requestedLevelIndex
+      : Math.min(requestedLevelIndex, this.profile.unlockedLevelIndex));
+
     const level = COMMERCIAL_VERTICAL_SLICE_LEVELS[this.levelIndex];
     if (!level) throw new Error(`Commercial shelf-sort level ${this.levelIndex + 1} is missing`);
     this.level = level;
@@ -86,6 +102,8 @@ export class CommercialShelfSortScene extends Phaser.Scene {
     document.body.dataset.activeMode = "shelf-restock-puzzle";
     document.body.dataset.activeLevel = this.level.id;
     document.body.dataset.commercialLevel = String(this.levelIndex + 1);
+    document.body.dataset.commercialCoins = String(this.profile.coins);
+    document.body.dataset.commercialStars = String(this.profile.totalStars);
     this.cameras.main.setBackgroundColor("#13231f");
 
     this.createBackground();
@@ -126,7 +144,7 @@ export class CommercialShelfSortScene extends Phaser.Scene {
       letterSpacing: 4
     });
 
-    this.headerText = this.add.text(44, 92, this.level.title, {
+    this.add.text(44, 92, this.level.title, {
       fontFamily: "Arial, sans-serif",
       fontSize: "50px",
       fontStyle: "bold",
@@ -139,9 +157,9 @@ export class CommercialShelfSortScene extends Phaser.Scene {
       color: "#a9c7bc"
     });
 
-    this.statsText = this.add.text(704, 58, "", {
+    this.statsText = this.add.text(704, 48, "", {
       fontFamily: "Arial, sans-serif",
-      fontSize: "20px",
+      fontSize: "18px",
       fontStyle: "bold",
       color: "#ffffff",
       align: "right"
@@ -160,7 +178,7 @@ export class CommercialShelfSortScene extends Phaser.Scene {
   private createControls(): void {
     this.createTextButton(48, 1240, 190, 62, "UNDO", () => this.undo());
     this.createTextButton(280, 1240, 190, 62, "RESTART", () => this.restartLevel());
-    this.createTextButton(512, 1240, 190, 62, "LEVELS", () => this.openLevelPicker());
+    this.createTextButton(512, 1240, 190, 62, "NEXT OPEN", () => this.openNextUnlockedLevel());
   }
 
   private createTextButton(
@@ -340,13 +358,17 @@ export class CommercialShelfSortScene extends Phaser.Scene {
 
   private syncHud(message: string): void {
     const limit = this.state.moveLimit === undefined ? "∞" : String(this.state.moveLimit);
+    const bestMoves = this.profile.bestMovesByLevel[this.level.id];
     this.statsText?.setText([
+      `COINS ${this.profile.coins} · STARS ${this.profile.totalStars}`,
       `MOVES ${this.state.moves} / ${limit}`,
       `SETS ${this.state.completedSets} / ${this.state.targetSetCount}`,
-      `SCORE ${this.state.score}`
+      `BEST ${bestMoves ?? "—"} · SCORE ${this.state.score}`
     ]);
     this.feedbackText?.setText(message);
 
+    document.body.dataset.commercialCoins = String(this.profile.coins);
+    document.body.dataset.commercialStars = String(this.profile.totalStars);
     const progress = shelfSortProgress(this.state);
     this.progressBar?.clear();
     this.progressBar?.fillStyle(0x0d1c18, 0.9);
@@ -373,15 +395,34 @@ export class CommercialShelfSortScene extends Phaser.Scene {
     this.scene.restart({ levelIndex: this.levelIndex });
   }
 
-  private openLevelPicker(): void {
-    const nextIndex = (this.levelIndex + 1) % COMMERCIAL_VERTICAL_SLICE_LEVELS.length;
+  private openNextUnlockedLevel(): void {
+    const unlockedCount = Math.max(1, Math.min(
+      COMMERCIAL_VERTICAL_SLICE_LEVELS.length,
+      this.profile.unlockedLevelIndex + 1
+    ));
+    const nextIndex = (this.levelIndex + 1) % unlockedCount;
     crazyGamesPlatform.gameplayStop();
     this.scene.restart({ levelIndex: nextIndex });
   }
 
   private showCompletion(success: boolean): void {
     crazyGamesPlatform.gameplayStop();
+    let stars: 0 | 1 | 2 | 3 = 0;
+    let coinsEarned = 0;
+
     if (success) {
+      stars = this.starsForCurrentRun();
+      const previousCoins = this.profile.coins;
+      this.profile = applyCommercialLevelCompletion(this.profile, {
+        levelId: this.level.id,
+        levelIndex: this.levelIndex,
+        moves: this.state.moves,
+        stars,
+        coins: this.level.reward.coins,
+        campaignLevelCount: COMMERCIAL_VERTICAL_SLICE_LEVELS.length
+      });
+      this.profileStore.save(this.profile);
+      coinsEarned = this.profile.coins - previousCoins;
       crazyGamesPlatform.reportProgress(
         ((this.levelIndex + 1) / COMMERCIAL_VERTICAL_SLICE_LEVELS.length) * 100
       );
@@ -406,9 +447,8 @@ export class CommercialShelfSortScene extends Phaser.Scene {
       align: "center"
     }).setOrigin(0.5);
 
-    const stars = success ? this.starsForCurrentRun() : 0;
     const summary = this.add.text(0, -55, success
-      ? `${"★".repeat(stars)}${"☆".repeat(3 - stars)}\n${this.state.moves} moves · ${this.state.score} points`
+      ? `${"★".repeat(stars)}${"☆".repeat(3 - stars)}\n${this.state.moves} moves · ${this.state.score} points\n+${coinsEarned} coins`
       : "Rearrange the front products more carefully and try again.", {
       fontFamily: "Arial, sans-serif",
       fontSize: "26px",
@@ -434,13 +474,14 @@ export class CommercialShelfSortScene extends Phaser.Scene {
     button.setSize(buttonWidth, buttonHeight).setInteractive({ useHandCursor: true });
     button.on("pointerdown", () => {
       const nextIndex = success
-        ? (this.levelIndex + 1) % COMMERCIAL_VERTICAL_SLICE_LEVELS.length
+        ? Math.min(this.levelIndex + 1, COMMERCIAL_VERTICAL_SLICE_LEVELS.length - 1)
         : this.levelIndex;
       this.scene.restart({ levelIndex: nextIndex });
     });
 
     layer.add([shade, card, title, summary, button]);
     this.completionLayer = layer;
+    this.syncHud(success ? "Progress saved." : "No progress was lost.");
   }
 
   private starsForCurrentRun(): 1 | 2 | 3 {
