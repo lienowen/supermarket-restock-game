@@ -4,6 +4,8 @@ import { CommercialShelfSortScene } from "./CommercialShelfSortScene";
 
 const PLAY_AREA_TOP = 300;
 const PLAY_AREA_HEIGHT = 860;
+const PRODUCT_SCALE_BOOST = 1.65;
+const APPLE_TOP_TRIM_RATIO = 0.34;
 
 /**
  * Production presentation wrapper.
@@ -37,9 +39,26 @@ export class CommercialShelfSortProductionScene extends CommercialShelfSortScene
   private cropVisibleProducts(): void {
     for (const gameObject of this.children.list) {
       if (!(gameObject instanceof Phaser.GameObjects.Image)) continue;
-      if (typeof gameObject.getData("productId") !== "string") continue;
-      tightenCommercialProductImage(gameObject);
+      const productId = gameObject.getData("productId");
+      if (typeof productId !== "string") continue;
+      if (!tightenCommercialProductImage(gameObject)) continue;
+      this.normalizeProductDisplay(gameObject, productId);
     }
+  }
+
+  private normalizeProductDisplay(image: Phaser.GameObjects.Image, productId: string): void {
+    if (image.getData("commercialVisualNormalized") === true) return;
+
+    if (productId === "apple") {
+      const frameWidth = Math.max(1, image.frame.realWidth || image.frame.width);
+      const frameHeight = Math.max(1, image.frame.realHeight || image.frame.height);
+      const trimY = Math.round(frameHeight * APPLE_TOP_TRIM_RATIO);
+      image.setCrop(0, trimY, frameWidth, Math.max(1, frameHeight - trimY));
+      image.y += trimY * image.scaleY * 0.18;
+    }
+
+    image.setScale(image.scaleX * PRODUCT_SCALE_BOOST, image.scaleY * PRODUCT_SCALE_BOOST);
+    image.setData("commercialVisualNormalized", true);
   }
 
   private centerShelfBoard(): void {
