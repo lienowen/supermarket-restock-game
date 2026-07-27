@@ -7,7 +7,7 @@ import {
   MAIN_LEVEL_CAMPAIGN_RUNTIME
 } from "../../presentation/context/StarterMarketPresentationContext";
 import { applyMarketUpgradesToPresentation } from "../../presentation/context/MarketUpgradePresentation";
-import { CommercialShelfSortScene } from "../../presentation/scenes/CommercialShelfSortScene";
+import { CommercialShelfSortProductionScene } from "../../presentation/scenes/CommercialShelfSortProductionScene";
 import type { SceneCampaignSessionContext } from "../../presentation/scenes/StarterMarketScene";
 import { BrowserCampaignSessionStore } from "../browser/BrowserCampaignSessionStore";
 import { createGameplayScene } from "./GameplaySceneRegistry";
@@ -106,7 +106,7 @@ export async function createPhaserGame(
       options.parent ?? "app",
       750,
       1334,
-      new CommercialShelfSortScene()
+      new CommercialShelfSortProductionScene()
     ));
     exposeGameForTesting(game, exposeTestBridge);
     crazyGamesPlatform.bindGame(game);
