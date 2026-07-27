@@ -30,6 +30,7 @@
     "src/game/application/CampaignRuntime.ts",
     "src/game/application/CampaignSession.ts",
     "src/game/application/CommercialProfile.ts",
+    "src/game/application/CommercialUpgrades.ts",
     "src/game/application/CheckoutLevelRuntimeContent.ts",
     "src/game/application/CheckoutSceneController.ts",
     "src/game/application/FindItemsChallengeController.ts",
