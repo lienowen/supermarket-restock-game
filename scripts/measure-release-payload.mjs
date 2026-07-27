@@ -60,7 +60,7 @@ let report;
 
 try {
   const context = await browser.newContext({
-    viewport: { width: 1600, height: 900 },
+    viewport: { width: 750, height: 1334 },
     deviceScaleFactor: 1
   });
   await context.addInitScript(() => {
@@ -111,15 +111,21 @@ try {
 
   await page.waitForFunction(
     () => (
+      document.body.dataset.runtimeTrack === "commercial" ||
       document.body.dataset.gameArchitecture === "architecture-v3" ||
       document.body.dataset.stockedLobbyVisual === "ready"
     ),
     null,
     { timeout: 45000 }
   );
-  const architectureV3 = await page.evaluate(
-    () => document.body.dataset.gameArchitecture === "architecture-v3"
-  );
+  const runtimeMode = await page.evaluate(() => {
+    if (
+      document.body.dataset.runtimeTrack === "commercial" ||
+      document.body.dataset.activeMode === "shelf-restock-puzzle"
+    ) return "commercial";
+    if (document.body.dataset.gameArchitecture === "architecture-v3") return "architecture-v3";
+    return "legacy";
+  });
   const lobbyInteractiveMs = Date.now() - navigationStartedAt;
   const browserNavigation = await readNavigationTiming(page);
 
@@ -128,7 +134,16 @@ try {
 
   activePhase = "firstShiftAdditional";
   const firstShiftStartedAt = Date.now();
-  if (architectureV3) {
+  if (runtimeMode === "commercial") {
+    await page.waitForFunction(
+      () => (
+        document.body.dataset.gameScene === "commercial-shelf-sort" &&
+        document.body.dataset.activeMode === "shelf-restock-puzzle"
+      ),
+      null,
+      { timeout: 15000 }
+    );
+  } else if (runtimeMode === "architecture-v3") {
     await page.waitForFunction(
       () => document.body.dataset.gameScene === "starter-market",
       null,
@@ -151,7 +166,7 @@ try {
 
   report = {
     generatedAt: new Date().toISOString(),
-    runtimeMode: architectureV3 ? "architecture-v3" : "legacy",
+    runtimeMode,
     networkProfile: MOBILE_NETWORK_PROFILE,
     timings: {
       navigationReadyMs,
