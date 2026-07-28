@@ -33,6 +33,7 @@ export function mountLevelBriefingDomOverlay(
   onStart: () => void
 ): LevelBriefingDomHandle {
   let active = true;
+
   const overlay = document.createElement("section");
   overlay.id = "level-briefing-overlay";
   overlay.setAttribute("role", "dialog");
@@ -44,28 +45,30 @@ export function mountLevelBriefingDomOverlay(
     inset: "0",
     zIndex: "10000",
     display: "grid",
-    placeItems: "center",
+    placeItems: "start end",
     boxSizing: "border-box",
-    padding: "clamp(18px, 4vw, 48px)",
-    background: "rgba(4, 10, 7, 0.78)",
-    backdropFilter: "blur(8px)",
+    padding: "clamp(12px, 2vw, 24px)",
+    background: "transparent",
+    backdropFilter: "none",
     fontFamily: "Arial, sans-serif",
     color: "#ffffff",
-    touchAction: "manipulation"
+    touchAction: "manipulation",
+    pointerEvents: "none"
   });
-  overlay.style.setProperty("-webkit-backdrop-filter", "blur(8px)");
+  overlay.style.setProperty("-webkit-backdrop-filter", "none");
 
   const panel = document.createElement("div");
   applyStyles(panel, {
-    width: "min(760px, 100%)",
-    maxHeight: "min(760px, calc(100vh - 32px))",
+    width: "min(430px, calc(100vw - 24px))",
+    maxHeight: "calc(100dvh - 24px)",
     overflowY: "auto",
     boxSizing: "border-box",
-    padding: "clamp(22px, 4vw, 42px)",
-    border: "1px solid rgba(255, 218, 102, 0.45)",
-    borderRadius: "24px",
-    background: "linear-gradient(145deg, rgba(10, 27, 18, 0.98), rgba(20, 48, 31, 0.97))",
-    boxShadow: "0 30px 90px rgba(0, 0, 0, 0.55)"
+    padding: "clamp(18px, 2.5vw, 28px)",
+    border: "1px solid rgba(255, 218, 102, 0.48)",
+    borderRadius: "20px",
+    background: "linear-gradient(145deg, rgba(10, 27, 18, 0.96), rgba(20, 48, 31, 0.94))",
+    boxShadow: "0 18px 46px rgba(0, 0, 0, 0.38)",
+    pointerEvents: "auto"
   });
 
   const topRow = document.createElement("div");
@@ -73,21 +76,21 @@ export function mountLevelBriefingDomOverlay(
     display: "flex",
     flexWrap: "wrap",
     alignItems: "center",
-    gap: "10px",
-    marginBottom: "18px"
+    gap: "8px",
+    marginBottom: "12px"
   });
 
   const modePill = createText("span", config.experience.modeLabel);
   applyStyles(modePill, {
     display: "inline-flex",
     alignItems: "center",
-    minHeight: "30px",
-    padding: "0 13px",
+    minHeight: "28px",
+    padding: "0 11px",
     borderRadius: "999px",
     background: "#5a914f",
-    fontSize: "12px",
+    fontSize: "11px",
     fontWeight: "700",
-    letterSpacing: "1.2px"
+    letterSpacing: "1px"
   });
   topRow.appendChild(modePill);
 
@@ -97,48 +100,48 @@ export function mountLevelBriefingDomOverlay(
   );
   applyStyles(levelMeta, {
     color: "#c6dfce",
-    fontSize: "13px",
+    fontSize: "12px",
     fontWeight: "700",
-    letterSpacing: "0.7px"
+    letterSpacing: "0.5px"
   });
   topRow.appendChild(levelMeta);
   panel.appendChild(topRow);
 
   const eyebrow = createText("div", config.experience.eyebrow);
   applyStyles(eyebrow, {
-    marginBottom: "8px",
+    marginBottom: "6px",
     color: "#ffd966",
-    fontSize: "12px",
+    fontSize: "11px",
     fontWeight: "800",
-    letterSpacing: "2px"
+    letterSpacing: "1.6px"
   });
   panel.appendChild(eyebrow);
 
   const title = createText("h1", config.experience.title);
   title.id = "level-briefing-title";
   applyStyles(title, {
-    margin: "0 0 12px",
-    fontSize: "clamp(30px, 6vw, 52px)",
-    lineHeight: "1.02",
-    letterSpacing: "-1.4px"
+    margin: "0 0 9px",
+    fontSize: "clamp(25px, 4vw, 36px)",
+    lineHeight: "1.08",
+    letterSpacing: "-0.8px"
   });
   panel.appendChild(title);
 
   const objective = createText("p", config.experience.objective);
   applyStyles(objective, {
-    margin: "0 0 26px",
+    margin: "0 0 16px",
     color: "#f2f8f4",
-    fontSize: "clamp(16px, 2.5vw, 20px)",
-    lineHeight: "1.5"
+    fontSize: "clamp(14px, 2vw, 17px)",
+    lineHeight: "1.42"
   });
   panel.appendChild(objective);
 
   const cards = document.createElement("div");
   applyStyles(cards, {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
-    gap: "12px",
-    marginBottom: "26px"
+    gridTemplateColumns: "1fr",
+    gap: "8px",
+    marginBottom: "16px"
   });
 
   const cardData = [
@@ -150,28 +153,29 @@ export function mountLevelBriefingDomOverlay(
   cardData.forEach(([label, value]) => {
     const card = document.createElement("div");
     applyStyles(card, {
-      minHeight: "118px",
-      padding: "16px",
+      padding: "11px 13px",
       boxSizing: "border-box",
-      border: "1px solid rgba(255, 255, 255, 0.11)",
-      borderRadius: "16px",
-      background: "rgba(0, 0, 0, 0.18)"
+      border: "1px solid rgba(255, 255, 255, 0.1)",
+      borderRadius: "12px",
+      background: "rgba(0, 0, 0, 0.16)"
     });
+
     const cardLabel = createText("div", label);
     applyStyles(cardLabel, {
-      marginBottom: "8px",
+      marginBottom: "4px",
       color: "#a9cfb7",
-      fontSize: "10px",
+      fontSize: "9px",
       fontWeight: "800",
-      letterSpacing: "1.4px"
+      letterSpacing: "1.2px"
     });
     card.appendChild(cardLabel);
+
     const cardValue = createText("p", value);
     applyStyles(cardValue, {
       margin: "0",
       color: "#ffffff",
-      fontSize: "14px",
-      lineHeight: "1.45"
+      fontSize: "13px",
+      lineHeight: "1.38"
     });
     card.appendChild(cardValue);
     cards.appendChild(card);
@@ -184,25 +188,25 @@ export function mountLevelBriefingDomOverlay(
   startButton.setAttribute("aria-label", `Start ${config.experience.title}`);
   applyStyles(startButton, {
     width: "100%",
-    minHeight: "56px",
+    minHeight: "52px",
     border: "0",
-    borderRadius: "16px",
+    borderRadius: "14px",
     background: "linear-gradient(180deg, #f6cf57, #dcae2f)",
     color: "#172117",
-    fontSize: "16px",
+    fontSize: "15px",
     fontWeight: "900",
-    letterSpacing: "1.2px",
+    letterSpacing: "1.1px",
     cursor: "pointer",
-    boxShadow: "0 10px 28px rgba(221, 176, 47, 0.25)"
+    boxShadow: "0 8px 22px rgba(221, 176, 47, 0.24)"
   });
   panel.appendChild(startButton);
 
   const keyboardHint = createText("div", "Press Enter or tap the button to begin");
   applyStyles(keyboardHint, {
-    marginTop: "11px",
+    marginTop: "8px",
     textAlign: "center",
     color: "#9db8a5",
-    fontSize: "12px"
+    fontSize: "11px"
   });
   panel.appendChild(keyboardHint);
 
@@ -222,12 +226,12 @@ export function mountLevelBriefingDomOverlay(
     if (!active) return;
     active = false;
     startButton.disabled = true;
-    overlay.animate(
+    panel.animate(
       [
-        { opacity: 1, transform: "scale(1)" },
-        { opacity: 0, transform: "scale(1.015)" }
+        { opacity: 1, transform: "translateY(0)" },
+        { opacity: 0, transform: "translateY(-8px)" }
       ],
-      { duration: 170, easing: "ease-out", fill: "forwards" }
+      { duration: 150, easing: "ease-out", fill: "forwards" }
     ).finished.finally(() => {
       destroy();
       onStart();
