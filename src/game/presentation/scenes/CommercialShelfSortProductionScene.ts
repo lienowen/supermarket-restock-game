@@ -25,6 +25,7 @@ export class CommercialShelfSortProductionScene extends CommercialShelfSortScene
   private presentationScanElapsedMs = 0;
   private cabinetBackdrop?: Phaser.GameObjects.Graphics;
   private floorOverlay?: Phaser.GameObjects.Graphics;
+  private controlDockBackdrop?: Phaser.GameObjects.Graphics;
   private cabinetSignature = "";
 
   create(): void {
@@ -124,28 +125,20 @@ export class CommercialShelfSortProductionScene extends CommercialShelfSortScene
   }
 
   private normalizeControlDock(): void {
+    this.ensureControlDockBackdrop();
+
     for (const gameObject of this.children.list) {
+      if (!(gameObject instanceof Phaser.GameObjects.Container)) continue;
       if (gameObject.getData("commercialControlNormalized") === true) continue;
 
-      if (gameObject instanceof Phaser.GameObjects.Container) {
-        const label = gameObject.list.find((child): child is Phaser.GameObjects.Text => (
-          child instanceof Phaser.GameObjects.Text && CONTROL_LABELS.has(child.text)
-        ));
-        if (!label) continue;
+      const label = gameObject.list.find((child): child is Phaser.GameObjects.Text => (
+        child instanceof Phaser.GameObjects.Text && CONTROL_LABELS.has(child.text)
+      ));
+      if (!label) continue;
 
-        gameObject.y += CONTROL_OFFSET_Y;
-        gameObject.setScale(CONTROL_SCALE);
-        gameObject.setData("commercialControlNormalized", true);
-        continue;
-      }
-
-      if (!(gameObject instanceof Phaser.GameObjects.Graphics)) continue;
-      if (gameObject === this.cabinetBackdrop || gameObject === this.floorOverlay) continue;
-      if (gameObject.depth < 0) continue;
-
-      const bounds = gameObject.getBounds();
-      if (bounds.y < 1120 || bounds.width < 650 || bounds.height < 120) continue;
       gameObject.y += CONTROL_OFFSET_Y;
+      gameObject.setScale(CONTROL_SCALE);
+      gameObject.setDepth(3);
       gameObject.setData("commercialControlNormalized", true);
     }
   }
@@ -169,6 +162,27 @@ export class CommercialShelfSortProductionScene extends CommercialShelfSortScene
     }
 
     this.floorOverlay = floor;
+  }
+
+  private ensureControlDockBackdrop(): void {
+    if (this.controlDockBackdrop?.active) return;
+
+    const dock = this.add.graphics().setDepth(2);
+
+    // Cover the original lower dock after its buttons have moved upward.
+    dock.fillStyle(0xe8d9ba, 1);
+    dock.fillRect(0, 1136, GAME_WIDTH, GAME_HEIGHT - 1136);
+    dock.lineStyle(2, 0xbca77f, 0.24);
+    for (let y = 1168; y < GAME_HEIGHT; y += 52) dock.lineBetween(0, y, GAME_WIDTH, y);
+
+    dock.fillStyle(0x000000, 0.14);
+    dock.fillRoundedRect(24, 1054, 702, 138, 30);
+    dock.fillStyle(0xffffff, 1);
+    dock.fillRoundedRect(24, 1048, 702, 138, 30);
+    dock.lineStyle(2, 0xd9ccb1, 1);
+    dock.strokeRoundedRect(24, 1048, 702, 138, 30);
+
+    this.controlDockBackdrop = dock;
   }
 
   private drawCabinetBackdrop(
