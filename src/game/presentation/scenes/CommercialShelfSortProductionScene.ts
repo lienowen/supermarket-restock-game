@@ -107,8 +107,8 @@ export class CommercialShelfSortProductionScene extends CommercialShelfSortScene
   private hideEngineeringBayShell(container: Phaser.GameObjects.Container): void {
     const shadow = container.list[0];
     const frame = container.list[1];
-    if (shadow) shadow.setVisible(false);
-    if (frame) frame.setVisible(false);
+    if (shadow instanceof Phaser.GameObjects.Graphics) shadow.setVisible(false);
+    if (frame instanceof Phaser.GameObjects.Graphics) frame.setVisible(false);
 
     for (const child of container.list) {
       if (!(child instanceof Phaser.GameObjects.Arc)) continue;
