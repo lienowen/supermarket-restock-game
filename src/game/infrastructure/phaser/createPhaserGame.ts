@@ -7,6 +7,7 @@ import {
   MAIN_LEVEL_CAMPAIGN_RUNTIME
 } from "../../presentation/context/StarterMarketPresentationContext";
 import { applyMarketUpgradesToPresentation } from "../../presentation/context/MarketUpgradePresentation";
+import { CommercialShelfSortProductionScene } from "../../presentation/scenes/CommercialShelfSortProductionScene";
 import type { SceneCampaignSessionContext } from "../../presentation/scenes/StarterMarketScene";
 import { BrowserCampaignSessionStore } from "../browser/BrowserCampaignSessionStore";
 import { createGameplayScene } from "./GameplaySceneRegistry";
@@ -24,6 +25,69 @@ const requestedLevelFromLocation = (): string | undefined => {
   return parameters.get("level")?.trim() || parameters.get("shift")?.trim() || undefined;
 };
 
+const shouldRunLegacyCampaign = (requestedId: string | undefined): boolean => {
+  const parameters = new URLSearchParams(window.location.search);
+  if (parameters.get("legacy") === "1") return true;
+  return requestedId?.startsWith("starter-") ?? false;
+};
+
+const exposeGameForTesting = (
+  game: Phaser.Game,
+  expose: boolean,
+  session?: CampaignSession
+): void => {
+  if (!expose) return;
+  const testWindow = window as Window & {
+    __IMMERSIVE_GAME__?: Phaser.Game;
+    __CAMPAIGN_SESSION__?: CampaignSession;
+  };
+  testWindow.__IMMERSIVE_GAME__ = game;
+  if (session) testWindow.__CAMPAIGN_SESSION__ = session;
+};
+
+const commonGameConfiguration = (
+  parent: string,
+  width: number,
+  height: number,
+  scene: Phaser.Scene
+): Phaser.Types.Core.GameConfig => ({
+  type: Phaser.AUTO,
+  parent,
+  width,
+  height,
+  backgroundColor: "#13231f",
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+    expandParent: true
+  },
+  render: {
+    antialias: true,
+    roundPixels: false,
+    pixelArt: false,
+    powerPreference: "high-performance"
+  },
+  input: {
+    activePointers: 3
+  },
+  scene: [scene]
+});
+
+const publishCommercialRuntimeMetadata = (): void => {
+  document.body.dataset.activeCampaign = "commercial-vertical-slice";
+  document.body.dataset.runtimeTrack = "commercial";
+  document.body.dataset.gameArchitecture = "commercial-rebuild-v1";
+  document.body.dataset.gameVersion = "commercial-rebuild-v1";
+  document.body.dataset.visualTarget = "shelf-restock-puzzle";
+};
+
+const publishLegacyRuntimeMetadata = (): void => {
+  document.body.dataset.runtimeTrack = "legacy";
+  document.body.dataset.gameArchitecture = "architecture-v3";
+  document.body.dataset.gameVersion = "architecture-v3";
+  document.body.dataset.visualTarget = "production-v1-five-mode-campaign";
+};
+
 export async function createPhaserGame(
   options: PhaserGameFactoryOptions = {}
 ): Promise<Phaser.Game> {
@@ -31,9 +95,27 @@ export async function createPhaserGame(
   await crazyGamesPlatform.initialize();
   crazyGamesPlatform.loadingStart();
 
+  const requestedId = options.levelId ?? options.shiftId ?? requestedLevelFromLocation();
+  const exposeTestBridge = options.exposeTestBridge ?? (
+    new URLSearchParams(window.location.search).get("test") === "1"
+  );
+
+  if (!shouldRunLegacyCampaign(requestedId)) {
+    publishCommercialRuntimeMetadata();
+    const game = new Phaser.Game(commonGameConfiguration(
+      options.parent ?? "app",
+      750,
+      1334,
+      new CommercialShelfSortProductionScene()
+    ));
+    exposeGameForTesting(game, exposeTestBridge);
+    crazyGamesPlatform.bindGame(game);
+    return game;
+  }
+
+  publishLegacyRuntimeMetadata();
   const firstLevel = MAIN_LEVEL_CAMPAIGN_RUNTIME.levels[0];
   if (!firstLevel) throw new Error("Main campaign has no playable levels");
-  const requestedId = options.levelId ?? options.shiftId ?? requestedLevelFromLocation();
   const levelId = requestedId ?? firstLevel.level.id;
   const basePresentation = createStarterMarketPresentationContext(levelId);
 
@@ -66,42 +148,14 @@ export async function createPhaserGame(
   document.body.dataset.activeMode = presentation.mode;
 
   const activeScene = createGameplayScene(presentation, campaignSession);
-
-  const game = new Phaser.Game({
-    type: Phaser.AUTO,
-    parent: options.parent ?? "app",
-    width: presentation.world.width,
-    height: presentation.world.height,
-    backgroundColor: "#171712",
-    scale: {
-      mode: Phaser.Scale.FIT,
-      autoCenter: Phaser.Scale.CENTER_BOTH,
-      expandParent: true
-    },
-    render: {
-      antialias: true,
-      roundPixels: false,
-      pixelArt: false,
-      powerPreference: "high-performance"
-    },
-    input: {
-      activePointers: 3
-    },
-    scene: [activeScene]
-  });
+  const game = new Phaser.Game(commonGameConfiguration(
+    options.parent ?? "app",
+    presentation.world.width,
+    presentation.world.height,
+    activeScene
+  ));
   game.registry.set("campaignSession", session);
-
-  const exposeTestBridge = options.exposeTestBridge ?? (
-    new URLSearchParams(window.location.search).get("test") === "1"
-  );
-  if (exposeTestBridge) {
-    const testWindow = window as Window & {
-      __IMMERSIVE_GAME__?: Phaser.Game;
-      __CAMPAIGN_SESSION__?: CampaignSession;
-    };
-    testWindow.__IMMERSIVE_GAME__ = game;
-    testWindow.__CAMPAIGN_SESSION__ = session;
-  }
+  exposeGameForTesting(game, exposeTestBridge, session);
 
   crazyGamesPlatform.bindGame(game);
   return game;

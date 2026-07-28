@@ -1,8 +1,14 @@
-# Supermarket Restock Game
+# Shelf Rush Market
 
-A Phaser 3 + TypeScript supermarket work-simulation game targeting web portals such as CrazyGames.
+A portrait-first Phaser 3 + TypeScript shelf-sorting game being rebuilt as a commercial web product for portals such as CrazyGames.
 
-## Commands
+The root URL now launches one clear core loop:
+
+> Move the front product between shelf bays, complete groups of three identical products, clear the store, earn stars and coins, and buy permanent store upgrades.
+
+The previous walking, checkout, cleaning, and item-hunt campaign is retained only as legacy reference content. It is not the commercial product direction.
+
+## Run
 
 ```bash
 npm install
@@ -10,108 +16,120 @@ npm run dev
 npm run release:check
 ```
 
-`release:check` builds the game, runs the architecture and gameplay tests, verifies the release bundle, and executes the browser regression gate.
+Open the normal root URL for the commercial game.
 
-## Controls
-
-- Click or tap the walkable floor to move.
-- Use WASD or the arrow keys for direct movement.
-- Walk into the configured interaction radius before clicking the highlighted world target or HUD action.
-- Cooler stocking uses six explicit shelf hit areas arranged as two glass-door bays × three shelves.
-
-The same navigation system is reused by every gameplay mode.
-
-## Architecture
-
-The active implementation lives under `src/game/` and follows one-directional dependencies:
-
-- `content/` — products, fixtures, missions, shifts, levels, and campaigns
-- `application/` — resolves content into validated runtime models, navigation, and controllers
-- `systems/` — gameplay rules and state machines
-- `presentation/` — Phaser views, mode-specific scenes, shared movement, HUD, and effects
-- `assets/` — the canonical asset catalogue and runtime asset registry
-- `infrastructure/` — Phaser, browser navigation, storage, and platform bootstrapping
-
-The runtime path is:
+Useful development entries:
 
 ```text
-content configuration
-→ validated mode-specific runtime
-→ typed presentation context
-→ reusable Phaser scene modules
+?commercialLevel=1&test=1
+?commercialLevel=10&test=1
+?level=starter-level-001&test=1
+?legacy=1&test=1
 ```
 
-Player movement follows a separate shared path:
+- `commercialLevel` opens a commercial level directly for testing.
+- `starter-level-*` and `legacy=1` open the quarantined previous campaign for regression checks.
+
+## Current commercial vertical slice
+
+The branch `agent/commercial-rebuild-v1` contains:
+
+- One immutable shelf-sort rules engine.
+- Ten typed and validated levels.
+- Five supported layouts: 2×2, 3×2, 3×3, 4×3, and 3×5.
+- Real production product PNGs from the repository asset catalogue.
+- Portrait touch and pointer controls at 750×1334 logical pixels.
+- Move limits, score, stars, failure, retry, and next-level progression.
+- Level select with locked, unlocked, and completed states.
+- Versioned profile save with best moves, coins, stars, and unlocked levels.
+- CrazyGames Data account storage with one-time migration from the previous local browser save.
+- A persistent coin store with three upgrade lines:
+  - Bigger Cart: more moves.
+  - Smart Scanner: more undo charges.
+  - Store Signage: increased coin rewards.
+- CrazyGames loading, gameplay, progress, and audio-setting lifecycle integration.
+- Unit, architecture, release-bundle, payload, and browser-completion gates.
+
+## Commercial architecture
 
 ```text
-level navigation parameters
-→ PlayerNavigationController
-→ PlayerNavigationView
-→ scene proximity gate
+commercial level data
+→ pure ShelfSortEngine
+→ versioned player profile and upgrade economy
+→ CommercialShelfSortScene
+→ Phaser rendering
+→ CrazyGames platform/data adapters
 ```
 
-Scenes do not own level rules or asset paths. Each gameplay system stays isolated while sharing navigation, campaign economy, presentation infrastructure, and the same supermarket world.
+Gameplay rules do not live in pointer callbacks. The scene translates input into immutable engine actions and renders the returned state.
 
-## Dynamic levels
-
-Playable levels are configured in `src/game/content/levels/starterMarketLevels.ts` as a typed union:
-
-```ts
-mode: "restock" | "checkout" | "clean" | "find-items"
-```
-
-Every level references one shift, one mission, a global asset pack, a reusable visual preset, starting economy values, navigation values, and mode-specific tuning.
-
-Current ten-level campaign:
-
-1. `starter-level-001` — First Delivery · cola restock tutorial
-2. `starter-level-002` — Promotion Restock · faster water restock
-3. `starter-level-003` — Checkout Rush · six customers
-4. `starter-level-004` — Spill Patrol · four spills
-5. `starter-level-005` — Order Hunt · milk, apple, and cereal
-6. `starter-level-006` — Closing Stock Sprint · harder cola rush
-7. `starter-level-007` — Evening Checkout · eight customers
-8. `starter-level-008` — Closing Clean-up · six spills
-9. `starter-level-009` — Priority Order · forty-second item hunt
-10. `starter-level-010` — Final Cooler Rush · fastest water restock and two-star finale
-
-The campaign carries coins, stars, reputation, and purchased store upgrades between levels. Replay begins only after Level 10.
-
-Run a specific level locally with:
+Main commercial files:
 
 ```text
-?level=starter-level-010
+src/game/config/commercial.ts
+src/game/systems/shelfSort/ShelfSortEngine.ts
+src/game/content/commercial/commercialShelfSortLevels.ts
+src/game/application/CommercialProfile.ts
+src/game/application/CommercialUpgrades.ts
+src/game/presentation/assets/CommercialProductAssets.ts
+src/game/presentation/scenes/CommercialShelfSortScene.ts
+src/game/infrastructure/browser/BrowserCommercialProfileStore.ts
 ```
 
-The legacy `?shift=starter-shift-002` entry remains supported and deterministically selects the first level in that shift.
+## Level contract
 
-## Asset ownership
+Every commercial level must pass these rules before the game starts:
 
-`src/game/assets/starterAssetCatalogue.ts` is the single source of truth for asset keys, paths, dimensions, anchors, depth groups, and production status.
+- Unique level and bay IDs.
+- Maximum three products per bay.
+- At least one complete bay of working space.
+- Every product count divisible by three.
+- Target set count equal to actual inventory.
+- Valid move limit and rewards.
+- A production sprite mapping for every product ID.
 
-Level configuration stores only asset-pack and visual-preset IDs. Runtime registries resolve those IDs into descriptors and validate that every configured asset exists. Do not place asset paths in scenes or level definitions.
+A level is not accepted only because its JSON or TypeScript parses. Representative levels must be completed through the real browser flow.
 
-Asset paths must remain under:
+## Save behavior
+
+The commercial profile uses schema migrations instead of silently discarding old progress.
+
+On CrazyGames:
+
+1. Initialize the SDK before gameplay.
+2. Read and write through the SDK Data module.
+3. If an older local browser profile exists and account data is empty, migrate it once.
+4. Continue with in-memory fallback only if storage throws.
+
+Outside CrazyGames, the same profile uses browser `localStorage` with an in-memory fallback.
+
+## Release target
+
+The current ten-level build is a commercial vertical slice, not the final production launch.
+
+The production acceptance target is defined in:
 
 ```text
-public/assets/game/...
+docs/COMMERCIAL_REBUILD_V1.md
 ```
 
-Reusable assets are action-, product-, fixture-, character-, or environment-owned. They must not be named after a specific day or level.
+Major launch requirements include:
 
-`src/game/presentation/visual/CoolerStockLayout.ts` is the single owner of cooler shelf positions, item count, bottle crop, and interaction bounds. Do not duplicate those coordinates in scenes or tests.
+- 60 authored and browser-validated levels.
+- 30 production product sprites.
+- Final shelf artwork, animation, sound effects, music, tutorial guidance, and accessibility polish.
+- Daily challenge and retention loop.
+- Rewarded and midgame ad implementation that follows portal policy.
+- Analytics transport and balancing data review.
+- Final portal metadata, screenshots, privacy text, and release package.
 
-## Adding another level
+## Quality gates
 
-1. Add or reuse product, fixture, mission, and shift definitions.
-2. Add a typed `LevelDefinition` to `STARTER_MARKET_LEVELS`.
-3. Reference registered asset-pack and visual-preset IDs only.
-4. Configure movement, duration, quantity, penalties, and rewards in level tuning.
-5. Add the level ID to the campaign `levelIds` sequence.
-6. Use an existing mode runtime and scene when its rules fit.
-7. Add a new mode only when the rule system is genuinely different; do not add level-specific scene copies.
-8. Extend unit tests and `scripts/capture-release-regressions.mjs` so the new level is actually completed in a browser.
-9. Review the generated initial and completion screenshots.
-10. Run `npm run release:check`.
+```bash
+npm run build
+npm test
+npm run verify:release
+npm run release:check
+```
 
-A new level is not accepted because its configuration parses. It must complete through the real browser flow and preserve campaign economy into the following level.
+The GitHub UI Audit additionally checks the production bundle in Chromium, measures loading under a mobile network profile, completes Commercial Level 1 through the actual game state, and preserves the legacy ten-level regression suite.

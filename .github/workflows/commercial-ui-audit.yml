@@ -1,0 +1,56 @@
+name: Commercial UI Audit
+
+on:
+  push:
+    branches:
+      - main
+      - "agent/**"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  commercial-browser-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium audit tooling
+        run: |
+          npm install --no-save playwright@1.52.0
+          npx playwright install --with-deps chromium
+
+      - name: Build commercial release
+        run: npm run build
+
+      - name: Measure and complete commercial Level 1
+        shell: bash
+        run: |
+          set -o pipefail
+          node scripts/measure-release-payload.mjs 2>&1 | tee commercial-ui-audit.log
+
+      - name: Upload commercial audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: commercial-ui-audit
+          path: |
+            commercial-ui-audit.log
+            release-payload-report.json
+            ui-audit/commercial-level-001-initial.png
+            ui-audit/commercial-level-001-complete.png
+          if-no-files-found: warn

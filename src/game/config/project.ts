@@ -1,11 +1,11 @@
 export const PROJECT_CONFIG = {
-  version: "architecture-v3",
+  version: "commercial-rebuild-v1",
   language: "en",
   logicalSize: {
-    width: 1600,
-    height: 900
+    width: 750,
+    height: 1334
   },
-  visualTarget: "fixed-third-person-supermarket",
+  visualTarget: "shelf-restock-puzzle",
   assetRoot: "assets/game"
 } as const;
 
