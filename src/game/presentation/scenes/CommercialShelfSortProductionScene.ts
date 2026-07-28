@@ -3,10 +3,15 @@ import { tightenCommercialProductImage } from "../assets/CommercialProductTextur
 import { CommercialShelfSortScene } from "./CommercialShelfSortScene";
 
 const GAME_WIDTH = 750;
+const GAME_HEIGHT = 1334;
 const COMPACT_BOARD_TOP = 350;
 const TALL_BOARD_TOP = 320;
 const BOARD_GAP = 8;
 const PRODUCT_SCALE_MULTIPLIER = 0.78;
+const FLOOR_TOP = 900;
+const CONTROL_OFFSET_Y = -112;
+const CONTROL_SCALE = 0.9;
+const CONTROL_LABELS = new Set(["UNDO", "RESTART", "LEVELS", "STORE"]);
 
 /**
  * Production presentation wrapper.
@@ -19,6 +24,7 @@ const PRODUCT_SCALE_MULTIPLIER = 0.78;
 export class CommercialShelfSortProductionScene extends CommercialShelfSortScene {
   private presentationScanElapsedMs = 0;
   private cabinetBackdrop?: Phaser.GameObjects.Graphics;
+  private floorOverlay?: Phaser.GameObjects.Graphics;
   private cabinetSignature = "";
 
   create(): void {
@@ -35,8 +41,10 @@ export class CommercialShelfSortProductionScene extends CommercialShelfSortScene
   }
 
   private normalizePresentation(): void {
+    this.ensureCompactFloor();
     this.normalizeVisibleProducts();
     this.normalizeShelfCabinet();
+    this.normalizeControlDock();
   }
 
   private normalizeVisibleProducts(): void {
@@ -77,9 +85,8 @@ export class CommercialShelfSortProductionScene extends CommercialShelfSortScene
     const cellWidth = Math.max(1, Number(hitArea?.width ?? ordered[0]?.width ?? 180));
     const cellHeight = Math.max(1, Number(hitArea?.height ?? ordered[0]?.height ?? 180));
     const gridWidth = columns * cellWidth + (columns - 1) * BOARD_GAP;
-    const gridHeight = rows * cellHeight + (rows - 1) * BOARD_GAP;
-    const gridLeft = (GAME_WIDTH - gridWidth) / 2;
     const gridTop = rows <= 2 ? COMPACT_BOARD_TOP : TALL_BOARD_TOP;
+    const gridLeft = (GAME_WIDTH - gridWidth) / 2;
 
     ordered.forEach((container, index) => {
       const column = index % columns;
@@ -114,6 +121,54 @@ export class CommercialShelfSortProductionScene extends CommercialShelfSortScene
       if (!(child instanceof Phaser.GameObjects.Arc)) continue;
       child.setAlpha(Math.min(child.alpha, 0.12));
     }
+  }
+
+  private normalizeControlDock(): void {
+    for (const gameObject of this.children.list) {
+      if (gameObject.getData("commercialControlNormalized") === true) continue;
+
+      if (gameObject instanceof Phaser.GameObjects.Container) {
+        const label = gameObject.list.find((child): child is Phaser.GameObjects.Text => (
+          child instanceof Phaser.GameObjects.Text && CONTROL_LABELS.has(child.text)
+        ));
+        if (!label) continue;
+
+        gameObject.y += CONTROL_OFFSET_Y;
+        gameObject.setScale(CONTROL_SCALE);
+        gameObject.setData("commercialControlNormalized", true);
+        continue;
+      }
+
+      if (!(gameObject instanceof Phaser.GameObjects.Graphics)) continue;
+      if (gameObject === this.cabinetBackdrop || gameObject === this.floorOverlay) continue;
+      if (gameObject.depth < 0) continue;
+
+      const bounds = gameObject.getBounds();
+      if (bounds.y < 1120 || bounds.width < 650 || bounds.height < 120) continue;
+      gameObject.y += CONTROL_OFFSET_Y;
+      gameObject.setData("commercialControlNormalized", true);
+    }
+  }
+
+  private ensureCompactFloor(): void {
+    if (this.floorOverlay?.active) return;
+
+    const floor = this.add.graphics().setDepth(-10);
+    floor.fillStyle(0xe8d9ba, 1);
+    floor.fillRect(0, FLOOR_TOP, GAME_WIDTH, GAME_HEIGHT - FLOOR_TOP);
+
+    floor.fillStyle(0xc7b38d, 0.48);
+    floor.fillRect(0, FLOOR_TOP, GAME_WIDTH, 5);
+
+    floor.lineStyle(2, 0xbca77f, 0.28);
+    for (let y = FLOOR_TOP + 48; y < GAME_HEIGHT; y += 52) {
+      floor.lineBetween(0, y, GAME_WIDTH, y);
+    }
+    for (let x = 34; x < GAME_WIDTH + 80; x += 92) {
+      floor.lineBetween(x, FLOOR_TOP, x - 72, GAME_HEIGHT);
+    }
+
+    this.floorOverlay = floor;
   }
 
   private drawCabinetBackdrop(
