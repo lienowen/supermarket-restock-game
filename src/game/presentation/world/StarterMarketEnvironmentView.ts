@@ -29,6 +29,8 @@ export class StarterMarketEnvironmentView {
 
   private createBase(): void {
     const { scene, context } = this;
+    const isHdRestockBackground =
+      context.levelAssets.environment.key === "environment-starter-market-restock-hd-v3";
     scene.add.image(
       context.world.width / 2,
       context.world.height / 2,
@@ -36,7 +38,7 @@ export class StarterMarketEnvironmentView {
     )
       .setOrigin(0.5)
       .setDisplaySize(context.world.width, context.world.height)
-      .setFlipX(context.mode === "restock")
+      .setFlipX(context.mode === "restock" && !isHdRestockBackground)
       .setDepth(-30)
       .setName("commercial-supermarket-salesfloor");
   }
@@ -53,14 +55,6 @@ export class StarterMarketEnvironmentView {
     ).setDepth(-29);
   }
 
-  /**
-   * The temporary empty-cooler and glass-overlay assets were debug placeholders
-   * with a black canvas, neon green border and diagonal guide line. Rendering
-   * them over the photographed sales floor hid the real cooler and made the
-   * first level unusable. Until a verified transparent empty-cooler asset is
-   * supplied, keep the native photographed cooler visible and render stock as
-   * separate gameplay objects through BeverageCoolerView.
-   */
   private registerRestockCoolerPresentation(): void {
     if (this.context.mode !== "restock") {
       document.body.dataset.restockCoolerBackground = "not-applicable";
@@ -68,18 +62,16 @@ export class StarterMarketEnvironmentView {
       return;
     }
 
-    document.body.dataset.restockCoolerBackground = "native-background";
-    delete document.body.dataset.restockCoolerAsset;
+    document.body.dataset.restockCoolerBackground = "production-v3-hd";
+    document.body.dataset.restockCoolerAsset = "hd-closeup-layered";
   }
 
   private registerSharedFixtureAvailability(): void {
-    // These production fixtures stay registered for task-specific views, but
-    // are deliberately not enlarged into the shared background composition.
     [
       "fixture-backroom-rack-a",
       "fixture-produce-display-a",
-      "fixture-beverage-cooler-empty",
-      "fixture-beverage-cooler-glass-overlay"
+      "fixture-beverage-cooler-a",
+      "fixture-beverage-cooler-glass-hd-v3"
     ].forEach((key) => {
       this.scene.textures.exists(key);
     });
