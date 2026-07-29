@@ -1,0 +1,29 @@
+{
+  "files": [
+    {
+      "filename": "market_bg_reference.png",
+      "source": "现代超市冷藏饮料通道.png"
+    },
+    {
+      "filename": "cooler_empty_back_reference.png",
+      "source": "六格空置玻璃门冷藏柜.png"
+    },
+    {
+      "filename": "cooler_front_glass_reference.png",
+      "source": "黑色双门玻璃冷藏柜_двер_audio_missing.png"
+    },
+    {
+      "filename": "cola_bottle_hd.png",
+      "source": "瓶装可乐透明背景.png"
+    },
+    {
+      "filename": "cola_case_closed_hd.png",
+      "source": "可乐箱木托盘包装.png"
+    },
+    {
+      "filename": "cola_case_open_hd.png",
+      "source": "可乐瓶箱与木托盘.png"
+    }
+  ],
+  "note": "本压缩包为高清参考素材包。可乐瓶、关闭箱、打开箱可直接用；背景、空冷柜、玻璃前景层目前是高清参考图，视角与坐标未做到像素级对齐，适合先验收效果与继续拆分，不建议直接无调整叠加到正式项目。"
+}
