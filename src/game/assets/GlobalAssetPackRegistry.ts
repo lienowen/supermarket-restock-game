@@ -61,47 +61,15 @@ export type GlobalAssetPack =
   | CleanGlobalAssetPack
   | FindItemsGlobalAssetPack;
 
+/**
+ * Only assets that are present in the repository and verified by the release
+ * pipeline belong in the shared preload list. Planned global assets remain in
+ * the catalogue for future production work, but must not be requested by the
+ * browser until their real files are delivered.
+ */
 const SHARED_STORE_ASSET_KEYS = Object.freeze([
   "fixture-produce-display-a",
   "fixture-backroom-rack-a"
-]);
-
-const RESTOCK_SHARED_STORE_ASSET_KEYS = Object.freeze([
-  ...SHARED_STORE_ASSET_KEYS,
-  "fixture-beverage-cooler-empty",
-  "fixture-beverage-cooler-glass-overlay",
-  "fixture-beverage-cooler-night-tint",
-  "prop-promo-tag-red",
-  "prop-promo-tag-yellow",
-  "ui-final-shift-complete-stamp"
-]);
-
-const CHECKOUT_SHARED_STORE_ASSET_KEYS = Object.freeze([
-  ...SHARED_STORE_ASSET_KEYS,
-  "fixture-checkout-scale",
-  "ui-produce-weight-ticket",
-  "ui-customer-mood-neutral",
-  "ui-customer-mood-impatient",
-  "ui-customer-mood-angry",
-  "ui-final-shift-complete-stamp"
-]);
-
-const CLEAN_SHARED_STORE_ASSET_KEYS = Object.freeze([
-  ...SHARED_STORE_ASSET_KEYS,
-  "spill-small",
-  "spill-medium",
-  "spill-large",
-  "spill-danger",
-  "spill-wet-sheen",
-  "overlay-closing-light-mask",
-  "prop-warning-sign-highlight",
-  "ui-final-shift-complete-stamp"
-]);
-
-const FIND_ITEMS_SHARED_STORE_ASSET_KEYS = Object.freeze([
-  ...SHARED_STORE_ASSET_KEYS,
-  "ui-order-ticket-online",
-  "worker-carry-basket"
 ]);
 
 const SHARED_WORKER_WALK_KEYS = Object.freeze([
@@ -113,7 +81,7 @@ export const MARKET_RESTOCK_ASSET_PACK: RestockGlobalAssetPack = Object.freeze({
   id: "market-restock-v1",
   mode: "restock",
   environmentAssetKey: "environment-starter-market-salesfloor-prototype",
-  sharedStoreAssetKeys: RESTOCK_SHARED_STORE_ASSET_KEYS,
+  sharedStoreAssetKeys: SHARED_STORE_ASSET_KEYS,
   workerIdleAssetKey: "worker-a-idle",
   workerWalkAssetKeys: SHARED_WORKER_WALK_KEYS,
   workerPushAssetKey: "worker-a-push-cart",
@@ -147,7 +115,7 @@ export const MARKET_CHECKOUT_ASSET_PACK: CheckoutGlobalAssetPack = Object.freeze
   id: "market-checkout-v1",
   mode: "checkout",
   environmentAssetKey: "environment-starter-market-salesfloor-prototype",
-  sharedStoreAssetKeys: CHECKOUT_SHARED_STORE_ASSET_KEYS,
+  sharedStoreAssetKeys: SHARED_STORE_ASSET_KEYS,
   workerIdleAssetKey: "worker-a-idle",
   workerWalkAssetKeys: SHARED_WORKER_WALK_KEYS,
   workerScanAssetKey: "worker-a-scan-register",
@@ -168,7 +136,7 @@ export const MARKET_CLEAN_ASSET_PACK: CleanGlobalAssetPack = Object.freeze({
   id: "market-clean-v1",
   mode: "clean",
   environmentAssetKey: "environment-starter-market-salesfloor-prototype",
-  sharedStoreAssetKeys: CLEAN_SHARED_STORE_ASSET_KEYS,
+  sharedStoreAssetKeys: SHARED_STORE_ASSET_KEYS,
   workerIdleAssetKey: "worker-a-idle",
   workerWalkAssetKeys: SHARED_WORKER_WALK_KEYS,
   workerMopAssetKey: "worker-a-mop-floor",
@@ -181,7 +149,7 @@ export const MARKET_FIND_ITEMS_ASSET_PACK: FindItemsGlobalAssetPack = Object.fre
   id: "market-find-items-v1",
   mode: "find-items",
   environmentAssetKey: "environment-starter-market-salesfloor-prototype",
-  sharedStoreAssetKeys: FIND_ITEMS_SHARED_STORE_ASSET_KEYS,
+  sharedStoreAssetKeys: SHARED_STORE_ASSET_KEYS,
   workerIdleAssetKey: "worker-a-idle",
   workerWalkAssetKeys: SHARED_WORKER_WALK_KEYS,
   workerThinkingAssetKey: "worker-a-thinking",
