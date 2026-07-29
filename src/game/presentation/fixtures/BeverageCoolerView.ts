@@ -13,7 +13,7 @@ const aliasTexture = (
   sourceKey: string | undefined
 ): void => {
   if (!sourceKey || scene.textures.exists(aliasKey) || !scene.textures.exists(sourceKey)) return;
-  const sourceImage = scene.textures.get(sourceKey).getSourceImage();
+  const sourceImage = scene.textures.get(sourceKey).getSourceImage() as HTMLImageElement;
   scene.textures.addImage(aliasKey, sourceImage);
 };
 
