@@ -176,13 +176,13 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
       rush: {
         sequenceMode: "shuffled",
         timeoutEnabled: true,
-        targetDurationMs: 7200,
-        minimumTargetDurationMs: 5000,
+        targetDurationMs: 15000,
+        minimumTargetDurationMs: 9000,
         speedUpPerSuccessMs: 350,
-        introGraceMs: 2500,
+        introGraceMs: 3500,
         streakWindowMs: 1250,
-        goldTimeMs: 24000,
-        silverTimeMs: 35000
+        goldTimeMs: 42000,
+        silverTimeMs: 62000
       }
     }
   },
@@ -281,13 +281,13 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
       rush: {
         sequenceMode: "shuffled",
         timeoutEnabled: true,
-        targetDurationMs: 6500,
-        minimumTargetDurationMs: 4200,
+        targetDurationMs: 13000,
+        minimumTargetDurationMs: 7500,
         speedUpPerSuccessMs: 320,
-        introGraceMs: 2200,
+        introGraceMs: 3200,
         streakWindowMs: 1100,
-        goldTimeMs: 21000,
-        silverTimeMs: 31000
+        goldTimeMs: 38000,
+        silverTimeMs: 56000
       }
     }
   }
