@@ -94,8 +94,8 @@ test("Level one is guided while later repetitions use explicit challenge profile
   ]);
 
   assert.equal(levelSix.runtime.product.id, "cola-bottle");
-  assert.equal(levelSix.level.tuning.rush.targetDurationMs, 7200);
-  assert.equal(levelSix.level.tuning.rush.minimumTargetDurationMs, 5000);
+  assert.equal(levelSix.level.tuning.rush.targetDurationMs, 15000);
+  assert.equal(levelSix.level.tuning.rush.minimumTargetDurationMs, 9000);
   assert.equal(levelSix.level.tuning.rush.sequenceMode, "shuffled");
   assert.equal(levelSeven.runtime.customerCount, 8);
   assert.equal(levelSeven.level.tuning.scanDurationMs, 420);
@@ -109,7 +109,8 @@ test("Level one is guided while later repetitions use explicit challenge profile
   assert.equal(levelNine.level.tuning.timeLimitSeconds, 40);
   assert.equal(levelNine.level.tuning.mistakePenaltySeconds, 7);
   assert.equal(levelTen.runtime.product.id, "water-bottle");
-  assert.equal(levelTen.level.tuning.rush.targetDurationMs, 6500);
+  assert.equal(levelTen.level.tuning.rush.targetDurationMs, 13000);
+  assert.equal(levelTen.level.tuning.rush.minimumTargetDurationMs, 7500);
   assert.equal(levelTen.level.tuning.rush.sequenceMode, "shuffled");
   assert.equal(levelTen.runtime.reward.totalStars, 2);
 
