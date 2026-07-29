@@ -1,0 +1,24 @@
+{
+  "version": "3.0",
+  "purpose": "高清冷柜补货核心素材",
+  "files": [
+    {
+      "filename": "market_bg_hd.png",
+      "width": 1672,
+      "height": 941,
+      "mode": "RGB"
+    },
+    {
+      "filename": "cooler_empty_back_hd.png",
+      "width": 1536,
+      "height": 1024,
+      "mode": "RGBA"
+    },
+    {
+      "filename": "cooler_front_glass_hd.png",
+      "width": 1536,
+      "height": 1024,
+      "mode": "RGBA"
+    }
+  ]
+}
