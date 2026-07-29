@@ -113,7 +113,8 @@ function findMissingCatalogueAssets() {
     const content = readFileSync(manifest, "utf8");
     for (const match of content.matchAll(STATIC_ASSET_REFERENCE)) {
       const reference = match[1];
-      if (reference && !existsSync(join(PUBLIC_DIR, reference))) {
+      if (!reference || reference.includes("${")) continue;
+      if (!existsSync(join(PUBLIC_DIR, reference))) {
         missing.add(reference);
       }
     }
