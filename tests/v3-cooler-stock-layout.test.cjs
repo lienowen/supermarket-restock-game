@@ -62,7 +62,9 @@ test("Restock mode uses the layered HD cooler and never restores the broken plac
   assert.equal(cooler.includes('setName("restock-cooler-front-glass-hd")'), true);
   assert.equal(cooler.includes("COOLER_STOCK_ITEMS_PER_SLOT"), true);
   assert.equal(cooler.includes("const SLOT_XS = [620, 980]"), true);
-  assert.equal(cooler.includes("const SLOT_YS = [285, 455, 625]"), true);
+  assert.equal(cooler.includes("const SLOT_YS = [300, 428, 543]"), true);
+  assert.equal(cooler.includes("const SHELF_BASELINE_YS = [367, 487, 598]"), true);
+  assert.equal(cooler.includes("shelfBaselineY - slot.y"), true);
 });
 
 test("Beverage bottle crop removes the padded transparent canvas", () => {
