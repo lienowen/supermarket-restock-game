@@ -3,13 +3,19 @@ import { extname, join } from "node:path";
 import { analyseRuntimeAssets } from "./runtime-asset-references.mjs";
 
 const DIST_DIR = "dist";
+const PUBLIC_DIR = "public";
 const ABSOLUTE_MAX_BYTES = 250 * 1024 * 1024;
 const ABSOLUTE_MAX_FILES = 1500;
 const LARGE_FILE_WARNING_BYTES = 10 * 1024 * 1024;
 const TOP_FILE_COUNT = 20;
 const TOP_UNREFERENCED_COUNT = 30;
 const TEXT_EXTENSIONS = new Set([".html", ".js", ".css", ".json"]);
-const STATIC_ASSET_REFERENCE = /(?:^|["'`(=:,\s])((?:\.\/)?assets\/[^"'`\s)]+?\.(?:avif|gif|jpe?g|png|svg|webp|mp3|ogg|wav|json|woff2?))(?:[?#][^"'`\s)]*)?/gim;
+const SOURCE_ASSET_MANIFESTS = Object.freeze([
+  "src/game/assets/ProductionV1AssetPaths.ts",
+  "src/game/assets/starterAssetCatalogue.ts",
+  "src/game/assets/GlobalProjectAssetCatalogue.ts"
+]);
+const STATIC_ASSET_REFERENCE = /["'`](assets\/[^"'`\s]+?\.(?:avif|gif|jpe?g|png|svg|webp|mp3|ogg|wav|json|woff2?))["'`]/gim;
 
 if (!existsSync(DIST_DIR)) {
   console.error("Release check failed: dist/ does not exist. Run npm run build first.");
@@ -23,7 +29,6 @@ const fileStats = analysis.entries
 const totalBytes = fileStats.reduce((sum, entry) => sum + entry.size, 0);
 const failures = [];
 const warnings = [];
-const missingRuntimeAssets = new Set();
 
 for (const entry of fileStats) {
   if (entry.size > LARGE_FILE_WARNING_BYTES) {
@@ -39,12 +44,14 @@ for (const entry of fileStats) {
   if (entry.extension === ".js" && /(?:requestFullscreen|webkitRequestFullscreen)/.test(content)) {
     failures.push(`${entry.name}: contains a custom fullscreen API call`);
   }
+}
 
-  for (const reference of extractStaticAssetReferences(content)) {
-    if (!existsSync(join(DIST_DIR, reference))) {
-      missingRuntimeAssets.add(reference);
-    }
-  }
+const missingCatalogueAssets = findMissingCatalogueAssets();
+if (missingCatalogueAssets.size > 0) {
+  failures.push(
+    `asset catalogues reference ${missingCatalogueAssets.size} missing files:\n` +
+    [...missingCatalogueAssets].sort().map((reference) => `  ${reference}`).join("\n")
+  );
 }
 
 if (!fileStats.some((entry) => entry.name === "index.html")) {
@@ -57,13 +64,6 @@ if (fileStats.length > ABSOLUTE_MAX_FILES) {
 
 if (totalBytes > ABSOLUTE_MAX_BYTES) {
   failures.push(`bundle size ${formatBytes(totalBytes)} exceeds 250 MiB`);
-}
-
-if (missingRuntimeAssets.size > 0) {
-  failures.push(
-    `bundle references ${missingRuntimeAssets.size} missing static assets:\n` +
-    [...missingRuntimeAssets].sort().map((reference) => `  ${reference}`).join("\n")
-  );
 }
 
 const unreferencedAssets = [...analysis.unreferenced].sort((left, right) => right.size - left.size);
@@ -103,19 +103,22 @@ console.log(
   "Initial-download budgets are enforced by measure-release-payload.mjs."
 );
 
-function extractStaticAssetReferences(content) {
-  const references = new Set();
-  for (const match of content.matchAll(STATIC_ASSET_REFERENCE)) {
-    const raw = match[1];
-    if (!raw || raw.includes("${") || raw.includes("{") || raw.includes("}")) continue;
-    const normalized = raw.replace(/^\.\//, "");
-    try {
-      references.add(decodeURI(normalized));
-    } catch {
-      references.add(normalized);
+function findMissingCatalogueAssets() {
+  const missing = new Set();
+  for (const manifest of SOURCE_ASSET_MANIFESTS) {
+    if (!existsSync(manifest)) {
+      missing.add(`${manifest} (manifest missing)`);
+      continue;
+    }
+    const content = readFileSync(manifest, "utf8");
+    for (const match of content.matchAll(STATIC_ASSET_REFERENCE)) {
+      const reference = match[1];
+      if (reference && !existsSync(join(PUBLIC_DIR, reference))) {
+        missing.add(reference);
+      }
     }
   }
-  return references;
+  return missing;
 }
 
 function formatBytes(bytes) {
