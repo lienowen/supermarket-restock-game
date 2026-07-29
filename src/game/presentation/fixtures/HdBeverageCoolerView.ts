@@ -88,9 +88,10 @@ const CLOSEUP_CENTRE_Y = 466;
 const CLOSEUP_WIDTH = 1040;
 const CLOSEUP_HEIGHT = 694;
 const SLOT_XS = [620, 980] as const;
-const SLOT_YS = [285, 455, 625] as const;
+const SLOT_YS = [300, 428, 543] as const;
+const SHELF_BASELINE_YS = [367, 487, 598] as const;
 const SLOT_WIDTH = 280;
-const SLOT_HEIGHT = 126;
+const SLOT_HEIGHT = 112;
 const BASE_DEPTH = 48;
 
 const createSlots = (): readonly HdCoolerSlot[] => Object.freeze(
@@ -402,7 +403,7 @@ export class BeverageCoolerView {
     const slot = this.slots[rowIndex];
     if (!holder || !slot) throw new Error(`Missing cooler shelf holder ${rowIndex}`);
 
-    const localTarget = this.itemLocalPosition(itemIndex);
+    const localTarget = this.itemLocalPosition(rowIndex, itemIndex);
     const bottleHeight = Phaser.Math.Linear(96, 112, slot.shelfIndex / 2);
     const sourceX = this.config.stockSource.x;
     const sourceY = this.config.stockSource.y - 34;
@@ -457,11 +458,14 @@ export class BeverageCoolerView {
     return bottle;
   }
 
-  private itemLocalPosition(itemIndex: number): CoolerStockPoint {
+  private itemLocalPosition(rowIndex: number, itemIndex: number): CoolerStockPoint {
+    const slot = this.slots[rowIndex];
+    if (!slot) throw new Error(`Missing cooler shelf geometry ${rowIndex}`);
     const positions = [-72, 0, 72] as const;
+    const shelfBaselineY = SHELF_BASELINE_YS[slot.shelfIndex] ?? slot.y;
     return Object.freeze({
       x: positions[itemIndex] ?? 0,
-      y: 58
+      y: shelfBaselineY - slot.y
     });
   }
 
