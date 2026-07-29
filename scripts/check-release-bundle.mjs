@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
-import { extname } from "node:path";
+import { extname, join } from "node:path";
 import { analyseRuntimeAssets } from "./runtime-asset-references.mjs";
 
 const DIST_DIR = "dist";
@@ -9,6 +9,7 @@ const LARGE_FILE_WARNING_BYTES = 10 * 1024 * 1024;
 const TOP_FILE_COUNT = 20;
 const TOP_UNREFERENCED_COUNT = 30;
 const TEXT_EXTENSIONS = new Set([".html", ".js", ".css", ".json"]);
+const STATIC_ASSET_REFERENCE = /(?:^|["'`(=:,\s])((?:\.\/)?assets\/[^"'`\s)]+?\.(?:avif|gif|jpe?g|png|svg|webp|mp3|ogg|wav|json|woff2?))(?:[?#][^"'`\s)]*)?/gim;
 
 if (!existsSync(DIST_DIR)) {
   console.error("Release check failed: dist/ does not exist. Run npm run build first.");
@@ -22,6 +23,7 @@ const fileStats = analysis.entries
 const totalBytes = fileStats.reduce((sum, entry) => sum + entry.size, 0);
 const failures = [];
 const warnings = [];
+const missingRuntimeAssets = new Set();
 
 for (const entry of fileStats) {
   if (entry.size > LARGE_FILE_WARNING_BYTES) {
@@ -37,6 +39,12 @@ for (const entry of fileStats) {
   if (entry.extension === ".js" && /(?:requestFullscreen|webkitRequestFullscreen)/.test(content)) {
     failures.push(`${entry.name}: contains a custom fullscreen API call`);
   }
+
+  for (const reference of extractStaticAssetReferences(content)) {
+    if (!existsSync(join(DIST_DIR, reference))) {
+      missingRuntimeAssets.add(reference);
+    }
+  }
 }
 
 if (!fileStats.some((entry) => entry.name === "index.html")) {
@@ -49,6 +57,13 @@ if (fileStats.length > ABSOLUTE_MAX_FILES) {
 
 if (totalBytes > ABSOLUTE_MAX_BYTES) {
   failures.push(`bundle size ${formatBytes(totalBytes)} exceeds 250 MiB`);
+}
+
+if (missingRuntimeAssets.size > 0) {
+  failures.push(
+    `bundle references ${missingRuntimeAssets.size} missing static assets:\n` +
+    [...missingRuntimeAssets].sort().map((reference) => `  ${reference}`).join("\n")
+  );
 }
 
 const unreferencedAssets = [...analysis.unreferenced].sort((left, right) => right.size - left.size);
@@ -87,6 +102,21 @@ console.log(
   `${analysis.referenced.size} referenced runtime assets. ` +
   "Initial-download budgets are enforced by measure-release-payload.mjs."
 );
+
+function extractStaticAssetReferences(content) {
+  const references = new Set();
+  for (const match of content.matchAll(STATIC_ASSET_REFERENCE)) {
+    const raw = match[1];
+    if (!raw || raw.includes("${") || raw.includes("{") || raw.includes("}")) continue;
+    const normalized = raw.replace(/^\.\//, "");
+    try {
+      references.add(decodeURI(normalized));
+    } catch {
+      references.add(normalized);
+    }
+  }
+  return references;
+}
 
 function formatBytes(bytes) {
   return `${(bytes / 1024 / 1024).toFixed(2)} MiB`;
