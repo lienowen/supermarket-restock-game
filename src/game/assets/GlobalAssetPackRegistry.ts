@@ -72,6 +72,11 @@ const SHARED_STORE_ASSET_KEYS = Object.freeze([
   "fixture-backroom-rack-a"
 ]);
 
+const RESTOCK_SHARED_STORE_ASSET_KEYS = Object.freeze([
+  ...SHARED_STORE_ASSET_KEYS,
+  "fixture-beverage-cooler-glass-hd-v3"
+]);
+
 const SHARED_WORKER_WALK_KEYS = Object.freeze([
   "worker-a-walk-01",
   "worker-a-walk-02"
@@ -80,8 +85,8 @@ const SHARED_WORKER_WALK_KEYS = Object.freeze([
 export const MARKET_RESTOCK_ASSET_PACK: RestockGlobalAssetPack = Object.freeze({
   id: "market-restock-v1",
   mode: "restock",
-  environmentAssetKey: "environment-starter-market-salesfloor-prototype",
-  sharedStoreAssetKeys: SHARED_STORE_ASSET_KEYS,
+  environmentAssetKey: "environment-starter-market-restock-hd-v3",
+  sharedStoreAssetKeys: RESTOCK_SHARED_STORE_ASSET_KEYS,
   workerIdleAssetKey: "worker-a-idle",
   workerWalkAssetKeys: SHARED_WORKER_WALK_KEYS,
   workerPushAssetKey: "worker-a-push-cart",
