@@ -43,14 +43,26 @@ test("Cooler stock uses two glass-door bays with three grounded shelves each", (
   assert.equal(COOLER_STOCK_TARGET_HEIGHT, 74);
 });
 
-test("Restock mode never renders the broken black-and-green cooler placeholder", () => {
-  const source = read("src/game/presentation/world/StarterMarketEnvironmentView.ts");
-  assert.equal(source.includes('setName("beverage-cooler-stock-occluder")'), false);
-  assert.equal(source.includes('setName("beverage-cooler-empty-shell")'), false);
-  assert.equal(source.includes('setName("beverage-cooler-glass-overlay")'), false);
-  assert.equal(source.includes('setDisplaySize(width, height)'), false);
-  assert.equal(source.includes('document.body.dataset.restockCoolerBackground = "native-background"'), true);
-  assert.equal(source.includes('delete document.body.dataset.restockCoolerAsset'), true);
+test("Restock mode uses the layered HD cooler and never restores the broken placeholder", () => {
+  const environment = read("src/game/presentation/world/StarterMarketEnvironmentView.ts");
+  const cooler = read("src/game/presentation/fixtures/HdBeverageCoolerView.ts");
+
+  assert.equal(environment.includes('setName("beverage-cooler-stock-occluder")'), false);
+  assert.equal(environment.includes('setName("beverage-cooler-empty-shell")'), false);
+  assert.equal(environment.includes('setName("beverage-cooler-glass-overlay")'), false);
+  assert.equal(
+    environment.includes('document.body.dataset.restockCoolerBackground = "production-v3-hd"'),
+    true
+  );
+  assert.equal(
+    environment.includes('document.body.dataset.restockCoolerAsset = "hd-closeup-layered"'),
+    true
+  );
+  assert.equal(cooler.includes('setName("restock-cooler-empty-back-hd")'), true);
+  assert.equal(cooler.includes('setName("restock-cooler-front-glass-hd")'), true);
+  assert.equal(cooler.includes("COOLER_STOCK_ITEMS_PER_SLOT"), true);
+  assert.equal(cooler.includes("const SLOT_XS = [620, 980]"), true);
+  assert.equal(cooler.includes("const SLOT_YS = [285, 455, 625]"), true);
 });
 
 test("Beverage bottle crop removes the padded transparent canvas", () => {
