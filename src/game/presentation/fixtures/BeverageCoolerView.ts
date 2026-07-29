@@ -34,6 +34,7 @@ const aliasCanvasTexture = (
   replaceTexture(scene, aliasKey);
   const sourceImage = scene.textures.get(sourceKey).getSourceImage() as CanvasImageSource;
   const texture = scene.textures.createCanvas(aliasKey, width, height);
+  if (!texture) throw new Error(`Unable to create processed texture: ${aliasKey}`);
   const context = texture.getContext();
   context.clearRect(0, 0, width, height);
   context.globalAlpha = sourceAlpha;
