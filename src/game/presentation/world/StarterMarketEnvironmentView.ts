@@ -1,6 +1,5 @@
 import Phaser from "phaser";
 import type { StarterMarketPresentationContext } from "../context/StarterMarketPresentationContext";
-import { resolveCoolerStockSlots } from "../visual/CoolerStockLayout";
 import { resolveLevelVisualPreset } from "../visual/LevelVisualPresetResolver";
 import type { MarketLevelVisualPreset } from "../visual/MarketLevelVisualPreset";
 
@@ -22,7 +21,7 @@ export class StarterMarketEnvironmentView {
   create(): void {
     this.createBase();
     this.createFloor();
-    this.createRestockEmptyCooler();
+    this.registerRestockCoolerPresentation();
     this.registerSharedFixtureAvailability();
     this.createModeFocus();
     this.createAtmosphere();
@@ -55,70 +54,22 @@ export class StarterMarketEnvironmentView {
   }
 
   /**
-   * The sales-floor background contains stocked drinks baked into its pixels.
-   * Restock mode therefore places a fully opaque backing over the complete wall
-   * segment and then renders the production empty-cooler asset above it. Stock
-   * products remain separate gameplay objects; the glass layer is rendered last
-   * so the result reads as one real refrigerated fixture instead of debug art.
+   * The temporary empty-cooler and glass-overlay assets were debug placeholders
+   * with a black canvas, neon green border and diagonal guide line. Rendering
+   * them over the photographed sales floor hid the real cooler and made the
+   * first level unusable. Until a verified transparent empty-cooler asset is
+   * supplied, keep the native photographed cooler visible and render stock as
+   * separate gameplay objects through BeverageCoolerView.
    */
-  private createRestockEmptyCooler(): void {
+  private registerRestockCoolerPresentation(): void {
     if (this.context.mode !== "restock") {
       document.body.dataset.restockCoolerBackground = "not-applicable";
+      delete document.body.dataset.restockCoolerAsset;
       return;
     }
 
-    const slots = resolveCoolerStockSlots(this.context.world.beverageCooler.x);
-    const xs = slots.map((slot) => slot.x);
-    const ys = slots.map((slot) => slot.y);
-    const left = Math.max(0, Math.min(...xs) - 135);
-    const right = Math.min(this.context.world.width - 2, Math.max(...xs) + 108);
-    const top = Math.min(...ys) - 82;
-    const bottom = Math.max(...ys) + 86;
-    const width = right - left;
-    const height = bottom - top;
-    const centreX = left + width / 2;
-    const centreY = top + height / 2;
-    const bounds = Object.freeze({ left, right, top, bottom });
-
-    this.scene.add.rectangle(
-      centreX,
-      centreY,
-      width,
-      height,
-      0x050907,
-      1
-    )
-      .setDepth(2)
-      .setName("beverage-cooler-stock-occluder")
-      .setData("background-stock-occluded", true)
-      .setData("occluded-wall-bounds", bounds);
-
-    this.scene.add.image(
-      centreX,
-      centreY,
-      "fixture-beverage-cooler-empty"
-    )
-      .setOrigin(0.5)
-      .setDisplaySize(width, height)
-      .setDepth(3)
-      .setName("beverage-cooler-empty-shell")
-      .setData("background-stock-occluded", true)
-      .setData("asset-driven", true)
-      .setData("occluded-wall-bounds", bounds);
-
-    this.scene.add.image(
-      centreX,
-      centreY,
-      "fixture-beverage-cooler-glass-overlay"
-    )
-      .setOrigin(0.5)
-      .setDisplaySize(width, height)
-      .setDepth(15)
-      .setAlpha(0.78)
-      .setName("beverage-cooler-glass-overlay");
-
-    document.body.dataset.restockCoolerBackground = "occluded";
-    document.body.dataset.restockCoolerAsset = "fixture-beverage-cooler-empty";
+    document.body.dataset.restockCoolerBackground = "native-background";
+    delete document.body.dataset.restockCoolerAsset;
   }
 
   private registerSharedFixtureAvailability(): void {
