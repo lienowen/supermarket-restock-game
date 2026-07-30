@@ -1,9 +1,9 @@
 import Phaser from "phaser";
 import {
-  BeverageCoolerView as HdBeverageCoolerView,
+  IntegratedBeverageCoolerView,
   type BeverageCoolerRushState,
   type BeverageCoolerViewConfig
-} from "./HdBeverageCoolerView";
+} from "./IntegratedBeverageCoolerView";
 
 export type { BeverageCoolerRushState, BeverageCoolerViewConfig };
 
@@ -112,14 +112,11 @@ const aliasCanvasTexture = (
 };
 
 /**
- * Compatibility wrapper for the existing scene API. Runtime-resolved assets are
- * converted to stable close-up textures before the dedicated cooler view is
- * created. Transparent product padding is removed so the visible bottle base,
- * rather than its source canvas, sits on the real shelf baseline.
+ * Compatibility wrapper for the scene API. It prepares stable HD textures and
+ * delegates rendering to the world-integrated cooler composition. No full-screen
+ * backdrop is created, so the supermarket, employee, cart and case remain visible.
  */
-export class BeverageCoolerView extends HdBeverageCoolerView {
-  private readonly closeupBackdrop: Phaser.GameObjects.Rectangle;
-
+export class BeverageCoolerView extends IntegratedBeverageCoolerView {
   constructor(scene: Phaser.Scene, config: BeverageCoolerViewConfig) {
     aliasImageTexture(scene, "restock-cooler-empty-hd-v3", config.coolerAssetKey);
     aliasCanvasTexture(
@@ -140,30 +137,5 @@ export class BeverageCoolerView extends HdBeverageCoolerView {
       true
     );
     super(scene, config);
-
-    this.closeupBackdrop = scene.add.rectangle(800, 450, 1600, 900, 0xf4f1e9, 0.985)
-      .setDepth(47)
-      .setVisible(false)
-      .setName("restock-cooler-closeup-backdrop");
-  }
-
-  override create(): void {
-    super.create();
-    this.closeupBackdrop.setVisible(false);
-  }
-
-  override sync(stockedRows: number): void {
-    this.closeupBackdrop.setVisible(false);
-    super.sync(stockedRows);
-  }
-
-  override syncRush(state: BeverageCoolerRushState): void {
-    this.closeupBackdrop.setVisible(true);
-    super.syncRush(state);
-  }
-
-  override destroy(): void {
-    this.closeupBackdrop.destroy();
-    super.destroy();
   }
 }
