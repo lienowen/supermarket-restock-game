@@ -15,7 +15,7 @@ const {
 
 const read = (path) => readFileSync(path, "utf8");
 
-test("Cooler stock uses two glass-door bays with three grounded shelves each", () => {
+test("Cooler stock keeps six logical slots and eighteen real products", () => {
   assert.equal(COOLER_STOCK_SLOT_OFFSETS.length, 6);
   assert.equal(COOLER_STOCK_SLOT_COUNT, 6);
   assert.equal(COOLER_STOCK_ITEMS_PER_SLOT, 3);
@@ -29,8 +29,6 @@ test("Cooler stock uses two glass-door bays with three grounded shelves each", (
 
   const uniquePoints = new Set(slots.map((slot) => `${slot.x}:${slot.y}`));
   assert.equal(uniquePoints.size, 6);
-  assert.ok(slots.every((slot) => slot.x >= 1380 && slot.x <= 1520));
-  assert.ok(slots.every((slot) => slot.y >= 280 && slot.y <= 550));
 
   const bounds = resolveCoolerStockBounds(1410);
   assert.deepEqual(bounds, {
@@ -43,9 +41,10 @@ test("Cooler stock uses two glass-door bays with three grounded shelves each", (
   assert.equal(COOLER_STOCK_TARGET_HEIGHT, 74);
 });
 
-test("Restock mode uses the layered HD cooler and never restores the broken placeholder", () => {
+test("Restock mode keeps the supermarket visible around the layered HD cooler", () => {
   const environment = read("src/game/presentation/world/StarterMarketEnvironmentView.ts");
-  const cooler = read("src/game/presentation/fixtures/HdBeverageCoolerView.ts");
+  const wrapper = read("src/game/presentation/fixtures/BeverageCoolerView.ts");
+  const cooler = read("src/game/presentation/fixtures/IntegratedBeverageCoolerView.ts");
 
   assert.equal(environment.includes('setName("beverage-cooler-stock-occluder")'), false);
   assert.equal(environment.includes('setName("beverage-cooler-empty-shell")'), false);
@@ -55,15 +54,17 @@ test("Restock mode uses the layered HD cooler and never restores the broken plac
     true
   );
   assert.equal(
-    environment.includes('document.body.dataset.restockCoolerAsset = "hd-closeup-layered"'),
+    environment.includes('document.body.dataset.restockCoolerAsset = "world-integrated-layered"'),
     true
   );
+  assert.equal(wrapper.includes("closeupBackdrop"), false);
   assert.equal(cooler.includes('setName("restock-cooler-empty-back-hd")'), true);
   assert.equal(cooler.includes('setName("restock-cooler-front-glass-hd")'), true);
   assert.equal(cooler.includes("COOLER_STOCK_ITEMS_PER_SLOT"), true);
-  assert.equal(cooler.includes("const SLOT_XS = [620, 980]"), true);
-  assert.equal(cooler.includes("const SLOT_YS = [300, 428, 543]"), true);
-  assert.equal(cooler.includes("const SHELF_BASELINE_YS = [367, 487, 598]"), true);
+  assert.equal(cooler.includes("const COOLER_CENTRE_X = 1180"), true);
+  assert.equal(cooler.includes("const SLOT_XS = [1070, 1290]"), true);
+  assert.equal(cooler.includes("const SLOT_YS = [330, 475, 620]"), true);
+  assert.equal(cooler.includes("const SHELF_BASELINE_YS = [395, 540, 685]"), true);
   assert.equal(cooler.includes("shelfBaselineY - slot.y"), true);
 });
 
