@@ -48,7 +48,7 @@ test("Visual spec and world layout share the same locked composition", () => {
   assert.deepEqual(zones.get("beverage-zone"), STARTER_MARKET_VISUAL_SPEC.composition.beverageZone);
 });
 
-test("Restock scene keeps cooler right and employee cart staging left", () => {
+test("Restock scene keeps cooler right and final employee cart staging left", () => {
   const cooler = RESTOCK_VISUAL_PRESET.cooler;
   const coolerFixture = STARTER_MARKET_LAYOUT.fixtures.find(
     (entry) => entry.fixtureId === "beverage-cooler-a"
@@ -56,21 +56,21 @@ test("Restock scene keeps cooler right and employee cart staging left", () => {
   const restockZone = STARTER_MARKET_LAYOUT.interactions.find(
     (entry) => entry.id === "beverage-restock-zone"
   );
-  const cartZone = STARTER_MARKET_LAYOUT.interactions.find(
+  const cartLoadZone = STARTER_MARKET_LAYOUT.interactions.find(
     (entry) => entry.id === "restock-cart-load-point"
   );
 
   assert.ok(coolerFixture);
   assert.ok(restockZone);
-  assert.ok(cartZone);
+  assert.ok(cartLoadZone);
   assert.deepEqual(STARTER_MARKET_VISUAL_SPEC.cooler.centre, coolerFixture.position);
   assert.equal(cooler.rowYs.length, COOLER_STOCK_SLOT_OFFSETS.length);
   assert.equal(cooler.restockItemCount, 3);
   assert.ok(cooler.activeStockWidth <= 100);
   assert.ok(coolerFixture.position.x >= 1150 && coolerFixture.position.x <= 1210);
   assert.ok(restockZone.position.x >= 740 && restockZone.position.x <= 820);
-  assert.ok(cartZone.position.x < restockZone.position.x);
   assert.ok(restockZone.position.x < coolerFixture.position.x);
+  assert.ok(cartLoadZone.position.x > restockZone.position.x);
 });
 
 test("Checkout uses a compact grocery basket queue instead of pasted customer cutouts", () => {
