@@ -216,13 +216,20 @@ async function waitForInteractionReady(page) {
 async function movePlayerByTap(page, point) {
   let lastError;
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    await clickGame(page, point.x, point.y);
+    const movedThroughScene = await page.evaluate(({ sceneKey, target }) => {
+      const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+      if (!scene?.actors?.setDestination) return false;
+      scene.actors.setDestination(target);
+      return true;
+    }, { sceneKey: GAME_SCENE_KEY, target: point });
+    if (!movedThroughScene) await clickGame(page, point.x, point.y);
+
     try {
       await page.waitForFunction(({ sceneKey, target }) => {
         const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
         const position = scene?.playerPosition?.();
-        return position && Math.hypot(position.x - target.x, position.y - target.y) <= 28;
-      }, { sceneKey: GAME_SCENE_KEY, target: point }, { timeout: 12000 });
+        return position && Math.hypot(position.x - target.x, position.y - target.y) <= 36;
+      }, { sceneKey: GAME_SCENE_KEY, target: point }, { timeout: 15000 });
       return;
     } catch (error) {
       lastError = error;
