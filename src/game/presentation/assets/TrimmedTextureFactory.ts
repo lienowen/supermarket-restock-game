@@ -85,15 +85,16 @@ const resolveOpaqueBounds = (source: HTMLCanvasElement): OpaqueBounds => {
 
 /**
  * Creates a transparent texture containing only the source object's visible
- * pixels. Optional neutral-background removal cleans source images that were
- * incorrectly exported with a white/grey checkerboard baked into the pixels.
+ * pixels. Optional cleanup removes a baked checkerboard. trimBottomRatio is
+ * used for composite source art where an unwanted pallet is below the object.
  */
 export function prepareTrimmedTexture(
   scene: Phaser.Scene,
   sourceKey: string | undefined,
   aliasKey: string,
   padding = 8,
-  removeLightNeutralBackground = false
+  removeLightNeutralBackground = false,
+  trimBottomRatio = 0
 ): string {
   if (!sourceKey || !scene.textures.exists(sourceKey)) return sourceKey ?? aliasKey;
   if (scene.textures.exists(aliasKey)) return aliasKey;
@@ -102,10 +103,12 @@ export function prepareTrimmedTexture(
   const cleanedSource = createSourceCanvas(source, removeLightNeutralBackground);
   const sourceSize = sourceDimensions(cleanedSource);
   const opaque = resolveOpaqueBounds(cleanedSource);
+  const safeBottomTrim = Phaser.Math.Clamp(trimBottomRatio, 0, 0.65);
+  const retainedOpaqueHeight = Math.max(1, Math.round(opaque.height * (1 - safeBottomTrim)));
   const left = Math.max(0, opaque.x - padding);
   const top = Math.max(0, opaque.y - padding);
   const right = Math.min(sourceSize.width, opaque.x + opaque.width + padding);
-  const bottom = Math.min(sourceSize.height, opaque.y + opaque.height + padding);
+  const bottom = Math.min(sourceSize.height, opaque.y + retainedOpaqueHeight + padding);
   const width = Math.max(1, right - left);
   const height = Math.max(1, bottom - top);
 
