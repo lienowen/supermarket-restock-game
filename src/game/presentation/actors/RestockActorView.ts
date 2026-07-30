@@ -41,7 +41,6 @@ interface RestockTextureKeys {
   readonly workerPush: string;
   readonly workerCarry: string;
   readonly workerOpen: string;
-  readonly workerStock: string;
   readonly cartEmpty: string;
   readonly cartLoaded: string;
   readonly caseClosed: string;
@@ -54,7 +53,7 @@ export class RestockActorView {
   private readonly cartShadow: Phaser.GameObjects.Ellipse;
   private readonly cart: Phaser.GameObjects.Image;
   private readonly caseBox: Phaser.GameObjects.Image;
-  private readonly reserveCaseBox: Phaser.GameObjects.Image;
+  private readonly handProduct: Phaser.GameObjects.Image;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -75,18 +74,19 @@ export class RestockActorView {
         "cut-restock-worker-open",
         12
       ),
-      workerStock: prepareTrimmedTexture(
+      cartEmpty: prepareTrimmedTexture(
         scene,
-        config.workerStockAssetKey ?? "worker-a-place-middle",
-        "cut-restock-worker-stock",
-        12
+        config.cartAssetKey,
+        "cut-restock-cart-empty-clean",
+        10,
+        true
       ),
-      cartEmpty: prepareTrimmedTexture(scene, config.cartAssetKey, "cut-restock-cart-empty", 10),
       cartLoaded: prepareTrimmedTexture(
         scene,
         config.cartLoadedAssetKey ?? "equipment-restock-cart-a-loaded",
-        "cut-restock-cart-loaded",
-        10
+        "cut-restock-cart-loaded-clean",
+        10,
+        true
       ),
       caseClosed: prepareTrimmedTexture(scene, config.caseAssetKey, "cut-restock-case-closed", 8),
       caseOpen: prepareTrimmedTexture(
@@ -128,14 +128,20 @@ export class RestockActorView {
       .setDisplaySize(config.caseSize.width, config.caseSize.height)
       .setDepth(23)
       .setName("restock-case");
-    this.reserveCaseBox = scene.add.image(config.caseStart.x, config.caseStart.y, this.textures.caseClosed)
-      .setOrigin(0.5, 0.96)
-      .setDisplaySize(config.caseSize.width, config.caseSize.height)
-      .setDepth(23)
+    this.handProduct = scene.add.image(
+      config.cartDestination.x + 78,
+      config.cartDestination.y - 128,
+      "restock-cola-bottle-hd-v2"
+    )
+      .setOrigin(0.5, 1)
+      .setDisplaySize(34, 84)
+      .setDepth(27)
+      .setAngle(-8)
       .setVisible(false)
-      .setName("restock-reserve-case");
+      .setName("restock-worker-hand-product");
 
     document.body.dataset.restockAssetCutting = "opaque-bounds";
+    document.body.dataset.restockActorComposition = "worker-cart-open-case-hand-product";
   }
 
   update(deltaMs: number): void {
@@ -155,7 +161,7 @@ export class RestockActorView {
   }
 
   setDestination(point: NavigationPoint): void {
-    this.navigation.setDestination(point);
+    return this.navigation.setDestination(point);
   }
 
   sync(snapshot: RestockSceneSnapshot): void {
@@ -187,7 +193,7 @@ export class RestockActorView {
     this.cart.destroy();
     this.cartShadow.destroy();
     this.caseBox.destroy();
-    this.reserveCaseBox.destroy();
+    this.handProduct.destroy();
   }
 
   private showCollectState(): void {
@@ -195,7 +201,7 @@ export class RestockActorView {
     this.setWorker(this.textures.workerIdle, config.idleSize);
     this.cart.setVisible(false);
     this.cartShadow.setVisible(false);
-    this.reserveCaseBox.setVisible(false);
+    this.handProduct.setVisible(false);
     this.caseBox.setTexture(this.textures.caseClosed)
       .setVisible(true)
       .setPosition(config.caseStart.x, config.caseStart.y)
@@ -213,7 +219,7 @@ export class RestockActorView {
       .setVisible(true);
     this.cartShadow.setPosition(config.cartStart.x + 72, config.cartStart.y + 7).setVisible(true);
     this.caseBox.setVisible(false);
-    this.reserveCaseBox.setVisible(false);
+    this.handProduct.setVisible(false);
   }
 
   private showPushState(): void {
@@ -222,33 +228,35 @@ export class RestockActorView {
     this.cart.setVisible(false);
     this.cartShadow.setVisible(false);
     this.caseBox.setVisible(false);
-    this.reserveCaseBox.setVisible(false);
+    this.handProduct.setVisible(false);
   }
 
   private showOpenState(snapshot: RestockSceneSnapshot): void {
     const { config } = this;
     this.setWorker(this.textures.workerOpen, config.idleSize);
     this.showFinalCart();
-    this.showReserveCase(1);
+    this.handProduct.setVisible(false);
     this.caseBox.setTexture(snapshot.boxOpened ? this.textures.caseOpen : this.textures.caseClosed)
       .setVisible(true)
-      .setPosition(this.finalCartX() + 30, config.cartDestination.y - 86)
-      .setDisplaySize(config.caseSize.width * 1.05, config.caseSize.height * 0.92)
+      .setPosition(this.finalCartX() + 32, config.cartDestination.y - 82)
+      .setDisplaySize(config.caseSize.width * 1.06, config.caseSize.height * 0.94)
       .setAngle(snapshot.boxOpened ? -3 : 0)
       .setAlpha(1);
   }
 
   private showStockState(snapshot: RestockSceneSnapshot): void {
     const { config } = this;
-    this.setWorker(this.textures.workerStock, config.idleSize);
+    this.setWorker(this.textures.workerIdle, config.idleSize);
     this.showFinalCart();
-    this.showReserveCase(Math.max(0.46, 1 - snapshot.stockedRows * 0.085));
     this.caseBox.setTexture(this.textures.caseOpen)
       .setVisible(true)
-      .setPosition(this.finalCartX() + 30, config.cartDestination.y - 86)
-      .setDisplaySize(config.caseSize.width * 1.05, config.caseSize.height * 0.92)
+      .setPosition(this.finalCartX() + 32, config.cartDestination.y - 82)
+      .setDisplaySize(config.caseSize.width * 1.06, config.caseSize.height * 0.94)
       .setAngle(-3)
       .setAlpha(Math.max(0.76, 1 - snapshot.stockedRows * 0.035));
+    this.handProduct
+      .setPosition(config.cartDestination.x + 82, config.cartDestination.y - 132)
+      .setVisible(true);
   }
 
   private showCompleteState(): void {
@@ -256,7 +264,7 @@ export class RestockActorView {
     this.setWorker(this.textures.workerIdle, config.idleSize);
     this.showFinalCart();
     this.caseBox.setVisible(false).setAlpha(1);
-    this.reserveCaseBox.setVisible(false).setAlpha(1);
+    this.handProduct.setVisible(false);
   }
 
   private showFinalCart(): void {
@@ -274,16 +282,6 @@ export class RestockActorView {
         Math.max(40, config.cartSize.height * 0.11)
       )
       .setVisible(true);
-  }
-
-  private showReserveCase(alpha: number): void {
-    const { config } = this;
-    this.reserveCaseBox.setTexture(this.textures.caseClosed)
-      .setVisible(true)
-      .setPosition(this.finalCartX() - 18, config.cartDestination.y + 60)
-      .setDisplaySize(config.caseSize.width * 0.95, config.caseSize.height * 0.82)
-      .setAngle(1)
-      .setAlpha(alpha);
   }
 
   private finalCartX(): number {
