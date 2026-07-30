@@ -2,8 +2,8 @@ import type { StoreWorldLayout } from "./WorldLayout";
 
 /**
  * Shared 1600x900 market composition. The supermarket background remains the
- * primary scene: the cooler lives on the right, while the employee, cart and
- * cases occupy the left foreground during restocking.
+ * primary scene: the baked cooler lives on the right, while the employee, cart
+ * and open case occupy the left foreground during restocking.
  */
 export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
   id: "starter-market-layout",
@@ -29,7 +29,7 @@ export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
       id: "beverage-zone",
       kind: "beverage",
       label: "Beverages",
-      bounds: { x: 900, y: 120, width: 700, height: 780 }
+      bounds: { x: 740, y: 120, width: 760, height: 780 }
     },
     {
       id: "checkout-zone",
@@ -53,7 +53,7 @@ export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
     },
     {
       fixtureId: "beverage-cooler-a",
-      position: { x: 1180, y: 500 },
+      position: { x: 1065, y: 500 },
       anchor: [0.5, 0.92],
       depth: 18
     },
@@ -83,7 +83,7 @@ export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
       id: "beverage-restock-zone",
       targetId: "beverage-cooler-a",
       actionGroup: "parking-zone",
-      position: { x: 780, y: 760 },
+      position: { x: 720, y: 760 },
       radius: 150
     },
     {
