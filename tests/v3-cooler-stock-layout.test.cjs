@@ -41,7 +41,7 @@ test("Cooler stock keeps six logical slots and eighteen real products", () => {
   assert.equal(COOLER_STOCK_TARGET_HEIGHT, 74);
 });
 
-test("Restock mode keeps the supermarket visible around the layered HD cooler", () => {
+test("Restock mode stocks directly into the cooler already in the supermarket background", () => {
   const environment = read("src/game/presentation/world/StarterMarketEnvironmentView.ts");
   const wrapper = read("src/game/presentation/fixtures/BeverageCoolerView.ts");
   const cooler = read("src/game/presentation/fixtures/IntegratedBeverageCoolerView.ts");
@@ -58,13 +58,14 @@ test("Restock mode keeps the supermarket visible around the layered HD cooler", 
     true
   );
   assert.equal(wrapper.includes("closeupBackdrop"), false);
-  assert.equal(cooler.includes('setName("restock-cooler-empty-back-hd")'), true);
-  assert.equal(cooler.includes('setName("restock-cooler-front-glass-hd")'), true);
+  assert.equal(cooler.includes('restock-cooler-empty-back-hd'), false);
+  assert.equal(cooler.includes('restock-cooler-front-glass-hd'), false);
+  assert.equal(cooler.includes('document.body.dataset.restockCoolerView = "background-integrated"'), true);
   assert.equal(cooler.includes("COOLER_STOCK_ITEMS_PER_SLOT"), true);
-  assert.equal(cooler.includes("const COOLER_CENTRE_X = 1180"), true);
-  assert.equal(cooler.includes("const SLOT_XS = [1070, 1290]"), true);
-  assert.equal(cooler.includes("const SLOT_YS = [330, 475, 620]"), true);
-  assert.equal(cooler.includes("const SHELF_BASELINE_YS = [395, 540, 685]"), true);
+  assert.equal(cooler.includes("const COOLER_CENTRE_X = 1065"), true);
+  assert.equal(cooler.includes("const SLOT_XS = [900, 1195]"), true);
+  assert.equal(cooler.includes("const SLOT_YS = [325, 460, 595]"), true);
+  assert.equal(cooler.includes("const SHELF_BASELINE_YS = [392, 527, 662]"), true);
   assert.equal(cooler.includes("shelfBaselineY - slot.y"), true);
 });
 
