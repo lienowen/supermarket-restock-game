@@ -69,14 +69,14 @@ export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
       id: "cola-case-pickup-point",
       targetId: "cola-case-a",
       actionGroup: "case",
-      position: { x: 650, y: 790 },
+      position: { x: 1240, y: 790 },
       radius: 110
     },
     {
       id: "restock-cart-load-point",
       targetId: "restock-cart-a",
       actionGroup: "cart",
-      position: { x: 500, y: 805 },
+      position: { x: 1070, y: 805 },
       radius: 120
     },
     {
@@ -98,7 +98,7 @@ export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
     {
       id: "worker-a-spawn",
       actorType: "worker",
-      position: { x: 860, y: 790 },
+      position: { x: 920, y: 790 },
       facing: "back-right"
     },
     {
