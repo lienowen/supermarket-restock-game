@@ -63,7 +63,7 @@ export class StarterMarketEnvironmentView {
     }
 
     document.body.dataset.restockCoolerBackground = "production-v3-hd";
-    document.body.dataset.restockCoolerAsset = "hd-closeup-layered";
+    document.body.dataset.restockCoolerAsset = "world-integrated-layered";
   }
 
   private registerSharedFixtureAvailability(): void {
