@@ -163,38 +163,57 @@ export class RestockActorView {
   private showOpenState(snapshot: RestockSceneSnapshot): void {
     const { config } = this;
     this.setWorker(config.workerOpenAssetKey ?? "worker-a-open-case", config.idleSize);
-    this.cart.setVisible(false);
-    this.cartShadow.setVisible(false);
+    this.showFinalCart();
     this.caseBox.setTexture(
       snapshot.boxOpened
         ? config.caseOpenAssetKey ?? this.openCaseKey()
         : config.caseAssetKey
     )
       .setVisible(true)
-      .setPosition(config.cartDestination.x + 24, config.cartDestination.y - 5)
-      .setDisplaySize(config.caseSize.width * 0.95, config.caseSize.height * 0.97)
-      .setAngle(snapshot.boxOpened ? -4 : 0);
+      .setPosition(this.finalCartX() + 8, config.cartDestination.y - 102)
+      .setDisplaySize(config.caseSize.width * 0.78, config.caseSize.height * 0.78)
+      .setAngle(snapshot.boxOpened ? -3 : 0)
+      .setAlpha(1);
   }
 
   private showStockState(snapshot: RestockSceneSnapshot): void {
     const { config } = this;
     this.setWorker(config.workerStockAssetKey ?? "worker-a-place-middle", config.idleSize);
-    this.cart.setVisible(false);
-    this.cartShadow.setVisible(false);
+    this.showFinalCart();
     this.caseBox.setTexture(config.caseOpenAssetKey ?? this.openCaseKey())
       .setVisible(true)
-      .setPosition(config.cartDestination.x + 28, config.cartDestination.y - 5)
-      .setDisplaySize(config.caseSize.width * 0.95, config.caseSize.height * 0.97)
-      .setAngle(-4)
-      .setAlpha(Math.max(0.55, 1 - snapshot.stockedRows * 0.07));
+      .setPosition(this.finalCartX() + 8, config.cartDestination.y - 102)
+      .setDisplaySize(config.caseSize.width * 0.78, config.caseSize.height * 0.78)
+      .setAngle(-3)
+      .setAlpha(Math.max(0.58, 1 - snapshot.stockedRows * 0.06));
   }
 
   private showCompleteState(): void {
     const { config } = this;
     this.setWorker(config.workerIdleAssetKey, config.idleSize);
-    this.cart.setVisible(false);
-    this.cartShadow.setVisible(false);
+    this.showFinalCart();
     this.caseBox.setVisible(false).setAlpha(1);
+  }
+
+  private showFinalCart(): void {
+    const { config } = this;
+    const x = this.finalCartX();
+    const y = config.cartDestination.y + 14;
+    this.cart.setTexture(config.cartLoadedAssetKey ?? "equipment-restock-cart-a-loaded")
+      .setDisplaySize(config.cartSize.width * 0.92, config.cartSize.height * 0.92)
+      .setPosition(x, y)
+      .setVisible(true);
+    this.cartShadow
+      .setPosition(x, y + 4)
+      .setSize(
+        Math.max(190, config.cartSize.width * 0.34),
+        Math.max(38, config.cartSize.height * 0.1)
+      )
+      .setVisible(true);
+  }
+
+  private finalCartX(): number {
+    return this.config.cartDestination.x - 190;
   }
 
   private openCaseKey(): string {
