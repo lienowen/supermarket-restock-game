@@ -116,6 +116,6 @@ test("Find-items embeds products in existing departments instead of drawing anot
 });
 
 test("Production asset plan remains complete", () => {
-  assert.deepEqual(validateProductionAssetPlan().errors, []);
+  assert.deepEqual(validateProductionAssetPlan(), []);
   assert.ok(STARTER_MARKET_PRODUCTION_ASSET_PLAN.length > 0);
 });
