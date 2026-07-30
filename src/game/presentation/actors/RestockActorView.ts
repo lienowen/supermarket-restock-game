@@ -94,10 +94,10 @@ export class RestockActorView {
       caseOpen: prepareTrimmedTexture(
         scene,
         config.caseOpenAssetKey ?? this.openCaseSourceKey(),
-        "cut-restock-case-open-without-pallet",
+        "cut-restock-case-open-without-pallet-v2",
         8,
         false,
-        0.2
+        0.3
       )
     });
 
