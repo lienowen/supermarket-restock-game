@@ -51,7 +51,7 @@ interface RestockTextureKeys {
 const RESTOCK_WORKER_POSITION: NavigationPoint = Object.freeze({ x: 660, y: 790 });
 const RESTOCK_WORKER_SIZE: VisualSize = Object.freeze({ width: 300, height: 300 });
 const RESTOCK_CART_SIZE: VisualSize = Object.freeze({ width: 330, height: 250 });
-const RESTOCK_CASE_SIZE: VisualSize = Object.freeze({ width: 155, height: 125 });
+const RESTOCK_CASE_SIZE: VisualSize = Object.freeze({ width: 145, height: 108 });
 const RESTOCK_HAND_PRODUCT_SIZE: VisualSize = Object.freeze({ width: 24, height: 60 });
 
 export class RestockActorView {
@@ -103,7 +103,7 @@ export class RestockActorView {
         "cut-restock-case-open-without-pallet-v2",
         8,
         false,
-        0.3
+        0.42
       )
     });
 
