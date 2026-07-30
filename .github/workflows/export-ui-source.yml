@@ -1,0 +1,27 @@
+name: Export UI Source
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/export-ui-source.yml
+
+permissions:
+  contents: read
+
+jobs:
+  export-ui-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Collect presentation source
+        run: |
+          mkdir -p export
+          cp -R src/game/presentation export/presentation
+          cp -R src/game/scenes export/scenes 2>/dev/null || true
+          cp -R src/game/world export/world
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ui-source
+          path: export
+          retention-days: 1
