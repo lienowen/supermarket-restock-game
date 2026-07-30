@@ -66,7 +66,7 @@ export class RestockActorView {
       workerWalk: Object.freeze([
         prepareTrimmedTexture(scene, walkSources[0], "cut-restock-worker-walk-01", 12),
         prepareTrimmedTexture(scene, walkSources[1], "cut-restock-worker-walk-02", 12)
-      ]),
+      ]) as readonly [string, string],
       workerPush: prepareTrimmedTexture(scene, config.workerPushAssetKey, "cut-restock-worker-push", 12),
       workerCarry: prepareTrimmedTexture(scene, config.workerCarryAssetKey, "cut-restock-worker-carry", 12),
       workerOpen: prepareTrimmedTexture(
