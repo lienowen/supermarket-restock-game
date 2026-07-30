@@ -1,9 +1,9 @@
 import type { StoreWorldLayout } from "./WorldLayout";
 
 /**
- * Shared 1600x900 market composition. The coherent salesfloor art owns the
- * shelves and departments; these coordinates reserve the visible foreground
- * aisles for actors, equipment, queues and task interactions.
+ * Shared 1600x900 market composition. The supermarket background remains the
+ * primary scene: the cooler lives on the right, while the employee, cart and
+ * cases occupy the left foreground during restocking.
  */
 export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
   id: "starter-market-layout",
@@ -29,7 +29,7 @@ export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
       id: "beverage-zone",
       kind: "beverage",
       label: "Beverages",
-      bounds: { x: 975, y: 120, width: 625, height: 780 }
+      bounds: { x: 900, y: 120, width: 700, height: 780 }
     },
     {
       id: "checkout-zone",
@@ -53,9 +53,9 @@ export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
     },
     {
       fixtureId: "beverage-cooler-a",
-      position: { x: 1410, y: 500 },
+      position: { x: 1180, y: 500 },
       anchor: [0.5, 0.92],
-      depth: 22
+      depth: 18
     },
     {
       fixtureId: "checkout-a",
@@ -69,21 +69,21 @@ export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
       id: "cola-case-pickup-point",
       targetId: "cola-case-a",
       actionGroup: "case",
-      position: { x: 1240, y: 790 },
+      position: { x: 650, y: 790 },
       radius: 110
     },
     {
       id: "restock-cart-load-point",
       targetId: "restock-cart-a",
       actionGroup: "cart",
-      position: { x: 1070, y: 805 },
+      position: { x: 500, y: 805 },
       radius: 120
     },
     {
       id: "beverage-restock-zone",
       targetId: "beverage-cooler-a",
       actionGroup: "parking-zone",
-      position: { x: 1365, y: 755 },
+      position: { x: 780, y: 760 },
       radius: 150
     },
     {
@@ -98,7 +98,7 @@ export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
     {
       id: "worker-a-spawn",
       actorType: "worker",
-      position: { x: 920, y: 790 },
+      position: { x: 720, y: 790 },
       facing: "back-right"
     },
     {
