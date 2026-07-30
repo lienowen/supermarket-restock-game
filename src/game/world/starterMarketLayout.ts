@@ -98,7 +98,7 @@ export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
     {
       id: "worker-a-spawn",
       actorType: "worker",
-      position: { x: 720, y: 790 },
+      position: { x: 860, y: 790 },
       facing: "back-right"
     },
     {
