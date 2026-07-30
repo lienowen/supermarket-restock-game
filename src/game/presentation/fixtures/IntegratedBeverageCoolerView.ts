@@ -49,8 +49,6 @@ const SHELF_BASELINE_YS = [392, 527, 662] as const;
 const SLOT_WIDTH = 230;
 const SLOT_HEIGHT = 112;
 const BASE_DEPTH = 20;
-const GLASS_TOP = 218;
-const GLASS_HEIGHT = 552;
 const GLASS_PANELS = Object.freeze([
   Object.freeze({ x: 782, width: 276 }),
   Object.freeze({ x: 1073, width: 286 })
@@ -67,8 +65,9 @@ const createSlots = (): readonly IntegratedCoolerSlot[] => Object.freeze(
 
 /**
  * Uses the empty cooler already baked into the HD supermarket background.
- * Interactive products are rendered between the photographed cabinet and a
- * lightweight foreground glass/shelf layer so they read as being inside it.
+ * Products are dynamic objects. Only shelf-front lips and extremely subtle
+ * reflections sit above them; the photographed doors, frame and handles are
+ * never redrawn, avoiding the previous double-cooler appearance.
  */
 export class IntegratedBeverageCoolerView {
   private readonly slots = createSlots();
@@ -77,7 +76,7 @@ export class IntegratedBeverageCoolerView {
   private readonly rowTargets: Phaser.GameObjects.Rectangle[] = [];
   private readonly rowPlates: Phaser.GameObjects.Graphics[] = [];
   private readonly countLabels: Phaser.GameObjects.Text[] = [];
-  private readonly glassForeground: Phaser.GameObjects.Graphics;
+  private readonly shelfForeground: Phaser.GameObjects.Graphics;
   private readonly shelfRuleLabel: Phaser.GameObjects.Text;
   private previousFilledRows = new Set<number>();
 
@@ -85,7 +84,7 @@ export class IntegratedBeverageCoolerView {
     private readonly scene: Phaser.Scene,
     private readonly config: BeverageCoolerViewConfig
   ) {
-    this.glassForeground = this.createGlassForeground();
+    this.shelfForeground = this.createShelfForeground();
     this.shelfRuleLabel = scene.add.text(
       COOLER_CENTRE_X,
       126,
@@ -104,7 +103,7 @@ export class IntegratedBeverageCoolerView {
       .setName("restock-cooler-shelf-rule");
 
     document.body.dataset.restockCoolerView = "background-integrated";
-    document.body.dataset.restockCoolerForeground = "glass-and-shelf-lips";
+    document.body.dataset.restockCoolerForeground = "shelf-lips-only";
   }
 
   create(): void {
@@ -232,54 +231,33 @@ export class IntegratedBeverageCoolerView {
     this.rowTargets.forEach((target) => target.destroy());
     this.rowPlates.forEach((plate) => plate.destroy());
     this.countLabels.forEach((label) => label.destroy());
-    this.glassForeground.destroy();
+    this.shelfForeground.destroy();
     this.shelfRuleLabel.destroy();
   }
 
-  private createGlassForeground(): Phaser.GameObjects.Graphics {
+  private createShelfForeground(): Phaser.GameObjects.Graphics {
     const foreground = this.scene.add.graphics()
       .setDepth(BASE_DEPTH + 4)
-      .setName("restock-cooler-glass-foreground");
+      .setName("restock-cooler-shelf-foreground");
 
     GLASS_PANELS.forEach((panel, panelIndex) => {
-      foreground.fillStyle(0xd7f6ff, 0.026);
-      foreground.fillRect(panel.x, GLASS_TOP, panel.width, GLASS_HEIGHT);
-      foreground.lineStyle(2, 0xffffff, 0.11);
-      foreground.strokeRect(panel.x + 2, GLASS_TOP + 2, panel.width - 4, GLASS_HEIGHT - 4);
-
-      foreground.lineStyle(5, 0xffffff, 0.045);
+      foreground.lineStyle(2, 0xffffff, 0.022);
       foreground.lineBetween(
-        panel.x + 24,
-        GLASS_TOP + 18,
-        panel.x + panel.width - 42,
-        GLASS_TOP + 188
-      );
-      foreground.lineStyle(3, 0xcff5ff, 0.035);
-      foreground.lineBetween(
-        panel.x + panel.width * 0.62,
-        GLASS_TOP + 26,
-        panel.x + panel.width - 18,
-        GLASS_TOP + 132 + panelIndex * 18
+        panel.x + 32,
+        246 + panelIndex * 6,
+        panel.x + panel.width - 48,
+        382 + panelIndex * 8
       );
 
       SHELF_BASELINE_YS.forEach((baselineY) => {
-        foreground.lineStyle(7, 0x111817, 0.42);
-        foreground.lineBetween(panel.x + 8, baselineY + 3, panel.x + panel.width - 8, baselineY + 3);
-        foreground.lineStyle(3, 0xe8f0ee, 0.72);
-        foreground.lineBetween(panel.x + 8, baselineY, panel.x + panel.width - 8, baselineY);
-        foreground.lineStyle(1, 0xffffff, 0.58);
-        foreground.lineBetween(panel.x + 10, baselineY - 2, panel.x + panel.width - 10, baselineY - 2);
+        foreground.lineStyle(6, 0x111817, 0.34);
+        foreground.lineBetween(panel.x + 10, baselineY + 3, panel.x + panel.width - 10, baselineY + 3);
+        foreground.lineStyle(3, 0xdfe9e6, 0.64);
+        foreground.lineBetween(panel.x + 10, baselineY, panel.x + panel.width - 10, baselineY);
+        foreground.lineStyle(1, 0xffffff, 0.48);
+        foreground.lineBetween(panel.x + 12, baselineY - 2, panel.x + panel.width - 12, baselineY - 2);
       });
     });
-
-    foreground.fillStyle(0x101716, 0.7);
-    foreground.fillRoundedRect(1054, GLASS_TOP - 8, 20, GLASS_HEIGHT + 16, 5);
-    foreground.fillStyle(0x202a28, 0.86);
-    foreground.fillRoundedRect(1042, 342, 9, 128, 4);
-    foreground.fillRoundedRect(1077, 342, 9, 128, 4);
-    foreground.lineStyle(2, 0xffffff, 0.14);
-    foreground.strokeRoundedRect(1042, 342, 9, 128, 4);
-    foreground.strokeRoundedRect(1077, 342, 9, 128, 4);
 
     return foreground;
   }
