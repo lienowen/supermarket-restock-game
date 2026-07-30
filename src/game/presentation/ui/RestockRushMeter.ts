@@ -24,8 +24,9 @@ export class RestockRushMeter {
     private readonly config: RestockRushMeterConfig
   ) {
     this.defaultInstruction = config.instruction ?? "FIND THE GLOWING SHELF";
-    this.anchorX = Phaser.Math.Clamp(config.x, 155, 1445);
-    const anchorY = config.y > 600 ? 150 : config.y;
+    const isWorldRestockMeter = config.y > 600;
+    this.anchorX = isWorldRestockMeter ? 1390 : Phaser.Math.Clamp(config.x, 155, 1445);
+    const anchorY = isWorldRestockMeter ? 154 : config.y;
 
     const shadow = scene.add.graphics();
     shadow.fillStyle(0x06110d, 0.35);
