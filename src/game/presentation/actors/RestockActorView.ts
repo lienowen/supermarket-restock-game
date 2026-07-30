@@ -94,8 +94,10 @@ export class RestockActorView {
       caseOpen: prepareTrimmedTexture(
         scene,
         config.caseOpenAssetKey ?? this.openCaseSourceKey(),
-        "cut-restock-case-open",
-        8
+        "cut-restock-case-open-without-pallet",
+        8,
+        false,
+        0.2
       )
     });
 
@@ -240,8 +242,8 @@ export class RestockActorView {
     this.handProduct.setVisible(false);
     this.caseBox.setTexture(snapshot.boxOpened ? this.textures.caseOpen : this.textures.caseClosed)
       .setVisible(true)
-      .setPosition(this.finalCartX() + 32, config.cartDestination.y - 82)
-      .setDisplaySize(config.caseSize.width * 1.06, config.caseSize.height * 0.94)
+      .setPosition(this.finalCartX() + 32, config.cartDestination.y - 70)
+      .setDisplaySize(config.caseSize.width * 0.92, config.caseSize.height * 0.8)
       .setAngle(snapshot.boxOpened ? -3 : 0)
       .setAlpha(1);
   }
@@ -252,8 +254,8 @@ export class RestockActorView {
     this.showFinalCart();
     this.caseBox.setTexture(this.textures.caseOpen)
       .setVisible(true)
-      .setPosition(this.finalCartX() + 32, config.cartDestination.y - 82)
-      .setDisplaySize(config.caseSize.width * 1.06, config.caseSize.height * 0.94)
+      .setPosition(this.finalCartX() + 32, config.cartDestination.y - 70)
+      .setDisplaySize(config.caseSize.width * 0.92, config.caseSize.height * 0.8)
       .setAngle(-3)
       .setAlpha(Math.max(0.76, 1 - snapshot.stockedRows * 0.035));
     this.handProduct
