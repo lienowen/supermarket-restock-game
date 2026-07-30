@@ -17,15 +17,46 @@ const sourceDimensions = (source: CanvasImageSourceLike): SourceDimensions => ({
   height: source instanceof HTMLImageElement ? source.naturalHeight : source.height
 });
 
-const resolveOpaqueBounds = (source: CanvasImageSourceLike): OpaqueBounds => {
+const createSourceCanvas = (
+  source: CanvasImageSourceLike,
+  removeLightNeutralBackground: boolean
+): HTMLCanvasElement => {
   const dimensions = sourceDimensions(source);
   const scratch = document.createElement("canvas");
   scratch.width = dimensions.width;
   scratch.height = dimensions.height;
   const context = scratch.getContext("2d", { willReadFrequently: true });
+  if (!context) return scratch;
+
+  context.clearRect(0, 0, dimensions.width, dimensions.height);
+  context.drawImage(source, 0, 0, dimensions.width, dimensions.height);
+  if (!removeLightNeutralBackground) return scratch;
+
+  const image = context.getImageData(0, 0, dimensions.width, dimensions.height);
+  const pixels = image.data;
+  for (let index = 0; index < pixels.length; index += 4) {
+    const red = pixels[index] ?? 0;
+    const green = pixels[index + 1] ?? 0;
+    const blue = pixels[index + 2] ?? 0;
+    const alpha = pixels[index + 3] ?? 0;
+    if (alpha <= 8) continue;
+
+    const max = Math.max(red, green, blue);
+    const min = Math.min(red, green, blue);
+    const average = (red + green + blue) / 3;
+    const neutral = max - min <= 30;
+    const bright = average >= 176;
+    if (neutral && bright) pixels[index + 3] = 0;
+  }
+  context.putImageData(image, 0, 0);
+  return scratch;
+};
+
+const resolveOpaqueBounds = (source: HTMLCanvasElement): OpaqueBounds => {
+  const dimensions = sourceDimensions(source);
+  const context = source.getContext("2d", { willReadFrequently: true });
   if (!context) return { x: 0, y: 0, ...dimensions };
 
-  context.drawImage(source, 0, 0, dimensions.width, dimensions.height);
   const pixels = context.getImageData(0, 0, dimensions.width, dimensions.height).data;
   let left = dimensions.width;
   let top = dimensions.height;
@@ -54,21 +85,23 @@ const resolveOpaqueBounds = (source: CanvasImageSourceLike): OpaqueBounds => {
 
 /**
  * Creates a transparent texture containing only the source object's visible
- * pixels. This lets presentation code size the actual worker/cart/case instead
- * of scaling a large padded source canvas.
+ * pixels. Optional neutral-background removal cleans source images that were
+ * incorrectly exported with a white/grey checkerboard baked into the pixels.
  */
 export function prepareTrimmedTexture(
   scene: Phaser.Scene,
   sourceKey: string | undefined,
   aliasKey: string,
-  padding = 8
+  padding = 8,
+  removeLightNeutralBackground = false
 ): string {
   if (!sourceKey || !scene.textures.exists(sourceKey)) return sourceKey ?? aliasKey;
   if (scene.textures.exists(aliasKey)) return aliasKey;
 
   const source = scene.textures.get(sourceKey).getSourceImage() as CanvasImageSourceLike;
-  const sourceSize = sourceDimensions(source);
-  const opaque = resolveOpaqueBounds(source);
+  const cleanedSource = createSourceCanvas(source, removeLightNeutralBackground);
+  const sourceSize = sourceDimensions(cleanedSource);
+  const opaque = resolveOpaqueBounds(cleanedSource);
   const left = Math.max(0, opaque.x - padding);
   const top = Math.max(0, opaque.y - padding);
   const right = Math.min(sourceSize.width, opaque.x + opaque.width + padding);
@@ -80,7 +113,7 @@ export function prepareTrimmedTexture(
   if (!texture) return sourceKey;
   const context = texture.getContext();
   context.clearRect(0, 0, width, height);
-  context.drawImage(source, left, top, width, height, 0, 0, width, height);
+  context.drawImage(cleanedSource, left, top, width, height, 0, 0, width, height);
   texture.refresh();
 
   return aliasKey;
