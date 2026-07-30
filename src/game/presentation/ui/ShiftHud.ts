@@ -64,20 +64,22 @@ export class ShiftHud {
     this.previousObjective = config.initialObjective;
 
     this.createPanel(hud.dayPanel.x, hud.dayPanel.y, hud.dayPanel.width, hud.dayPanel.height, 18);
-    const modeWidth = 82;
+    const modeWidth = 94;
+    const modeLabel = config.modeLabel ?? "STORE SHIFT";
+    const modeFontSize = modeLabel.length > 13 ? "7px" : modeLabel.length > 10 ? "8px" : "10px";
     const modePill = scene.add.graphics().setDepth(102);
     modePill.fillStyle(palette.greenBright, 0.95);
     modePill.fillRoundedRect(hud.dayPanel.x + 14, hud.dayPanel.y + 10, modeWidth, 20, 10);
-    scene.add.text(hud.dayPanel.x + 14 + modeWidth / 2, hud.dayPanel.y + 20, config.modeLabel ?? "STORE SHIFT", {
+    scene.add.text(hud.dayPanel.x + 14 + modeWidth / 2, hud.dayPanel.y + 20, modeLabel, {
       fontFamily: "Arial",
-      fontSize: "10px",
+      fontSize: modeFontSize,
       color: "#ffffff",
       fontStyle: "bold",
-      letterSpacing: 1
+      letterSpacing: 0
     }).setOrigin(0.5).setDepth(103);
-    scene.add.text(hud.dayPanel.x + 108, hud.dayPanel.y + 11, config.dayLabel, {
+    scene.add.text(hud.dayPanel.x + 118, hud.dayPanel.y + 12, config.dayLabel, {
       fontFamily: "Arial",
-      fontSize: "16px",
+      fontSize: "14px",
       color: "#ffffff",
       fontStyle: "bold"
     }).setDepth(103);
