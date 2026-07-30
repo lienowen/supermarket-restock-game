@@ -20,6 +20,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          echo "Exporting the approved existing restock assets from main"
           mkdir -p export/worker export/cart export/cases export/cooler export/products export/background
           cp public/assets/game/production-v1/characters/worker/worker-idle.png export/worker/
           cp public/assets/game/production-v1/characters/worker/worker-open-box.png export/worker/
