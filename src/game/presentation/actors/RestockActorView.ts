@@ -36,7 +36,8 @@ export interface RestockActorViewConfig {
 }
 
 interface RestockTextureKeys {
-  readonly workerIdle: string;
+  readonly workerIdleOriginal: string;
+  readonly workerIdleCut: string;
   readonly workerWalk: readonly [string, string];
   readonly workerPush: string;
   readonly workerCarry: string;
@@ -61,7 +62,8 @@ export class RestockActorView {
   ) {
     const walkSources = config.workerWalkAssetKeys ?? ["worker-a-walk-01", "worker-a-walk-02"];
     this.textures = Object.freeze({
-      workerIdle: prepareTrimmedTexture(scene, config.workerIdleAssetKey, "cut-restock-worker-idle", 12),
+      workerIdleOriginal: config.workerIdleAssetKey,
+      workerIdleCut: prepareTrimmedTexture(scene, config.workerIdleAssetKey, "cut-restock-worker-idle", 12),
       workerWalk: Object.freeze([
         prepareTrimmedTexture(scene, walkSources[0], "cut-restock-worker-walk-01", 12),
         prepareTrimmedTexture(scene, walkSources[1], "cut-restock-worker-walk-02", 12)
@@ -101,7 +103,7 @@ export class RestockActorView {
       start: config.workerStart,
       bounds: config.navigationBounds,
       speed: config.moveSpeed,
-      assetKey: this.textures.workerIdle,
+      assetKey: this.textures.workerIdleOriginal,
       walkAssetKeys: this.textures.workerWalk,
       displaySize: config.idleSize,
       shadowOffset: config.shadowOffset,
@@ -161,7 +163,7 @@ export class RestockActorView {
   }
 
   setDestination(point: NavigationPoint): void {
-    return this.navigation.setDestination(point);
+    this.navigation.setDestination(point);
   }
 
   sync(snapshot: RestockSceneSnapshot): void {
@@ -198,7 +200,7 @@ export class RestockActorView {
 
   private showCollectState(): void {
     const { config } = this;
-    this.setWorker(this.textures.workerIdle, config.idleSize);
+    this.setWorker(this.textures.workerIdleOriginal, config.idleSize);
     this.cart.setVisible(false);
     this.cartShadow.setVisible(false);
     this.handProduct.setVisible(false);
@@ -246,7 +248,7 @@ export class RestockActorView {
 
   private showStockState(snapshot: RestockSceneSnapshot): void {
     const { config } = this;
-    this.setWorker(this.textures.workerIdle, config.idleSize);
+    this.setWorker(this.textures.workerIdleCut, config.idleSize);
     this.showFinalCart();
     this.caseBox.setTexture(this.textures.caseOpen)
       .setVisible(true)
@@ -261,7 +263,7 @@ export class RestockActorView {
 
   private showCompleteState(): void {
     const { config } = this;
-    this.setWorker(this.textures.workerIdle, config.idleSize);
+    this.setWorker(this.textures.workerIdleCut, config.idleSize);
     this.showFinalCart();
     this.caseBox.setVisible(false).setAlpha(1);
     this.handProduct.setVisible(false);
