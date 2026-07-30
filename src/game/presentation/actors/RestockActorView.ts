@@ -5,6 +5,7 @@ import type {
   PlayerNavigationSnapshot
 } from "../../application/PlayerNavigationController";
 import type { RestockSceneSnapshot } from "../../application/RestockSceneController";
+import { prepareTrimmedTexture } from "../assets/TrimmedTextureFactory";
 import type { VisualSize } from "../visual/StarterMarketVisualSpec";
 import { PlayerNavigationView } from "./PlayerNavigationView";
 
@@ -34,7 +35,21 @@ export interface RestockActorViewConfig {
   readonly onManualNavigation?: () => void;
 }
 
+interface RestockTextureKeys {
+  readonly workerIdle: string;
+  readonly workerWalk: readonly [string, string];
+  readonly workerPush: string;
+  readonly workerCarry: string;
+  readonly workerOpen: string;
+  readonly workerStock: string;
+  readonly cartEmpty: string;
+  readonly cartLoaded: string;
+  readonly caseClosed: string;
+  readonly caseOpen: string;
+}
+
 export class RestockActorView {
+  private readonly textures: RestockTextureKeys;
   private readonly navigation: PlayerNavigationView;
   private readonly cartShadow: Phaser.GameObjects.Ellipse;
   private readonly cart: Phaser.GameObjects.Image;
@@ -45,12 +60,49 @@ export class RestockActorView {
     private readonly scene: Phaser.Scene,
     private readonly config: RestockActorViewConfig
   ) {
+    const walkSources = config.workerWalkAssetKeys ?? ["worker-a-walk-01", "worker-a-walk-02"];
+    this.textures = Object.freeze({
+      workerIdle: prepareTrimmedTexture(scene, config.workerIdleAssetKey, "cut-restock-worker-idle", 12),
+      workerWalk: Object.freeze([
+        prepareTrimmedTexture(scene, walkSources[0], "cut-restock-worker-walk-01", 12),
+        prepareTrimmedTexture(scene, walkSources[1], "cut-restock-worker-walk-02", 12)
+      ]),
+      workerPush: prepareTrimmedTexture(scene, config.workerPushAssetKey, "cut-restock-worker-push", 12),
+      workerCarry: prepareTrimmedTexture(scene, config.workerCarryAssetKey, "cut-restock-worker-carry", 12),
+      workerOpen: prepareTrimmedTexture(
+        scene,
+        config.workerOpenAssetKey ?? "worker-a-open-case",
+        "cut-restock-worker-open",
+        12
+      ),
+      workerStock: prepareTrimmedTexture(
+        scene,
+        config.workerStockAssetKey ?? "worker-a-place-middle",
+        "cut-restock-worker-stock",
+        12
+      ),
+      cartEmpty: prepareTrimmedTexture(scene, config.cartAssetKey, "cut-restock-cart-empty", 10),
+      cartLoaded: prepareTrimmedTexture(
+        scene,
+        config.cartLoadedAssetKey ?? "equipment-restock-cart-a-loaded",
+        "cut-restock-cart-loaded",
+        10
+      ),
+      caseClosed: prepareTrimmedTexture(scene, config.caseAssetKey, "cut-restock-case-closed", 8),
+      caseOpen: prepareTrimmedTexture(
+        scene,
+        config.caseOpenAssetKey ?? this.openCaseSourceKey(),
+        "cut-restock-case-open",
+        8
+      )
+    });
+
     this.navigation = new PlayerNavigationView(scene, {
       start: config.workerStart,
       bounds: config.navigationBounds,
       speed: config.moveSpeed,
-      assetKey: config.workerIdleAssetKey,
-      walkAssetKeys: config.workerWalkAssetKeys ?? ["worker-a-walk-01", "worker-a-walk-02"],
+      assetKey: this.textures.workerIdle,
+      walkAssetKeys: this.textures.workerWalk,
       displaySize: config.idleSize,
       shadowOffset: config.shadowOffset,
       name: "restock-worker",
@@ -65,23 +117,25 @@ export class RestockActorView {
       0x000000,
       0.2
     ).setDepth(20).setVisible(false);
-    this.cart = scene.add.image(config.cartStart.x, config.cartStart.y, config.cartAssetKey)
+    this.cart = scene.add.image(config.cartStart.x, config.cartStart.y, this.textures.cartEmpty)
       .setOrigin(0.5, 0.96)
       .setDisplaySize(config.cartSize.width, config.cartSize.height)
       .setDepth(22)
       .setVisible(false)
       .setName("restock-cart");
-    this.caseBox = scene.add.image(config.caseStart.x, config.caseStart.y, config.caseAssetKey)
+    this.caseBox = scene.add.image(config.caseStart.x, config.caseStart.y, this.textures.caseClosed)
       .setOrigin(0.5, 0.96)
       .setDisplaySize(config.caseSize.width, config.caseSize.height)
       .setDepth(23)
       .setName("restock-case");
-    this.reserveCaseBox = scene.add.image(config.caseStart.x, config.caseStart.y, config.caseAssetKey)
+    this.reserveCaseBox = scene.add.image(config.caseStart.x, config.caseStart.y, this.textures.caseClosed)
       .setOrigin(0.5, 0.96)
       .setDisplaySize(config.caseSize.width, config.caseSize.height)
       .setDepth(23)
       .setVisible(false)
       .setName("restock-reserve-case");
+
+    document.body.dataset.restockAssetCutting = "opaque-bounds";
   }
 
   update(deltaMs: number): void {
@@ -138,11 +192,11 @@ export class RestockActorView {
 
   private showCollectState(): void {
     const { config } = this;
-    this.setWorker(config.workerIdleAssetKey, config.idleSize);
+    this.setWorker(this.textures.workerIdle, config.idleSize);
     this.cart.setVisible(false);
     this.cartShadow.setVisible(false);
     this.reserveCaseBox.setVisible(false);
-    this.caseBox.setTexture(config.caseAssetKey)
+    this.caseBox.setTexture(this.textures.caseClosed)
       .setVisible(true)
       .setPosition(config.caseStart.x, config.caseStart.y)
       .setDisplaySize(config.caseSize.width, config.caseSize.height)
@@ -152,8 +206,8 @@ export class RestockActorView {
 
   private showLoadState(): void {
     const { config } = this;
-    this.setWorker(config.workerCarryAssetKey, config.carrySize);
-    this.cart.setTexture(config.cartLoadedAssetKey ?? "equipment-restock-cart-a-loaded")
+    this.setWorker(this.textures.workerCarry, config.carrySize);
+    this.cart.setTexture(this.textures.cartLoaded)
       .setDisplaySize(config.cartSize.width, config.cartSize.height)
       .setPosition(config.cartStart.x + 72, config.cartStart.y + 8)
       .setVisible(true);
@@ -164,7 +218,7 @@ export class RestockActorView {
 
   private showPushState(): void {
     const { config } = this;
-    this.setWorker(config.workerPushAssetKey, config.pushSize);
+    this.setWorker(this.textures.workerPush, config.pushSize);
     this.cart.setVisible(false);
     this.cartShadow.setVisible(false);
     this.caseBox.setVisible(false);
@@ -173,37 +227,33 @@ export class RestockActorView {
 
   private showOpenState(snapshot: RestockSceneSnapshot): void {
     const { config } = this;
-    this.setWorker(config.workerOpenAssetKey ?? "worker-a-open-case", config.idleSize);
+    this.setWorker(this.textures.workerOpen, config.idleSize);
     this.showFinalCart();
     this.showReserveCase(1);
-    this.caseBox.setTexture(
-      snapshot.boxOpened
-        ? config.caseOpenAssetKey ?? this.openCaseKey()
-        : config.caseAssetKey
-    )
+    this.caseBox.setTexture(snapshot.boxOpened ? this.textures.caseOpen : this.textures.caseClosed)
       .setVisible(true)
-      .setPosition(this.finalCartX() + 28, config.cartDestination.y - 92)
-      .setDisplaySize(config.caseSize.width * 0.94, config.caseSize.height * 0.88)
+      .setPosition(this.finalCartX() + 30, config.cartDestination.y - 86)
+      .setDisplaySize(config.caseSize.width * 1.05, config.caseSize.height * 0.92)
       .setAngle(snapshot.boxOpened ? -3 : 0)
       .setAlpha(1);
   }
 
   private showStockState(snapshot: RestockSceneSnapshot): void {
     const { config } = this;
-    this.setWorker(config.workerStockAssetKey ?? "worker-a-place-middle", config.idleSize);
+    this.setWorker(this.textures.workerStock, config.idleSize);
     this.showFinalCart();
     this.showReserveCase(Math.max(0.46, 1 - snapshot.stockedRows * 0.085));
-    this.caseBox.setTexture(config.caseOpenAssetKey ?? this.openCaseKey())
+    this.caseBox.setTexture(this.textures.caseOpen)
       .setVisible(true)
-      .setPosition(this.finalCartX() + 28, config.cartDestination.y - 92)
-      .setDisplaySize(config.caseSize.width * 0.94, config.caseSize.height * 0.88)
+      .setPosition(this.finalCartX() + 30, config.cartDestination.y - 86)
+      .setDisplaySize(config.caseSize.width * 1.05, config.caseSize.height * 0.92)
       .setAngle(-3)
       .setAlpha(Math.max(0.76, 1 - snapshot.stockedRows * 0.035));
   }
 
   private showCompleteState(): void {
     const { config } = this;
-    this.setWorker(config.workerIdleAssetKey, config.idleSize);
+    this.setWorker(this.textures.workerIdle, config.idleSize);
     this.showFinalCart();
     this.caseBox.setVisible(false).setAlpha(1);
     this.reserveCaseBox.setVisible(false).setAlpha(1);
@@ -213,7 +263,7 @@ export class RestockActorView {
     const { config } = this;
     const x = this.finalCartX();
     const y = config.cartDestination.y + 16;
-    this.cart.setTexture(config.cartAssetKey)
+    this.cart.setTexture(this.textures.cartEmpty)
       .setDisplaySize(config.cartSize.width, config.cartSize.height)
       .setPosition(x, y)
       .setVisible(true);
@@ -228,10 +278,10 @@ export class RestockActorView {
 
   private showReserveCase(alpha: number): void {
     const { config } = this;
-    this.reserveCaseBox.setTexture(config.caseAssetKey)
+    this.reserveCaseBox.setTexture(this.textures.caseClosed)
       .setVisible(true)
-      .setPosition(this.finalCartX() - 12, config.cartDestination.y + 58)
-      .setDisplaySize(config.caseSize.width * 0.88, config.caseSize.height * 0.78)
+      .setPosition(this.finalCartX() - 18, config.cartDestination.y + 60)
+      .setDisplaySize(config.caseSize.width * 0.95, config.caseSize.height * 0.82)
       .setAngle(1)
       .setAlpha(alpha);
   }
@@ -240,14 +290,14 @@ export class RestockActorView {
     return this.config.cartDestination.x - 245;
   }
 
-  private openCaseKey(): string {
+  private openCaseSourceKey(): string {
     return this.config.caseAssetKey === "prop-cola-case-closed"
       ? "prop-cola-case-open"
       : this.config.caseAssetKey;
   }
 
-  private setWorker(assetKey: string, size: VisualSize): void {
-    this.navigation.setTexture(assetKey);
+  private setWorker(textureKey: string, size: VisualSize): void {
+    this.navigation.setTexture(textureKey);
     this.navigation.setDisplaySize(size.width, size.height);
     this.navigation.setVisible(true);
   }
