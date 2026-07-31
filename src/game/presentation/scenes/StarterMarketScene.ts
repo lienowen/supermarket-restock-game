@@ -17,6 +17,7 @@ import {
   type RestockSceneSnapshot,
   type RestockSceneStep
 } from "../../application/RestockSceneController";
+import { ShiftClockController } from "../../application/ShiftClockController";
 import { resolveLevelExperienceSpec } from "../../content/experience/LevelExperienceSpec";
 import { gameDomainEvents } from "../../events/GameDomainEvents";
 import { navigateToLevel } from "../../infrastructure/browser/BrowserLevelNavigator";
@@ -37,6 +38,7 @@ import {
   type RestockMemoryPreviewDomHandle
 } from "../ui/RestockMemoryPreviewDom";
 import { RestockRushMeter } from "../ui/RestockRushMeter";
+import { ShiftClockView } from "../ui/ShiftClockView";
 import { ShiftHud } from "../ui/ShiftHud";
 import { resolveLevelVisualPreset } from "../visual/LevelVisualPresetResolver";
 import type { RestockLevelVisualPreset } from "../visual/MarketLevelVisualPreset";
@@ -56,8 +58,10 @@ export class StarterMarketScene extends Phaser.Scene {
   private readonly targetResolver: RestockTargetResolver;
   private readonly visualPreset: RestockLevelVisualPreset;
   private readonly rush: RestockRushController;
+  private readonly shiftClock?: ShiftClockController;
   private readonly disposers: Array<() => void> = [];
   private hud?: ShiftHud;
+  private shiftClockView?: ShiftClockView;
   private actors?: RestockActorView;
   private cooler?: BeverageCoolerView;
   private target?: InteractionTargetView;
@@ -69,6 +73,7 @@ export class StarterMarketScene extends Phaser.Scene {
   private previousStep?: RestockSceneStep;
   private previousProgress = -1;
   private pendingAction = false;
+  private shiftExpired = false;
 
   constructor(
     private readonly context: RestockStarterMarketPresentationContext = STARTER_MARKET_PRESENTATION,
@@ -76,6 +81,10 @@ export class StarterMarketScene extends Phaser.Scene {
   ) {
     super(context.scene.key);
     this.visualPreset = resolveLevelVisualPreset(context.campaignLevel.level);
+    const shiftDurationSeconds = context.campaignLevel.level.tuning.shiftDurationSeconds;
+    this.shiftClock = shiftDurationSeconds === undefined
+      ? undefined
+      : new ShiftClockController({ durationSeconds: shiftDurationSeconds });
     const initialEconomy = campaignSession?.initialEconomy ?? {
       coins: context.campaignLevel.level.tuning.initialCoins,
       stars: 0,
@@ -121,6 +130,7 @@ export class StarterMarketScene extends Phaser.Scene {
     document.body.dataset.activeLevel = context.campaignLevel.level.id;
     document.body.dataset.activeMode = context.mode;
     document.body.dataset.restockChallenge = memoryConfig ? "memory" : "rush";
+    document.body.dataset.shiftStatus = this.shiftClock ? "running" : "not-configured";
     this.cameras.main.setBackgroundColor("#171712");
 
     new StarterMarketEnvironmentView(this, context).create();
@@ -161,6 +171,16 @@ export class StarterMarketScene extends Phaser.Scene {
       },
       () => this.requestCurrentAction()
     );
+    if (this.shiftClock) {
+      this.shiftClockView = new ShiftClockView(this, {
+        worldWidth: context.world.width,
+        worldHeight: context.world.height,
+        panelColor: context.palette.hud,
+        accentColor: context.palette.gold,
+        onRetry: () => navigateToLevel(context.campaignLevel.level.id)
+      });
+      this.shiftClockView.sync(this.shiftClock.snapshot());
+    }
 
     this.input.on("pointerdown", this.handleRushPointerDown, this);
     this.disposers.push(
@@ -184,6 +204,13 @@ export class StarterMarketScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
+    const shiftResult = this.shiftClock?.tick(delta);
+    if (shiftResult) {
+      this.shiftClockView?.sync(shiftResult.snapshot);
+      if (shiftResult.event === "expired") this.expireShift();
+    }
+    if (this.shiftExpired) return;
+
     this.actors?.update(delta);
     this.advancePendingAction();
     const snapshot = this.controller.snapshot();
@@ -192,6 +219,7 @@ export class StarterMarketScene extends Phaser.Scene {
   }
 
   isInteractionReady(): boolean {
+    if (this.shiftExpired) return false;
     const snapshot = this.controller.snapshot();
     return snapshot.step === "restock"
       ? !this.memoryPreviewActive && this.interactionGate.isReady()
@@ -270,6 +298,7 @@ export class StarterMarketScene extends Phaser.Scene {
   }
 
   private requestCurrentAction(): void {
+    if (this.shiftExpired) return;
     const snapshot = this.controller.snapshot();
     if (snapshot.step === "restock") return;
     const point = this.interactionPoint(snapshot);
@@ -287,7 +316,7 @@ export class StarterMarketScene extends Phaser.Scene {
   }
 
   private advancePendingAction(): void {
-    if (!this.pendingAction || !this.actors) return;
+    if (this.shiftExpired || !this.pendingAction || !this.actors) return;
     const snapshot = this.controller.snapshot();
     const point = this.interactionPoint(snapshot);
     if (!point) {
@@ -304,6 +333,7 @@ export class StarterMarketScene extends Phaser.Scene {
   }
 
   private performCurrentAction(): void {
+    if (this.shiftExpired) return;
     const snapshot = this.controller.snapshot();
     if (!this.canInteract(snapshot)) return;
     const action = this.controller.actionForCurrentStep();
@@ -330,6 +360,7 @@ export class StarterMarketScene extends Phaser.Scene {
 
   private readonly handleRushPointerDown = (pointer: Phaser.Input.Pointer): void => {
     if (
+      this.shiftExpired ||
       this.controller.snapshot().step !== "restock" ||
       this.memoryPreviewActive ||
       !this.interactionGate.isReady()
@@ -357,6 +388,7 @@ export class StarterMarketScene extends Phaser.Scene {
   private selectRushRow(rowIndex: number): void {
     const sceneSnapshot = this.controller.snapshot();
     if (
+      this.shiftExpired ||
       sceneSnapshot.step !== "restock" ||
       this.memoryPreviewActive ||
       !this.cooler ||
@@ -408,6 +440,7 @@ export class StarterMarketScene extends Phaser.Scene {
       activeRowIndex: memoryConfig?.hideActiveTarget ? undefined : snapshot.activeRowIndex,
       remainingRatio: snapshot.remainingRatio,
       interactionEnabled:
+        !this.shiftExpired &&
         !snapshot.complete &&
         !this.memoryPreviewActive &&
         this.interactionGate.isReady()
@@ -432,7 +465,7 @@ export class StarterMarketScene extends Phaser.Scene {
       sequence: this.rush.plannedRowIndexes(),
       durationMs: memoryConfig.durationMs,
       onComplete: () => {
-        if (!this.sys.isActive()) return;
+        if (!this.sys.isActive() || this.shiftExpired) return;
         this.memoryPreviewActive = false;
         const rushSnapshot = this.rush.start(this.time.now);
         this.syncRushPresentation(rushSnapshot);
@@ -446,6 +479,7 @@ export class StarterMarketScene extends Phaser.Scene {
   }
 
   private dispatchSceneAction(action: RestockSceneAction, feedback = true): boolean {
+    if (this.shiftExpired) return false;
     const accepted = this.controller.dispatch(action);
     if (!accepted) return false;
 
@@ -502,6 +536,9 @@ export class StarterMarketScene extends Phaser.Scene {
 
     if (snapshot.step === "complete" && this.previousStep !== "complete") {
       this.pendingAction = false;
+      const completedClock = this.shiftClock?.complete();
+      if (completedClock) this.shiftClockView?.sync(completedClock);
+      document.body.dataset.shiftStatus = "completed";
       const rushPerformance = this.rush.snapshot(this.time.now);
       const completedEconomy = {
         coins: snapshot.coins,
@@ -573,6 +610,11 @@ export class StarterMarketScene extends Phaser.Scene {
   }
 
   private syncTarget(snapshot: RestockSceneSnapshot): void {
+    if (this.shiftExpired) {
+      this.target?.sync(undefined, false);
+      this.hud?.setActionEnabled(false);
+      return;
+    }
     const rushMode = snapshot.step === "restock" || snapshot.step === "complete";
     const bounds = rushMode ? undefined : this.targetResolver.resolve(snapshot);
     const ready = this.canInteract(snapshot);
@@ -581,6 +623,7 @@ export class StarterMarketScene extends Phaser.Scene {
   }
 
   private canInteract(snapshot: RestockSceneSnapshot): boolean {
+    if (this.shiftExpired) return false;
     const point = this.interactionPoint(snapshot);
     return Boolean(
       point &&
@@ -602,6 +645,19 @@ export class StarterMarketScene extends Phaser.Scene {
     }
   }
 
+  private expireShift(): void {
+    if (this.shiftExpired) return;
+    this.shiftExpired = true;
+    this.pendingAction = false;
+    this.memoryPreviewActive = false;
+    this.memoryPreview?.destroy();
+    this.memoryPreview = undefined;
+    this.syncTarget(this.controller.snapshot());
+    this.shiftClockView?.showExpired();
+    document.body.dataset.shiftStatus = "expired";
+    crazyGamesPlatform.gameplayStop();
+  }
+
   private shiftTimeLabel(): string {
     const hour = Number(this.context.runtime.shift.startTime.slice(0, 2));
     return `${this.context.runtime.shift.startTime} ${hour < 12 ? "AM" : "PM"}`;
@@ -612,6 +668,7 @@ export class StarterMarketScene extends Phaser.Scene {
     this.input.off("pointerdown", this.handleRushPointerDown, this);
     this.memoryPreview?.destroy();
     this.completionOverlay?.destroy();
+    this.shiftClockView?.destroy();
     this.actors?.destroy();
     this.cooler?.destroy();
     this.rushMeter?.destroy();
