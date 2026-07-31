@@ -32,6 +32,7 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     rules: NO_RULE_OVERRIDES,
     tuning: {
       initialCoins: 100,
+      shiftDurationSeconds: 120,
       slotCount: 6,
       progressRewardRatio: 0.6,
       rush: {
