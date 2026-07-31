@@ -141,37 +141,37 @@ function createCopy(runtime: RestockShiftRuntimeContent): Record<RestockSceneSte
   return {
     collect: {
       objective,
-      instruction: `Tap the highlighted ${product.toLowerCase()} case. Your worker will walk there automatically.`,
+      instruction: `Step 1: tap the glowing ${product.toLowerCase()} case.`,
       actionLabel: "PICK UP CASE"
     },
     load: {
       objective,
-      instruction: `Load the case, then deliver it straight to the highlighted ${fixture}.`,
-      actionLabel: "LOAD & DELIVER"
+      instruction: "Step 2: drag the case into the empty restock cart.",
+      actionLabel: "LOAD CART"
     },
     push: {
       objective,
-      instruction: `Delivering the ${product.toLowerCase()} case to the ${fixture}.`,
-      actionLabel: "DELIVERING..."
+      instruction: `Step 3: deliver the loaded cart to the ${fixture}.`,
+      actionLabel: "DELIVER CART"
     },
     park: {
       objective,
-      instruction: `Arriving at the ${fixture}. The case will open automatically.`,
-      actionLabel: "FINISH DELIVERY"
+      instruction: `The cart is at the ${fixture}. Tap once to park it.`,
+      actionLabel: "PARK CART"
     },
     open: {
       objective,
-      instruction: "Opening the case. Get ready for the restock rush.",
-      actionLabel: "OPENING..."
+      instruction: "Open the case, then follow the glowing shelf order.",
+      actionLabel: "OPEN CASE"
     },
     restock: {
       objective,
-      instruction: "Tap the glowing shelf before its timer empties. A wrong or slow tap breaks your streak.",
-      actionLabel: "TAP THE SHELVES"
+      instruction: "Stock 3 bottles on the glowing shelf, then move to the next shelf.",
+      actionLabel: "STOCK GLOWING SHELF"
     },
     complete: {
       objective: `${product} section ready`,
-      instruction: `Great work. Beat your time and best streak on the next run.`,
+      instruction: "All six shelves are stocked. The delivery is complete.",
       actionLabel: "TASK COMPLETE"
     }
   };
