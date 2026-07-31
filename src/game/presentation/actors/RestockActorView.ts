@@ -49,8 +49,6 @@ interface RestockTextureKeys {
 }
 
 const RESTOCK_WORKER_POSITION: NavigationPoint = Object.freeze({ x: 660, y: 790 });
-// Keep the worker's original portrait proportion. A square 300 x 300 display size
-// stretches the sprite horizontally and makes the character look flattened.
 const RESTOCK_WORKER_SIZE: VisualSize = Object.freeze({ width: 190, height: 300 });
 const RESTOCK_CART_SIZE: VisualSize = Object.freeze({ width: 330, height: 250 });
 const RESTOCK_CASE_SIZE: VisualSize = Object.freeze({ width: 145, height: 108 });
@@ -63,6 +61,7 @@ export class RestockActorView {
   private readonly cart: Phaser.GameObjects.Image;
   private readonly caseBox: Phaser.GameObjects.Image;
   private readonly handProduct: Phaser.GameObjects.Image;
+  private readonly loadDropZone: Phaser.GameObjects.Rectangle;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -116,9 +115,6 @@ export class RestockActorView {
       )
     });
 
-    // The worker is intentionally a fixed presentation anchor. Gameplay guidance
-    // is handled by targets, props and HUD instead of swapping differently cropped
-    // character artwork or moving the avatar between task points.
     this.navigation = new PlayerNavigationView(scene, {
       start: RESTOCK_WORKER_POSITION,
       bounds: config.navigationBounds,
@@ -140,6 +136,19 @@ export class RestockActorView {
       0x000000,
       0.2
     ).setDepth(20).setVisible(false);
+
+    this.loadDropZone = scene.add.rectangle(
+      config.cartStart.x + 72,
+      config.cartStart.y - Math.max(58, config.cartSize.height * 0.28),
+      Math.max(210, config.cartSize.width * 0.76),
+      Math.max(105, config.cartSize.height * 0.52),
+      0xffd95e,
+      0.035
+    )
+      .setStrokeStyle(4, 0xffd95e, 0.8)
+      .setDepth(21)
+      .setVisible(false)
+      .setName("restock-load-drop-zone");
 
     this.cart = scene.add.image(config.cartStart.x, config.cartStart.y, this.textures.cartEmpty)
       .setOrigin(0.5, 0.96)
@@ -169,6 +178,7 @@ export class RestockActorView {
     document.body.dataset.restockAssetCutting = "opaque-bounds";
     document.body.dataset.restockActorComposition = "fixed-guide-worker-stable-size";
     document.body.dataset.restockActorControl = "fixed-position-no-action-swap";
+    document.body.dataset.restockLoadVisual = "empty-cart-and-case";
   }
 
   update(_deltaMs: number): void {
@@ -223,10 +233,12 @@ export class RestockActorView {
     this.cartShadow.destroy();
     this.caseBox.destroy();
     this.handProduct.destroy();
+    this.loadDropZone.destroy();
   }
 
   private showCollectState(): void {
     const { config } = this;
+    this.loadDropZone.setVisible(false);
     this.cart.setVisible(false);
     this.cartShadow.setVisible(false);
     this.handProduct.setVisible(false);
@@ -240,17 +252,29 @@ export class RestockActorView {
 
   private showLoadState(): void {
     const { config } = this;
-    this.cart.setTexture(this.textures.cartLoaded)
+    const cartX = config.cartStart.x + 72;
+    const cartY = config.cartStart.y + 8;
+    this.loadDropZone.setPosition(
+      cartX,
+      cartY - Math.max(58, config.cartSize.height * 0.28)
+    ).setVisible(true);
+    this.cart.setTexture(this.textures.cartEmpty)
       .setDisplaySize(config.cartSize.width, config.cartSize.height)
-      .setPosition(config.cartStart.x + 72, config.cartStart.y + 8)
+      .setPosition(cartX, cartY)
       .setVisible(true);
-    this.cartShadow.setPosition(config.cartStart.x + 72, config.cartStart.y + 7).setVisible(true);
-    this.caseBox.setVisible(false);
+    this.cartShadow.setPosition(cartX, cartY + 1).setVisible(true);
+    this.caseBox.setTexture(this.textures.caseClosed)
+      .setVisible(true)
+      .setPosition(cartX - Math.max(170, config.cartSize.width * 0.55), cartY + 2)
+      .setDisplaySize(config.caseSize.width, config.caseSize.height)
+      .setAngle(-2)
+      .setAlpha(1);
     this.handProduct.setVisible(false);
   }
 
   private showPushState(): void {
     const { config } = this;
+    this.loadDropZone.setVisible(false);
     this.cart.setTexture(this.textures.cartLoaded)
       .setDisplaySize(config.cartSize.width, config.cartSize.height)
       .setPosition(config.cartDestination.x - 265, config.cartDestination.y + 20)
@@ -263,6 +287,7 @@ export class RestockActorView {
   }
 
   private showOpenState(snapshot: RestockSceneSnapshot): void {
+    this.loadDropZone.setVisible(false);
     this.showFinalCart();
     this.handProduct.setVisible(false);
     this.caseBox.setTexture(snapshot.boxOpened ? this.textures.caseOpen : this.textures.caseClosed)
@@ -274,6 +299,7 @@ export class RestockActorView {
   }
 
   private showStockState(snapshot: RestockSceneSnapshot): void {
+    this.loadDropZone.setVisible(false);
     this.showFinalCart();
     this.caseBox.setTexture(this.textures.caseOpen)
       .setVisible(true)
@@ -288,6 +314,7 @@ export class RestockActorView {
   }
 
   private showCompleteState(): void {
+    this.loadDropZone.setVisible(false);
     this.showFinalCart();
     this.caseBox.setVisible(false).setAlpha(1);
     this.handProduct.setVisible(false);
