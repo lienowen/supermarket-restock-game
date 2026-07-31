@@ -57,6 +57,13 @@ export function validateLevelDefinitions(
     if (!Number.isFinite(level.tuning.initialCoins) || level.tuning.initialCoins < 0) {
       errors.push(`${prefix} initial coins must be zero or greater`);
     }
+    if (
+      level.mode === "restock" &&
+      level.tuning.shiftDurationSeconds !== undefined &&
+      (!Number.isFinite(level.tuning.shiftDurationSeconds) || level.tuning.shiftDurationSeconds <= 0)
+    ) {
+      errors.push(`${prefix} shift duration must be positive`);
+    }
   });
 
   return Object.freeze(errors);
