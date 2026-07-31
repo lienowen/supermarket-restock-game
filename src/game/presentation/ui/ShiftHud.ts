@@ -266,13 +266,13 @@ export class ShiftHud {
       this.animateObjectiveChange(copy.objective);
       this.previousObjective = copy.objective;
     } else {
-      this.objectiveText.setText(copy.objective);
+      this.objectiveText.setText(copy.objective).setAlpha(1).setScale(1);
     }
-    this.progressText.setText(
-      `${snapshot.stockedRows}/${snapshot.totalRows} ${snapshot.progressUnit ?? "ROWS"}`
-    );
-    this.instructionText.setText(copy.instruction);
-    this.actionLabel.setText(copy.actionLabel);
+    this.progressText
+      .setText(`${snapshot.stockedRows}/${snapshot.totalRows} ${snapshot.progressUnit ?? "ROWS"}`)
+      .setScale(1);
+    this.instructionText.setText(copy.instruction).setScale(1);
+    this.actionLabel.setText(copy.actionLabel).setScale(1);
     this.coinText.setText(String(snapshot.coins));
     this.starText.setText(String(snapshot.stars));
     this.complete = snapshot.step === "complete";
@@ -321,17 +321,8 @@ export class ShiftHud {
     }
 
     if (snapshot.stockedRows !== this.previousProgress && this.previousProgress >= 0) {
-      this.progressText.setScale(1.14);
-      this.scene.tweens.add({
-        targets: this.progressText,
-        scaleX: 1,
-        scaleY: 1,
-        duration: 210,
-        ease: "Back.Out"
-      });
-      if (snapshot.stockedRows > this.previousProgress) {
-        this.emitProgressSparkles(objectivePanel.x + 62 + fillWidth, objectivePanel.y + 62);
-      }
+      this.scene.tweens.killTweensOf(this.progressText);
+      this.progressText.setScale(1);
     }
     this.previousProgress = snapshot.stockedRows;
     this.syncActionState();
@@ -368,14 +359,12 @@ export class ShiftHud {
     const active = this.actionEnabled && !this.complete;
     this.actionButton.disableInteractive();
     if (active) this.actionButton.setInteractive({ useHandCursor: true });
-    this.actionLabel.setAlpha(active ? 1 : 0.48);
+    this.actionLabel.setAlpha(active ? 1 : 0.48).setScale(1);
     this.drawActionButton();
 
-    if (active && !this.previousActionActive) this.animateActionReady();
-    if (!active) {
-      this.scene.tweens.killTweensOf(this.actionHalo);
-      this.actionHalo.setAlpha(0).setScale(1);
-    }
+    this.scene.tweens.killTweensOf([this.actionHalo, this.actionLabel]);
+    this.actionHalo.setAlpha(0).setScale(1);
+    this.actionLabel.setScale(1);
     this.previousActionActive = active;
   }
 
@@ -409,37 +398,8 @@ export class ShiftHud {
     this.scene.tweens.killTweensOf(this.objectiveText);
     this.objectiveText
       .setText(objective)
-      .setAlpha(0.35)
-      .setScale(0.97);
-    this.scene.tweens.add({
-      targets: this.objectiveText,
-      alpha: 1,
-      scaleX: 1,
-      scaleY: 1,
-      duration: 230,
-      ease: "Back.Out"
-    });
-  }
-
-  private animateActionReady(): void {
-    this.scene.tweens.killTweensOf([this.actionHalo, this.actionLabel]);
-    this.actionHalo.setAlpha(0.82).setScale(0.94);
-    this.actionLabel.setScale(0.92);
-    this.scene.tweens.add({
-      targets: this.actionHalo,
-      alpha: 0,
-      scaleX: 1.12,
-      scaleY: 1.24,
-      duration: 620,
-      ease: "Cubic.Out"
-    });
-    this.scene.tweens.add({
-      targets: this.actionLabel,
-      scaleX: 1,
-      scaleY: 1,
-      duration: 260,
-      ease: "Back.Out"
-    });
+      .setAlpha(1)
+      .setScale(1);
   }
 
   private animateReward(kind: "coin" | "star", delta: number): void {
@@ -479,29 +439,6 @@ export class ShiftHud {
       duration: 720,
       ease: "Cubic.Out",
       onComplete: () => reward.destroy()
-    });
-  }
-
-  private emitProgressSparkles(x: number, y: number): void {
-    [-18, -9, 0, 9, 18].forEach((offset, index) => {
-      const sparkle = this.scene.add.circle(
-        x + offset * 0.35,
-        y,
-        2.5 + (index % 2),
-        this.config.palette.gold,
-        0.95
-      ).setDepth(130);
-      this.scene.tweens.add({
-        targets: sparkle,
-        x: x + offset,
-        y: y - 16 - (index % 3) * 5,
-        alpha: 0,
-        scaleX: 0.35,
-        scaleY: 0.35,
-        duration: 360 + index * 28,
-        ease: "Cubic.Out",
-        onComplete: () => sparkle.destroy()
-      });
     });
   }
 }
