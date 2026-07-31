@@ -1,4 +1,4 @@
-import type Phaser from "phaser";
+import Phaser from "phaser";
 import { crazyGamesPlatform } from "../../../platform/crazyGamesPlatform";
 import { CampaignSession } from "../../application/CampaignSession";
 import { STARTER_RUNTIME_ASSET_REGISTRY } from "../../assets/RuntimeAssetRegistry";
