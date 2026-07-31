@@ -22,7 +22,7 @@ export function mountCompactLevelChecklistDom(
   config: CompactLevelChecklistConfig
 ): CompactLevelChecklistHandle {
   const root = document.createElement("aside");
-  root.id = "compact-level-checklist";
+  root.id = "level-checklist";
   root.setAttribute("aria-live", "polite");
   root.setAttribute("aria-label", `${config.checklist.heading} guidance`);
   applyStyles(root, {
