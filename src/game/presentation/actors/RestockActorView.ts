@@ -67,9 +67,16 @@ export class RestockActorView {
     private readonly config: RestockActorViewConfig
   ) {
     const walkSources = config.workerWalkAssetKeys ?? ["worker-a-walk-01", "worker-a-walk-02"];
+    const workerIdleCut = prepareTrimmedTexture(
+      scene,
+      config.workerIdleAssetKey,
+      "cut-restock-worker-idle",
+      12
+    );
+
     this.textures = Object.freeze({
       workerIdleOriginal: config.workerIdleAssetKey,
-      workerIdleCut: prepareTrimmedTexture(scene, config.workerIdleAssetKey, "cut-restock-worker-idle", 12),
+      workerIdleCut,
       workerWalk: Object.freeze([
         prepareTrimmedTexture(scene, walkSources[0], "cut-restock-worker-walk-01", 12),
         prepareTrimmedTexture(scene, walkSources[1], "cut-restock-worker-walk-02", 12)
@@ -107,18 +114,21 @@ export class RestockActorView {
       )
     });
 
+    // The worker is intentionally a fixed presentation anchor. Gameplay guidance
+    // is handled by targets, props and HUD instead of swapping differently cropped
+    // character artwork or moving the avatar between task points.
     this.navigation = new PlayerNavigationView(scene, {
-      start: config.workerStart,
+      start: RESTOCK_WORKER_POSITION,
       bounds: config.navigationBounds,
       speed: config.moveSpeed,
-      assetKey: this.textures.workerIdleOriginal,
-      walkAssetKeys: this.textures.workerWalk,
-      displaySize: config.idleSize,
+      assetKey: workerIdleCut,
+      walkAssetKeys: [workerIdleCut, workerIdleCut],
+      displaySize: RESTOCK_WORKER_SIZE,
       shadowOffset: config.shadowOffset,
       name: "restock-worker",
-      baseDepth: 24,
-      onManualNavigation: config.onManualNavigation
+      baseDepth: 24
     });
+
     this.cartShadow = scene.add.ellipse(
       config.cartStart.x,
       config.cartStart.y + 5,
@@ -127,17 +137,20 @@ export class RestockActorView {
       0x000000,
       0.2
     ).setDepth(20).setVisible(false);
+
     this.cart = scene.add.image(config.cartStart.x, config.cartStart.y, this.textures.cartEmpty)
       .setOrigin(0.5, 0.96)
       .setDisplaySize(config.cartSize.width, config.cartSize.height)
       .setDepth(22)
       .setVisible(false)
       .setName("restock-cart");
+
     this.caseBox = scene.add.image(config.caseStart.x, config.caseStart.y, this.textures.caseClosed)
       .setOrigin(0.5, 0.96)
       .setDisplaySize(config.caseSize.width, config.caseSize.height)
       .setDepth(23)
       .setName("restock-case");
+
     this.handProduct = scene.add.image(
       RESTOCK_WORKER_POSITION.x + 74,
       RESTOCK_WORKER_POSITION.y - 150,
@@ -151,11 +164,12 @@ export class RestockActorView {
       .setName("restock-worker-hand-product");
 
     document.body.dataset.restockAssetCutting = "opaque-bounds";
-    document.body.dataset.restockActorComposition = "aligned-worker-cart-open-case-hand-product";
+    document.body.dataset.restockActorComposition = "fixed-guide-worker-stable-size";
+    document.body.dataset.restockActorControl = "fixed-position-no-action-swap";
   }
 
-  update(deltaMs: number): void {
-    this.navigation.update(deltaMs);
+  update(_deltaMs: number): void {
+    this.placeWorkerAtRestockStation();
   }
 
   navigationSnapshot(): PlayerNavigationSnapshot {
@@ -163,18 +177,20 @@ export class RestockActorView {
   }
 
   position(): NavigationPoint {
-    return this.navigation.position();
+    return RESTOCK_WORKER_POSITION;
   }
 
-  isNear(point: NavigationPoint, radius: number): boolean {
-    return this.navigation.isNear(point, radius);
+  isNear(_point: NavigationPoint, _radius: number): boolean {
+    return true;
   }
 
-  setDestination(point: NavigationPoint): void {
-    this.navigation.setDestination(point);
+  setDestination(_point: NavigationPoint): void {
+    this.placeWorkerAtRestockStation();
   }
 
   sync(snapshot: RestockSceneSnapshot): void {
+    this.setStableWorker();
+
     switch (snapshot.step) {
       case "collect":
         this.showCollectState();
@@ -208,7 +224,6 @@ export class RestockActorView {
 
   private showCollectState(): void {
     const { config } = this;
-    this.setWorker(this.textures.workerIdleOriginal, config.idleSize);
     this.cart.setVisible(false);
     this.cartShadow.setVisible(false);
     this.handProduct.setVisible(false);
@@ -222,7 +237,6 @@ export class RestockActorView {
 
   private showLoadState(): void {
     const { config } = this;
-    this.setWorker(this.textures.workerCarry, config.carrySize);
     this.cart.setTexture(this.textures.cartLoaded)
       .setDisplaySize(config.cartSize.width, config.cartSize.height)
       .setPosition(config.cartStart.x + 72, config.cartStart.y + 8)
@@ -234,16 +248,18 @@ export class RestockActorView {
 
   private showPushState(): void {
     const { config } = this;
-    this.setWorker(this.textures.workerPush, config.pushSize);
-    this.cart.setVisible(false);
-    this.cartShadow.setVisible(false);
+    this.cart.setTexture(this.textures.cartLoaded)
+      .setDisplaySize(config.cartSize.width, config.cartSize.height)
+      .setPosition(config.cartDestination.x - 265, config.cartDestination.y + 20)
+      .setVisible(true);
+    this.cartShadow
+      .setPosition(config.cartDestination.x - 265, config.cartDestination.y + 25)
+      .setVisible(true);
     this.caseBox.setVisible(false);
     this.handProduct.setVisible(false);
   }
 
   private showOpenState(snapshot: RestockSceneSnapshot): void {
-    this.placeWorkerAtRestockStation();
-    this.setWorker(this.textures.workerOpen, RESTOCK_WORKER_SIZE);
     this.showFinalCart();
     this.handProduct.setVisible(false);
     this.caseBox.setTexture(snapshot.boxOpened ? this.textures.caseOpen : this.textures.caseClosed)
@@ -255,8 +271,6 @@ export class RestockActorView {
   }
 
   private showStockState(snapshot: RestockSceneSnapshot): void {
-    this.placeWorkerAtRestockStation();
-    this.setWorker(this.textures.workerIdleCut, RESTOCK_WORKER_SIZE);
     this.showFinalCart();
     this.caseBox.setTexture(this.textures.caseOpen)
       .setVisible(true)
@@ -271,8 +285,6 @@ export class RestockActorView {
   }
 
   private showCompleteState(): void {
-    this.placeWorkerAtRestockStation();
-    this.setWorker(this.textures.workerIdleCut, RESTOCK_WORKER_SIZE);
     this.showFinalCart();
     this.caseBox.setVisible(false).setAlpha(1);
     this.handProduct.setVisible(false);
@@ -293,9 +305,16 @@ export class RestockActorView {
 
   private placeWorkerAtRestockStation(): void {
     const current = this.navigation.position();
-    if (Math.hypot(current.x - RESTOCK_WORKER_POSITION.x, current.y - RESTOCK_WORKER_POSITION.y) > 1) {
+    if (Math.hypot(current.x - RESTOCK_WORKER_POSITION.x, current.y - RESTOCK_WORKER_POSITION.y) > 0.5) {
       this.navigation.setPosition(RESTOCK_WORKER_POSITION);
     }
+  }
+
+  private setStableWorker(): void {
+    this.placeWorkerAtRestockStation();
+    this.navigation.setTexture(this.textures.workerIdleCut);
+    this.navigation.setDisplaySize(RESTOCK_WORKER_SIZE.width, RESTOCK_WORKER_SIZE.height);
+    this.navigation.setVisible(true);
   }
 
   private finalCartX(): number {
@@ -306,11 +325,5 @@ export class RestockActorView {
     return this.config.caseAssetKey === "prop-cola-case-closed"
       ? "prop-cola-case-open"
       : this.config.caseAssetKey;
-  }
-
-  private setWorker(textureKey: string, size: VisualSize): void {
-    this.navigation.setTexture(textureKey);
-    this.navigation.setDisplaySize(size.width, size.height);
-    this.navigation.setVisible(true);
   }
 }
