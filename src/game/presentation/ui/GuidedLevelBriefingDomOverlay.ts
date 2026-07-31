@@ -42,10 +42,10 @@ export function mountGuidedLevelBriefingDomOverlay(
   let active = true;
 
   const overlay = document.createElement("section");
-  overlay.id = "guided-level-briefing";
+  overlay.id = "level-briefing-overlay";
   overlay.setAttribute("role", "dialog");
   overlay.setAttribute("aria-modal", "true");
-  overlay.setAttribute("aria-labelledby", "guided-level-title");
+  overlay.setAttribute("aria-labelledby", "level-briefing-title");
   applyStyles(overlay, {
     position: "fixed",
     inset: "0",
@@ -80,7 +80,7 @@ export function mountGuidedLevelBriefingDomOverlay(
   });
 
   const title = createText("h1", config.experience.title);
-  title.id = "guided-level-title";
+  title.id = "level-briefing-title";
   applyStyles(title, {
     margin: "7px 0 8px",
     fontSize: "clamp(29px, 5vw, 44px)",
