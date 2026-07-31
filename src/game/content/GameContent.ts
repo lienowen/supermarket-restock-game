@@ -157,6 +157,7 @@ export interface RestockRushTuningDefinition {
 
 export interface RestockLevelTuningDefinition {
   readonly initialCoins: number;
+  readonly shiftDurationSeconds?: number;
   readonly slotCount?: number;
   readonly progressRewardRatio?: number;
   readonly rush?: RestockRushTuningDefinition;
