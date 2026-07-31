@@ -15,10 +15,11 @@ import type { SceneCampaignSessionContext } from "../../presentation/scenes/Star
 import { mountCartCapacityLoadDom } from "../../presentation/ui/CartCapacityLoadDom";
 import { mountCheckoutPatienceDom } from "../../presentation/ui/CheckoutPatienceDom";
 import { mountCheckoutScanDom } from "../../presentation/ui/CheckoutScanDom";
+import { mountCompactLevelChecklistDom } from "../../presentation/ui/CompactLevelChecklistDom";
 import { mountGuidedDragActionDom } from "../../presentation/ui/GuidedDragActionDom";
+import { mountGuidedLevelBriefingDomOverlay } from "../../presentation/ui/GuidedLevelBriefingDomOverlay";
 import { mountHoldWorkDom } from "../../presentation/ui/HoldWorkDom";
 import { mountLevelBriefingDomOverlay } from "../../presentation/ui/LevelBriefingDomOverlay";
-import { mountLevelChecklistDom } from "../../presentation/ui/LevelChecklistDom";
 import { BrowserCampaignSessionStore } from "../browser/BrowserCampaignSessionStore";
 import { createGameplayScene } from "./GameplaySceneRegistry";
 import { installSafeInteractiveGuard } from "./SafeInteractiveGuard";
@@ -129,7 +130,7 @@ export async function createPhaserGame(
   game.registry.set("levelExperience", experience);
 
   if (experience.checklist) {
-    mountLevelChecklistDom({
+    mountCompactLevelChecklistDom({
       levelId: presentation.campaignLevel.level.id,
       checklist: experience.checklist
     });
@@ -276,18 +277,32 @@ export async function createPhaserGame(
       document.body.dataset.levelBriefing = "closed";
     };
 
-    mountLevelBriefingDomOverlay(
-      {
-        levelLabel: presentation.campaignLevel.levelLabel,
-        dayLabel: presentation.campaignShift.dayLabel,
-        startTime: presentation.runtime.shift.startTime,
-        experience
-      },
-      () => {
-        startRequested = true;
-        resumeShift();
-      }
-    );
+    const onStart = (): void => {
+      startRequested = true;
+      resumeShift();
+    };
+
+    if (experience.checklist) {
+      mountGuidedLevelBriefingDomOverlay(
+        {
+          levelLabel: presentation.campaignLevel.levelLabel,
+          dayLabel: presentation.campaignShift.dayLabel,
+          experience,
+          checklist: experience.checklist
+        },
+        onStart
+      );
+    } else {
+      mountLevelBriefingDomOverlay(
+        {
+          levelLabel: presentation.campaignLevel.levelLabel,
+          dayLabel: presentation.campaignShift.dayLabel,
+          startTime: presentation.runtime.shift.startTime,
+          experience
+        },
+        onStart
+      );
+    }
 
     game.events.once(Phaser.Core.Events.READY, () => {
       coreReady = true;
