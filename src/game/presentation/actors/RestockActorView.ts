@@ -128,6 +128,7 @@ export class RestockActorView {
       name: "restock-worker",
       baseDepth: 24
     });
+    this.navigation.setEnabled(false);
 
     this.cartShadow = scene.add.ellipse(
       config.cartStart.x,
