@@ -126,10 +126,10 @@ export const RESTOCK_VISUAL_PRESET: RestockLevelVisualPreset = Object.freeze({
   id: "restock-standard-v1",
   mode: "restock",
   actor: Object.freeze({
-    idleSize: Object.freeze({ width: 342, height: 346 }),
+    idleSize: Object.freeze({ width: 380, height: 385 }),
     shadowOffset: SHARED_ACTOR.shadowOffset,
-    pushSize: Object.freeze({ width: 380, height: 350 }),
-    carrySize: Object.freeze({ width: 340, height: 332 })
+    pushSize: Object.freeze({ width: 400, height: 370 }),
+    carrySize: Object.freeze({ width: 370, height: 360 })
   }),
   environment: Object.freeze({
     focus: Object.freeze({ x: 1050, y: 590 }),
@@ -148,8 +148,8 @@ export const RESTOCK_VISUAL_PRESET: RestockLevelVisualPreset = Object.freeze({
     restockItemCount: COOLER_STOCK_ITEMS_PER_SLOT
   }),
   props: Object.freeze({
-    caseSize: Object.freeze({ width: 210, height: 172 }),
-    cartSize: Object.freeze({ width: 360, height: 300 })
+    caseSize: Object.freeze({ width: 195, height: 160 }),
+    cartSize: Object.freeze({ width: 340, height: 285 })
   })
 });
 
