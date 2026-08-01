@@ -99,7 +99,7 @@ export const STARTER_MARKET_VISUAL_SPEC = {
     restockItemCount: COOLER_STOCK_ITEMS_PER_SLOT
   },
   hud: {
-    dayPanel: { x: 20, y: 18, width: 225, height: 70 },
+    dayPanel: { x: 72, y: 18, width: 225, height: 70 },
     walletPanel: { x: 1360, y: 18, width: 220, height: 58 },
     objectivePanel: { x: 520, y: 18, width: 560, height: 78 },
     instructionPanel: { x: 250, y: 822, width: 1100, height: 58 },
