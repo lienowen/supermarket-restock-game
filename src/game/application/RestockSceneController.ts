@@ -161,13 +161,13 @@ function createCopy(runtime: RestockShiftRuntimeContent): Record<RestockSceneSte
     },
     open: {
       objective,
-      instruction: "Open the case, then follow the glowing shelf order.",
+      instruction: "Open the case, then follow the shelf order shown for this level.",
       actionLabel: "OPEN CASE"
     },
     restock: {
       objective,
-      instruction: "Stock 3 bottles on the glowing shelf, then move to the next shelf.",
-      actionLabel: "STOCK GLOWING SHELF"
+      instruction: "Tap one shelf at a time. Place 3 bottles to complete each shelf.",
+      actionLabel: "TAP A SHELF"
     },
     complete: {
       objective: `${product} section ready`,
