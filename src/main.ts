@@ -1,4 +1,5 @@
 import "./styles.css";
+import "./visual-comfort.css";
 import { bootstrapGame } from "./game/bootstrap";
 
 void bootstrapGame().catch((error: unknown) => {
