@@ -52,7 +52,9 @@ const RESTOCK_WORKER_POSITION: NavigationPoint = Object.freeze({ x: 660, y: 790 
 const RESTOCK_WORKER_SIZE: VisualSize = Object.freeze({ width: 190, height: 300 });
 const RESTOCK_CART_SIZE: VisualSize = Object.freeze({ width: 330, height: 250 });
 const RESTOCK_CASE_SIZE: VisualSize = Object.freeze({ width: 145, height: 108 });
-const RESTOCK_HAND_PRODUCT_SIZE: VisualSize = Object.freeze({ width: 24, height: 60 });
+const RESTOCK_HAND_PRODUCT_SIZE: VisualSize = Object.freeze({ width: 21, height: 54 });
+const RESTOCK_HAND_PRODUCT_OFFSET: NavigationPoint = Object.freeze({ x: 52, y: -108 });
+const RESTOCK_CART_CASE_OFFSET: NavigationPoint = Object.freeze({ x: 6, y: -88 });
 
 export class RestockActorView {
   private readonly textures: RestockTextureKeys;
@@ -164,14 +166,14 @@ export class RestockActorView {
       .setName("restock-case");
 
     this.handProduct = scene.add.image(
-      RESTOCK_WORKER_POSITION.x + 74,
-      RESTOCK_WORKER_POSITION.y - 150,
+      RESTOCK_WORKER_POSITION.x + RESTOCK_HAND_PRODUCT_OFFSET.x,
+      RESTOCK_WORKER_POSITION.y + RESTOCK_HAND_PRODUCT_OFFSET.y,
       "restock-cola-bottle-hd-v2"
     )
       .setOrigin(0.5, 1)
       .setDisplaySize(RESTOCK_HAND_PRODUCT_SIZE.width, RESTOCK_HAND_PRODUCT_SIZE.height)
       .setDepth(27)
-      .setAngle(-8)
+      .setAngle(-3)
       .setVisible(false)
       .setName("restock-worker-hand-product");
 
@@ -292,7 +294,10 @@ export class RestockActorView {
     this.handProduct.setVisible(false);
     this.caseBox.setTexture(snapshot.boxOpened ? this.textures.caseOpen : this.textures.caseClosed)
       .setVisible(true)
-      .setPosition(this.finalCartX() + 8, this.config.cartDestination.y - 64)
+      .setPosition(
+        this.finalCartX() + RESTOCK_CART_CASE_OFFSET.x,
+        this.config.cartDestination.y + RESTOCK_CART_CASE_OFFSET.y
+      )
       .setDisplaySize(RESTOCK_CASE_SIZE.width, RESTOCK_CASE_SIZE.height)
       .setAngle(snapshot.boxOpened ? -2 : 0)
       .setAlpha(1);
@@ -303,13 +308,20 @@ export class RestockActorView {
     this.showFinalCart();
     this.caseBox.setTexture(this.textures.caseOpen)
       .setVisible(true)
-      .setPosition(this.finalCartX() + 8, this.config.cartDestination.y - 64)
+      .setPosition(
+        this.finalCartX() + RESTOCK_CART_CASE_OFFSET.x,
+        this.config.cartDestination.y + RESTOCK_CART_CASE_OFFSET.y
+      )
       .setDisplaySize(RESTOCK_CASE_SIZE.width, RESTOCK_CASE_SIZE.height)
       .setAngle(-2)
       .setAlpha(Math.max(0.78, 1 - snapshot.stockedRows * 0.03));
     this.handProduct
       .setDisplaySize(RESTOCK_HAND_PRODUCT_SIZE.width, RESTOCK_HAND_PRODUCT_SIZE.height)
-      .setPosition(RESTOCK_WORKER_POSITION.x + 74, RESTOCK_WORKER_POSITION.y - 150)
+      .setPosition(
+        RESTOCK_WORKER_POSITION.x + RESTOCK_HAND_PRODUCT_OFFSET.x,
+        RESTOCK_WORKER_POSITION.y + RESTOCK_HAND_PRODUCT_OFFSET.y
+      )
+      .setAngle(-3)
       .setVisible(true);
   }
 
