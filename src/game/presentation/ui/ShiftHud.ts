@@ -61,6 +61,7 @@ export class ShiftHud {
   ) {
     const { palette } = config;
     const { hud } = STARTER_MARKET_VISUAL_SPEC;
+    const firstHudChildIndex = scene.children.getChildren().length;
     this.previousObjective = config.initialObjective;
 
     this.createPanel(hud.dayPanel.x, hud.dayPanel.y, hud.dayPanel.width, hud.dayPanel.height, 18);
@@ -255,6 +256,13 @@ export class ShiftHud {
       this.drawActionButton();
     });
     this.actionButton.on("pointerdown", onAction);
+
+    scene.children.getChildren().slice(firstHudChildIndex).forEach((gameObject) => {
+      const fixedObject = gameObject as Phaser.GameObjects.GameObject & {
+        setScrollFactor?: (x: number, y?: number) => unknown;
+      };
+      fixedObject.setScrollFactor?.(0, 0);
+    });
     this.syncActionState();
   }
 
@@ -357,9 +365,13 @@ export class ShiftHud {
 
   private syncActionState(): void {
     const active = this.actionEnabled && !this.complete;
+    const passiveShelfPrompt = this.isPassiveShelfPrompt();
     this.actionButton.disableInteractive();
     if (active) this.actionButton.setInteractive({ useHandCursor: true });
-    this.actionLabel.setAlpha(active ? 1 : 0.48).setScale(1);
+    this.actionLabel
+      .setAlpha(active || passiveShelfPrompt ? 1 : 0.48)
+      .setColor(passiveShelfPrompt ? "#ffe993" : "#ffffff")
+      .setScale(1);
     this.drawActionButton();
 
     this.scene.tweens.killTweensOf([this.actionHalo, this.actionLabel]);
@@ -375,23 +387,34 @@ export class ShiftHud {
     const x = instructionPanel.x + instructionPanel.width - width - 12;
     const y = instructionPanel.y + (instructionPanel.height - height) / 2;
     const active = this.actionEnabled && !this.complete;
+    const passiveShelfPrompt = this.isPassiveShelfPrompt();
     const fill = active
       ? this.actionHovered
         ? this.config.palette.greenBright
         : this.config.palette.green
-      : 0x405049;
+      : passiveShelfPrompt
+        ? 0x263d32
+        : 0x405049;
+    const borderColor = active || passiveShelfPrompt
+      ? this.config.palette.gold
+      : 0xffffff;
+    const borderAlpha = active ? 0.72 : passiveShelfPrompt ? 0.46 : 0.08;
 
     this.actionSurface.clear();
     this.actionSurface.fillStyle(0x07110e, 0.32);
     this.actionSurface.fillRoundedRect(x + 3, y + 4, width, height, 15);
-    this.actionSurface.fillStyle(fill, active ? 1 : 0.6);
+    this.actionSurface.fillStyle(fill, active || passiveShelfPrompt ? 1 : 0.6);
     this.actionSurface.fillRoundedRect(x, y, width, height, 15);
-    this.actionSurface.lineStyle(2, active ? this.config.palette.gold : 0xffffff, active ? 0.72 : 0.08);
+    this.actionSurface.lineStyle(2, borderColor, borderAlpha);
     this.actionSurface.strokeRoundedRect(x, y, width, height, 15);
-    if (active) {
-      this.actionSurface.fillStyle(0xffffff, this.actionHovered ? 0.12 : 0.07);
+    if (active || passiveShelfPrompt) {
+      this.actionSurface.fillStyle(0xffffff, active && this.actionHovered ? 0.12 : 0.06);
       this.actionSurface.fillRoundedRect(x + 4, y + 4, width - 8, 12, 10);
     }
+  }
+
+  private isPassiveShelfPrompt(): boolean {
+    return !this.actionEnabled && !this.complete && this.actionLabel.text === "TAP A SHELF";
   }
 
   private animateObjectiveChange(objective: string): void {
@@ -429,7 +452,7 @@ export class ShiftHud {
       fontStyle: "bold",
       stroke: "#173b2a",
       strokeThickness: 3
-    }).setOrigin(0.5).setDepth(145).setAlpha(0);
+    }).setOrigin(0.5).setDepth(145).setAlpha(0).setScrollFactor(0);
     this.scene.tweens.add({
       targets: reward,
       y: walletPanel.y - 20,
