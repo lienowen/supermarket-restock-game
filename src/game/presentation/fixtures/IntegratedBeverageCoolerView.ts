@@ -79,6 +79,8 @@ export class IntegratedBeverageCoolerView {
   private readonly shelfForeground: Phaser.GameObjects.Graphics;
   private readonly shelfRuleLabel: Phaser.GameObjects.Text;
   private previousFilledRows = new Set<number>();
+  private lastRushState?: BeverageCoolerRushState;
+  private hoveredRowIndex?: number;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -88,7 +90,7 @@ export class IntegratedBeverageCoolerView {
     this.shelfRuleLabel = scene.add.text(
       COOLER_CENTRE_X,
       126,
-      "6 SHELVES · 3 BOTTLES PER SHELF",
+      "6 SHELVES · COMPLETE 3 BOTTLES ON EACH",
       {
         fontFamily: "Arial, sans-serif",
         fontSize: "14px",
@@ -117,8 +119,8 @@ export class IntegratedBeverageCoolerView {
       const target = this.scene.add.rectangle(
         slot.x,
         slot.y,
-        SLOT_WIDTH,
-        SLOT_HEIGHT,
+        SLOT_WIDTH + 14,
+        SLOT_HEIGHT + 10,
         0xffffff,
         0.001
       )
@@ -136,6 +138,16 @@ export class IntegratedBeverageCoolerView {
           this.config.onRowSelected?.(rowIndex);
         }
       );
+      target.on("pointerover", () => {
+        if (!target.input?.enabled) return;
+        this.hoveredRowIndex = rowIndex;
+        if (this.lastRushState) this.renderRushTargets(this.lastRushState);
+      });
+      target.on("pointerout", () => {
+        if (this.hoveredRowIndex !== rowIndex) return;
+        this.hoveredRowIndex = undefined;
+        if (this.lastRushState) this.renderRushTargets(this.lastRushState);
+      });
       this.rowTargets.push(target);
       this.rowPlates.push(this.createRowPlate(slot, rowIndex));
       this.countLabels.push(this.createCountLabel(slot, rowIndex));
@@ -149,6 +161,8 @@ export class IntegratedBeverageCoolerView {
     const counts = this.slots.map((_, index) => (
       index < safeRows ? COOLER_STOCK_ITEMS_PER_SLOT : 0
     ));
+    this.lastRushState = undefined;
+    this.hoveredRowIndex = undefined;
     this.syncItemCounts(counts, false);
     this.rowTargets.forEach((target) => {
       target.setVisible(true).setAlpha(0.001);
@@ -160,6 +174,7 @@ export class IntegratedBeverageCoolerView {
 
   syncRush(state: BeverageCoolerRushState): void {
     const filledRows = new Set(state.filledRowIndexes);
+    this.lastRushState = state;
     this.syncItemCounts(state.rowItemCounts, true);
 
     this.rowTargets.forEach((target, index) => {
@@ -172,19 +187,7 @@ export class IntegratedBeverageCoolerView {
       }
     });
 
-    this.rowPlates.forEach((plate, index) => {
-      const active = state.activeRowIndex === index && !filledRows.has(index);
-      plate.setVisible(active).setAlpha(active ? 0.42 + (1 - state.remainingRatio) * 0.36 : 0);
-    });
-
-    this.countLabels.forEach((label, index) => {
-      const count = this.safeItemCount(state.rowItemCounts[index]);
-      const active = state.activeRowIndex === index && !filledRows.has(index);
-      label
-        .setText(`${count}/${COOLER_STOCK_ITEMS_PER_SLOT}`)
-        .setVisible(active)
-        .setAlpha(active ? 0.98 : 0);
-    });
+    this.renderRushTargets(state);
 
     filledRows.forEach((rowIndex) => {
       if (!this.previousFilledRows.has(rowIndex)) this.animateFilledRow(rowIndex);
@@ -235,6 +238,40 @@ export class IntegratedBeverageCoolerView {
     this.shelfRuleLabel.destroy();
   }
 
+  private renderRushTargets(state: BeverageCoolerRushState): void {
+    const filledRows = new Set(state.filledRowIndexes);
+    const memorySelection =
+      document.body.dataset.restockChallenge === "memory" &&
+      state.activeRowIndex === undefined;
+
+    this.rowPlates.forEach((plate, index) => {
+      const filled = filledRows.has(index);
+      const active = state.activeRowIndex === index && !filled;
+      const selectable = memorySelection && state.interactionEnabled && !filled;
+      const hovered = selectable && this.hoveredRowIndex === index;
+      const visible = active || selectable;
+      const alpha = active
+        ? 0.68 + (1 - state.remainingRatio) * 0.22
+        : hovered
+          ? 0.42
+          : selectable
+            ? 0.18
+            : 0;
+      plate.setVisible(visible).setAlpha(alpha);
+    });
+
+    this.countLabels.forEach((label, index) => {
+      const count = this.safeItemCount(state.rowItemCounts[index]);
+      const filled = filledRows.has(index);
+      const active = state.activeRowIndex === index && !filled;
+      const partial = count > 0 && !filled;
+      label
+        .setText(`${count}/${COOLER_STOCK_ITEMS_PER_SLOT}`)
+        .setVisible(active || partial)
+        .setAlpha(active ? 1 : partial ? 0.88 : 0);
+    });
+  }
+
   private createShelfForeground(): Phaser.GameObjects.Graphics {
     const foreground = this.scene.add.graphics()
       .setDepth(BASE_DEPTH + 4)
@@ -270,7 +307,7 @@ export class IntegratedBeverageCoolerView {
       .setDepth(BASE_DEPTH + 5)
       .setVisible(false)
       .setName(`beverage-cooler-row-glow-${rowIndex}`);
-    plate.fillStyle(0xffd95e, 0.07);
+    plate.fillStyle(0xffd95e, 0.12);
     plate.fillRoundedRect(
       slot.x - SLOT_WIDTH / 2,
       slot.y - SLOT_HEIGHT / 2,
@@ -278,7 +315,15 @@ export class IntegratedBeverageCoolerView {
       SLOT_HEIGHT,
       12
     );
-    plate.lineStyle(4, 0xffd95e, 0.94);
+    plate.lineStyle(10, 0xffd95e, 0.18);
+    plate.strokeRoundedRect(
+      slot.x - SLOT_WIDTH / 2 - 3,
+      slot.y - SLOT_HEIGHT / 2 - 3,
+      SLOT_WIDTH + 6,
+      SLOT_HEIGHT + 6,
+      15
+    );
+    plate.lineStyle(4, 0xffd95e, 0.98);
     plate.strokeRoundedRect(
       slot.x - SLOT_WIDTH / 2,
       slot.y - SLOT_HEIGHT / 2,
