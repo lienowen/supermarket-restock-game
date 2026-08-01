@@ -11,13 +11,16 @@ export interface RestockRushMeterConfig {
 
 export class RestockRushMeter {
   private readonly container: Phaser.GameObjects.Container;
-  private readonly streakText: Phaser.GameObjects.Text;
+  private readonly summaryText: Phaser.GameObjects.Text;
   private readonly statusText: Phaser.GameObjects.Text;
-  private readonly timerFill: Phaser.GameObjects.Rectangle;
-  private readonly timerTrackWidth = 246;
+  private readonly progressFill: Phaser.GameObjects.Rectangle;
+  private readonly progressTrackWidth = 246;
   private readonly defaultInstruction: string;
   private readonly anchorX: number;
   private previousStreak = 0;
+  private lastSnapshot?: RestockRushSnapshot;
+  private feedbackLocked = false;
+  private feedbackReset?: Phaser.Time.TimerEvent;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -48,17 +51,18 @@ export class RestockRushMeter {
       letterSpacing: 1.1
     });
 
-    this.streakText = scene.add.text(128, -37, "STREAK x0", {
+    this.summaryText = scene.add.text(128, -37, "SHELVES 0/0", {
       fontFamily: "Arial",
-      fontSize: "13px",
+      fontSize: "11px",
       color: `#${config.accentColor.toString(16).padStart(6, "0")}`,
-      fontStyle: "bold"
+      fontStyle: "bold",
+      align: "right"
     }).setOrigin(1, 0);
 
-    const timerTrack = scene.add.rectangle(-123, 2, this.timerTrackWidth, 13, 0x000000, 0.38)
+    const progressTrack = scene.add.rectangle(-123, 2, this.progressTrackWidth, 13, 0x000000, 0.38)
       .setOrigin(0, 0.5)
       .setStrokeStyle(2, 0xffffff, 0.1);
-    this.timerFill = scene.add.rectangle(-123, 2, this.timerTrackWidth, 9, 0x62c77d, 1)
+    this.progressFill = scene.add.rectangle(-123, 2, 4, 9, 0x62c77d, 1)
       .setOrigin(0, 0.5);
 
     this.statusText = scene.add.text(0, 27, this.defaultInstruction, {
@@ -66,7 +70,7 @@ export class RestockRushMeter {
       fontSize: "10px",
       color: "#ffffff",
       fontStyle: "bold",
-      letterSpacing: 0.45,
+      letterSpacing: 0.3,
       align: "center",
       fixedWidth: 270
     }).setOrigin(0.5);
@@ -75,31 +79,86 @@ export class RestockRushMeter {
       shadow,
       panel,
       title,
-      this.streakText,
-      timerTrack,
-      this.timerFill,
+      this.summaryText,
+      progressTrack,
+      this.progressFill,
       this.statusText
-    ]).setDepth(130).setVisible(false);
+    ])
+      .setDepth(130)
+      .setScrollFactor(0)
+      .setVisible(false);
   }
 
   sync(snapshot: RestockRushSnapshot): void {
+    this.lastSnapshot = snapshot;
     const visible = snapshot.started && !snapshot.complete;
     this.container.setVisible(visible);
     if (!visible) return;
 
-    const width = Math.max(4, this.timerTrackWidth * snapshot.remainingRatio);
+    if (this.isMemoryMode()) {
+      this.syncMemoryProgress(snapshot);
+    } else {
+      this.syncRushProgress(snapshot);
+    }
+
+    if (!this.feedbackLocked) this.renderStatus(snapshot);
+  }
+
+  showMistake(message = "STREAK LOST"): void {
+    if (!this.container.visible) return;
+    this.feedbackLocked = true;
+    this.feedbackReset?.remove(false);
+    this.statusText.setText(message).setColor("#ff928a");
+    this.scene.tweens.add({
+      targets: this.container,
+      x: { from: this.anchorX - 8, to: this.anchorX + 8 },
+      duration: 45,
+      repeat: 3,
+      yoyo: true,
+      onComplete: () => this.container.setX(this.anchorX)
+    });
+    this.feedbackReset = this.scene.time.delayedCall(560, () => {
+      this.feedbackLocked = false;
+      if (this.lastSnapshot) this.renderStatus(this.lastSnapshot);
+    });
+  }
+
+  destroy(): void {
+    this.feedbackReset?.remove(false);
+    this.container.destroy(true);
+  }
+
+  private isMemoryMode(): boolean {
+    return document.body.dataset.restockChallenge === "memory";
+  }
+
+  private syncMemoryProgress(snapshot: RestockRushSnapshot): void {
+    const totalShelves = snapshot.rowItemCounts.length;
+    const totalItems = Math.max(1, totalShelves * snapshot.itemsPerRow);
+    const completionRatio = Phaser.Math.Clamp(snapshot.totalItemsStocked / totalItems, 0, 1);
+    const width = completionRatio <= 0
+      ? 4
+      : Math.max(8, this.progressTrackWidth * completionRatio);
+    this.progressFill
+      .setDisplaySize(width, 9)
+      .setFillStyle(this.config.accentColor, 1);
+    this.summaryText.setText(`SHELVES ${snapshot.filledRowIndexes.length}/${totalShelves}`);
+  }
+
+  private syncRushProgress(snapshot: RestockRushSnapshot): void {
+    const width = Math.max(4, this.progressTrackWidth * snapshot.remainingRatio);
     const timerColor = snapshot.remainingRatio > 0.55
       ? 0x62c77d
       : snapshot.remainingRatio > 0.24
         ? this.config.accentColor
         : 0xe45d52;
-    this.timerFill.setDisplaySize(width, 9).setFillStyle(timerColor, 1);
-    this.streakText.setText(`STREAK x${snapshot.currentStreak}  BEST x${snapshot.bestStreak}`);
+    this.progressFill.setDisplaySize(width, 9).setFillStyle(timerColor, 1);
+    this.summaryText.setText(`STREAK x${snapshot.currentStreak}  BEST x${snapshot.bestStreak}`);
 
     if (snapshot.currentStreak > this.previousStreak && snapshot.currentStreak > 1) {
-      this.streakText.setScale(1.18);
+      this.summaryText.setScale(1.18);
       this.scene.tweens.add({
-        targets: this.streakText,
+        targets: this.summaryText,
         scaleX: 1,
         scaleY: 1,
         duration: 220,
@@ -109,23 +168,16 @@ export class RestockRushMeter {
     this.previousStreak = snapshot.currentStreak;
   }
 
-  showMistake(message = "STREAK LOST"): void {
-    if (!this.container.visible) return;
-    this.statusText.setText(message).setColor("#ff928a");
-    this.scene.tweens.add({
-      targets: this.container,
-      x: { from: this.anchorX - 8, to: this.anchorX + 8 },
-      duration: 45,
-      repeat: 3,
-      yoyo: true,
-      onComplete: () => {
-        this.container.setX(this.anchorX);
-        this.statusText.setText(this.defaultInstruction).setColor("#ffffff");
-      }
-    });
-  }
-
-  destroy(): void {
-    this.container.destroy(true);
+  private renderStatus(snapshot: RestockRushSnapshot): void {
+    if (this.isMemoryMode()) {
+      this.statusText
+        .setText(
+          `CURRENT SHELF ${snapshot.activeRowItemCount}/${snapshot.itemsPerRow} · ` +
+          "TAP THE NEXT SHELF FROM MEMORY"
+        )
+        .setColor("#ffffff");
+      return;
+    }
+    this.statusText.setText(this.defaultInstruction).setColor("#ffffff");
   }
 }
