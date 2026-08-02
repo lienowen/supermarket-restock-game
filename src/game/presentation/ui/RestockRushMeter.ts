@@ -134,7 +134,10 @@ export class RestockRushMeter {
 
   private syncMemoryProgress(snapshot: RestockRushSnapshot): void {
     const totalShelves = snapshot.rowItemCounts.length;
-    const totalItems = Math.max(1, totalShelves * snapshot.itemsPerRow);
+    const totalItems = Math.max(
+      1,
+      totalShelves * snapshot.itemsPerRow * snapshot.unitsPerInteraction
+    );
     const completionRatio = Phaser.Math.Clamp(snapshot.totalItemsStocked / totalItems, 0, 1);
     const width = completionRatio <= 0
       ? 4
@@ -178,6 +181,9 @@ export class RestockRushMeter {
         .setColor("#ffffff");
       return;
     }
-    this.statusText.setText(this.defaultInstruction).setColor("#ffffff");
+    const instruction = snapshot.itemsPerRow === 1 && snapshot.unitsPerInteraction === 3
+      ? "TAP EACH SHELF ONCE · AUTO-PLACE 3 BOTTLES"
+      : this.defaultInstruction;
+    this.statusText.setText(instruction).setColor("#ffffff");
   }
 }
