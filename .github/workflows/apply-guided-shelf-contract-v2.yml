@@ -42,3 +42,5 @@ jobs:
           git rm scripts/apply-guided-shelf-contract.py
           git commit -m "Align guided shelf visuals and regression contract"
           git push origin HEAD:main
+
+# retry after boundary contract update
