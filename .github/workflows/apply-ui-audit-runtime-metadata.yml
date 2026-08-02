@@ -1,6 +1,10 @@
 name: Apply UI audit runtime metadata
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-ui-audit-runtime-metadata.yml'
   workflow_dispatch:
 
 permissions:
