@@ -75,6 +75,27 @@ test("A shelf stays active until three individual products are placed", () => {
   assert.deepEqual(third.snapshot.rowItemCounts, [3, 0]);
 });
 
+test("A guided shelf can fill three physical bottles from one player tap", () => {
+  const rush = createRush({
+    rowCount: 2,
+    itemsPerRow: 1,
+    unitsPerInteraction: 3,
+    sequenceMode: "fixed",
+    timeoutEnabled: false
+  });
+
+  rush.start(0);
+  const first = rush.selectRow(0, 200);
+  assert.equal(first.rowCompleted, true);
+  assert.equal(first.snapshot.totalItemsStocked, 3);
+  assert.equal(first.snapshot.unitsPerInteraction, 3);
+
+  const second = rush.selectRow(1, 400);
+  assert.equal(second.snapshot.complete, true);
+  assert.equal(second.snapshot.totalItemsStocked, 6);
+  assert.deepEqual(second.snapshot.rowItemCounts, [1, 1]);
+});
+
 test("Wrong shelf selections rotate urgency and break the streak", () => {
   const rush = createRush({ rowCount: 3 });
   const initial = rush.start(0);
