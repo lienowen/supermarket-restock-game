@@ -1,0 +1,50 @@
+name: Export source snapshot
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/export-source-snapshot.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Remove accidental branch
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              await github.rest.git.deleteRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: 'heads/DO_NOT_CREATE'
+              });
+            } catch (error) {
+              if (error.status !== 404 && error.status !== 422) throw error;
+            }
+
+      - name: Package source snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            --exclude='dist' \
+            -czf supermarket-restock-source.tgz \
+            src scripts tests public package.json package-lock.json tsconfig*.json vite.config.* index.html .github
+
+      - name: Upload source snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: supermarket-restock-source
+          path: supermarket-restock-source.tgz
+          retention-days: 1
