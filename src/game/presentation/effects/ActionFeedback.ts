@@ -30,10 +30,13 @@ export function playActionFeedback(
 ): void {
   const color = COLORS[kind];
   const emphasis = Phaser.Math.Clamp(options.emphasis ?? 1, 1, 1.5);
+  const feedbackLabel = kind === "restock" && options.label === "SHELF FULL 1/1"
+    ? "SHELF STOCKED · 3 BOTTLES"
+    : options.label ?? COPY[kind];
   const ring = scene.add.circle(position.x, position.y - 54, 26, color, 0.12)
     .setStrokeStyle(5, color, 0.95)
     .setDepth(150);
-  const label = scene.add.text(position.x, position.y - 132, options.label ?? COPY[kind], {
+  const label = scene.add.text(position.x, position.y - 132, feedbackLabel, {
     fontFamily: "Arial",
     fontSize: kind === "scan" ? "23px" : `${Math.round(20 * emphasis)}px`,
     color: `#${color.toString(16).padStart(6, "0")}`,
