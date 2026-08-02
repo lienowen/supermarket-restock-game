@@ -167,6 +167,7 @@ try {
     report.snapshots.push({ label: `level${level.number}-initial`, snapshot: initial });
 
     if (level.number === 1) {
+      await waitReady(page);
       const metadata = await readMetadata(page);
       report.regressions.architectureV3 = metadata.architecture === "architecture-v3" && metadata.version === "architecture-v3";
       report.regressions.englishHud = metadata.language === "en";
@@ -462,6 +463,9 @@ async function readMetadata(page) {
       language: document.body.dataset.uiLanguage,
       actorType: actor?.type,
       actorTexture: actor?.texture?.key,
+      actorComposition: document.body.dataset.restockActorComposition,
+      actorControl: document.body.dataset.restockActorControl,
+      loadVisual: document.body.dataset.restockLoadVisual,
       sdk: document.body.dataset.crazyGamesSdk,
       loading: document.body.dataset.crazyGamesLoading,
       gameplay: document.body.dataset.crazyGamesGameplay
