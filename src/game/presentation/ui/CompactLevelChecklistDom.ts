@@ -14,8 +14,8 @@ const applyStyles = (element: HTMLElement, styles: Partial<CSSStyleDeclaration>)
   Object.assign(element.style, styles);
 };
 
-const LOGICAL_GAME_WIDTH = 1280;
-const LOGICAL_GAME_HEIGHT = 720;
+const LOGICAL_GAME_WIDTH = 1600;
+const LOGICAL_GAME_HEIGHT = 900;
 const CHECKLIST_LOGICAL_LEFT = 10;
 const CHECKLIST_LOGICAL_TOP = 102;
 const CHECKLIST_LOGICAL_WIDTH = 250;
@@ -170,9 +170,11 @@ export function mountCompactLevelChecklistDom(
     const scaleY = bounds.height / LOGICAL_GAME_HEIGHT;
     const left = bounds.left + CHECKLIST_LOGICAL_LEFT * scaleX;
     const top = bounds.top + CHECKLIST_LOGICAL_TOP * scaleY;
+    const logicalWidth = root.dataset.condensed === "true" ? 212 : CHECKLIST_LOGICAL_WIDTH;
+    const minimumWidth = root.dataset.condensed === "true" ? 176 : 210;
     const width = Math.min(
       bounds.width - 20,
-      Math.max(210, CHECKLIST_LOGICAL_WIDTH * scaleX)
+      Math.max(minimumWidth, logicalWidth * scaleX)
     );
 
     root.style.left = `${Math.round(left)}px`;
@@ -183,6 +185,29 @@ export function mountCompactLevelChecklistDom(
 
   window.addEventListener("resize", positionInsideCanvas, { passive: true });
   canvasFrame = window.requestAnimationFrame(positionInsideCanvas);
+
+  const setCondensed = (condensed: boolean): void => {
+    root.dataset.condensed = condensed ? "true" : "false";
+    root.style.padding = condensed ? "9px 11px" : "13px 14px 12px";
+    root.style.background = condensed ? "rgba(8, 24, 16, 0.78)" : "rgba(8, 24, 16, 0.9)";
+    root.style.boxShadow = condensed
+      ? "0 8px 20px rgba(0, 0, 0, 0.18)"
+      : "0 12px 30px rgba(0, 0, 0, 0.25)";
+    topRow.style.display = condensed ? "none" : "flex";
+    nextLabel.style.display = condensed ? "none" : "block";
+    dots.style.display = condensed ? "none" : "flex";
+    currentRow.style.marginTop = condensed ? "0" : "9px";
+    currentRow.style.gridTemplateColumns = condensed ? "24px 1fr" : "30px 1fr";
+    currentRow.style.gap = condensed ? "7px" : "9px";
+    currentIcon.style.width = condensed ? "22px" : "28px";
+    currentIcon.style.height = condensed ? "22px" : "28px";
+    currentIcon.style.fontSize = condensed ? "12px" : "14px";
+    currentIcon.style.boxShadow = condensed
+      ? "0 0 0 3px rgba(90, 145, 79, 0.12)"
+      : "0 0 0 4px rgba(90, 145, 79, 0.14)";
+    currentLabel.style.fontSize = condensed ? "12px" : "14px";
+    positionInsideCanvas();
+  };
 
   const completed = new Set<string>();
   let progress = 0;
@@ -205,6 +230,7 @@ export function mountCompactLevelChecklistDom(
     });
 
     if (complete) {
+      setCondensed(false);
       counter.textContent = `${config.checklist.steps.length}/${config.checklist.steps.length}`;
       currentIcon.textContent = "✓";
       currentIcon.style.background = "#dcb53f";
@@ -224,6 +250,7 @@ export function mountCompactLevelChecklistDom(
 
     const activeStep = config.checklist.steps[activeIndex];
     const nextStep = config.checklist.steps[activeIndex + 1];
+    setCondensed(activeIndex > 0);
     counter.textContent = `STEP ${activeIndex + 1}/${config.checklist.steps.length}`;
     currentIcon.textContent = "→";
     currentIcon.style.background = "#5a914f";
