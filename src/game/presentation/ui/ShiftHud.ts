@@ -279,7 +279,11 @@ export class ShiftHud {
     this.progressText
       .setText(`${snapshot.stockedRows}/${snapshot.totalRows} ${snapshot.progressUnit ?? "ROWS"}`)
       .setScale(1);
-    this.instructionText.setText(copy.instruction).setScale(1);
+    const directShelfSelection = copy.actionLabel === "TAP A SHELF";
+    this.instructionText
+      .setText(copy.instruction)
+      .setWordWrapWidth(directShelfSelection ? 930 : 720)
+      .setScale(1);
     this.actionLabel.setText(copy.actionLabel).setScale(1);
     this.coinText.setText(String(snapshot.coins));
     this.starText.setText(String(snapshot.stars));
@@ -369,8 +373,9 @@ export class ShiftHud {
     this.actionButton.disableInteractive();
     if (active) this.actionButton.setInteractive({ useHandCursor: true });
     this.actionLabel
-      .setAlpha(active || passiveShelfPrompt ? 1 : 0.48)
-      .setColor(passiveShelfPrompt ? "#ffe993" : "#ffffff")
+      .setVisible(!passiveShelfPrompt)
+      .setAlpha(active ? 1 : 0.48)
+      .setColor("#ffffff")
       .setScale(1);
     this.drawActionButton();
 
@@ -388,26 +393,24 @@ export class ShiftHud {
     const y = instructionPanel.y + (instructionPanel.height - height) / 2;
     const active = this.actionEnabled && !this.complete;
     const passiveShelfPrompt = this.isPassiveShelfPrompt();
+    this.actionSurface.clear();
+    if (passiveShelfPrompt) return;
+
     const fill = active
       ? this.actionHovered
         ? this.config.palette.greenBright
         : this.config.palette.green
-      : passiveShelfPrompt
-        ? 0x263d32
-        : 0x405049;
-    const borderColor = active || passiveShelfPrompt
-      ? this.config.palette.gold
-      : 0xffffff;
-    const borderAlpha = active ? 0.72 : passiveShelfPrompt ? 0.46 : 0.08;
+      : 0x405049;
+    const borderColor = active ? this.config.palette.gold : 0xffffff;
+    const borderAlpha = active ? 0.72 : 0.08;
 
-    this.actionSurface.clear();
     this.actionSurface.fillStyle(0x07110e, 0.32);
     this.actionSurface.fillRoundedRect(x + 3, y + 4, width, height, 15);
-    this.actionSurface.fillStyle(fill, active || passiveShelfPrompt ? 1 : 0.6);
+    this.actionSurface.fillStyle(fill, active ? 1 : 0.6);
     this.actionSurface.fillRoundedRect(x, y, width, height, 15);
     this.actionSurface.lineStyle(2, borderColor, borderAlpha);
     this.actionSurface.strokeRoundedRect(x, y, width, height, 15);
-    if (active || passiveShelfPrompt) {
+    if (active) {
       this.actionSurface.fillStyle(0xffffff, active && this.actionHovered ? 0.12 : 0.06);
       this.actionSurface.fillRoundedRect(x + 4, y + 4, width - 8, 12, 10);
     }
