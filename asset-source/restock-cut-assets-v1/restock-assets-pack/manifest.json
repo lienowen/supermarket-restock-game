@@ -1,0 +1,97 @@
+{
+  "version": "1.0",
+  "source": "supermarket-restock-game repository production assets",
+  "recommended": {
+    "cart": "cart-cola-case-open-768.png",
+    "worker_idle": "worker-idle-768.png",
+    "worker_stock": "worker-stock-cola-768.png"
+  },
+  "phaser": {
+    "origin": [
+      0.5,
+      0.96
+    ],
+    "worker_display_size": [
+      190,
+      300
+    ],
+    "cart_display_size": [
+      330,
+      250
+    ]
+  },
+  "files": [
+    {
+      "file": "cart-back-base.png",
+      "width": 318,
+      "height": 353,
+      "mode": "RGBA"
+    },
+    {
+      "file": "cart-cola-case-open-768.png",
+      "width": 768,
+      "height": 768,
+      "mode": "RGBA"
+    },
+    {
+      "file": "cart-cola-case-open.png",
+      "width": 318,
+      "height": 353,
+      "mode": "RGBA"
+    },
+    {
+      "file": "cart-empty-clean.png",
+      "width": 318,
+      "height": 353,
+      "mode": "RGBA"
+    },
+    {
+      "file": "cart-front-overlay.png",
+      "width": 318,
+      "height": 151,
+      "mode": "RGBA"
+    },
+    {
+      "file": "cola-bottle-clean.png",
+      "width": 454,
+      "height": 1230,
+      "mode": "RGBA"
+    },
+    {
+      "file": "cola-case-closed-no-pallet.png",
+      "width": 897,
+      "height": 718,
+      "mode": "RGBA"
+    },
+    {
+      "file": "cola-case-open-no-pallet.png",
+      "width": 967,
+      "height": 683,
+      "mode": "RGBA"
+    },
+    {
+      "file": "worker-idle-768.png",
+      "width": 768,
+      "height": 768,
+      "mode": "RGBA"
+    },
+    {
+      "file": "worker-idle-clean.png",
+      "width": 214,
+      "height": 518,
+      "mode": "RGBA"
+    },
+    {
+      "file": "worker-stock-cola-768.png",
+      "width": 768,
+      "height": 768,
+      "mode": "RGBA"
+    },
+    {
+      "file": "worker-stock-cola.png",
+      "width": 247,
+      "height": 488,
+      "mode": "RGBA"
+    }
+  ]
+}
