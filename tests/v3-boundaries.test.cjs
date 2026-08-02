@@ -75,15 +75,21 @@ test("Restock actor presentation composes the shared navigation view", () => {
   assert.equal(source.includes("onManualNavigation"), true);
 });
 
-test("Restock scene auto-approaches targets and completes shelves only after three items", () => {
+test("Restock scene supports guided one-tap shelves and three-placement challenge shelves", () => {
   const source = read("src/game/presentation/scenes/StarterMarketScene.ts");
   assert.equal(source.includes("requestCurrentAction"), true);
   assert.equal(source.includes("advancePendingAction"), true);
   assert.equal(source.includes('this.dispatchSceneAction("PUSH_CART", false)'), true);
   assert.equal(source.includes('this.dispatchSceneAction("OPEN_BOX", false)'), true);
-  assert.equal(source.includes("itemsPerRow: COOLER_STOCK_ITEMS_PER_SLOT"), true);
+  assert.equal(
+    source.includes("rushTuning?.itemsPerRow ?? COOLER_STOCK_ITEMS_PER_SLOT"),
+    true
+  );
+  assert.equal(source.includes("itemsPerRow,"), true);
+  assert.equal(source.includes("snapshot.unitsPerInteraction"), true);
+  assert.equal(source.includes("count * snapshot.unitsPerInteraction"), true);
   assert.equal(source.includes("result.rowCompleted"), true);
-  assert.equal(source.includes("STOCKED ${itemLabel}"), true);
+  assert.equal(source.includes("SHELF STOCKED · 3 BOTTLES"), true);
   assert.equal(source.includes("SHELF FULL ${itemLabel}"), true);
 });
 
