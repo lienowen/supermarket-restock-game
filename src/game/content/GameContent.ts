@@ -143,6 +143,7 @@ export interface RestockMemoryPreviewDefinition {
 }
 
 export interface RestockRushTuningDefinition {
+  readonly itemsPerRow?: number;
   readonly sequenceMode?: RestockSequenceMode;
   readonly timeoutEnabled?: boolean;
   readonly memoryPreview?: RestockMemoryPreviewDefinition;
