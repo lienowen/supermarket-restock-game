@@ -35,6 +35,7 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
       slotCount: 6,
       progressRewardRatio: 0.6,
       rush: {
+        itemsPerRow: 1,
         sequenceMode: "fixed",
         timeoutEnabled: false,
         targetDurationMs: 9000,
