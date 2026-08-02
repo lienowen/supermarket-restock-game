@@ -9,6 +9,7 @@ export interface RestockRushConfig {
   readonly rowCount: number;
   readonly randomSeed: string;
   readonly itemsPerRow?: number;
+  readonly unitsPerInteraction?: number;
   readonly sequenceMode?: RestockSequenceMode;
   readonly timeoutEnabled?: boolean;
   readonly keepTargetOnFailure?: boolean;
@@ -30,6 +31,7 @@ export interface RestockRushSnapshot {
   readonly filledRowIndexes: readonly number[];
   readonly rowItemCounts: readonly number[];
   readonly itemsPerRow: number;
+  readonly unitsPerInteraction: number;
   readonly totalItemsStocked: number;
   readonly remainingMs: number;
   readonly targetDurationMs: number;
@@ -129,6 +131,7 @@ export class RestockRushController {
   private readonly filledRows = new Set<number>();
   private readonly rowItemCounts: number[];
   private readonly itemsPerRow: number;
+  private readonly unitsPerInteraction: number;
   private readonly sequenceMode: RestockSequenceMode;
   private readonly timeoutEnabled: boolean;
   private readonly keepTargetOnFailure: boolean;
@@ -150,6 +153,10 @@ export class RestockRushController {
     }
 
     this.itemsPerRow = requirePositiveInteger(config.itemsPerRow ?? 1, "Items per restock row");
+    this.unitsPerInteraction = requirePositiveInteger(
+      config.unitsPerInteraction ?? 1,
+      "Units per restock interaction"
+    );
     this.rowItemCounts = Array.from({ length: config.rowCount }, () => 0);
     this.sequenceMode = config.sequenceMode ?? "shuffled";
     this.timeoutEnabled = config.timeoutEnabled ?? true;
@@ -311,7 +318,9 @@ export class RestockRushController {
       filledRowIndexes: Object.freeze([...this.filledRows].sort((left, right) => left - right)),
       rowItemCounts: frozenCounts,
       itemsPerRow: this.itemsPerRow,
-      totalItemsStocked: frozenCounts.reduce((sum, count) => sum + count, 0),
+      unitsPerInteraction: this.unitsPerInteraction,
+      totalItemsStocked:
+        frozenCounts.reduce((sum, count) => sum + count, 0) * this.unitsPerInteraction,
       remainingMs,
       targetDurationMs: this.currentTargetDurationMs,
       remainingRatio,
