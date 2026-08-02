@@ -14,6 +14,12 @@ const applyStyles = (element: HTMLElement, styles: Partial<CSSStyleDeclaration>)
   Object.assign(element.style, styles);
 };
 
+const LOGICAL_GAME_WIDTH = 1280;
+const LOGICAL_GAME_HEIGHT = 720;
+const CHECKLIST_LOGICAL_LEFT = 10;
+const CHECKLIST_LOGICAL_TOP = 102;
+const CHECKLIST_LOGICAL_WIDTH = 250;
+
 /**
  * A low-obstruction coach card for guided levels. It shows the current action,
  * the next action and overall progress instead of keeping the full checklist on screen.
@@ -27,10 +33,10 @@ export function mountCompactLevelChecklistDom(
   root.setAttribute("aria-label", `${config.checklist.heading} guidance`);
   applyStyles(root, {
     position: "fixed",
-    left: "clamp(10px, 1.5vw, 22px)",
-    top: "clamp(102px, 13vh, 126px)",
+    left: "10px",
+    top: "102px",
     zIndex: "9000",
-    width: "min(250px, calc(100vw - 20px))",
+    width: "250px",
     boxSizing: "border-box",
     padding: "13px 14px 12px",
     border: "1px solid rgba(255, 217, 94, 0.38)",
@@ -134,6 +140,50 @@ export function mountCompactLevelChecklistDom(
   document.body.appendChild(root);
   document.body.dataset.levelChecklist = "active";
 
+  let canvasFrame = 0;
+  let observedCanvas: HTMLCanvasElement | undefined;
+  const canvasObserver = typeof ResizeObserver === "undefined"
+    ? undefined
+    : new ResizeObserver(() => positionInsideCanvas());
+
+  function positionInsideCanvas(): void {
+    const canvas = document.querySelector<HTMLCanvasElement>("#app canvas")
+      ?? document.querySelector<HTMLCanvasElement>("canvas");
+    if (!canvas) {
+      canvasFrame = window.requestAnimationFrame(positionInsideCanvas);
+      return;
+    }
+
+    if (observedCanvas !== canvas) {
+      if (observedCanvas) canvasObserver?.unobserve(observedCanvas);
+      observedCanvas = canvas;
+      canvasObserver?.observe(canvas);
+    }
+
+    const bounds = canvas.getBoundingClientRect();
+    if (bounds.width <= 1 || bounds.height <= 1) {
+      canvasFrame = window.requestAnimationFrame(positionInsideCanvas);
+      return;
+    }
+
+    const scaleX = bounds.width / LOGICAL_GAME_WIDTH;
+    const scaleY = bounds.height / LOGICAL_GAME_HEIGHT;
+    const left = bounds.left + CHECKLIST_LOGICAL_LEFT * scaleX;
+    const top = bounds.top + CHECKLIST_LOGICAL_TOP * scaleY;
+    const width = Math.min(
+      bounds.width - 20,
+      Math.max(210, CHECKLIST_LOGICAL_WIDTH * scaleX)
+    );
+
+    root.style.left = `${Math.round(left)}px`;
+    root.style.top = `${Math.round(top)}px`;
+    root.style.width = `${Math.round(width)}px`;
+    root.style.maxHeight = `${Math.max(120, Math.round(bounds.bottom - top - 12))}px`;
+  }
+
+  window.addEventListener("resize", positionInsideCanvas, { passive: true });
+  canvasFrame = window.requestAnimationFrame(positionInsideCanvas);
+
   const completed = new Set<string>();
   let progress = 0;
   let progressTotal = 0;
@@ -217,6 +267,9 @@ export function mountCompactLevelChecklistDom(
   return Object.freeze({
     destroy: () => {
       if (completionTimer !== undefined) window.clearTimeout(completionTimer);
+      window.cancelAnimationFrame(canvasFrame);
+      window.removeEventListener("resize", positionInsideCanvas);
+      canvasObserver?.disconnect();
       disposers.forEach((dispose) => dispose());
       root.remove();
       delete document.body.dataset.levelChecklist;
