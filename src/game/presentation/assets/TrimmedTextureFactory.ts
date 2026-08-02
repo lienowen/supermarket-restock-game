@@ -12,6 +12,12 @@ interface OpaqueBounds extends SourceDimensions {
   readonly y: number;
 }
 
+export type TextureMaskRun = readonly [
+  row: number,
+  startX: number,
+  endXExclusive: number
+];
+
 const sourceDimensions = (source: CanvasImageSourceLike): SourceDimensions => ({
   width: source instanceof HTMLImageElement ? source.naturalWidth : source.width,
   height: source instanceof HTMLImageElement ? source.naturalHeight : source.height
@@ -83,6 +89,35 @@ const resolveOpaqueBounds = (source: HTMLCanvasElement): OpaqueBounds => {
   };
 };
 
+const createTrimmedTextureFromCanvas = (
+  scene: Phaser.Scene,
+  sourceKey: string,
+  aliasKey: string,
+  source: HTMLCanvasElement,
+  padding: number,
+  trimBottomRatio: number
+): string => {
+  const sourceSize = sourceDimensions(source);
+  const opaque = resolveOpaqueBounds(source);
+  const safeBottomTrim = Phaser.Math.Clamp(trimBottomRatio, 0, 0.65);
+  const retainedOpaqueHeight = Math.max(1, Math.round(opaque.height * (1 - safeBottomTrim)));
+  const left = Math.max(0, opaque.x - padding);
+  const top = Math.max(0, opaque.y - padding);
+  const right = Math.min(sourceSize.width, opaque.x + opaque.width + padding);
+  const bottom = Math.min(sourceSize.height, opaque.y + retainedOpaqueHeight + padding);
+  const width = Math.max(1, right - left);
+  const height = Math.max(1, bottom - top);
+
+  const texture = scene.textures.createCanvas(aliasKey, width, height);
+  if (!texture) return sourceKey;
+  const context = texture.getContext();
+  context.clearRect(0, 0, width, height);
+  context.drawImage(source, left, top, width, height, 0, 0, width, height);
+  texture.refresh();
+
+  return aliasKey;
+};
+
 /**
  * Creates a transparent texture containing only the source object's visible
  * pixels. Optional cleanup removes a baked checkerboard. trimBottomRatio is
@@ -101,23 +136,103 @@ export function prepareTrimmedTexture(
 
   const source = scene.textures.get(sourceKey).getSourceImage() as CanvasImageSourceLike;
   const cleanedSource = createSourceCanvas(source, removeLightNeutralBackground);
-  const sourceSize = sourceDimensions(cleanedSource);
-  const opaque = resolveOpaqueBounds(cleanedSource);
-  const safeBottomTrim = Phaser.Math.Clamp(trimBottomRatio, 0, 0.65);
-  const retainedOpaqueHeight = Math.max(1, Math.round(opaque.height * (1 - safeBottomTrim)));
-  const left = Math.max(0, opaque.x - padding);
-  const top = Math.max(0, opaque.y - padding);
-  const right = Math.min(sourceSize.width, opaque.x + opaque.width + padding);
-  const bottom = Math.min(sourceSize.height, opaque.y + retainedOpaqueHeight + padding);
-  const width = Math.max(1, right - left);
-  const height = Math.max(1, bottom - top);
+  return createTrimmedTextureFromCanvas(
+    scene,
+    sourceKey,
+    aliasKey,
+    cleanedSource,
+    padding,
+    trimBottomRatio
+  );
+}
 
-  const texture = scene.textures.createCanvas(aliasKey, width, height);
+/**
+ * Applies an approved row-run mask before trimming. This is used for production
+ * source art that contains an unwanted baked fixture behind a reusable actor.
+ */
+export function prepareMaskedTrimmedTexture(
+  scene: Phaser.Scene,
+  sourceKey: string | undefined,
+  aliasKey: string,
+  maskRuns: readonly TextureMaskRun[],
+  padding = 8
+): string {
+  if (!sourceKey || !scene.textures.exists(sourceKey)) return sourceKey ?? aliasKey;
+  if (scene.textures.exists(aliasKey)) return aliasKey;
+
+  const source = scene.textures.get(sourceKey).getSourceImage() as CanvasImageSourceLike;
+  const maskedSource = createSourceCanvas(source, false);
+  const dimensions = sourceDimensions(maskedSource);
+  const context = maskedSource.getContext("2d");
+  if (!context) return sourceKey;
+
+  const mask = document.createElement("canvas");
+  mask.width = dimensions.width;
+  mask.height = dimensions.height;
+  const maskContext = mask.getContext("2d");
+  if (!maskContext) return sourceKey;
+
+  maskContext.clearRect(0, 0, dimensions.width, dimensions.height);
+  maskContext.fillStyle = "#ffffff";
+  for (const [row, startX, endXExclusive] of maskRuns) {
+    if (row < 0 || row >= dimensions.height) continue;
+    const left = Phaser.Math.Clamp(startX, 0, dimensions.width);
+    const right = Phaser.Math.Clamp(endXExclusive, left, dimensions.width);
+    if (right > left) maskContext.fillRect(left, row, right - left, 1);
+  }
+
+  context.globalCompositeOperation = "destination-in";
+  context.drawImage(mask, 0, 0);
+  context.globalCompositeOperation = "source-over";
+
+  return createTrimmedTextureFromCanvas(
+    scene,
+    sourceKey,
+    aliasKey,
+    maskedSource,
+    padding,
+    0
+  );
+}
+
+/**
+ * Creates a same-canvas lower foreground layer from an already-clean texture.
+ * Placing this above a case lets the cart's platform edge and wheels occlude it
+ * correctly instead of making the case look embedded in the cart.
+ */
+export function prepareLowerOverlayTexture(
+  scene: Phaser.Scene,
+  sourceKey: string | undefined,
+  aliasKey: string,
+  startRatio = 0.57
+): string {
+  if (!sourceKey || !scene.textures.exists(sourceKey)) return sourceKey ?? aliasKey;
+  if (scene.textures.exists(aliasKey)) return aliasKey;
+
+  const source = scene.textures.get(sourceKey).getSourceImage() as CanvasImageSourceLike;
+  const dimensions = sourceDimensions(source);
+  const startY = Phaser.Math.Clamp(
+    Math.round(dimensions.height * startRatio),
+    0,
+    Math.max(0, dimensions.height - 1)
+  );
+  const retainedHeight = Math.max(1, dimensions.height - startY);
+  const texture = scene.textures.createCanvas(aliasKey, dimensions.width, dimensions.height);
   if (!texture) return sourceKey;
-  const context = texture.getContext();
-  context.clearRect(0, 0, width, height);
-  context.drawImage(cleanedSource, left, top, width, height, 0, 0, width, height);
-  texture.refresh();
 
+  const context = texture.getContext();
+  context.clearRect(0, 0, dimensions.width, dimensions.height);
+  context.drawImage(
+    source,
+    0,
+    startY,
+    dimensions.width,
+    retainedHeight,
+    0,
+    startY,
+    dimensions.width,
+    retainedHeight
+  );
+  texture.refresh();
   return aliasKey;
 }
