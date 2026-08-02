@@ -1,6 +1,10 @@
 name: Apply guided shelf contract v2
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/apply-guided-shelf-contract-v2.yml'
   workflow_dispatch:
 
 permissions:
