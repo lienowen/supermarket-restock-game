@@ -14,8 +14,8 @@ const HEIGHT = 900;
 const SHELF_COUNT = 6;
 const ITEMS_PER_SHELF = 3;
 
-const restock = (number, id, label, initial, complete) => Object.freeze({
-  number, id, label, mode: "restock", initial, complete
+const restock = (number, id, label, initial, complete, interactionsPerShelf = ITEMS_PER_SHELF) => Object.freeze({
+  number, id, label, mode: "restock", initial, complete, interactionsPerShelf
 });
 const checkout = (number, id, label, customerCount, initial, complete) => Object.freeze({
   number, id, label, mode: "checkout", customerCount, initial, complete
@@ -30,7 +30,8 @@ const findItems = (number, id, label, items, initial, complete) => Object.freeze
 const LEVELS = Object.freeze([
   restock(1, "starter-level-001", "Cola first delivery",
     { coins: 100, stars: 0 },
-    { step: "complete", stockedRows: 6, coins: 200, stars: 1 }),
+    { step: "complete", stockedRows: 6, coins: 200, stars: 1 },
+    1),
   restock(2, "starter-level-002", "Water promotion restock",
     { coins: 200, stars: 1 },
     { step: "complete", stockedRows: 6, coins: 320, stars: 2 }),
@@ -109,11 +110,11 @@ const report = {
     architectureV3: false,
     productionAssetRuntime: false,
     englishHud: false,
-    movementRequired: false,
+    guidedStationReady: false,
     emptyShelfHasNoGhostProducts: false,
-    shelfBuildsOneItemAtATime: false,
-    threeItemsRequiredPerShelf: false,
-    allRestockLevelsStockEighteenItems: false,
+    guidedShelfAutoFillsThreeBottles: false,
+    challengeShelvesRequireThreePlacements: false,
+    allRestockLevelsRepresentEighteenItems: false,
     level1: false,
     level2: false,
     level3: false,
@@ -172,9 +173,14 @@ try {
       report.regressions.productionAssetRuntime = (
         metadata.visualTarget === "production-v1-five-mode-campaign" &&
         metadata.actorType === "Image" &&
-        metadata.actorTexture === "worker-a-idle"
+        metadata.actorTexture === "cut-restock-worker-idle" &&
+        metadata.actorComposition === "action-pose-and-layered-cart" &&
+        metadata.loadVisual === "cart-back-case-cart-front"
       );
-      report.regressions.movementRequired = !(await interactionReady(page));
+      report.regressions.guidedStationReady = (
+        metadata.actorControl === "fixed-position-action-swap" &&
+        await interactionReady(page)
+      );
       await capture(page, screenshotName(level.number, "initial"), `${level.label} initial`);
     } else if (level.number >= 6) {
       await capture(page, screenshotName(level.number, "initial"), `${level.label} initial`);
@@ -203,7 +209,7 @@ try {
   }
 
   report.regressions.campaignEconomyCarry = initialSnapshots.every(({ snapshot, expected }) => matches(snapshot, expected));
-  report.regressions.allRestockLevelsStockEighteenItems = (
+  report.regressions.allRestockLevelsRepresentEighteenItems = (
     restockTotals.length === 4 && restockTotals.every((count) => count === SHELF_COUNT * ITEMS_PER_SHELF)
   );
 
@@ -239,13 +245,13 @@ async function openLevel(context, level) {
 }
 
 async function completeLevel(page, level, detailedRestock) {
-  if (level.mode === "restock") return completeRestock(page, detailedRestock);
+  if (level.mode === "restock") return completeRestock(page, level, detailedRestock);
   if (level.mode === "checkout") return completeCheckout(page, level.customerCount);
   if (level.mode === "clean") return completeClean(page, level.spots);
   return completeFindItems(page, level.items);
 }
 
-async function completeRestock(page, detailed) {
+async function completeRestock(page, level, detailed) {
   await clickGame(page, 1228, 850);
   await waitSnapshot(page, { step: "load", boxCollected: true });
   await clickGame(page, 1228, 850);
@@ -253,13 +259,24 @@ async function completeRestock(page, detailed) {
   await waitReady(page);
 
   const initialRush = await waitRushTarget(page);
+  const interactionsPerShelf = initialRush.itemsPerRow;
+  const unitsPerInteraction = initialRush.unitsPerInteraction ?? 1;
+  const physicalItemsPerShelf = interactionsPerShelf * unitsPerInteraction;
+  if (interactionsPerShelf !== level.interactionsPerShelf || physicalItemsPerShelf !== ITEMS_PER_SHELF) {
+    throw new Error(`Restock pacing does not match level contract: ${JSON.stringify({
+      level: level.id, interactionsPerShelf, unitsPerInteraction, physicalItemsPerShelf
+    })}`);
+  }
+
   const firstRow = initialRush.activeRowIndex;
   if (detailed) {
     const empty = await renderedShelf(page, firstRow);
     report.regressions.emptyShelfHasNoGhostProducts = (
-      initialRush.totalItemsStocked === 0 && initialRush.rowItemCounts.every((count) => count === 0) && empty.itemCount === 0
+      initialRush.totalItemsStocked === 0 &&
+      initialRush.rowItemCounts.every((count) => count === 0) &&
+      empty.itemCount === 0
     );
-    await capture(page, "restock-shelf-0-of-3.png", "Empty shelf before physical stocking");
+    await capture(page, "restock-shelf-empty.png", "Empty shelf before guided stocking");
   }
 
   for (let completedRows = 0; completedRows < SHELF_COUNT; completedRows += 1) {
@@ -267,25 +284,29 @@ async function completeRestock(page, detailed) {
     const rowIndex = (await waitRushTarget(page)).activeRowIndex;
     const target = await renderedTarget(page, rowIndex);
 
-    for (let item = 1; item <= ITEMS_PER_SHELF; item += 1) {
+    for (let interaction = 1; interaction <= interactionsPerShelf; interaction += 1) {
       await waitReady(page);
       const beforeController = detailed ? await readSnapshot(page) : null;
       await clickGame(page, target.x, target.y);
-      await waitRowCount(page, rowIndex, item);
+      const physicalCount = interaction * unitsPerInteraction;
+      await waitRowCount(page, rowIndex, interaction, physicalCount);
 
       if (detailed && completedRows === 0) {
         const afterController = await readSnapshot(page);
         const rush = await readRush(page);
         const shelf = await renderedShelf(page, rowIndex);
-        await capture(page, `restock-shelf-${item}-of-3.png`, `Physical shelf growth ${item}/3`);
-        if (item === 1) {
-          report.regressions.shelfBuildsOneItemAtATime = (
-            beforeController.stockedRows === 0 && afterController.stockedRows === 0 && shelf.itemCount === 1
-          );
-        }
-        if (item === 3) {
-          report.regressions.threeItemsRequiredPerShelf = (
-            afterController.stockedRows === 1 && shelf.itemCount === 3 && rush.filledRowIndexes.includes(rowIndex)
+        await capture(
+          page,
+          `restock-shelf-${physicalCount}-of-${ITEMS_PER_SHELF}.png`,
+          `Physical shelf growth ${physicalCount}/${ITEMS_PER_SHELF}`
+        );
+        if (interactionsPerShelf === 1) {
+          report.regressions.guidedShelfAutoFillsThreeBottles = (
+            beforeController.stockedRows === completedRows &&
+            afterController.stockedRows === completedRows + 1 &&
+            shelf.itemCount === ITEMS_PER_SHELF &&
+            rush.totalItemsStocked === ITEMS_PER_SHELF &&
+            rush.filledRowIndexes.includes(rowIndex)
           );
         }
       }
@@ -295,8 +316,21 @@ async function completeRestock(page, detailed) {
 
   const complete = await waitSnapshot(page, { step: "complete", stockedRows: SHELF_COUNT });
   const rush = await readRush(page);
-  if (rush.totalItemsStocked !== 18 || !rush.rowItemCounts.every((count) => count === 3)) {
-    throw new Error(`Restock completed without eighteen real products: ${JSON.stringify(rush)}`);
+  const renderedShelves = await Promise.all(
+    Array.from({ length: SHELF_COUNT }, (_, rowIndex) => renderedShelf(page, rowIndex))
+  );
+  if (
+    rush.totalItemsStocked !== SHELF_COUNT * ITEMS_PER_SHELF ||
+    !renderedShelves.every((shelf) => shelf.itemCount === ITEMS_PER_SHELF)
+  ) {
+    throw new Error(`Restock completed without eighteen visible products: ${JSON.stringify({
+      rush, renderedShelves
+    })}`);
+  }
+  if (interactionsPerShelf === ITEMS_PER_SHELF && unitsPerInteraction === 1) {
+    report.regressions.challengeShelvesRequireThreePlacements = (
+      rush.rowItemCounts.every((count) => count === ITEMS_PER_SHELF)
+    );
   }
   return complete;
 }
@@ -365,13 +399,17 @@ async function waitRushTarget(page) {
   return readRush(page);
 }
 
-async function waitRowCount(page, rowIndex, count) {
-  await page.waitForFunction(({ sceneKey, rowIndex, count }) => {
+async function waitRowCount(page, rowIndex, logicalCount, physicalCount) {
+  await page.waitForFunction(({ sceneKey, rowIndex, logicalCount, physicalCount }) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
     const rush = scene?.rush?.snapshot?.(scene.time.now);
     const holder = scene?.children?.getByName?.(`beverage-cooler-row-${rowIndex}`);
-    return rush?.rowItemCounts?.[rowIndex] === count && Array.isArray(holder?.list) && holder.list.length === count;
-  }, { sceneKey: SCENE_KEY, rowIndex, count }, { timeout: 10000 });
+    return (
+      rush?.rowItemCounts?.[rowIndex] === logicalCount &&
+      Array.isArray(holder?.list) &&
+      holder.list.length === physicalCount
+    );
+  }, { sceneKey: SCENE_KEY, rowIndex, logicalCount, physicalCount }, { timeout: 10000 });
 }
 
 async function waitSnapshot(page, expected) {

@@ -81,12 +81,15 @@ export class StarterMarketScene extends Phaser.Scene {
       stars: 0,
       reputation: 0
     };
+    const rushTuning = context.campaignLevel.level.tuning.rush;
+    const itemsPerRow = rushTuning?.itemsPerRow ?? COOLER_STOCK_ITEMS_PER_SLOT;
     this.controller = new RestockSceneController({
       runtime: context.runtime,
       initialCoins: initialEconomy.coins,
       initialStars: initialEconomy.stars,
       sourceLocationId: "staff-backroom",
-      destinationLocationId: "beverage-restock-zone"
+      destinationLocationId: "beverage-restock-zone",
+      itemsPerRow
     });
     this.targetResolver = new RestockTargetResolver({
       backroomBox: context.world.backroomBox,
@@ -96,10 +99,9 @@ export class StarterMarketScene extends Phaser.Scene {
       coolerRowYs: this.visualPreset.cooler.rowYs,
       coolerTargetWidth: this.visualPreset.cooler.activeStockWidth
     });
-    const rushTuning = context.campaignLevel.level.tuning.rush;
     this.rush = new RestockRushController({
       rowCount: this.visualPreset.cooler.rowYs.length,
-      itemsPerRow: COOLER_STOCK_ITEMS_PER_SLOT,
+      itemsPerRow,
       randomSeed: context.campaignLevel.level.randomSeed,
       ...(rushTuning ?? {}),
       keepTargetOnFailure: rushTuning?.memoryPreview?.keepTargetOnFailure
@@ -137,7 +139,9 @@ export class StarterMarketScene extends Phaser.Scene {
       instruction: memoryConfig
         ? "FOLLOW THE MEMORIZED ORDER · STOCK 3 ITEMS"
         : context.campaignLevel.level.tuning.rush?.timeoutEnabled === false
-          ? "FOLLOW THE GUIDED ORDER · STOCK 3 ITEMS"
+          ? context.campaignLevel.level.tuning.rush?.itemsPerRow === 1
+            ? "TAP EACH SHELF ONCE · AUTO-PLACE 3 BOTTLES"
+            : "FOLLOW THE GUIDED ORDER · STOCK 3 ITEMS"
           : "FIND THE GLOWING SHELF · STOCK 3 ITEMS"
     });
     this.actors = this.createActors();
@@ -378,9 +382,16 @@ export class StarterMarketScene extends Phaser.Scene {
     if (result.rowCompleted && !this.dispatchSceneAction("RESTOCK_ROW", false)) return;
     this.syncRushPresentation(result.snapshot);
 
-    const itemLabel = `${result.stockedItemCount}/${result.snapshot.itemsPerRow}`;
+    const physicalStockedCount = result.stockedItemCount * result.snapshot.unitsPerInteraction;
+    const physicalItemsPerRow = result.snapshot.itemsPerRow * result.snapshot.unitsPerInteraction;
+    const singleTapShelf = result.snapshot.itemsPerRow === 1 && physicalItemsPerRow === 3;
+    const itemLabel = `${physicalStockedCount}/${physicalItemsPerRow}`;
     playActionFeedback(this, rowCentre, "restock", {
-      label: result.rowCompleted ? `SHELF FULL ${itemLabel}` : `STOCKED ${itemLabel}`,
+      label: result.rowCompleted
+        ? singleTapShelf
+          ? "SHELF STOCKED · 3 BOTTLES"
+          : `SHELF FULL ${itemLabel}`
+        : `STOCKED ${itemLabel}`,
       emphasis: result.rowCompleted ? 1.22 : 1.04
     });
     this.cameras.main.shake(result.rowCompleted ? 55 : 30, result.rowCompleted ? 0.0014 : 0.0008);
@@ -404,7 +415,9 @@ export class StarterMarketScene extends Phaser.Scene {
     const memoryConfig = this.memoryConfig();
     this.cooler?.syncRush({
       filledRowIndexes: snapshot.filledRowIndexes,
-      rowItemCounts: snapshot.rowItemCounts,
+      rowItemCounts: snapshot.rowItemCounts.map((count) => (
+        Math.min(COOLER_STOCK_ITEMS_PER_SLOT, count * snapshot.unitsPerInteraction)
+      )),
       activeRowIndex: memoryConfig?.hideActiveTarget ? undefined : snapshot.activeRowIndex,
       remainingRatio: snapshot.remainingRatio,
       interactionEnabled:
@@ -548,7 +561,7 @@ export class StarterMarketScene extends Phaser.Scene {
           statusLabel: progression.statusLabel,
           levelTitle: context.labels.levelTitle,
           rewardLabel:
-            `${grade} RUSH  •  ${rushPerformance.totalItemsStocked} ITEMS  •  ${seconds}s\n` +
+            `${grade} RUSH  •  ${context.runtime.totalUnits} ITEMS  •  ${seconds}s\n` +
             `+${context.runtime.reward.totalStars} STAR   +${context.runtime.reward.totalCoins} COINS`,
           actionLabel: progression.actionLabel,
           panelColor: context.palette.hud,
