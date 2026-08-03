@@ -1,10 +1,15 @@
 import Phaser from "phaser";
 import type { RestockSceneSnapshot } from "../../application/RestockSceneController";
 import { prepareTrimmedTexture } from "../assets/TrimmedTextureFactory";
+import { StarterMarketScene } from "../scenes/StarterMarketScene";
 import {
   RestockActorView,
   type RestockActorViewConfig
 } from "./RestockActorView";
+
+const CART_OPEN_COMBO_SOURCE_KEY = "equipment-restock-cart-cola-open-combo-v3";
+const CART_OPEN_COMBO_SOURCE_PATH = "assets/game/production-v3/cooler-restock/cart_cola_open_combo.png";
+const CART_OPEN_COMBO_CUT_KEY = "cut-restock-cart-cola-open-combo-v3";
 
 interface RestockActorInternals {
   readonly scene: Phaser.Scene;
@@ -15,8 +20,17 @@ interface RestockActorInternals {
   readonly caseBox: Phaser.GameObjects.Image;
 }
 
-const originalSync = RestockActorView.prototype.sync;
+const originalPreload = StarterMarketScene.prototype.preload;
+StarterMarketScene.prototype.preload = function preloadWithOpenCartCombo(
+  this: StarterMarketScene
+): void {
+  originalPreload.call(this);
+  if (!this.textures.exists(CART_OPEN_COMBO_SOURCE_KEY)) {
+    this.load.image(CART_OPEN_COMBO_SOURCE_KEY, CART_OPEN_COMBO_SOURCE_PATH);
+  }
+};
 
+const originalSync = RestockActorView.prototype.sync;
 RestockActorView.prototype.sync = function syncWithBakedOpenCart(
   this: RestockActorView,
   snapshot: RestockSceneSnapshot
@@ -28,22 +42,26 @@ RestockActorView.prototype.sync = function syncWithBakedOpenCart(
   const needsOpenCart = snapshot.step === "restock" || (
     snapshot.step === "open" && snapshot.boxOpened
   );
-  if (!isColaDelivery || !needsOpenCart) return;
+  if (
+    !isColaDelivery ||
+    !needsOpenCart ||
+    !view.scene.textures.exists(CART_OPEN_COMBO_SOURCE_KEY)
+  ) return;
 
   const textureKey = prepareTrimmedTexture(
     view.scene,
-    view.config.caseOpenAssetKey ?? "prop-cola-case-open",
-    "cut-restock-cart-cola-open-combo-v3",
+    CART_OPEN_COMBO_SOURCE_KEY,
+    CART_OPEN_COMBO_CUT_KEY,
     10,
     true
   );
   const x = view.config.cartDestination.x - 265;
-  const y = view.config.cartDestination.y + 26;
+  const y = view.config.cartDestination.y + 28;
 
   view.cart
     .setTexture(textureKey)
     .setOrigin(0.5, 0.96)
-    .setDisplaySize(330, 378)
+    .setDisplaySize(330, 394)
     .setPosition(x, y)
     .setAlpha(1)
     .setVisible(true);

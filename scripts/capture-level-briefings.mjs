@@ -31,6 +31,7 @@ await new Promise((resolveServer) => server.listen(PORT, "127.0.0.1", resolveSer
 const report = {
   generatedAt: new Date().toISOString(),
   captures: [],
+  details: {},
   consoleErrors: [],
   pageErrors: [],
   failedRequests: [],
@@ -55,11 +56,13 @@ try {
   const desktopPage = await desktopContext.newPage();
   attachListeners(desktopPage, report);
   const desktopInfo = await openBriefing(desktopPage, "starter-level-001");
+  report.details.desktopLevelOne = desktopInfo;
   report.assertions.desktopLevelOne = (
     desktopInfo.title === "First Delivery" &&
     desktopInfo.modeLabel === "GUIDED DELIVERY" &&
     desktopInfo.objective.includes("cola case") &&
-    desktopInfo.briefingState === "open"
+    desktopInfo.briefingState === "open" &&
+    desktopInfo.panelInsideViewport
   );
   report.assertions.touchTarget = desktopInfo.buttonWidth >= 220 && desktopInfo.buttonHeight >= 52;
   await desktopPage.screenshot({
@@ -88,15 +91,8 @@ try {
   const mobilePage = await mobileContext.newPage();
   attachListeners(mobilePage, report);
   const mobileInfo = await openBriefing(mobilePage, "starter-level-001");
-  const mobilePanel = await mobilePage.locator("#level-briefing-overlay > div").boundingBox();
-  report.assertions.mobileLevelOne = Boolean(
-    mobilePanel &&
-    mobilePanel.x >= 0 &&
-    mobilePanel.y >= 0 &&
-    mobilePanel.x + mobilePanel.width <= 844 &&
-    mobilePanel.y + mobilePanel.height <= 390 &&
-    mobileInfo.buttonHeight >= 52
-  );
+  report.details.mobileLevelOne = mobileInfo;
+  report.assertions.mobileLevelOne = mobileInfo.panelInsideViewport && mobileInfo.buttonHeight >= 52;
   await mobilePage.screenshot({
     path: join(OUTPUT_DIR, "briefing-level1-mobile-landscape.png"),
     fullPage: true
@@ -109,12 +105,14 @@ try {
   const variantPage = await variantContext.newPage();
   attachListeners(variantPage, report);
   const variantInfo = await openBriefing(variantPage, "starter-level-007");
+  report.details.levelSeven = variantInfo;
   report.assertions.distinctLevelSeven = (
     variantInfo.title === "Evening Checkout" &&
     variantInfo.modeLabel === "PATIENCE & WEIGHT" &&
     variantInfo.objective.includes("eight evening customers") &&
     variantInfo.objective.includes("patience bars") &&
-    variantInfo.modeLabel !== desktopInfo.modeLabel
+    variantInfo.modeLabel !== desktopInfo.modeLabel &&
+    variantInfo.panelInsideViewport
   );
   await variantPage.screenshot({
     path: join(OUTPUT_DIR, "briefing-level7-desktop.png"),
@@ -163,17 +161,26 @@ async function openBriefing(page, levelId) {
 
   return page.evaluate(() => {
     const overlay = document.querySelector("#level-briefing-overlay");
-    const title = overlay?.querySelector("h1")?.textContent?.trim() ?? "";
-    const modeLabel = overlay?.querySelector("span")?.textContent?.trim() ?? "";
-    const paragraphs = [...(overlay?.querySelectorAll("p") ?? [])]
-      .map((element) => element.textContent?.trim() ?? "")
-      .filter(Boolean);
+    const titleElement = overlay?.querySelector("#level-briefing-title");
+    const objectiveElement = titleElement?.nextElementSibling?.tagName === "P"
+      ? titleElement.nextElementSibling
+      : overlay?.querySelector("p");
+    const panel = overlay?.firstElementChild?.getBoundingClientRect();
     const button = overlay?.querySelector("button")?.getBoundingClientRect();
+    const panelInsideViewport = Boolean(
+      panel &&
+      panel.left >= 0 &&
+      panel.top >= 0 &&
+      panel.right <= window.innerWidth &&
+      panel.bottom <= window.innerHeight
+    );
+
     return {
-      title,
-      modeLabel,
-      objective: paragraphs[0] ?? "",
+      title: titleElement?.textContent?.trim() ?? "",
+      modeLabel: document.body.dataset.levelExperience ?? "",
+      objective: objectiveElement?.textContent?.trim() ?? "",
       briefingState: document.body.dataset.levelBriefing,
+      panelInsideViewport,
       buttonWidth: button?.width ?? 0,
       buttonHeight: button?.height ?? 0
     };
