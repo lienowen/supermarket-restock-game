@@ -5,6 +5,8 @@ on:
     branches: [agent/fix-p0-level-one]
     paths:
       - '.github/workflows/apply-p0-level-one-fixes.yml'
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
