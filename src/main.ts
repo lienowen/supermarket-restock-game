@@ -1,5 +1,6 @@
 import "./styles.css";
 import "./visual-comfort.css";
+import "./game/presentation/actors/installRestockCartCombo";
 import { bootstrapGame } from "./game/bootstrap";
 
 void bootstrapGame().catch((error: unknown) => {
