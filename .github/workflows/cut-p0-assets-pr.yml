@@ -1,0 +1,107 @@
+name: Cut P0 Assets PR
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/cut-p0-assets-pr.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cut:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout source assets
+        uses: actions/checkout@v4
+        with:
+          ref: agent/fix-p0-level-one
+
+      - name: Cut transparent upload assets
+        shell: bash
+        run: |
+          python3 -m pip install --disable-pip-version-check pillow
+          python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image, ImageDraw, ImageFilter
+          import json
+
+          out = Path('p0-cut-assets')
+          out.mkdir(exist_ok=True)
+
+          def clean_neutral(img):
+              img = img.convert('RGBA')
+              px = img.load()
+              for y in range(img.height):
+                  for x in range(img.width):
+                      r, g, b, a = px[x, y]
+                      if a <= 8:
+                          continue
+                      if max(r, g, b) - min(r, g, b) <= 30 and (r + g + b) / 3 >= 176:
+                          px[x, y] = (r, g, b, 0)
+              return img
+
+          def trim(img, padding=10):
+              box = img.getchannel('A').getbbox()
+              if not box:
+                  return img
+              l, t, r, b = box
+              return img.crop((max(0, l-padding), max(0, t-padding), min(img.width, r+padding), min(img.height, b+padding)))
+
+          cart = trim(clean_neutral(Image.open('public/assets/game/production-v1/props/equipment-restock-cart-empty.png')), 10)
+          cart.save(out / 'equipment-restock-cart-empty-cut.png', optimize=True)
+
+          front = Image.new('RGBA', cart.size, (0, 0, 0, 0))
+          start_y = round(cart.height * 0.57)
+          front.alpha_composite(cart.crop((0, start_y, cart.width, cart.height)), (0, start_y))
+          front.save(out / 'equipment-restock-cart-front-overlay.png', optimize=True)
+
+          source = Image.open('public/assets/game/production-v2/cooler-restock/cola_case_open_hd.png').convert('RGBA')
+          l, t, r, b = source.getchannel('A').getbbox() or (0, 0, source.width, source.height)
+          retained_h = max(1, round((b - t) * 0.58))
+          case = source.crop((max(0, l-8), max(0, t-8), min(source.width, r+8), min(source.height, t+retained_h+8)))
+          case = trim(case, 6)
+          case.save(out / 'prop-cola-case-open-cut.png', optimize=True)
+
+          canvas = Image.new('RGBA', (720, 520), (0, 0, 0, 0))
+          cart_w = 520
+          cart_h = round(cart.height * cart_w / cart.width)
+          cart_r = cart.resize((cart_w, cart_h), Image.Resampling.LANCZOS)
+          front_r = front.resize((cart_w, cart_h), Image.Resampling.LANCZOS)
+          cart_x = (canvas.width - cart_w) // 2
+          cart_y = canvas.height - cart_h - 18
+          case_w = 185
+          case_h = round(case.height * case_w / case.width)
+          case_r = case.resize((case_w, case_h), Image.Resampling.LANCZOS).rotate(-2, expand=True, resample=Image.Resampling.BICUBIC)
+          case_x = cart_x + round(cart_w * 0.49) - case_r.width // 2
+          case_y = cart_y + round(cart_h * 0.25)
+          shadow = Image.new('RGBA', canvas.size, (0, 0, 0, 0))
+          draw = ImageDraw.Draw(shadow)
+          draw.ellipse((case_x+18, case_y+case_r.height-28, case_x+case_r.width-12, case_y+case_r.height+8), fill=(0, 0, 0, 90))
+          canvas.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(8)))
+          canvas.alpha_composite(cart_r, (cart_x, cart_y))
+          canvas.alpha_composite(case_r, (case_x, case_y))
+          canvas.alpha_composite(front_r, (cart_x, cart_y))
+          canvas.save(out / 'preview-cart-open-case.png', optimize=True)
+
+          metadata = {
+            'layerOrder': ['equipment-restock-cart-empty-cut.png', 'prop-cola-case-open-cut.png', 'equipment-restock-cart-front-overlay.png'],
+            'cartSize': list(cart.size),
+            'frontOverlaySize': list(front.size),
+            'openCaseSize': list(case.size),
+            'notes': ['Transparent PNG.', 'Cart body and front overlay must use identical position and size.']
+          }
+          (out / 'placement.json').write_text(json.dumps(metadata, indent=2), encoding='utf-8')
+          print(json.dumps(metadata, indent=2))
+          PY
+
+      - name: Upload cut assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: p0-cut-assets
+          path: p0-cut-assets
+          if-no-files-found: error
+          retention-days: 7
