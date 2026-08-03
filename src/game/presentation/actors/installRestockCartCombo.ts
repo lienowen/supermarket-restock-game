@@ -3,6 +3,11 @@ import type { RestockSceneSnapshot } from "../../application/RestockSceneControl
 import { prepareTrimmedTexture } from "../assets/TrimmedTextureFactory";
 import { StarterMarketScene } from "../scenes/StarterMarketScene";
 import {
+  ShiftHud,
+  type ShiftHudCopy,
+  type ShiftHudSnapshot
+} from "../ui/ShiftHud";
+import {
   RestockActorView,
   type RestockActorViewConfig
 } from "./RestockActorView";
@@ -74,4 +79,33 @@ RestockActorView.prototype.sync = function syncWithBakedOpenCart(
 
   document.body.dataset.restockActorComposition = "baked-cart-open-case";
   document.body.dataset.restockLoadVisual = "single-composite-texture";
+};
+
+const RESTOCK_STEP_PROGRESS: Readonly<Record<string, number>> = Object.freeze({
+  collect: 1,
+  load: 2,
+  push: 3,
+  park: 3,
+  open: 4
+});
+
+const originalHudUpdate = ShiftHud.prototype.update;
+ShiftHud.prototype.update = function updateWithWorkflowProgress(
+  this: ShiftHud,
+  snapshot: ShiftHudSnapshot,
+  copy: ShiftHudCopy
+): void {
+  const stepNumber = document.body.dataset.activeMode === "restock"
+    ? RESTOCK_STEP_PROGRESS[snapshot.step]
+    : undefined;
+  if (stepNumber !== undefined) {
+    originalHudUpdate.call(this, {
+      ...snapshot,
+      stockedRows: stepNumber,
+      totalRows: 5,
+      progressUnit: "STEPS"
+    }, copy);
+    return;
+  }
+  originalHudUpdate.call(this, snapshot, copy);
 };
