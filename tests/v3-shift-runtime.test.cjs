@@ -34,12 +34,12 @@ test("Day 2 selects its restock mission from a shared multi-mission shift", () =
   assert.equal(runtime.fixture.id, "beverage-cooler-a");
 });
 
-test("Both days derive six equal cooler slots from shared fixture content", () => {
+test("Both days derive six equal three-item cooler slots from shared fixture content", () => {
   ["starter-shift-001", "starter-shift-002"].forEach((shiftId) => {
     const runtime = resolveRestockShiftRuntime(STARTER_MARKET_CONTENT, shiftId);
-    assert.equal(runtime.totalUnits, 24);
+    assert.equal(runtime.totalUnits, 18);
     assert.equal(runtime.slotCount, 6);
-    assert.equal(runtime.unitsPerSlot, 4);
+    assert.equal(runtime.unitsPerSlot, 3);
   });
 });
 
