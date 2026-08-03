@@ -6,13 +6,13 @@ import { STARTER_MARKET_LEVELS } from "./levels/starterMarketLevels";
 
 export const RESTOCK_COLA_COOLER_MISSION: MissionDefinition = {
   id: "restock-cola-cooler",
-  title: "Restock the Cola Section",
+  title: "Pick Up the Cola Case",
   description: "Move one cola case from the backroom to the beverage cooler.",
   objectives: [{
     type: "transfer-product",
     productId: "cola-bottle",
     targetFixtureId: "beverage-cooler-a",
-    amount: 24
+    amount: 18
   }],
   rewards: { coins: 100, stars: 1 }
 };
@@ -25,7 +25,7 @@ export const RESTOCK_WATER_PROMOTION_MISSION: MissionDefinition = {
     type: "transfer-product",
     productId: "water-bottle",
     targetFixtureId: "beverage-cooler-a",
-    amount: 24
+    amount: 18
   }],
   rewards: { coins: 120, stars: 1 }
 };
@@ -74,7 +74,7 @@ export const RESTOCK_COLA_CLOSING_MISSION: MissionDefinition = {
     type: "transfer-product",
     productId: "cola-bottle",
     targetFixtureId: "beverage-cooler-a",
-    amount: 24
+    amount: 18
   }],
   rewards: { coins: 140, stars: 1 }
 };
@@ -123,7 +123,7 @@ export const RESTOCK_WATER_FINALE_MISSION: MissionDefinition = {
     type: "transfer-product",
     productId: "water-bottle",
     targetFixtureId: "beverage-cooler-a",
-    amount: 24
+    amount: 18
   }],
   rewards: { coins: 200, stars: 2 }
 };
@@ -175,7 +175,7 @@ export const STARTER_MARKET_CONTENT: GameContentCatalogue = {
     {
       id: "beverage-cooler-a",
       kind: "cooler",
-      capacity: 24,
+      capacity: 18,
       slotCount: 6,
       acceptedProductCategories: ["beverage"],
       assetKey: "fixture-beverage-cooler-a"
