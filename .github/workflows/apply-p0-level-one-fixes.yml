@@ -44,7 +44,10 @@ jobs:
           node scripts/check-release-bundle.mjs
           npm install --no-save playwright@1.54.1
           npx playwright install --with-deps chromium
-          node scripts/capture-level-briefings.mjs
+          node scripts/capture-level-briefings.mjs || {
+            cat ui-audit/level-briefing-audit.json
+            exit 1
+          }
           node scripts/capture-guided-delivery.mjs
 
       - name: Commit validated P0 fixes
