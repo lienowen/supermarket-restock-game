@@ -1,0 +1,59 @@
+name: Apply level-one P0 fixes
+
+on:
+  push:
+    branches: [agent/fix-p0-level-one]
+    paths:
+      - '.github/workflows/apply-p0-level-one-fixes.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout fix branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/fix-p0-level-one
+          fetch-depth: 0
+
+      - name: Rebuild patch script
+        run: |
+          cat .p0-patch/part* | base64 --decode > scripts/apply-p0-level-one-fixes.py
+          python3 -m py_compile scripts/apply-p0-level-one-fixes.py
+
+      - name: Generate composite asset and patch runtime
+        run: |
+          python3 -m pip install --disable-pip-version-check pillow
+          python3 scripts/apply-p0-level-one-fixes.py
+
+      - name: Validate unit, build, release and targeted UI gates
+        run: |
+          set -o pipefail
+          npm ci
+          npm test
+          npm run build
+          node scripts/check-release-bundle.mjs
+          npm install --no-save playwright@1.54.1
+          npx playwright install --with-deps chromium
+          node scripts/capture-level-briefings.mjs
+          node scripts/capture-guided-delivery.mjs
+
+      - name: Commit validated P0 fixes
+        shell: bash
+        run: |
+          git checkout -- package.json package-lock.json 2>/dev/null || true
+          rm -rf .p0-patch
+          rm -f scripts/apply-p0-level-one-fixes.py
+          rm -f .github/workflows/apply-p0-level-one-fixes.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Fix level-one P0 briefing and cart visuals"
+          git push origin HEAD:agent/fix-p0-level-one
