@@ -12,9 +12,9 @@ import {
   type RestockActorViewConfig
 } from "./RestockActorView";
 
-const CART_OPEN_COMBO_SOURCE_KEY = "equipment-restock-cart-cola-open-combo-v3";
-const CART_OPEN_COMBO_SOURCE_PATH = "assets/game/production-v3/cooler-restock/cart_cola_open_combo.png";
-const CART_OPEN_COMBO_CUT_KEY = "cut-restock-cart-cola-open-combo-v3";
+const CART_OPEN_COMBO_SOURCE_KEY = "equipment-restock-cart-cola-open-combo-fixed-v1";
+const CART_OPEN_COMBO_SOURCE_PATH = "assets/game/production-v3/level1-recut-fixed/cart-cola-open-combo.png";
+const CART_OPEN_COMBO_CUT_KEY = "cut-restock-cart-cola-open-combo-fixed-v1";
 
 interface RestockActorInternals {
   readonly scene: Phaser.Scene;
@@ -58,7 +58,7 @@ RestockActorView.prototype.sync = function syncWithBakedOpenCart(
     CART_OPEN_COMBO_SOURCE_KEY,
     CART_OPEN_COMBO_CUT_KEY,
     10,
-    true
+    false
   );
   const x = view.config.cartDestination.x - 265;
   const y = view.config.cartDestination.y + 28;
@@ -66,7 +66,7 @@ RestockActorView.prototype.sync = function syncWithBakedOpenCart(
   view.cart
     .setTexture(textureKey)
     .setOrigin(0.5, 0.96)
-    .setDisplaySize(330, 394)
+    .setDisplaySize(330, 344)
     .setPosition(x, y)
     .setAlpha(1)
     .setVisible(true);
@@ -77,7 +77,7 @@ RestockActorView.prototype.sync = function syncWithBakedOpenCart(
     .setSize(205, 38)
     .setVisible(true);
 
-  document.body.dataset.restockActorComposition = "baked-cart-open-case";
+  document.body.dataset.restockActorComposition = "baked-cart-open-case-fixed";
   document.body.dataset.restockLoadVisual = "single-composite-texture";
 };
 
