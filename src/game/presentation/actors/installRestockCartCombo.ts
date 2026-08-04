@@ -19,6 +19,7 @@ import {
   type RestockActorViewConfig
 } from "./RestockActorView";
 
+const FIRST_DELIVERY_LEVEL_ID = "starter-level-001";
 const CART_OPEN_COMBO_SOURCE_KEY = "equipment-restock-cart-cola-open-combo-fixed-v1";
 const CART_OPEN_COMBO_SOURCE_PATH = "assets/game/production-v3/level1-recut-fixed/cart-cola-open-combo.png";
 const CART_OPEN_COMBO_CUT_KEY = "cut-restock-cart-cola-open-combo-fixed-v1";
@@ -59,8 +60,6 @@ interface RestockActorInternals {
   readonly cartFront: Phaser.GameObjects.Image;
   readonly cartShadow: Phaser.GameObjects.Ellipse;
   readonly caseBox: Phaser.GameObjects.Image;
-  readonly handProduct: Phaser.GameObjects.Image;
-  readonly loadDropZone: Phaser.GameObjects.Rectangle;
 }
 
 interface RestockActorPrototypeInternals {
@@ -86,17 +85,31 @@ interface StarterMarketScenePrototypeInternals {
   performCurrentAction(this: StarterMarketScene): void;
 }
 
+const isFirstDelivery = (): boolean => (
+  document.body.dataset.activeLevel === FIRST_DELIVERY_LEVEL_ID
+);
+
 const actorSteps = new WeakMap<RestockActorView, RestockSceneSnapshot["step"]>();
 const initializedActors = new WeakSet<RestockActorView>();
 
 const actorPrototype = RestockActorView.prototype as unknown as RestockActorPrototypeInternals;
-actorPrototype.placeWorkerAtRestockStation = function keepNavigationPosition(): void {
-  // First Delivery now uses the configured navigation path instead of snapping
-  // the worker back to a fixed foreground position every frame.
+const originalPlaceWorkerAtRestockStation = actorPrototype.placeWorkerAtRestockStation;
+const originalSetStableWorker = actorPrototype.setStableWorker;
+
+actorPrototype.placeWorkerAtRestockStation = function keepNavigationPosition(
+  this: RestockActorView
+): void {
+  if (!isFirstDelivery()) {
+    originalPlaceWorkerAtRestockStation.call(this);
+  }
 };
 actorPrototype.setStableWorker = function keepCurrentWorkerPosition(
   this: RestockActorView
 ): void {
+  if (!isFirstDelivery()) {
+    originalSetStableWorker.call(this);
+    return;
+  }
   const view = this as unknown as RestockActorInternals;
   view.navigation.setTexture(view.textures.workerIdleCut);
   view.navigation.setDisplaySize(190, 300);
@@ -113,33 +126,48 @@ StarterMarketScene.prototype.preload = function preloadWithOpenCartCombo(
   }
 };
 
+const originalPosition = RestockActorView.prototype.position;
 RestockActorView.prototype.position = function navigationPosition(
   this: RestockActorView
 ): NavigationPoint {
+  if (!isFirstDelivery()) return originalPosition.call(this);
   return (this as unknown as RestockActorInternals).navigation.position();
 };
 
+const originalIsNear = RestockActorView.prototype.isNear;
 RestockActorView.prototype.isNear = function navigationIsNear(
   this: RestockActorView,
   point: NavigationPoint,
   radius: number
 ): boolean {
+  if (!isFirstDelivery()) return originalIsNear.call(this, point, radius);
   return (this as unknown as RestockActorInternals).navigation.isNear(point, radius);
 };
 
+const originalSetDestination = RestockActorView.prototype.setDestination;
 RestockActorView.prototype.setDestination = function navigateToTarget(
   this: RestockActorView,
   point: NavigationPoint
 ): void {
+  if (!isFirstDelivery()) {
+    originalSetDestination.call(this, point);
+    return;
+  }
   const view = this as unknown as RestockActorInternals;
   view.navigation.setEnabled(true);
   view.navigation.setDestination(point);
 };
 
+const originalUpdate = RestockActorView.prototype.update;
 RestockActorView.prototype.update = function updateNavigationAndCart(
   this: RestockActorView,
   deltaMs: number
 ): void {
+  if (!isFirstDelivery()) {
+    originalUpdate.call(this, deltaMs);
+    return;
+  }
+
   const view = this as unknown as RestockActorInternals;
   view.navigation.update(deltaMs);
 
@@ -158,6 +186,11 @@ RestockActorView.prototype.sync = function syncWithGuidedMovementAndOpenCart(
   this: RestockActorView,
   snapshot: RestockSceneSnapshot
 ): void {
+  if (!isFirstDelivery()) {
+    originalSync.call(this, snapshot);
+    return;
+  }
+
   const view = this as unknown as RestockActorInternals;
   if (!initializedActors.has(this)) {
     initializedActors.add(this);
@@ -204,15 +237,10 @@ RestockActorView.prototype.sync = function syncWithGuidedMovementAndOpenCart(
       break;
   }
 
-  const isColaDelivery = view.config.caseAssetKey === "prop-cola-case-closed";
   const needsOpenCart = snapshot.step === "restock" || (
     snapshot.step === "open" && snapshot.boxOpened
   );
-  if (
-    !isColaDelivery ||
-    !needsOpenCart ||
-    !view.scene.textures.exists(CART_OPEN_COMBO_SOURCE_KEY)
-  ) return;
+  if (!needsOpenCart || !view.scene.textures.exists(CART_OPEN_COMBO_SOURCE_KEY)) return;
 
   const textureKey = prepareTrimmedTexture(
     view.scene,
@@ -244,9 +272,15 @@ RestockActorView.prototype.sync = function syncWithGuidedMovementAndOpenCart(
 };
 
 const scenePrototype = StarterMarketScene.prototype as unknown as StarterMarketScenePrototypeInternals;
+const originalPerformCurrentAction = scenePrototype.performCurrentAction;
 scenePrototype.performCurrentAction = function performSeparatedRestockStep(
   this: StarterMarketScene
 ): void {
+  if (!isFirstDelivery()) {
+    originalPerformCurrentAction.call(this);
+    return;
+  }
+
   const scene = this as unknown as StarterMarketSceneInternals;
   const snapshot = scene.controller.snapshot();
   if (!scene.canInteract(snapshot)) return;
@@ -287,7 +321,7 @@ ShiftHud.prototype.update = function updateWithWorkflowProgress(
   snapshot: ShiftHudSnapshot,
   copy: ShiftHudCopy
 ): void {
-  const stepNumber = document.body.dataset.activeMode === "restock"
+  const stepNumber = isFirstDelivery()
     ? RESTOCK_STEP_PROGRESS[snapshot.step]
     : undefined;
   if (stepNumber !== undefined) {
