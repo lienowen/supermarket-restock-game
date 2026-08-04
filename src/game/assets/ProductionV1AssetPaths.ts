@@ -13,7 +13,7 @@ export const PRODUCTION_V1_ASSETS = {
   equipment_mop: "assets/game/production-v1/props/equipment-mop.png",
   equipment_pos_terminal: "assets/game/production-v1/props/equipment-pos-terminal.png",
   equipment_restock_cart_empty: "assets/game/production-v3/level1-recut-fixed/equipment-restock-cart-empty.png",
-  equipment_restock_cart_loaded: "assets/game/production-v3/level1-recut-fixed/cart-cola-open-combo.png",
+  equipment_restock_cart_loaded: "assets/game/production-v1/props/equipment-restock-cart-loaded.webp",
   equipment_shopping_basket: "assets/game/production-v1/props/equipment-shopping-basket.png",
   equipment_shopping_cart: "assets/game/production-v1/props/equipment-shopping-cart.png",
   equipment_wet_floor_sign: "assets/game/production-v1/props/equipment-wet-floor-sign.png",
