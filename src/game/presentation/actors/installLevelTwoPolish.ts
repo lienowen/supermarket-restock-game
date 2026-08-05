@@ -5,7 +5,17 @@ import type {
   RestockSceneSnapshot
 } from "../../application/RestockSceneController";
 import { prepareTrimmedTexture } from "../assets/TrimmedTextureFactory";
+import { playActionFeedback } from "../effects/ActionFeedback";
+import {
+  IntegratedBeverageCoolerView,
+  type BeverageCoolerViewConfig,
+  type CoolerStockPoint
+} from "../fixtures/IntegratedBeverageCoolerView";
 import { StarterMarketScene } from "../scenes/StarterMarketScene";
+import {
+  LevelCompleteOverlay,
+  type LevelCompleteOverlayConfig
+} from "../ui/LevelCompleteOverlay";
 import {
   RestockActorView,
   type RestockActorViewConfig
@@ -13,7 +23,12 @@ import {
 
 const PROMOTION_RESTOCK_LEVEL_ID = "starter-level-002";
 const WATER_PRODUCT_KEY = "product-water-bottle";
+const COOLER_PRODUCT_ALIAS = "restock-cola-bottle-hd-v2";
 const FIXED_WORKER_POSITION: NavigationPoint = Object.freeze({ x: 660, y: 790 });
+const SLOT_WIDTH = 230;
+const SLOT_HEIGHT = 112;
+const BASE_DEPTH = 20;
+const LEVEL_TWO_RESULTS_DELAY_MS = 1120;
 
 interface RestockTextureInternals {
   readonly workerIdleCut: string;
@@ -58,7 +73,36 @@ interface PosePresentation {
   readonly height: number;
 }
 
+interface CoolerSlot extends CoolerStockPoint {
+  readonly shelfIndex: number;
+}
+
+interface CoolerInternals {
+  readonly scene: Phaser.Scene;
+  readonly config: BeverageCoolerViewConfig;
+  readonly slots: readonly CoolerSlot[];
+  readonly rowHolders: Phaser.GameObjects.Container[];
+  itemLocalPosition(rowIndex: number, itemIndex: number): CoolerStockPoint;
+  playItemLanding(point: CoolerStockPoint): void;
+}
+
+interface CoolerPrototypeInternals {
+  createStockBottle(
+    this: IntegratedBeverageCoolerView,
+    rowIndex: number,
+    itemIndex: number,
+    animate: boolean
+  ): Phaser.GameObjects.Image;
+  animateFilledRow(this: IntegratedBeverageCoolerView, rowIndex: number): void;
+  showMistake(this: IntegratedBeverageCoolerView, rowIndex: number): void;
+}
+
+interface LevelCompleteOverlayInternals {
+  config: LevelCompleteOverlayConfig;
+}
+
 const waterBottleSets = new WeakMap<RestockActorView, Phaser.GameObjects.Image[]>();
+const promotionStreaks = new WeakMap<IntegratedBeverageCoolerView, number>();
 
 const isPromotionRestock = (): boolean => (
   document.body.dataset.activeLevel === PROMOTION_RESTOCK_LEVEL_ID
@@ -204,4 +248,248 @@ scenePrototype.performCurrentAction = function performOnePromotionStep(
   const action = scene.controller.actionForCurrentStep();
   if (!action || action === "RESTOCK_ROW" || !scene.dispatchSceneAction(action)) return;
   scene.pendingAction = false;
+};
+
+const coolerPrototype = IntegratedBeverageCoolerView.prototype as unknown as CoolerPrototypeInternals;
+const originalCreateStockBottle = coolerPrototype.createStockBottle;
+const originalAnimateFilledRow = coolerPrototype.animateFilledRow;
+const originalShowMistake = coolerPrototype.showMistake;
+
+coolerPrototype.createStockBottle = function createStaggeredWaterBottle(
+  this: IntegratedBeverageCoolerView,
+  rowIndex: number,
+  itemIndex: number,
+  animate: boolean
+): Phaser.GameObjects.Image {
+  if (!isPromotionRestock() || !animate) {
+    return originalCreateStockBottle.call(this, rowIndex, itemIndex, animate);
+  }
+
+  const view = this as unknown as CoolerInternals;
+  const holder = view.rowHolders[rowIndex];
+  const slot = view.slots[rowIndex];
+  if (!holder || !slot || !view.scene.textures.exists(COOLER_PRODUCT_ALIAS)) {
+    return originalCreateStockBottle.call(this, rowIndex, itemIndex, animate);
+  }
+
+  const localTarget = view.itemLocalPosition(rowIndex, itemIndex);
+  const bottleHeight = Phaser.Math.Linear(76, 90, slot.shelfIndex / 2);
+  const sourceX = view.config.stockSource.x - 18 + (itemIndex - 1) * 11;
+  const sourceY = view.config.stockSource.y - 96;
+  const bottle = view.scene.add.image(sourceX, sourceY, COOLER_PRODUCT_ALIAS)
+    .setOrigin(0.5, 1)
+    .setDisplaySize(36, bottleHeight)
+    .setAlpha(0.7)
+    .setDepth(BASE_DEPTH + 3)
+    .setAngle((itemIndex - 1) * -4)
+    .setName(`beverage-cooler-row-${rowIndex}-item-${itemIndex}`);
+
+  const targetScaleX = bottle.scaleX;
+  const targetScaleY = bottle.scaleY;
+  bottle.setScale(targetScaleX * 0.68, targetScaleY * 0.68);
+
+  const worldTarget = {
+    x: slot.x + localTarget.x,
+    y: slot.y + localTarget.y
+  };
+  const liftY = Math.min(sourceY - 68, worldTarget.y - 82);
+  const delay = itemIndex * 82;
+
+  view.scene.tweens.add({
+    targets: bottle,
+    x: worldTarget.x,
+    y: liftY,
+    alpha: 1,
+    angle: 0,
+    scaleX: targetScaleX * 0.92,
+    scaleY: targetScaleY * 0.92,
+    delay,
+    duration: 170,
+    ease: "Quad.Out",
+    onComplete: () => {
+      view.scene.tweens.add({
+        targets: bottle,
+        y: worldTarget.y,
+        scaleX: targetScaleX,
+        scaleY: targetScaleY,
+        duration: 125,
+        ease: "Back.Out",
+        onComplete: () => {
+          holder.add(bottle);
+          bottle.setPosition(localTarget.x, localTarget.y).setDepth(0);
+          view.playItemLanding(worldTarget);
+        }
+      });
+    }
+  });
+
+  document.body.dataset.levelTwoBottleAnimation = "water-three-step-stagger";
+  return bottle;
+};
+
+coolerPrototype.showMistake = function showPromotionMistake(
+  this: IntegratedBeverageCoolerView,
+  rowIndex: number
+): void {
+  originalShowMistake.call(this, rowIndex);
+  if (!isPromotionRestock()) return;
+  promotionStreaks.set(this, 0);
+  const view = this as unknown as CoolerInternals;
+  const slot = view.slots[rowIndex];
+  if (slot) {
+    playActionFeedback(
+      view.scene,
+      { x: slot.x, y: slot.y - 52 },
+      "mistake",
+      { label: "ORDER STAYS THE SAME", emphasis: 1.06 }
+    );
+  }
+  document.body.dataset.levelTwoMistakeRule = "keep-sequence-reset-combo";
+};
+
+coolerPrototype.animateFilledRow = function animatePromotionMemorySuccess(
+  this: IntegratedBeverageCoolerView,
+  rowIndex: number
+): void {
+  originalAnimateFilledRow.call(this, rowIndex);
+  if (!isPromotionRestock()) return;
+
+  const view = this as unknown as CoolerInternals;
+  const slot = view.slots[rowIndex];
+  if (!slot) return;
+
+  const streak = (promotionStreaks.get(this) ?? 0) + 1;
+  promotionStreaks.set(this, streak);
+
+  const flash = view.scene.add.graphics().setDepth(BASE_DEPTH + 10);
+  flash.fillStyle(0x75d9ff, 0.13);
+  flash.fillRoundedRect(
+    slot.x - SLOT_WIDTH / 2,
+    slot.y - SLOT_HEIGHT / 2,
+    SLOT_WIDTH,
+    SLOT_HEIGHT,
+    12
+  );
+  flash.lineStyle(5, 0x9be7ff, 0.96);
+  flash.strokeRoundedRect(
+    slot.x - SLOT_WIDTH / 2,
+    slot.y - SLOT_HEIGHT / 2,
+    SLOT_WIDTH,
+    SLOT_HEIGHT,
+    12
+  );
+
+  const badgeLabel = streak === 1 ? "CORRECT · 1/6" : `MEMORY x${streak}`;
+  const badge = view.scene.add.text(
+    slot.x,
+    slot.y - SLOT_HEIGHT / 2 + 8,
+    badgeLabel,
+    {
+      fontFamily: "Arial, sans-serif",
+      fontSize: streak >= 4 ? "18px" : "16px",
+      fontStyle: "bold",
+      color: "#0d2a35",
+      backgroundColor: "#9be7ff",
+      padding: { x: 10, y: 5 }
+    }
+  )
+    .setOrigin(0.5, 0)
+    .setDepth(BASE_DEPTH + 11)
+    .setScale(0.62)
+    .setAlpha(0);
+
+  view.scene.tweens.add({
+    targets: flash,
+    alpha: 0,
+    duration: 620,
+    ease: "Quad.Out",
+    onComplete: () => flash.destroy()
+  });
+  view.scene.tweens.add({
+    targets: badge,
+    alpha: 1,
+    scaleX: 1,
+    scaleY: 1,
+    duration: 170,
+    hold: 430,
+    yoyo: true,
+    ease: "Back.Out",
+    onComplete: () => badge.destroy()
+  });
+
+  if (streak >= 3) {
+    view.scene.cameras.main.flash(80, 117, 217, 255, false);
+  }
+  if (streak === 6) {
+    const coolerGlow = view.scene.add.graphics().setDepth(BASE_DEPTH + 20);
+    coolerGlow.fillStyle(0x75d9ff, 0.11);
+    coolerGlow.fillRoundedRect(760, 250, 570, 430, 24);
+    coolerGlow.lineStyle(8, 0x9be7ff, 0.92);
+    coolerGlow.strokeRoundedRect(760, 250, 570, 430, 24);
+
+    const readyLabel = view.scene.add.text(1045, 470, "PROMOTION READY", {
+      fontFamily: "Arial, sans-serif",
+      fontSize: "34px",
+      fontStyle: "bold",
+      color: "#0d2a35",
+      backgroundColor: "#9be7ff",
+      padding: { x: 18, y: 10 }
+    })
+      .setOrigin(0.5)
+      .setDepth(BASE_DEPTH + 21)
+      .setScale(0.72)
+      .setAlpha(0);
+
+    view.scene.tweens.add({
+      targets: coolerGlow,
+      alpha: 0,
+      duration: 980,
+      ease: "Quad.Out",
+      onComplete: () => coolerGlow.destroy()
+    });
+    view.scene.tweens.add({
+      targets: readyLabel,
+      alpha: 1,
+      scaleX: 1,
+      scaleY: 1,
+      duration: 220,
+      hold: 520,
+      yoyo: true,
+      ease: "Back.Out",
+      onComplete: () => readyLabel.destroy()
+    });
+    view.scene.cameras.main.flash(180, 117, 217, 255, false);
+    document.body.dataset.levelTwoCompletionFeedback = "full-cooler-water-glow";
+  }
+
+  document.body.dataset.levelTwoMemoryFeedback = `streak-${streak}`;
+};
+
+const originalOverlayShow = LevelCompleteOverlay.prototype.show;
+LevelCompleteOverlay.prototype.show = function showPromotionResultsAfterDisplay(
+  this: LevelCompleteOverlay,
+  delayMs = 180
+): void {
+  if (!isPromotionRestock()) {
+    originalOverlayShow.call(this, delayMs);
+    return;
+  }
+
+  const view = this as unknown as LevelCompleteOverlayInternals;
+  const lines = view.config.rewardLabel
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const performanceLine = (lines[0] ?? "MEMORY COMPLETE").replace("RUSH", "MEMORY");
+  const rewardLine = lines.at(-1) ?? view.config.rewardLabel;
+
+  view.config = {
+    ...view.config,
+    statusLabel: "PROMOTION COMPLETE",
+    levelTitle: "WATER DISPLAY READY",
+    rewardLabel: `${performanceLine}\n${rewardLine}`
+  };
+
+  document.body.dataset.levelTwoCompletionSequence = "display-glow-then-results";
+  originalOverlayShow.call(this, Math.max(delayMs, LEVEL_TWO_RESULTS_DELAY_MS));
 };
