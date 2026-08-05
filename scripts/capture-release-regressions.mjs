@@ -174,7 +174,7 @@ try {
       report.regressions.productionAssetRuntime = (
         metadata.visualTarget === "production-v1-five-mode-campaign" &&
         metadata.actorType === "Image" &&
-        metadata.actorTexture === "cut-restock-worker-idle" &&
+        ["cut-restock-worker-idle", "cut-level-one-worker-idle-matte-clean-v2"].includes(metadata.actorTexture) &&
         metadata.actorComposition === "action-pose-and-layered-cart" &&
         metadata.loadVisual === "cart-back-case-cart-front"
       );
@@ -255,7 +255,23 @@ async function completeLevel(page, level, detailedRestock) {
 async function completeRestock(page, level, detailed) {
   await clickGame(page, 1228, 850);
   await waitSnapshot(page, { step: "load", boxCollected: true });
-  await clickGame(page, 1228, 850);
+
+  if (level.number === 1 || level.number === 2) {
+    await waitReady(page);
+    await clickGame(page, 1228, 850);
+    await waitSnapshot(page, { step: "push", boxLoaded: true });
+    await waitReady(page);
+    await clickGame(page, 1228, 850);
+    await waitSnapshot(page, { step: "park", boxLoaded: true });
+    await waitReady(page);
+    await clickGame(page, 1228, 850);
+    await waitSnapshot(page, { step: "open", boxLoaded: true });
+    await waitReady(page);
+    await clickGame(page, 1228, 850);
+  } else {
+    await clickGame(page, 1228, 850);
+  }
+
   await waitSnapshot(page, { step: "restock", boxLoaded: true, boxOpened: true });
   await waitReady(page);
 
