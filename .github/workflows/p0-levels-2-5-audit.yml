@@ -6,10 +6,6 @@ on:
       - "asset-source/supermarket-restock-p0-assets-v1/**"
       - "scripts/materialize-assets.mjs"
       - "scripts/capture-p0-asset-usage.mjs"
-      - "scripts/capture-promotion-memory.mjs"
-      - "scripts/capture-checkout-scanning.mjs"
-      - "scripts/capture-hold-cleaning.mjs"
-      - "scripts/capture-order-hunt-search.mjs"
       - "src/game/assets/**"
       - "src/game/infrastructure/phaser/createPhaserGame.ts"
       - "src/game/presentation/ui/CheckoutScanDom.ts"
@@ -23,7 +19,7 @@ permissions:
 jobs:
   focused-audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repository
@@ -47,49 +43,13 @@ jobs:
         run: npm run build
 
       - name: Verify committed P0 assets are used by Levels 2-5
-        id: p0usage
-        continue-on-error: true
         run: node scripts/capture-p0-asset-usage.mjs
-
-      - name: Diagnose Level 2 promotion memory baseline
-        id: level2
-        continue-on-error: true
-        run: node scripts/capture-promotion-memory.mjs
-
-      - name: Diagnose Level 3 checkout baseline
-        id: level3
-        continue-on-error: true
-        run: node scripts/capture-checkout-scanning.mjs
-
-      - name: Diagnose Level 4 cleaning baseline
-        id: level4
-        continue-on-error: true
-        run: node scripts/capture-hold-cleaning.mjs
-
-      - name: Diagnose Level 5 order-hunt baseline
-        id: level5
-        continue-on-error: true
-        run: node scripts/capture-order-hunt-search.mjs
 
       - name: Upload focused evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: p0-levels-2-5-audit
-          path: ui-audit
-          if-no-files-found: warn
+          path: ui-audit/p0-assets
+          if-no-files-found: error
           retention-days: 14
-
-      - name: Enforce P0 asset usage result
-        if: always()
-        env:
-          P0_USAGE: ${{ steps.p0usage.outcome }}
-          LEVEL2_BASELINE: ${{ steps.level2.outcome }}
-          LEVEL3_BASELINE: ${{ steps.level3.outcome }}
-          LEVEL4_BASELINE: ${{ steps.level4.outcome }}
-          LEVEL5_BASELINE: ${{ steps.level5.outcome }}
-        run: |
-          printf 'P0 asset usage: %s\n' "$P0_USAGE"
-          printf 'Existing gameplay audits — L2: %s, L3: %s, L4: %s, L5: %s\n' \
-            "$LEVEL2_BASELINE" "$LEVEL3_BASELINE" "$LEVEL4_BASELINE" "$LEVEL5_BASELINE"
-          test "$P0_USAGE" = success
