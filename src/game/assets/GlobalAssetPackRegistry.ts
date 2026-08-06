@@ -62,12 +62,6 @@ export type GlobalAssetPack =
   | CleanGlobalAssetPack
   | FindItemsGlobalAssetPack;
 
-/**
- * Only assets that are present in the repository and verified by the release
- * pipeline belong in the shared preload list. Planned global assets remain in
- * the catalogue for future production work, but must not be requested by the
- * browser until their real files are delivered.
- */
 const SHARED_STORE_ASSET_KEYS = Object.freeze([
   "fixture-produce-display-a",
   "fixture-backroom-rack-a"
@@ -106,9 +100,11 @@ export const MARKET_RESTOCK_ASSET_PACK: RestockGlobalAssetPack = Object.freeze({
       closedAssetKey: "prop-cola-case-closed",
       openAssetKey: "prop-cola-case-open"
     }),
+    // Temporary stable fallback. The dedicated water-case PNG pair remains in
+    // asset-source and will be connected after the unified recut/export batch.
     "water-bottle": Object.freeze({
-      closedAssetKey: "prop-water-case-closed",
-      openAssetKey: "prop-water-case-open"
+      closedAssetKey: "prop-cola-case-closed",
+      openAssetKey: "prop-cola-case-open"
     }),
     "milk-bottle": Object.freeze({
       closedAssetKey: "prop-milk-case-closed",
