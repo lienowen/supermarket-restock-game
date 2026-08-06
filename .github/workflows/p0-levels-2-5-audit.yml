@@ -5,6 +5,10 @@ on:
     paths:
       - "asset-source/supermarket-restock-p0-assets-v1/**"
       - "scripts/materialize-assets.mjs"
+      - "scripts/capture-promotion-memory.mjs"
+      - "scripts/capture-checkout-scanning.mjs"
+      - "scripts/capture-hold-cleaning.mjs"
+      - "scripts/capture-order-hunt-search.mjs"
       - "src/game/assets/**"
       - "src/game/infrastructure/phaser/createPhaserGame.ts"
       - "src/game/presentation/ui/CheckoutScanDom.ts"
@@ -18,7 +22,7 @@ permissions:
 jobs:
   focused-audit:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
 
     steps:
       - name: Checkout repository
@@ -42,15 +46,23 @@ jobs:
         run: npm run build
 
       - name: Verify Level 2 promotion memory
+        id: level2
+        continue-on-error: true
         run: node scripts/capture-promotion-memory.mjs
 
       - name: Verify Level 3 checkout scanning
+        id: level3
+        continue-on-error: true
         run: node scripts/capture-checkout-scanning.mjs
 
       - name: Verify Level 4 hold cleaning
+        id: level4
+        continue-on-error: true
         run: node scripts/capture-hold-cleaning.mjs
 
       - name: Verify Level 5 order hunt
+        id: level5
+        continue-on-error: true
         run: node scripts/capture-order-hunt-search.mjs
 
       - name: Upload focused evidence
@@ -61,3 +73,18 @@ jobs:
           path: ui-audit
           if-no-files-found: warn
           retention-days: 14
+
+      - name: Enforce focused audit result
+        if: always()
+        env:
+          LEVEL2: ${{ steps.level2.outcome }}
+          LEVEL3: ${{ steps.level3.outcome }}
+          LEVEL4: ${{ steps.level4.outcome }}
+          LEVEL5: ${{ steps.level5.outcome }}
+        run: |
+          printf 'Level 2: %s\nLevel 3: %s\nLevel 4: %s\nLevel 5: %s\n' \
+            "$LEVEL2" "$LEVEL3" "$LEVEL4" "$LEVEL5"
+          test "$LEVEL2" = success
+          test "$LEVEL3" = success
+          test "$LEVEL4" = success
+          test "$LEVEL5" = success
