@@ -102,7 +102,7 @@ export const STARTER_ASSET_CATALOGUE: AssetCatalogue = {
       key: "environment-starter-market-salesfloor-v3",
       path: `${P0_LEVEL_ASSET_ROOT}/market-salesfloor-v3.png`,
       category: "environment",
-      canvasSize: [2048, 1152],
+      canvasSize: [1280, 720],
       anchor: [0, 0],
       defaultScale: 1,
       depthGroup: "far-environment",
