@@ -1,11 +1,11 @@
-name: P0 Levels 2-5 Audit
+name: P0 Levels 3-5 Audit
 
 on:
   pull_request:
     paths:
       - "asset-source/supermarket-restock-p0-assets-v1/**"
       - "scripts/materialize-assets.mjs"
-      - "scripts/capture-p0-asset-usage.mjs"
+      - "scripts/capture-p0-levels-3-5.mjs"
       - "src/game/assets/**"
       - "src/game/infrastructure/phaser/createPhaserGame.ts"
       - "src/game/presentation/ui/CheckoutScanDom.ts"
@@ -42,14 +42,14 @@ jobs:
       - name: Build production bundle
         run: npm run build
 
-      - name: Verify committed P0 assets are used by Levels 2-5
-        run: node scripts/capture-p0-asset-usage.mjs
+      - name: Verify P0 assets used by Levels 3-5
+        run: node scripts/capture-p0-levels-3-5.mjs
 
       - name: Upload focused evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: p0-levels-2-5-audit
-          path: ui-audit/p0-assets
+          name: p0-levels-3-5-audit
+          path: ui-audit/p0-levels-3-5
           if-no-files-found: error
           retention-days: 14
