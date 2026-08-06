@@ -46,6 +46,7 @@ export interface CleanGlobalAssetPack extends BaseGlobalAssetPack {
   readonly cleaningFixtureAssetKey: string;
   readonly cleaningCartAssetKey: string;
   readonly wetFloorSignAssetKey: string;
+  readonly spillAssetKeys: readonly string[];
 }
 
 export interface FindItemsGlobalAssetPack extends BaseGlobalAssetPack {
@@ -107,7 +108,7 @@ export const MARKET_RESTOCK_ASSET_PACK: RestockGlobalAssetPack = Object.freeze({
     }),
     "water-bottle": Object.freeze({
       closedAssetKey: "prop-water-case-closed",
-      openAssetKey: "prop-water-case-closed"
+      openAssetKey: "prop-water-case-open"
     }),
     "milk-bottle": Object.freeze({
       closedAssetKey: "prop-milk-case-closed",
@@ -119,7 +120,7 @@ export const MARKET_RESTOCK_ASSET_PACK: RestockGlobalAssetPack = Object.freeze({
 export const MARKET_CHECKOUT_ASSET_PACK: CheckoutGlobalAssetPack = Object.freeze({
   id: "market-checkout-v1",
   mode: "checkout",
-  environmentAssetKey: "environment-starter-market-salesfloor-prototype",
+  environmentAssetKey: "environment-starter-market-salesfloor-v3",
   sharedStoreAssetKeys: SHARED_STORE_ASSET_KEYS,
   workerIdleAssetKey: "worker-a-idle",
   workerWalkAssetKeys: SHARED_WORKER_WALK_KEYS,
@@ -133,27 +134,34 @@ export const MARKET_CHECKOUT_ASSET_PACK: CheckoutGlobalAssetPack = Object.freeze
   equipmentAssetKeys: Object.freeze([
     "equipment-checkout-scanner",
     "equipment-pos-terminal",
-    "equipment-shopping-basket"
+    "equipment-shopping-basket",
+    "equipment-checkout-bag-open",
+    "prop-checkout-receipt"
   ])
 });
 
 export const MARKET_CLEAN_ASSET_PACK: CleanGlobalAssetPack = Object.freeze({
   id: "market-clean-v1",
   mode: "clean",
-  environmentAssetKey: "environment-starter-market-salesfloor-prototype",
+  environmentAssetKey: "environment-starter-market-salesfloor-v3",
   sharedStoreAssetKeys: SHARED_STORE_ASSET_KEYS,
   workerIdleAssetKey: "worker-a-idle",
   workerWalkAssetKeys: SHARED_WORKER_WALK_KEYS,
   workerMopAssetKey: "worker-a-mop-floor",
   cleaningFixtureAssetKey: "fixture-cleaning-supplies-a",
   cleaningCartAssetKey: "equipment-cleaning-cart",
-  wetFloorSignAssetKey: "equipment-wet-floor-sign"
+  wetFloorSignAssetKey: "equipment-wet-floor-sign",
+  spillAssetKeys: Object.freeze([
+    "effect-spill-water-large",
+    "effect-spill-juice-large",
+    "effect-spill-dirt-smear-large"
+  ])
 });
 
 export const MARKET_FIND_ITEMS_ASSET_PACK: FindItemsGlobalAssetPack = Object.freeze({
   id: "market-find-items-v1",
   mode: "find-items",
-  environmentAssetKey: "environment-starter-market-salesfloor-prototype",
+  environmentAssetKey: "environment-starter-market-salesfloor-v3",
   sharedStoreAssetKeys: SHARED_STORE_ASSET_KEYS,
   workerIdleAssetKey: "worker-a-idle",
   workerWalkAssetKeys: SHARED_WORKER_WALK_KEYS,
