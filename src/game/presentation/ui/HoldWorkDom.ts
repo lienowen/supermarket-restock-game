@@ -8,6 +8,7 @@ export interface HoldWorkDomConfig {
   readonly levelId: string;
   readonly spec: HoldWorkExperienceSpec;
   readonly toolImagePath?: string;
+  readonly spillImagePaths?: readonly string[];
 }
 
 export interface HoldWorkDomHandle {
@@ -122,11 +123,12 @@ export function mountHoldWorkDom(config: HoldWorkDomConfig): HoldWorkDomHandle {
   });
   const inner = document.createElement("span");
   applyStyles(inner, {
+    position: "relative",
     display: "grid",
     placeItems: "center",
     width: "108px",
     height: "108px",
-    padding: "10px",
+    padding: "8px",
     boxSizing: "border-box",
     borderRadius: "50%",
     background: "#17382f",
@@ -134,26 +136,55 @@ export function mountHoldWorkDom(config: HoldWorkDomConfig): HoldWorkDomHandle {
     fontWeight: "900",
     letterSpacing: "0.8px",
     textAlign: "center",
-    lineHeight: "1.2"
+    lineHeight: "1.2",
+    overflow: "hidden"
   });
-  if (config.toolImagePath) {
-    const image = document.createElement("img");
-    image.src = assetUrl(config.toolImagePath);
-    image.alt = "";
-    image.draggable = false;
-    applyStyles(image, {
-      width: "52px",
-      height: "48px",
-      objectFit: "contain",
-      pointerEvents: "none"
-    });
-    const label = document.createElement("span");
-    label.textContent = config.spec.holdLabel;
-    applyStyles(label, { fontSize: "9px", pointerEvents: "none" });
-    inner.append(image, label);
-  } else {
-    inner.textContent = config.spec.holdLabel;
-  }
+
+  const spillImage = document.createElement("img");
+  spillImage.alt = "";
+  spillImage.draggable = false;
+  applyStyles(spillImage, {
+    width: "94px",
+    height: "68px",
+    objectFit: "contain",
+    pointerEvents: "none",
+    opacity: "1",
+    transform: "scale(1)",
+    transition: "opacity 100ms linear, transform 100ms linear",
+    filter: "drop-shadow(0 5px 7px rgba(0,0,0,0.25))"
+  });
+  if (config.spillImagePaths?.[0]) spillImage.src = assetUrl(config.spillImagePaths[0]);
+
+  const toolImage = document.createElement("img");
+  if (config.toolImagePath) toolImage.src = assetUrl(config.toolImagePath);
+  toolImage.alt = "";
+  toolImage.draggable = false;
+  applyStyles(toolImage, {
+    position: "absolute",
+    width: "42px",
+    height: "42px",
+    right: "3px",
+    top: "2px",
+    objectFit: "contain",
+    pointerEvents: "none",
+    filter: "drop-shadow(0 3px 4px rgba(0,0,0,0.34))"
+  });
+
+  const label = document.createElement("span");
+  label.textContent = config.spec.holdLabel;
+  applyStyles(label, {
+    position: "absolute",
+    left: "8px",
+    right: "8px",
+    bottom: "8px",
+    fontSize: "9px",
+    pointerEvents: "none",
+    textShadow: "0 1px 3px rgba(0,0,0,0.8)"
+  });
+
+  if (config.spillImagePaths?.length) inner.appendChild(spillImage);
+  if (config.toolImagePath) inner.appendChild(toolImage);
+  inner.appendChild(label);
   holdButton.appendChild(inner);
   panel.append(copy, holdButton);
   overlay.appendChild(panel);
@@ -177,11 +208,17 @@ export function mountHoldWorkDom(config: HoldWorkDomConfig): HoldWorkDomHandle {
   const snapshot = () => scenePort()?.controller?.snapshot?.();
   const isReady = () => Boolean(scenePort()?.isInteractionReady?.());
 
+  const resetSpillVisual = (): void => {
+    spillImage.style.opacity = "1";
+    spillImage.style.transform = "scale(1)";
+  };
+
   const resetHold = (message = "Hold until the ring reaches 100%"): void => {
     holding = false;
     cancelAnimationFrame(frameId);
     holdButton.style.background = "conic-gradient(#7bd8e2 0deg, rgba(255,255,255,0.12) 0deg)";
     holdButton.style.transform = "scale(1)";
+    resetSpillVisual();
     feedback.textContent = message;
     feedback.style.color = "#9bc5bf";
     document.body.dataset.holdWork = overlay.style.display === "none" ? "waiting" : "active";
@@ -196,6 +233,8 @@ export function mountHoldWorkDom(config: HoldWorkDomConfig): HoldWorkDomHandle {
       feedback.style.color = "#ffb098";
       return;
     }
+    spillImage.style.opacity = "0";
+    spillImage.style.transform = "scale(0.68)";
     feedback.textContent = "Cleaning complete";
     feedback.style.color = "#8fe7c1";
     document.body.dataset.holdWork = "committing";
@@ -208,6 +247,8 @@ export function mountHoldWorkDom(config: HoldWorkDomConfig): HoldWorkDomHandle {
     const degrees = Math.round(ratio * 360);
     holdButton.style.background = `conic-gradient(#7bd8e2 ${degrees}deg, rgba(255,255,255,0.12) ${degrees}deg)`;
     holdButton.style.transform = `scale(${1 + ratio * 0.035})`;
+    spillImage.style.opacity = String(1 - ratio * 0.82);
+    spillImage.style.transform = `scale(${1 - ratio * 0.28})`;
     feedback.textContent = `Cleaning ${Math.round(ratio * 100)}%`;
     feedback.style.color = "#d9fbff";
     if (ratio >= 1) commit();
@@ -272,6 +313,9 @@ export function mountHoldWorkDom(config: HoldWorkDomConfig): HoldWorkDomHandle {
     if (state?.step === "clean" && state.progress < state.total && isReady()) {
       if (activeProgress !== state.progress) {
         activeProgress = state.progress;
+        const spillPath = config.spillImagePaths?.[state.progress % (config.spillImagePaths.length || 1)];
+        if (spillPath) spillImage.src = assetUrl(spillPath);
+        resetSpillVisual();
         stepLabel.textContent = `SPILL ${state.progress + 1}/${state.total}`;
         overlay.style.display = "flex";
         document.body.dataset.holdWork = "active";
