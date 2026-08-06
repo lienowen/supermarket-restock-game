@@ -186,6 +186,8 @@ export async function createPhaserGame(
     asset.key === "equipment-barcode-scanner"
   ));
   const posAsset = checkoutEquipment?.find((asset) => asset.key === "equipment-pos-terminal");
+  const bagAsset = checkoutEquipment?.find((asset) => asset.key === "equipment-checkout-bag-open");
+  const receiptAsset = checkoutEquipment?.find((asset) => asset.key === "prop-checkout-receipt");
 
   const skipCheckoutScan = options.skipCheckoutScan ?? checkoutScanDisabledFromLocation();
   if (
@@ -204,7 +206,9 @@ export async function createPhaserGame(
         experience.checkoutScan.productAssetKeys
       ),
       scannerAsset,
-      posAsset
+      posAsset,
+      bagAsset,
+      receiptAsset
     });
   } else {
     document.body.dataset.checkoutScan = experience.checkoutScan ? "skipped" : "none";
@@ -247,7 +251,10 @@ export async function createPhaserGame(
       sceneKey: presentation.scene.key,
       levelId: presentation.campaignLevel.level.id,
       spec: experience.holdWork,
-      toolImagePath: presentation.levelAssets.workerMop.path
+      toolImagePath: presentation.levelAssets.workerMop.path,
+      spillImagePaths: "spills" in presentation.levelAssets
+        ? presentation.levelAssets.spills.map((asset) => asset.path)
+        : undefined
     });
   } else {
     document.body.dataset.holdWork = experience.holdWork ? "skipped" : "none";
