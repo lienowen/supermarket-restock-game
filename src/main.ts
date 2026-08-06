@@ -1,6 +1,11 @@
 import "./styles.css";
 import "./visual-comfort.css";
 import "./game/presentation/actors/installRestockCartCombo";
+import "./game/presentation/actors/installLevelOnePolish";
+import "./game/presentation/actors/installLevelOneWorkerMatteCleanup";
+import "./game/presentation/actors/installLevelTwoPolish";
+import "./game/presentation/actors/installLevelTwoMemoryFeedback";
+import "./game/presentation/actors/installLevelOneCompletionPolish";
 import { bootstrapGame } from "./game/bootstrap";
 
 void bootstrapGame().catch((error: unknown) => {

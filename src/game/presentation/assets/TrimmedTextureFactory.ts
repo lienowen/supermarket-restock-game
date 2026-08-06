@@ -23,6 +23,77 @@ const sourceDimensions = (source: CanvasImageSourceLike): SourceDimensions => ({
   height: source instanceof HTMLImageElement ? source.naturalHeight : source.height
 });
 
+const pixelOffset = (pixelIndex: number): number => pixelIndex * 4;
+
+const isLightNeutralPixel = (
+  pixels: Uint8ClampedArray,
+  pixelIndex: number
+): boolean => {
+  const offset = pixelOffset(pixelIndex);
+  const red = pixels[offset] ?? 0;
+  const green = pixels[offset + 1] ?? 0;
+  const blue = pixels[offset + 2] ?? 0;
+  const alpha = pixels[offset + 3] ?? 0;
+  if (alpha <= 8) return true;
+
+  const maximum = Math.max(red, green, blue);
+  const minimum = Math.min(red, green, blue);
+  const average = (red + green + blue) / 3;
+  return maximum - minimum <= 42 && average >= 168;
+};
+
+/**
+ * Removes only light neutral pixels connected to the canvas edge. This clears
+ * white/checkerboard matte and anti-aliased fringe without deleting enclosed
+ * white details such as a worker's shirt, name badge, or shoes.
+ */
+const removeConnectedLightNeutralBackground = (
+  image: ImageData,
+  width: number,
+  height: number
+): void => {
+  const pixels = image.data;
+  const totalPixels = width * height;
+  const visited = new Uint8Array(totalPixels);
+  const queue = new Int32Array(totalPixels);
+  let head = 0;
+  let tail = 0;
+
+  const enqueue = (x: number, y: number): void => {
+    if (x < 0 || x >= width || y < 0 || y >= height) return;
+    const pixelIndex = y * width + x;
+    if (visited[pixelIndex] === 1 || !isLightNeutralPixel(pixels, pixelIndex)) return;
+    visited[pixelIndex] = 1;
+    queue[tail] = pixelIndex;
+    tail += 1;
+  };
+
+  for (let x = 0; x < width; x += 1) {
+    enqueue(x, 0);
+    enqueue(x, height - 1);
+  }
+  for (let y = 1; y < height - 1; y += 1) {
+    enqueue(0, y);
+    enqueue(width - 1, y);
+  }
+
+  while (head < tail) {
+    const pixelIndex = queue[head] ?? 0;
+    head += 1;
+    const x = pixelIndex % width;
+    const y = Math.floor(pixelIndex / width);
+    enqueue(x - 1, y);
+    enqueue(x + 1, y);
+    enqueue(x, y - 1);
+    enqueue(x, y + 1);
+  }
+
+  for (let pixelIndex = 0; pixelIndex < totalPixels; pixelIndex += 1) {
+    if (visited[pixelIndex] !== 1) continue;
+    pixels[pixelOffset(pixelIndex) + 3] = 0;
+  }
+};
+
 const createSourceCanvas = (
   source: CanvasImageSourceLike,
   removeLightNeutralBackground: boolean
@@ -39,21 +110,7 @@ const createSourceCanvas = (
   if (!removeLightNeutralBackground) return scratch;
 
   const image = context.getImageData(0, 0, dimensions.width, dimensions.height);
-  const pixels = image.data;
-  for (let index = 0; index < pixels.length; index += 4) {
-    const red = pixels[index] ?? 0;
-    const green = pixels[index + 1] ?? 0;
-    const blue = pixels[index + 2] ?? 0;
-    const alpha = pixels[index + 3] ?? 0;
-    if (alpha <= 8) continue;
-
-    const max = Math.max(red, green, blue);
-    const min = Math.min(red, green, blue);
-    const average = (red + green + blue) / 3;
-    const neutral = max - min <= 30;
-    const bright = average >= 176;
-    if (neutral && bright) pixels[index + 3] = 0;
-  }
+  removeConnectedLightNeutralBackground(image, dimensions.width, dimensions.height);
   context.putImageData(image, 0, 0);
   return scratch;
 };
@@ -120,8 +177,9 @@ const createTrimmedTextureFromCanvas = (
 
 /**
  * Creates a transparent texture containing only the source object's visible
- * pixels. Optional cleanup removes a baked checkerboard. trimBottomRatio is
- * used for composite source art where an unwanted pallet is below the object.
+ * pixels. Optional cleanup removes a connected light neutral background.
+ * trimBottomRatio is used for composite source art where an unwanted pallet is
+ * below the object.
  */
 export function prepareTrimmedTexture(
   scene: Phaser.Scene,

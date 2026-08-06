@@ -23,6 +23,7 @@ export function mountRestockMemoryPreviewDom(
   }
 
   let active = true;
+  let completed = false;
   const overlay = document.createElement("section");
   overlay.id = "restock-memory-preview";
   overlay.setAttribute("role", "dialog");
@@ -74,14 +75,26 @@ export function mountRestockMemoryPreviewDom(
   });
 
   const instruction = document.createElement("p");
-  instruction.textContent = "The numbers disappear when stocking begins. Fill every slot in this exact order.";
+  instruction.textContent = "Watch the glow from 1 to 6. The numbers disappear when stocking begins.";
   applyStyles(instruction, {
-    margin: "0 auto 18px",
+    margin: "0 auto 10px",
     maxWidth: "500px",
     textAlign: "center",
     color: "#d6e7db",
     fontSize: "14px",
     lineHeight: "1.45"
+  });
+
+  const sequenceCue = document.createElement("div");
+  sequenceCue.id = "restock-memory-sequence-cue";
+  sequenceCue.textContent = "WATCH THE GLOW · 1 → 6";
+  applyStyles(sequenceCue, {
+    marginBottom: "12px",
+    textAlign: "center",
+    color: "#9be7ff",
+    fontSize: "12px",
+    fontWeight: "900",
+    letterSpacing: "1px"
   });
 
   const cooler = document.createElement("div");
@@ -102,9 +115,12 @@ export function mountRestockMemoryPreviewDom(
 
   const orderBySlot = new Map<number, number>();
   config.sequence.forEach((slotIndex, orderIndex) => orderBySlot.set(slotIndex, orderIndex + 1));
+  const cellsByOrder: HTMLElement[] = [];
   [0, 3, 1, 4, 2, 5].forEach((slotIndex) => {
+    const order = orderBySlot.get(slotIndex) ?? 0;
     const cell = document.createElement("div");
     cell.dataset.slotIndex = String(slotIndex);
+    cell.dataset.order = String(order);
     applyStyles(cell, {
       position: "relative",
       display: "grid",
@@ -112,7 +128,8 @@ export function mountRestockMemoryPreviewDom(
       border: "2px solid rgba(183, 213, 199, 0.26)",
       borderRadius: "10px",
       background: "linear-gradient(180deg, rgba(59, 92, 78, 0.5), rgba(13, 36, 28, 0.65))",
-      overflow: "hidden"
+      overflow: "hidden",
+      transformOrigin: "center"
     });
 
     const shelf = document.createElement("div");
@@ -127,7 +144,7 @@ export function mountRestockMemoryPreviewDom(
     });
 
     const number = document.createElement("span");
-    number.textContent = String(orderBySlot.get(slotIndex) ?? "?");
+    number.textContent = String(order || "?");
     applyStyles(number, {
       display: "grid",
       placeItems: "center",
@@ -138,10 +155,12 @@ export function mountRestockMemoryPreviewDom(
       color: "#182319",
       fontSize: "22px",
       fontWeight: "900",
-      boxShadow: "0 6px 14px rgba(0, 0, 0, 0.28)"
+      boxShadow: "0 6px 14px rgba(0, 0, 0, 0.28)",
+      transformOrigin: "center"
     });
     cell.append(shelf, number);
     cooler.appendChild(cell);
+    if (order > 0) cellsByOrder[order - 1] = cell;
   });
 
   const countdown = document.createElement("div");
@@ -168,36 +187,99 @@ export function mountRestockMemoryPreviewDom(
     width: "100%",
     height: "100%",
     borderRadius: "999px",
-    background: "#ffd95e",
+    background: "linear-gradient(90deg, #ffd95e, #9be7ff)",
     transformOrigin: "left center"
   });
   progress.appendChild(fill);
 
-  panel.append(eyebrow, title, instruction, cooler, countdown, progress);
+  panel.append(eyebrow, title, instruction, sequenceCue, cooler, countdown, progress);
   overlay.appendChild(panel);
   document.body.appendChild(overlay);
   document.body.dataset.restockMemory = "preview";
+  document.body.dataset.levelTwoMemoryPreview = "sequential-glow";
 
   const startedAt = performance.now();
   let frameId = 0;
   let timerId = 0;
+  let exitTimerId = 0;
+  const pulseTimerIds: number[] = [];
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const pulseStepMs = Math.max(
+    90,
+    Math.min(420, Math.floor(Math.max(540, config.durationMs - 560) / config.sequence.length))
+  );
+
+  const clearPulseTimers = (): void => {
+    pulseTimerIds.splice(0).forEach((id) => window.clearTimeout(id));
+  };
+
+  if (!reducedMotion) {
+    cellsByOrder.forEach((cell, index) => {
+      const pulseTimerId = window.setTimeout(() => {
+        if (!active) return;
+        sequenceCue.textContent = `NOW WATCH ${index + 1} OF ${cellsByOrder.length}`;
+        cell.style.borderColor = "rgba(155, 231, 255, 0.94)";
+        const number = cell.querySelector("span");
+        cell.animate(
+          [
+            { transform: "scale(1)", boxShadow: "0 0 0 rgba(155, 231, 255, 0)" },
+            { transform: "scale(1.09)", boxShadow: "0 0 28px rgba(155, 231, 255, 0.72)" },
+            { transform: "scale(1)", boxShadow: "0 0 8px rgba(155, 231, 255, 0.3)" }
+          ],
+          { duration: 360, easing: "cubic-bezier(.2,.8,.2,1)" }
+        );
+        number?.animate(
+          [
+            { transform: "scale(1)", background: "#dcb53f" },
+            { transform: "scale(1.22)", background: "#9be7ff" },
+            { transform: "scale(1)", background: "#dcb53f" }
+          ],
+          { duration: 360, easing: "cubic-bezier(.2,.8,.2,1)" }
+        );
+      }, 180 + index * pulseStepMs);
+      pulseTimerIds.push(pulseTimerId);
+    });
+  }
+
+  const completeOverlay = (): void => {
+    if (completed) return;
+    completed = true;
+    overlay.remove();
+    document.body.dataset.restockMemory = "active";
+    config.onComplete();
+  };
 
   const finish = (): void => {
     if (!active) return;
     active = false;
     cancelAnimationFrame(frameId);
     window.clearTimeout(timerId);
-    overlay.animate(
+    clearPulseTimers();
+    countdown.textContent = "GO! STOCK FROM MEMORY";
+    countdown.style.color = "#9be7ff";
+    countdown.style.fontSize = "18px";
+    sequenceCue.textContent = "NUMBERS HIDDEN · TRUST YOUR MEMORY";
+    sequenceCue.style.color = "#ffd95e";
+    fill.style.transform = "scaleX(0)";
+
+    panel.animate(
       [
-        { opacity: 1, transform: "scale(1)" },
-        { opacity: 0, transform: "scale(1.015)" }
+        { transform: "scale(1)", boxShadow: "0 24px 70px rgba(0, 0, 0, 0.5)" },
+        { transform: "scale(1.025)", boxShadow: "0 24px 85px rgba(155, 231, 255, 0.32)" },
+        { transform: "scale(1)", boxShadow: "0 24px 70px rgba(0, 0, 0, 0.5)" }
       ],
-      { duration: 180, easing: "ease-out", fill: "forwards" }
-    ).finished.finally(() => {
-      overlay.remove();
-      document.body.dataset.restockMemory = "active";
-      config.onComplete();
-    });
+      { duration: 340, easing: "ease-out" }
+    );
+
+    exitTimerId = window.setTimeout(() => {
+      overlay.animate(
+        [
+          { opacity: 1, transform: "scale(1)" },
+          { opacity: 0, transform: "scale(1.015)" }
+        ],
+        { duration: 180, easing: "ease-out", fill: "forwards" }
+      ).finished.finally(completeOverlay);
+    }, reducedMotion ? 80 : 360);
   };
 
   const update = (): void => {
@@ -214,10 +296,14 @@ export function mountRestockMemoryPreviewDom(
   return Object.freeze({
     destroy: () => {
       active = false;
+      completed = true;
       cancelAnimationFrame(frameId);
       window.clearTimeout(timerId);
+      window.clearTimeout(exitTimerId);
+      clearPulseTimers();
       overlay.remove();
       delete document.body.dataset.restockMemory;
+      delete document.body.dataset.levelTwoMemoryPreview;
     }
   });
 }
