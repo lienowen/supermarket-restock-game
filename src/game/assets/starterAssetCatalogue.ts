@@ -1,6 +1,8 @@
 import type { AssetCatalogue, AssetDescriptor } from "./AssetDescriptor";
 import { PRODUCTION_V1_ASSETS } from "./ProductionV1AssetPaths";
 
+const P0_LEVEL_ASSET_ROOT = "assets/game/production-v2/p0-levels-2-5";
+
 const asset = (descriptor: AssetDescriptor): AssetDescriptor => descriptor;
 
 const productionCharacter = (
@@ -94,6 +96,20 @@ export const STARTER_ASSET_CATALOGUE: AssetCatalogue = {
       perspective: "fixed-third-person",
       lightDirection: "upper-left",
       state: "salesfloor-v2",
+      status: "production"
+    }),
+    asset({
+      key: "environment-starter-market-salesfloor-v3",
+      path: `${P0_LEVEL_ASSET_ROOT}/market-salesfloor-v3.png`,
+      category: "environment",
+      canvasSize: [2048, 1152],
+      anchor: [0, 0],
+      defaultScale: 1,
+      depthGroup: "far-environment",
+      preloadGroup: "starter-market",
+      perspective: "fixed-third-person",
+      lightDirection: "upper-left",
+      state: "salesfloor-v3",
       status: "production"
     }),
     asset({
@@ -209,6 +225,40 @@ export const STARTER_ASSET_CATALOGUE: AssetCatalogue = {
     productionEquipment("equipment-mop", PRODUCTION_V1_ASSETS.equipment_mop, "ready"),
     productionEquipment("equipment-cleaning-cart", PRODUCTION_V1_ASSETS.equipment_cleaning_cart, "ready"),
     productionEquipment("equipment-wet-floor-sign", PRODUCTION_V1_ASSETS.equipment_wet_floor_sign, "active"),
+    productionEquipment(
+      "equipment-checkout-bag-open",
+      `${P0_LEVEL_ASSET_ROOT}/equipment-checkout-bag-open.png`,
+      "open-empty"
+    ),
+
+    asset({
+      key: "prop-checkout-receipt",
+      path: `${P0_LEVEL_ASSET_ROOT}/prop-checkout-receipt.png`,
+      category: "prop",
+      canvasSize: [512, 512],
+      anchor: [0.5, 0.5],
+      defaultScale: 0.32,
+      depthGroup: "props",
+      preloadGroup: "starter-market",
+      perspective: "fixed-third-person",
+      lightDirection: "upper-left",
+      state: "printed",
+      status: "production"
+    }),
+    ...(["water", "juice", "dirt-smear"] as const).map((spillType): AssetDescriptor => ({
+      key: `effect-spill-${spillType}-large`,
+      path: `${P0_LEVEL_ASSET_ROOT}/spill-${spillType}-large.png`,
+      category: "effect",
+      canvasSize: [768, 512],
+      anchor: [0.5, 0.5],
+      defaultScale: 0.48,
+      depthGroup: "world-effects",
+      preloadGroup: "starter-market",
+      perspective: "fixed-third-person",
+      lightDirection: "upper-left",
+      state: "uncleaned",
+      status: "production"
+    })),
 
     asset({
       key: "prop-cola-case-closed",
@@ -238,9 +288,37 @@ export const STARTER_ASSET_CATALOGUE: AssetCatalogue = {
       state: "open",
       status: "production"
     }),
-    ...(["milk", "water"] as const).map((product): AssetDescriptor => ({
-      key: `prop-${product}-case-closed`,
-      path: `assets/game/props/cases/${product}-case-closed.png`,
+    asset({
+      key: "prop-water-case-closed",
+      path: `${P0_LEVEL_ASSET_ROOT}/water-case-closed.png`,
+      category: "prop",
+      canvasSize: [768, 768],
+      anchor: [0.5, 0.96],
+      defaultScale: 0.42,
+      depthGroup: "props",
+      preloadGroup: "starter-market",
+      perspective: "fixed-third-person",
+      lightDirection: "upper-left",
+      state: "closed",
+      status: "production"
+    }),
+    asset({
+      key: "prop-water-case-open",
+      path: `${P0_LEVEL_ASSET_ROOT}/water-case-open.png`,
+      category: "prop",
+      canvasSize: [768, 768],
+      anchor: [0.5, 0.96],
+      defaultScale: 0.42,
+      depthGroup: "props",
+      preloadGroup: "starter-market",
+      perspective: "fixed-third-person",
+      lightDirection: "upper-left",
+      state: "open",
+      status: "production"
+    }),
+    asset({
+      key: "prop-milk-case-closed",
+      path: "assets/game/props/cases/milk-case-closed.png",
       category: "prop",
       canvasSize: [512, 512],
       anchor: [0.5, 0.86],
@@ -251,7 +329,7 @@ export const STARTER_ASSET_CATALOGUE: AssetCatalogue = {
       lightDirection: "upper-left",
       state: "closed",
       status: "prototype"
-    })),
+    }),
 
     productionProduct("product-cola-bottle", PRODUCTION_V1_ASSETS.product_cola_bottle),
     productionProduct("product-water-bottle", PRODUCTION_V1_ASSETS.product_water_bottle),
