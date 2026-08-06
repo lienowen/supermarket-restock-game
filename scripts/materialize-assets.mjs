@@ -43,3 +43,44 @@ if (!isWebp || bytes.length !== EXPECTED_BYTES || digest !== EXPECTED_SHA256) {
 mkdirSync(dirname(OUTPUT_PATH), { recursive: true });
 writeFileSync(OUTPUT_PATH, bytes);
 process.stdout.write(`Materialized verified salesfloor asset (${bytes.length} bytes).\n`);
+
+const P0_SOURCE_DIRECTORY = resolve(ROOT, "asset-source/supermarket-restock-p0-assets-v1");
+const P0_OUTPUT_DIRECTORY = resolve(ROOT, "public/assets/game/production-v2/p0-levels-2-5");
+const P0_ASSET_NAMES = Object.freeze([
+  "equipment-checkout-bag-open.png",
+  "market-salesfloor-v3.png",
+  "prop-checkout-receipt.png",
+  "spill-dirt-smear-large.png",
+  "spill-juice-large.png",
+  "spill-water-large.png",
+  "water-case-closed.png",
+  "water-case-open.png"
+]);
+
+const pngDimensions = (pngBytes) => {
+  const signature = pngBytes.subarray(0, 8).toString("hex");
+  if (signature !== "89504e470d0a1a0a" || pngBytes.length < 24) {
+    throw new Error("P0 source is not a valid PNG file");
+  }
+  return {
+    width: pngBytes.readUInt32BE(16),
+    height: pngBytes.readUInt32BE(20)
+  };
+};
+
+mkdirSync(P0_OUTPUT_DIRECTORY, { recursive: true });
+for (const assetName of P0_ASSET_NAMES) {
+  const sourcePath = resolve(P0_SOURCE_DIRECTORY, assetName);
+  const outputPath = resolve(P0_OUTPUT_DIRECTORY, assetName);
+  const assetBytes = readFileSync(sourcePath);
+  const dimensions = pngDimensions(assetBytes);
+  if (dimensions.width < 256 || dimensions.height < 256) {
+    throw new Error(
+      `P0 asset is below runtime resolution: ${assetName} (${dimensions.width}x${dimensions.height})`
+    );
+  }
+  writeFileSync(outputPath, assetBytes);
+  process.stdout.write(
+    `Materialized P0 asset ${assetName} (${dimensions.width}x${dimensions.height}).\n`
+  );
+}
