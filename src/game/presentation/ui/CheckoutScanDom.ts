@@ -12,6 +12,8 @@ export interface CheckoutScanDomConfig {
   readonly productAssets: readonly AssetDescriptor[];
   readonly scannerAsset?: AssetDescriptor;
   readonly posAsset?: AssetDescriptor;
+  readonly bagAsset?: AssetDescriptor;
+  readonly receiptAsset?: AssetDescriptor;
 }
 
 export interface CheckoutScanDomHandle {
@@ -104,7 +106,7 @@ export function mountCheckoutScanDom(config: CheckoutScanDomConfig): CheckoutSca
   header.append(title, customerLabel);
 
   const instruction = document.createElement("div");
-  instruction.textContent = "Drag every item through the scanner. Payment unlocks only when the basket is empty.";
+  instruction.textContent = "Drag every item through the scanner. Scanned products are packed into the bag before payment.";
   applyStyles(instruction, {
     marginBottom: "12px",
     color: "#cfe1d4",
@@ -194,9 +196,10 @@ export function mountCheckoutScanDom(config: CheckoutScanDomConfig): CheckoutSca
   payment.id = "checkout-payment-button";
   payment.type = "button";
   payment.disabled = true;
-  payment.textContent = config.spec.paymentLabel;
   applyStyles(payment, {
+    position: "relative",
     minHeight: "142px",
+    padding: "6px 8px 10px",
     border: "0",
     borderRadius: "15px",
     background: "rgba(255,255,255,0.08)",
@@ -204,24 +207,91 @@ export function mountCheckoutScanDom(config: CheckoutScanDomConfig): CheckoutSca
     fontSize: "13px",
     fontWeight: "900",
     letterSpacing: "0.8px",
-    cursor: "not-allowed"
+    cursor: "not-allowed",
+    overflow: "hidden"
   });
+
+  const bagStage = document.createElement("div");
+  bagStage.id = "checkout-bag-stage";
+  applyStyles(bagStage, {
+    position: "relative",
+    width: "104px",
+    height: "82px",
+    margin: "0 auto 2px",
+    pointerEvents: "none"
+  });
+  if (config.bagAsset) {
+    const bagImage = document.createElement("img");
+    bagImage.src = assetUrl(config.bagAsset.path);
+    bagImage.alt = "";
+    bagImage.draggable = false;
+    applyStyles(bagImage, {
+      position: "absolute",
+      inset: "0",
+      width: "100%",
+      height: "100%",
+      objectFit: "contain",
+      filter: "drop-shadow(0 5px 7px rgba(0,0,0,0.28))"
+    });
+    bagStage.appendChild(bagImage);
+  }
+  const bagFill = document.createElement("div");
+  bagFill.id = "checkout-bag-fill";
+  applyStyles(bagFill, {
+    position: "absolute",
+    left: "25%",
+    right: "24%",
+    top: "21%",
+    bottom: "20%",
+    overflow: "hidden"
+  });
+  bagStage.appendChild(bagFill);
+
   if (config.posAsset) {
     const posImage = document.createElement("img");
     posImage.src = assetUrl(config.posAsset.path);
     posImage.alt = "";
     posImage.draggable = false;
     applyStyles(posImage, {
-      display: "block",
-      width: "78px",
-      height: "62px",
-      margin: "0 auto 8px",
+      position: "absolute",
+      width: "44px",
+      height: "36px",
+      right: "5px",
+      top: "5px",
       objectFit: "contain",
       pointerEvents: "none",
-      opacity: "0.82"
+      opacity: "0.74"
     });
-    payment.prepend(posImage);
+    payment.appendChild(posImage);
   }
+
+  const receiptImage = document.createElement("img");
+  if (config.receiptAsset) receiptImage.src = assetUrl(config.receiptAsset.path);
+  receiptImage.alt = "";
+  receiptImage.draggable = false;
+  applyStyles(receiptImage, {
+    position: "absolute",
+    width: "62px",
+    height: "72px",
+    right: "6px",
+    top: "32px",
+    objectFit: "contain",
+    pointerEvents: "none",
+    opacity: "0",
+    transform: "translateY(-18px) rotate(4deg)",
+    transition: "opacity 120ms ease, transform 220ms ease",
+    filter: "drop-shadow(0 5px 7px rgba(0,0,0,0.3))"
+  });
+  if (config.receiptAsset) payment.appendChild(receiptImage);
+
+  const paymentLabel = document.createElement("span");
+  paymentLabel.textContent = config.spec.paymentLabel;
+  applyStyles(paymentLabel, {
+    position: "relative",
+    zIndex: "2",
+    display: "block"
+  });
+  payment.append(bagStage, paymentLabel);
 
   const feedback = document.createElement("div");
   feedback.id = "checkout-scan-feedback";
@@ -279,15 +349,35 @@ export function mountCheckoutScanDom(config: CheckoutScanDomConfig): CheckoutSca
     const count = scannedCount();
     document.body.dataset.checkoutScanScanned = String(count);
     feedback.textContent = count === cards.length
-      ? "Basket complete. Confirm payment."
-      : `Scanned ${count}/${cards.length}`;
+      ? "Bag packed. Confirm payment."
+      : `Scanned and packed ${count}/${cards.length}`;
     feedback.style.color = count === cards.length ? "#ffd95e" : "#a9cfb7";
     setPaymentEnabled(count === cards.length);
+  };
+
+  const addProductToBag = (asset: AssetDescriptor): void => {
+    const packedProduct = document.createElement("img");
+    packedProduct.src = assetUrl(asset.path);
+    packedProduct.alt = "";
+    packedProduct.draggable = false;
+    const itemIndex = bagFill.childElementCount;
+    applyStyles(packedProduct, {
+      position: "absolute",
+      width: "30px",
+      height: "36px",
+      left: `${Math.min(46, 4 + itemIndex * 15)}%`,
+      bottom: `${Math.min(18, itemIndex * 3)}%`,
+      objectFit: "contain",
+      transform: `translateX(-50%) rotate(${itemIndex % 2 === 0 ? -5 : 5}deg)`,
+      filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.3))"
+    });
+    bagFill.appendChild(packedProduct);
   };
 
   const scanCard = (card: ProductCardState): void => {
     if (card.scanned) return;
     card.scanned = true;
+    addProductToBag(card.asset);
     card.element.style.opacity = "0";
     card.element.style.transform = "scale(0.78) translateY(-8px)";
     card.element.style.pointerEvents = "none";
@@ -408,6 +498,9 @@ export function mountCheckoutScanDom(config: CheckoutScanDomConfig): CheckoutSca
     if (destroyed || customerIndex === activeCustomer || !isReady()) return;
     activeCustomer = customerIndex;
     basket.replaceChildren();
+    bagFill.replaceChildren();
+    receiptImage.style.opacity = "0";
+    receiptImage.style.transform = "translateY(-18px) rotate(4deg)";
     const itemCount = itemCountFor(customerIndex);
     cards = Array.from({ length: itemCount }, (_, itemIndex) => {
       const asset = config.productAssets[(customerIndex * 2 + itemIndex) % config.productAssets.length];
@@ -459,7 +552,14 @@ export function mountCheckoutScanDom(config: CheckoutScanDomConfig): CheckoutSca
       return;
     }
     document.body.dataset.checkoutScan = "committing";
-    action.emit("pointerdown");
+    setPaymentEnabled(false);
+    feedback.textContent = "Payment accepted. Receipt printed.";
+    feedback.style.color = "#ffd95e";
+    if (config.receiptAsset) {
+      receiptImage.style.opacity = "1";
+      receiptImage.style.transform = "translateY(0) rotate(4deg)";
+    }
+    window.setTimeout(() => action.emit("pointerdown"), config.receiptAsset ? 240 : 0);
   });
 
   const blockUnderlyingPointer = (event: Event): void => event.stopPropagation();
