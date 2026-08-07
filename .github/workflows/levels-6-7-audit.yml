@@ -12,7 +12,6 @@ on:
       - "src/game/presentation/ui/CartCapacityLoadDom.ts"
       - "src/game/presentation/ui/CheckoutPatienceDom.ts"
       - "scripts/capture-cart-capacity.mjs"
-      - "scripts/capture-checkout-patience.mjs"
       - "scripts/capture-level-7-production-assets.mjs"
       - ".github/workflows/levels-6-7-audit.yml"
   workflow_dispatch:
