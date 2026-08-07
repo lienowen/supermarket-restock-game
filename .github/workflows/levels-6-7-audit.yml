@@ -1,0 +1,65 @@
+name: Levels 6-7 Audit
+
+on:
+  pull_request:
+    paths:
+      - "public/assets/game/missing-assets-batch-01/**"
+      - "src/game/assets/MissingAssetsBatch01.ts"
+      - "src/game/assets/RuntimeAssetRegistry.ts"
+      - "src/game/content/experience/CartCapacityExperienceSpec.ts"
+      - "src/game/content/experience/CheckoutPatienceExperienceSpec.ts"
+      - "src/game/infrastructure/phaser/createPhaserGame.ts"
+      - "src/game/presentation/ui/CartCapacityLoadDom.ts"
+      - "src/game/presentation/ui/CheckoutPatienceDom.ts"
+      - "scripts/capture-cart-capacity.mjs"
+      - "scripts/capture-checkout-patience.mjs"
+      - ".github/workflows/levels-6-7-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  focused-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.54.1
+          npx playwright install --with-deps chromium
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Verify Level 6 cart capacity
+        run: node scripts/capture-cart-capacity.mjs
+
+      - name: Verify Level 7 patience and produce weighing
+        run: node scripts/capture-checkout-patience.mjs
+
+      - name: Upload Level 6-7 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: levels-6-7-audit
+          path: |
+            ui-audit/cart-capacity-*.png
+            ui-audit/cart-capacity-audit.json
+            ui-audit/checkout-patience-*.png
+            ui-audit/checkout-patience-audit.json
+          if-no-files-found: warn
+          retention-days: 14
