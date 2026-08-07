@@ -172,10 +172,6 @@ try {
   report.completedWeights += 1;
   await payCurrentCustomer(page);
   await waitForSnapshot(page, { customersServed: 1 }, 10000);
-  await page.screenshot({
-    path: join(OUTPUT_DIR, "checkout-patience-active.png"),
-    fullPage: true
-  });
 
   for (let customer = 1; customer < 8; customer += 1) {
     await page.waitForFunction(
@@ -252,16 +248,16 @@ async function scanStandardItem(page) {
 }
 
 async function payCurrentCustomer(page) {
-  const payment = page.locator("#patience-payment-button");
   await page.waitForFunction(
     () => {
       const button = document.querySelector("#patience-payment-button");
-      return button instanceof HTMLButtonElement && button.disabled === false;
+      if (!(button instanceof HTMLButtonElement) || button.disabled) return false;
+      button.click();
+      return true;
     },
     null,
-    { timeout: 5000 }
+    { timeout: 3000 }
   );
-  await payment.click();
 }
 
 async function readSnapshot(page) {
