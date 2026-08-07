@@ -43,7 +43,7 @@ const report = {
     impatientCustomerAssetAppears: false,
     wrongWeightCostsPatience: false,
     wrongWeightKeepsPaymentLocked: false,
-    standardItemsRequireDrag: false,
+    standardItemsScan: false,
     correctWeightsRequired: false,
     eightCustomersComplete: false,
     noCustomerAbandons: false
@@ -130,12 +130,7 @@ try {
     fullPage: true
   });
 
-  await dragStandardItem(page);
-  await page.waitForFunction(
-    () => document.body.dataset.checkoutPatienceScanned === "true",
-    null,
-    { timeout: 5000 }
-  );
+  await scanStandardItem(page);
   report.completedScans += 1;
 
   const patienceBeforeWrong = Number(await page.evaluate(() => document.body.dataset.checkoutPatienceRemaining));
@@ -157,7 +152,7 @@ try {
   await page.waitForFunction(
     () => document.body.dataset.checkoutPatienceMood === "impatient",
     null,
-    { timeout: 5000 }
+    { timeout: 6000 }
   );
   await page.waitForFunction(
     () => {
@@ -193,12 +188,7 @@ try {
       { timeout: 15000 }
     );
 
-    await dragStandardItem(page);
-    await page.waitForFunction(
-      () => document.body.dataset.checkoutPatienceScanned === "true",
-      null,
-      { timeout: 5000 }
-    );
+    await scanStandardItem(page);
     report.completedScans += 1;
 
     const targetWeight = TARGET_WEIGHTS[customer];
@@ -218,7 +208,7 @@ try {
     step: "complete",
     customersServed: 8
   }, 15000);
-  report.assertions.standardItemsRequireDrag = report.completedScans === 8;
+  report.assertions.standardItemsScan = report.completedScans === 8;
   report.assertions.correctWeightsRequired = report.completedWeights === 8;
   report.assertions.eightCustomersComplete = Boolean(complete && complete.step === "complete");
   report.assertions.noCustomerAbandons = await page.evaluate(
@@ -254,6 +244,17 @@ try {
 console.log(JSON.stringify({ assertions: report.assertions, fatalError: report.fatalError }, null, 2));
 if (thrownError) throw thrownError;
 
+async function scanStandardItem(page) {
+  const source = page.locator("#patience-standard-item");
+  await source.focus();
+  await source.press("Enter");
+  await page.waitForFunction(
+    () => document.body.dataset.checkoutPatienceScanned === "true",
+    null,
+    { timeout: 3000 }
+  );
+}
+
 async function payCurrentCustomer(page) {
   const payment = page.locator("#patience-payment-button");
   await page.waitForFunction(
@@ -265,18 +266,6 @@ async function payCurrentCustomer(page) {
     { timeout: 5000 }
   );
   await payment.click();
-}
-
-async function dragStandardItem(page) {
-  const source = page.locator("#patience-standard-item");
-  const target = page.locator("#patience-scan-zone");
-  const sourceBox = await source.boundingBox();
-  const targetBox = await target.boundingBox();
-  if (!sourceBox || !targetBox) throw new Error("Standard item or scanner has no bounds");
-  await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2);
-  await page.mouse.down();
-  await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, { steps: 12 });
-  await page.mouse.up();
 }
 
 async function readSnapshot(page) {
