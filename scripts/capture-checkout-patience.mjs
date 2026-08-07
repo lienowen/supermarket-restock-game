@@ -38,6 +38,9 @@ const report = {
   assertions: {
     patienceOverlayAppears: false,
     paymentInitiallyLocked: false,
+    produceScaleAssetVisible: false,
+    happyCustomerAssetVisible: false,
+    impatientCustomerAssetAppears: false,
     wrongWeightCostsPatience: false,
     wrongWeightKeepsPaymentLocked: false,
     standardItemsRequireDrag: false,
@@ -107,13 +110,29 @@ try {
 
   report.assertions.patienceOverlayAppears = await page.locator("#checkout-patience-overlay").isVisible();
   report.assertions.paymentInitiallyLocked = await page.locator("#patience-payment-button").isDisabled();
+  report.assertions.produceScaleAssetVisible = await page.evaluate(() => {
+    const image = document.querySelector("#produce-scale-visual img");
+    return image instanceof HTMLImageElement &&
+      image.complete &&
+      image.naturalWidth > 0 &&
+      image.src.includes("equipment-produce-scale.png");
+  });
+  report.assertions.happyCustomerAssetVisible = await page.evaluate(() => {
+    const image = document.querySelector("#checkout-patience-customer-mood");
+    return image instanceof HTMLImageElement &&
+      image.complete &&
+      image.naturalWidth > 0 &&
+      image.src.includes("customer-happy.png") &&
+      document.body.dataset.checkoutPatienceMood === "happy";
+  });
   await page.screenshot({
     path: join(OUTPUT_DIR, "checkout-patience-active.png"),
     fullPage: true
   });
 
   const patienceBeforeWrong = Number(await page.evaluate(() => document.body.dataset.checkoutPatienceRemaining));
-  await page.locator('[data-weight-kg="1"]').click();
+  const wrongWeight = page.locator('[data-weight-kg="1"]');
+  await wrongWeight.click();
   await page.waitForFunction(
     () => document.body.dataset.checkoutPatienceMistakes === "1",
     null,
@@ -127,8 +146,29 @@ try {
   };
   report.assertions.wrongWeightCostsPatience = patienceBeforeWrong - patienceAfterWrong >= 2700;
   report.assertions.wrongWeightKeepsPaymentLocked = await page.locator("#patience-payment-button").isDisabled();
+
+  await wrongWeight.click();
+  await wrongWeight.click();
+  await page.waitForFunction(
+    () => document.body.dataset.checkoutPatienceMistakes === "3" &&
+      document.body.dataset.checkoutPatienceMood === "impatient",
+    null,
+    { timeout: 5000 }
+  );
+  await page.waitForFunction(
+    () => {
+      const image = document.querySelector("#checkout-patience-customer-mood");
+      return image instanceof HTMLImageElement &&
+        image.complete &&
+        image.naturalWidth > 0 &&
+        image.src.includes("customer-impatient.png");
+    },
+    null,
+    { timeout: 5000 }
+  );
+  report.assertions.impatientCustomerAssetAppears = true;
   await page.screenshot({
-    path: join(OUTPUT_DIR, "checkout-patience-wrong-weight.png"),
+    path: join(OUTPUT_DIR, "checkout-patience-impatient.png"),
     fullPage: true
   });
 
