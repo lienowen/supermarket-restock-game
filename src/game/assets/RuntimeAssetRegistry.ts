@@ -1,5 +1,6 @@
 import type { AssetCatalogue, AssetDescriptor } from "./AssetDescriptor";
 import { GLOBAL_PROJECT_ASSET_CATALOGUE } from "./GlobalProjectAssetCatalogue";
+import { MISSING_ASSETS_BATCH_01 } from "./MissingAssetsBatch01";
 import { STARTER_ASSET_CATALOGUE } from "./starterAssetCatalogue";
 
 export interface RuntimeAssetRegistry {
@@ -52,7 +53,8 @@ export function createRuntimeAssetRegistry(
 const STARTER_PROJECT_ASSET_CATALOGUE: AssetCatalogue = Object.freeze({
   assets: Object.freeze([
     ...STARTER_ASSET_CATALOGUE.assets,
-    ...GLOBAL_PROJECT_ASSET_CATALOGUE.assets
+    ...GLOBAL_PROJECT_ASSET_CATALOGUE.assets,
+    ...MISSING_ASSETS_BATCH_01
   ])
 });
 
