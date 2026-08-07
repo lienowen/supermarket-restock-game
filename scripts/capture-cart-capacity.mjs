@@ -109,9 +109,13 @@ try {
   report.assertions.capacityGateAppears = await overlay.isVisible();
   report.assertions.sixDeliveryBoxesVisible = await page.locator("#cart-capacity-options [data-case-id]").count() === 6;
   report.assertions.threeSizeBaysVisible = await page.locator("#cart-capacity-slots [data-capacity-lane-id]").count() === 3;
-  report.assertions.emptyCapacityCartVisible = /equipment-capacity-cart-empty\.png/.test(
-    await page.locator("#cart-capacity-cart-image").getAttribute("src") ?? ""
-  );
+  report.assertions.emptyCapacityCartVisible = await page.evaluate(() => {
+    const image = document.querySelector("#cart-capacity-cart-image");
+    return image instanceof HTMLImageElement &&
+      image.complete &&
+      image.naturalWidth > 0 &&
+      image.src.includes("equipment-capacity-cart-empty.png");
+  });
   await page.screenshot({
     path: join(OUTPUT_DIR, "cart-capacity-active.png"),
     fullPage: true
@@ -138,16 +142,22 @@ try {
   await dragToLane(page, "delivery-medium-a", "medium-bay");
   await dragToLane(page, "delivery-small-a", "small-bay");
   await page.waitForFunction(
-    () => document.body.dataset.cartCapacityLoaded === "3",
+    () => {
+      const image = document.querySelector("#cart-capacity-cart-image");
+      return document.body.dataset.cartCapacityLoaded === "3" &&
+        image instanceof HTMLImageElement &&
+        image.src.includes("equipment-capacity-cart-loaded.png");
+    },
     null,
-    { timeout: 10000 }
+    { timeout: 1200 }
   );
-  await page.waitForFunction(
-    () => document.querySelector("#cart-capacity-cart-image")?.getAttribute("src")?.includes("equipment-capacity-cart-loaded.png") === true,
-    null,
-    { timeout: 6000 }
-  );
-  report.assertions.loadedCapacityCartVisible = true;
+  report.assertions.loadedCapacityCartVisible = await page.evaluate(() => {
+    const image = document.querySelector("#cart-capacity-cart-image");
+    return image instanceof HTMLImageElement &&
+      image.complete &&
+      image.naturalWidth > 0 &&
+      image.src.includes("equipment-capacity-cart-loaded.png");
+  });
   await page.screenshot({
     path: join(OUTPUT_DIR, "cart-capacity-first-load-full.png"),
     fullPage: true
