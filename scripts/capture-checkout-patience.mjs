@@ -130,9 +130,16 @@ try {
     fullPage: true
   });
 
+  await dragStandardItem(page);
+  await page.waitForFunction(
+    () => document.body.dataset.checkoutPatienceScanned === "true",
+    null,
+    { timeout: 5000 }
+  );
+  report.completedScans += 1;
+
   const patienceBeforeWrong = Number(await page.evaluate(() => document.body.dataset.checkoutPatienceRemaining));
-  const wrongWeight = page.locator('[data-weight-kg="1"]');
-  await wrongWeight.click();
+  await page.locator('[data-weight-kg="1"]').click();
   await page.waitForFunction(
     () => document.body.dataset.checkoutPatienceMistakes === "1",
     null,
@@ -147,11 +154,8 @@ try {
   report.assertions.wrongWeightCostsPatience = patienceBeforeWrong - patienceAfterWrong >= 2700;
   report.assertions.wrongWeightKeepsPaymentLocked = await page.locator("#patience-payment-button").isDisabled();
 
-  await wrongWeight.click();
-  await wrongWeight.click();
   await page.waitForFunction(
-    () => document.body.dataset.checkoutPatienceMistakes === "3" &&
-      document.body.dataset.checkoutPatienceMood === "impatient",
+    () => document.body.dataset.checkoutPatienceMood === "impatient",
     null,
     { timeout: 5000 }
   );
@@ -172,7 +176,17 @@ try {
     fullPage: true
   });
 
-  for (let customer = 0; customer < 8; customer += 1) {
+  await page.locator('[data-weight-kg="0.5"]').click();
+  await page.waitForFunction(
+    () => document.body.dataset.checkoutPatienceWeightCorrect === "true",
+    null,
+    { timeout: 3000 }
+  );
+  report.completedWeights += 1;
+  await payCurrentCustomer(page);
+  await waitForSnapshot(page, { customersServed: 1 }, 10000);
+
+  for (let customer = 1; customer < 8; customer += 1) {
     await page.waitForFunction(
       (expectedCustomer) => document.body.dataset.checkoutPatienceCustomer === String(expectedCustomer + 1),
       customer,
@@ -196,16 +210,7 @@ try {
     );
     report.completedWeights += 1;
 
-    const payment = page.locator("#patience-payment-button");
-    await page.waitForFunction(
-      () => {
-        const button = document.querySelector("#patience-payment-button");
-        return button instanceof HTMLButtonElement && button.disabled === false;
-      },
-      null,
-      { timeout: 8000 }
-    );
-    await payment.click();
+    await payCurrentCustomer(page);
     await waitForSnapshot(page, { customersServed: customer + 1 }, 15000);
   }
 
@@ -248,6 +253,19 @@ try {
 
 console.log(JSON.stringify({ assertions: report.assertions, fatalError: report.fatalError }, null, 2));
 if (thrownError) throw thrownError;
+
+async function payCurrentCustomer(page) {
+  const payment = page.locator("#patience-payment-button");
+  await page.waitForFunction(
+    () => {
+      const button = document.querySelector("#patience-payment-button");
+      return button instanceof HTMLButtonElement && button.disabled === false;
+    },
+    null,
+    { timeout: 5000 }
+  );
+  await payment.click();
+}
 
 async function dragStandardItem(page) {
   const source = page.locator("#patience-standard-item");
