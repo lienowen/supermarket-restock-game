@@ -36,15 +36,18 @@ const report = {
   generatedAt: new Date().toISOString(),
   assertions: {
     capacityGateAppears: false,
-    threeCasesVisible: false,
-    wrongWaterRejected: false,
-    wrongWaterDoesNotAdvance: false,
-    firstColaFillsOneSlot: false,
-    secondColaFillsCart: false,
+    sixDeliveryBoxesVisible: false,
+    threeSizeBaysVisible: false,
+    emptyCapacityCartVisible: false,
+    wrongSizeRejected: false,
+    wrongSizeDoesNotAdvance: false,
+    firstLoadCompletes: false,
+    loadedCapacityCartVisible: false,
+    secondLoadCompletes: false,
     deliveryContinues: false
   },
   afterWrong: null,
-  afterFirstCorrect: null,
+  afterFirstLoad: null,
   afterComplete: null,
   consoleErrors: [],
   pageErrors: [],
@@ -102,47 +105,69 @@ try {
   );
 
   const overlay = page.locator("#cart-capacity-load");
-  const target = page.locator("#cart-capacity-target");
   await overlay.waitFor({ state: "visible", timeout: 10000 });
-  await target.waitFor({ state: "visible", timeout: 10000 });
   report.assertions.capacityGateAppears = await overlay.isVisible();
-  report.assertions.threeCasesVisible = await page.locator("#cart-capacity-options [data-case-id]").count() === 3;
+  report.assertions.sixDeliveryBoxesVisible = await page.locator("#cart-capacity-options [data-case-id]").count() === 6;
+  report.assertions.threeSizeBaysVisible = await page.locator("#cart-capacity-slots [data-capacity-lane-id]").count() === 3;
+  report.assertions.emptyCapacityCartVisible = /equipment-capacity-cart-empty\.png/.test(
+    await page.locator("#cart-capacity-cart-image").getAttribute("src") ?? ""
+  );
   await page.screenshot({
     path: join(OUTPUT_DIR, "cart-capacity-active.png"),
     fullPage: true
   });
 
-  await dragToTarget(page, "closing-water-decoy");
-  await page.waitForTimeout(400);
+  await dragToLane(page, "delivery-small-a", "large-bay");
+  await page.waitForTimeout(420);
   const afterWrong = await readState(page);
   report.afterWrong = afterWrong;
-  report.assertions.wrongWaterRejected = (
+  report.assertions.wrongSizeRejected = (
     afterWrong.loaded === "0" &&
-    /not part of the closing cola load/i.test(afterWrong.feedback)
+    /does not fit/i.test(afterWrong.feedback)
   );
-  report.assertions.wrongWaterDoesNotAdvance = (
+  report.assertions.wrongSizeDoesNotAdvance = (
     afterWrong.snapshot?.step === "load" &&
     afterWrong.snapshot?.boxLoaded === false
   );
   await page.screenshot({
-    path: join(OUTPUT_DIR, "cart-capacity-water-rejected.png"),
+    path: join(OUTPUT_DIR, "cart-capacity-wrong-size.png"),
     fullPage: true
   });
 
-  await dragToTarget(page, "closing-cola-a");
+  await dragToLane(page, "delivery-large-a", "large-bay");
+  await dragToLane(page, "delivery-medium-a", "medium-bay");
+  await dragToLane(page, "delivery-small-a", "small-bay");
   await page.waitForFunction(
-    () => document.body.dataset.cartCapacityLoaded === "1",
+    () => document.body.dataset.cartCapacityLoaded === "3",
     null,
     { timeout: 10000 }
   );
-  const afterFirstCorrect = await readState(page);
-  report.afterFirstCorrect = afterFirstCorrect;
-  report.assertions.firstColaFillsOneSlot = (
-    afterFirstCorrect.loaded === "1" &&
-    afterFirstCorrect.snapshot?.step === "load"
+  await page.waitForFunction(
+    () => document.querySelector("#cart-capacity-cart-image")?.getAttribute("src")?.includes("equipment-capacity-cart-loaded.png") === true,
+    null,
+    { timeout: 6000 }
+  );
+  report.assertions.loadedCapacityCartVisible = true;
+  await page.screenshot({
+    path: join(OUTPUT_DIR, "cart-capacity-first-load-full.png"),
+    fullPage: true
+  });
+  await page.waitForFunction(
+    () => document.body.dataset.cartCapacityRound === "2",
+    null,
+    { timeout: 6000 }
+  );
+  const afterFirstLoad = await readState(page);
+  report.afterFirstLoad = afterFirstLoad;
+  report.assertions.firstLoadCompletes = (
+    afterFirstLoad.loaded === "3" &&
+    afterFirstLoad.round === "2" &&
+    afterFirstLoad.snapshot?.step === "load"
   );
 
-  await dragToTarget(page, "closing-cola-b");
+  await dragToLane(page, "delivery-large-b", "large-bay");
+  await dragToLane(page, "delivery-medium-b", "medium-bay");
+  await dragToLane(page, "delivery-small-b", "small-bay");
   await page.waitForFunction(
     () => document.body.dataset.cartCapacityLoad === "complete",
     null,
@@ -150,8 +175,8 @@ try {
   );
   const afterComplete = await readState(page);
   report.afterComplete = afterComplete;
-  report.assertions.secondColaFillsCart = (
-    afterComplete.loaded === "2" &&
+  report.assertions.secondLoadCompletes = (
+    afterComplete.loaded === "6" &&
     afterComplete.snapshot?.boxLoaded === true
   );
 
@@ -191,12 +216,12 @@ try {
 console.log(JSON.stringify({ assertions: report.assertions, fatalError: report.fatalError }, null, 2));
 if (thrownError) throw thrownError;
 
-async function dragToTarget(page, caseId) {
+async function dragToLane(page, caseId, laneId) {
   const source = page.locator(`[data-case-id="${caseId}"]`);
-  const target = page.locator("#cart-capacity-target");
+  const target = page.locator(`[data-capacity-lane-id="${laneId}"]`);
   const sourceBox = await source.boundingBox();
   const targetBox = await target.boundingBox();
-  if (!sourceBox || !targetBox) throw new Error(`Case ${caseId} or cart target has no bounds`);
+  if (!sourceBox || !targetBox) throw new Error(`Case ${caseId} or lane ${laneId} has no bounds`);
   await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2);
   await page.mouse.down();
   await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, { steps: 14 });
@@ -208,6 +233,7 @@ async function readState(page) {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
     return {
       loaded: document.body.dataset.cartCapacityLoaded,
+      round: document.body.dataset.cartCapacityRound,
       state: document.body.dataset.cartCapacityLoad,
       feedback: document.querySelector("#cart-capacity-feedback")?.textContent?.trim() ?? "",
       snapshot: scene?.controller?.snapshot?.() ?? null
