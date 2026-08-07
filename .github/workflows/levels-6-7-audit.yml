@@ -13,6 +13,7 @@ on:
       - "src/game/presentation/ui/CheckoutPatienceDom.ts"
       - "scripts/capture-cart-capacity.mjs"
       - "scripts/capture-checkout-patience.mjs"
+      - "scripts/capture-level-7-production-assets.mjs"
       - ".github/workflows/levels-6-7-audit.yml"
   workflow_dispatch:
 
@@ -71,8 +72,8 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Build production bundle
         run: npm run build
-      - name: Verify Level 7 patience and produce weighing
-        run: node scripts/capture-checkout-patience.mjs
+      - name: Verify Level 7 production assets and checkout flow
+        run: node scripts/capture-level-7-production-assets.mjs
       - name: Upload Level 7 evidence
         if: always()
         uses: actions/upload-artifact@v4
