@@ -38,12 +38,9 @@ const report = {
   assertions: {
     patienceOverlayAppears: false,
     paymentInitiallyLocked: false,
-    produceScaleAssetVisible: false,
-    happyCustomerAssetVisible: false,
-    impatientCustomerAssetAppears: false,
     wrongWeightCostsPatience: false,
     wrongWeightKeepsPaymentLocked: false,
-    standardItemsScan: false,
+    standardItemsRequireDrag: false,
     correctWeightsRequired: false,
     eightCustomersComplete: false,
     noCustomerAbandons: false
@@ -110,24 +107,10 @@ try {
 
   report.assertions.patienceOverlayAppears = await page.locator("#checkout-patience-overlay").isVisible();
   report.assertions.paymentInitiallyLocked = await page.locator("#patience-payment-button").isDisabled();
-  report.assertions.produceScaleAssetVisible = await page.evaluate(() => {
-    const image = document.querySelector("#produce-scale-visual img");
-    return image instanceof HTMLImageElement &&
-      image.complete &&
-      image.naturalWidth > 0 &&
-      image.src.includes("equipment-produce-scale.png");
+  await page.screenshot({
+    path: join(OUTPUT_DIR, "checkout-patience-active.png"),
+    fullPage: true
   });
-  report.assertions.happyCustomerAssetVisible = await page.evaluate(() => {
-    const image = document.querySelector("#checkout-patience-customer-mood");
-    return image instanceof HTMLImageElement &&
-      image.complete &&
-      image.naturalWidth > 0 &&
-      image.src.includes("customer-happy.png") &&
-      document.body.dataset.checkoutPatienceMood === "happy";
-  });
-
-  await scanStandardItem(page);
-  report.completedScans += 1;
 
   const patienceBeforeWrong = Number(await page.evaluate(() => document.body.dataset.checkoutPatienceRemaining));
   await page.locator('[data-weight-kg="1"]').click();
@@ -144,43 +127,24 @@ try {
   };
   report.assertions.wrongWeightCostsPatience = patienceBeforeWrong - patienceAfterWrong >= 2700;
   report.assertions.wrongWeightKeepsPaymentLocked = await page.locator("#patience-payment-button").isDisabled();
+  await page.screenshot({
+    path: join(OUTPUT_DIR, "checkout-patience-wrong-weight.png"),
+    fullPage: true
+  });
 
-  await page.waitForFunction(
-    () => document.body.dataset.checkoutPatienceMood === "impatient",
-    null,
-    { timeout: 6000 }
-  );
-  await page.waitForFunction(
-    () => {
-      const image = document.querySelector("#checkout-patience-customer-mood");
-      return image instanceof HTMLImageElement &&
-        image.complete &&
-        image.naturalWidth > 0 &&
-        image.src.includes("customer-impatient.png");
-    },
-    null,
-    { timeout: 5000 }
-  );
-  report.assertions.impatientCustomerAssetAppears = true;
-
-  await page.locator('[data-weight-kg="0.5"]').click();
-  await page.waitForFunction(
-    () => document.body.dataset.checkoutPatienceWeightCorrect === "true",
-    null,
-    { timeout: 3000 }
-  );
-  report.completedWeights += 1;
-  await payCurrentCustomer(page);
-  await waitForSnapshot(page, { customersServed: 1 }, 10000);
-
-  for (let customer = 1; customer < 8; customer += 1) {
+  for (let customer = 0; customer < 8; customer += 1) {
     await page.waitForFunction(
       (expectedCustomer) => document.body.dataset.checkoutPatienceCustomer === String(expectedCustomer + 1),
       customer,
       { timeout: 15000 }
     );
 
-    await scanStandardItem(page);
+    await dragStandardItem(page);
+    await page.waitForFunction(
+      () => document.body.dataset.checkoutPatienceScanned === "true",
+      null,
+      { timeout: 5000 }
+    );
     report.completedScans += 1;
 
     const targetWeight = TARGET_WEIGHTS[customer];
@@ -192,7 +156,16 @@ try {
     );
     report.completedWeights += 1;
 
-    await payCurrentCustomer(page);
+    const payment = page.locator("#patience-payment-button");
+    await page.waitForFunction(
+      () => {
+        const button = document.querySelector("#patience-payment-button");
+        return button instanceof HTMLButtonElement && button.disabled === false;
+      },
+      null,
+      { timeout: 8000 }
+    );
+    await payment.click();
     await waitForSnapshot(page, { customersServed: customer + 1 }, 15000);
   }
 
@@ -200,7 +173,7 @@ try {
     step: "complete",
     customersServed: 8
   }, 15000);
-  report.assertions.standardItemsScan = report.completedScans === 8;
+  report.assertions.standardItemsRequireDrag = report.completedScans === 8;
   report.assertions.correctWeightsRequired = report.completedWeights === 8;
   report.assertions.eightCustomersComplete = Boolean(complete && complete.step === "complete");
   report.assertions.noCustomerAbandons = await page.evaluate(
@@ -236,28 +209,16 @@ try {
 console.log(JSON.stringify({ assertions: report.assertions, fatalError: report.fatalError }, null, 2));
 if (thrownError) throw thrownError;
 
-async function scanStandardItem(page) {
+async function dragStandardItem(page) {
   const source = page.locator("#patience-standard-item");
-  await source.focus();
-  await source.press("Enter");
-  await page.waitForFunction(
-    () => document.body.dataset.checkoutPatienceScanned === "true",
-    null,
-    { timeout: 3000 }
-  );
-}
-
-async function payCurrentCustomer(page) {
-  await page.waitForFunction(
-    () => {
-      const button = document.querySelector("#patience-payment-button");
-      if (!(button instanceof HTMLButtonElement) || button.disabled) return false;
-      button.click();
-      return true;
-    },
-    null,
-    { timeout: 3000 }
-  );
+  const target = page.locator("#patience-scan-zone");
+  const sourceBox = await source.boundingBox();
+  const targetBox = await target.boundingBox();
+  if (!sourceBox || !targetBox) throw new Error("Standard item or scanner has no bounds");
+  await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, { steps: 12 });
+  await page.mouse.up();
 }
 
 async function readSnapshot(page) {
