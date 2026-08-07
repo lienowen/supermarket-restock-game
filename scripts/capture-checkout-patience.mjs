@@ -125,10 +125,6 @@ try {
       image.src.includes("customer-happy.png") &&
       document.body.dataset.checkoutPatienceMood === "happy";
   });
-  await page.screenshot({
-    path: join(OUTPUT_DIR, "checkout-patience-active.png"),
-    fullPage: true
-  });
 
   await scanStandardItem(page);
   report.completedScans += 1;
@@ -166,10 +162,6 @@ try {
     { timeout: 5000 }
   );
   report.assertions.impatientCustomerAssetAppears = true;
-  await page.screenshot({
-    path: join(OUTPUT_DIR, "checkout-patience-impatient.png"),
-    fullPage: true
-  });
 
   await page.locator('[data-weight-kg="0.5"]').click();
   await page.waitForFunction(
@@ -180,6 +172,10 @@ try {
   report.completedWeights += 1;
   await payCurrentCustomer(page);
   await waitForSnapshot(page, { customersServed: 1 }, 10000);
+  await page.screenshot({
+    path: join(OUTPUT_DIR, "checkout-patience-active.png"),
+    fullPage: true
+  });
 
   for (let customer = 1; customer < 8; customer += 1) {
     await page.waitForFunction(
