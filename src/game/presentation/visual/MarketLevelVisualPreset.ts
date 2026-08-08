@@ -8,6 +8,7 @@ import type { VisualPoint, VisualSize } from "./StarterMarketVisualSpec";
 export type MarketLevelMode = "restock" | "checkout" | "clean" | "find-items";
 export type MarketVisualPresetId =
   | "restock-standard-v1"
+  | "restock-golden-standard-v1"
   | "checkout-standard-v1"
   | "clean-standard-v1"
   | "find-items-standard-v1"
@@ -30,11 +31,12 @@ interface BaseMarketLevelVisualPreset {
 }
 
 export interface RestockLevelVisualPreset extends BaseMarketLevelVisualPreset {
-  readonly id: "restock-standard-v1";
+  readonly id: "restock-standard-v1" | "restock-golden-standard-v1";
   readonly mode: "restock";
   readonly actor: BaseMarketLevelVisualPreset["actor"] & {
     readonly pushSize: VisualSize;
     readonly carrySize: VisualSize;
+    readonly motionMode: "fixed" | "route";
   };
   readonly cooler: {
     readonly baseY: number;
@@ -128,6 +130,16 @@ const SHARED_ACTOR = Object.freeze({
   shadowOffset: Object.freeze({ x: 0, y: 5 })
 });
 
+const RESTOCK_COOLER = Object.freeze({
+  baseY: 540,
+  backgroundY: 530,
+  frameSize: Object.freeze({ width: 620, height: 520 }),
+  displaySize: Object.freeze({ width: 470, height: 700 }),
+  rowYs: COOLER_STOCK_ROW_YS,
+  activeStockWidth: COOLER_STOCK_TARGET_WIDTH,
+  restockItemCount: COOLER_STOCK_ITEMS_PER_SLOT
+});
+
 export const RESTOCK_VISUAL_PRESET: RestockLevelVisualPreset = Object.freeze({
   id: "restock-standard-v1",
   mode: "restock",
@@ -135,7 +147,8 @@ export const RESTOCK_VISUAL_PRESET: RestockLevelVisualPreset = Object.freeze({
     idleSize: Object.freeze({ width: 380, height: 385 }),
     shadowOffset: SHARED_ACTOR.shadowOffset,
     pushSize: Object.freeze({ width: 400, height: 370 }),
-    carrySize: Object.freeze({ width: 370, height: 360 })
+    carrySize: Object.freeze({ width: 370, height: 360 }),
+    motionMode: "fixed" as const
   }),
   environment: Object.freeze({
     focus: Object.freeze({ x: 1050, y: 590 }),
@@ -144,18 +157,34 @@ export const RESTOCK_VISUAL_PRESET: RestockLevelVisualPreset = Object.freeze({
     inactiveWashAlpha: 0,
     vignetteAlpha: 0.05
   }),
-  cooler: Object.freeze({
-    baseY: 540,
-    backgroundY: 530,
-    frameSize: Object.freeze({ width: 620, height: 520 }),
-    displaySize: Object.freeze({ width: 470, height: 700 }),
-    rowYs: COOLER_STOCK_ROW_YS,
-    activeStockWidth: COOLER_STOCK_TARGET_WIDTH,
-    restockItemCount: COOLER_STOCK_ITEMS_PER_SLOT
-  }),
+  cooler: RESTOCK_COOLER,
   props: Object.freeze({
     caseSize: Object.freeze({ width: 195, height: 160 }),
     cartSize: Object.freeze({ width: 340, height: 285 })
+  })
+});
+
+export const RESTOCK_GOLDEN_VISUAL_PRESET: RestockLevelVisualPreset = Object.freeze({
+  id: "restock-golden-standard-v1",
+  mode: "restock",
+  actor: Object.freeze({
+    idleSize: Object.freeze({ width: 190, height: 300 }),
+    shadowOffset: Object.freeze({ x: 0, y: 7 }),
+    pushSize: Object.freeze({ width: 220, height: 300 }),
+    carrySize: Object.freeze({ width: 205, height: 300 }),
+    motionMode: "route" as const
+  }),
+  environment: Object.freeze({
+    focus: Object.freeze({ x: 1050, y: 590 }),
+    focusSize: Object.freeze({ width: 980, height: 430 }),
+    routeAlpha: 0,
+    inactiveWashAlpha: 0,
+    vignetteAlpha: 0.025
+  }),
+  cooler: RESTOCK_COOLER,
+  props: Object.freeze({
+    caseSize: Object.freeze({ width: 132, height: 98 }),
+    cartSize: Object.freeze({ width: 330, height: 250 })
   })
 });
 
@@ -321,6 +350,7 @@ export const FIND_ITEMS_GOLDEN_VISUAL_PRESET: FindItemsLevelVisualPreset = Objec
 
 const PRESETS: Readonly<Record<MarketVisualPresetId, MarketLevelVisualPreset>> = Object.freeze({
   "restock-standard-v1": RESTOCK_VISUAL_PRESET,
+  "restock-golden-standard-v1": RESTOCK_GOLDEN_VISUAL_PRESET,
   "checkout-standard-v1": CHECKOUT_VISUAL_PRESET,
   "clean-standard-v1": CLEAN_VISUAL_PRESET,
   "find-items-standard-v1": FIND_ITEMS_VISUAL_PRESET,
