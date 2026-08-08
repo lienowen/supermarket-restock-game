@@ -6,12 +6,58 @@ import { createOpaqueCutoutTexture } from "../visual/OpaqueCutoutTexture";
 import { UtilityTaskScene } from "./UtilityTaskScene";
 import type { SceneCampaignSessionContext } from "./StarterMarketScene";
 
+const GOLDEN_EXTRA_PRODUCT_KEYS = Object.freeze([
+  "product-banana-bunch",
+  "product-grapes-pack",
+  "product-peanut-butter"
+]);
+
 const GOLDEN_DECOY_LAYOUT = Object.freeze([
-  Object.freeze({ name: "find-decoy-decoy-oats", x: 650, y: 565, width: 72, height: 100 }),
-  Object.freeze({ name: "find-decoy-decoy-yogurt", x: 520, y: 648, width: 66, height: 68 }),
-  Object.freeze({ name: "find-decoy-decoy-chips", x: 650, y: 648, width: 74, height: 92 }),
-  Object.freeze({ name: "find-decoy-decoy-detergent", x: 780, y: 648, width: 70, height: 100 }),
-  Object.freeze({ name: "find-decoy-decoy-paper-towels", x: 900, y: 650, width: 84, height: 80 })
+  Object.freeze({
+    sourceName: "find-decoy-decoy-oats",
+    name: "find-decoy-oats",
+    assetKey: "product-oats-canister",
+    x: 650,
+    y: 565,
+    width: 72,
+    height: 100
+  }),
+  Object.freeze({
+    sourceName: "find-decoy-decoy-yogurt",
+    name: "find-decoy-yogurt",
+    assetKey: "product-yogurt-cup",
+    x: 520,
+    y: 648,
+    width: 66,
+    height: 68
+  }),
+  Object.freeze({
+    sourceName: "find-decoy-decoy-chips",
+    name: "find-decoy-banana",
+    assetKey: "product-banana-bunch",
+    x: 1105,
+    y: 663,
+    width: 84,
+    height: 66
+  }),
+  Object.freeze({
+    sourceName: "find-decoy-decoy-detergent",
+    name: "find-decoy-grapes",
+    assetKey: "product-grapes-pack",
+    x: 1255,
+    y: 665,
+    width: 74,
+    height: 64
+  }),
+  Object.freeze({
+    sourceName: "find-decoy-decoy-paper-towels",
+    name: "find-decoy-peanut-butter",
+    assetKey: "product-peanut-butter",
+    x: 780,
+    y: 648,
+    width: 70,
+    height: 90
+  })
 ]);
 
 /**
@@ -30,6 +76,14 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
     this.goldenVisual = resolveLevelVisualPreset(
       goldenContext.campaignLevel.level
     ) as FindItemsLevelVisualPreset;
+  }
+
+  override preload(): void {
+    super.preload();
+    GOLDEN_EXTRA_PRODUCT_KEYS.forEach((assetKey) => {
+      const asset = this.goldenContext.assets.require(assetKey);
+      if (!this.textures.exists(asset.key)) this.load.image(asset.key, asset.path);
+    });
   }
 
   override create(): void {
@@ -74,9 +128,11 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
 
   private reframeDecoys(): void {
     GOLDEN_DECOY_LAYOUT.forEach((layout) => {
-      const object = this.children.getByName(layout.name);
+      const object = this.children.getByName(layout.sourceName);
       if (!(object instanceof Phaser.GameObjects.Image)) return;
       object
+        .setName(layout.name)
+        .setTexture(layout.assetKey)
         .setPosition(layout.x, layout.y)
         .setDisplaySize(layout.width, layout.height)
         .setDepth(12 + layout.y / 1000);
