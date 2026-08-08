@@ -11,7 +11,7 @@ export type MarketVisualPresetId =
   | "checkout-standard-v1"
   | "clean-standard-v1"
   | "find-items-standard-v1"
-  | "find-items-golden-v1";
+  | "find-items-golden-standard-v1";
 
 interface BaseMarketLevelVisualPreset {
   readonly id: MarketVisualPresetId;
@@ -97,7 +97,7 @@ export interface CleanLevelVisualPreset extends BaseMarketLevelVisualPreset {
 }
 
 export interface FindItemsLevelVisualPreset extends BaseMarketLevelVisualPreset {
-  readonly id: "find-items-standard-v1" | "find-items-golden-v1";
+  readonly id: "find-items-standard-v1" | "find-items-golden-standard-v1";
   readonly mode: "find-items";
   readonly fixture: { readonly position: VisualPoint; readonly size: VisualSize };
   readonly auxiliaryFixtures: readonly {
@@ -272,7 +272,7 @@ export const FIND_ITEMS_VISUAL_PRESET: FindItemsLevelVisualPreset = Object.freez
 });
 
 export const FIND_ITEMS_GOLDEN_VISUAL_PRESET: FindItemsLevelVisualPreset = Object.freeze({
-  id: "find-items-golden-v1",
+  id: "find-items-golden-standard-v1",
   mode: "find-items",
   actor: Object.freeze({
     idleSize: Object.freeze({ width: 360, height: 390 }),
@@ -324,7 +324,7 @@ const PRESETS: Readonly<Record<MarketVisualPresetId, MarketLevelVisualPreset>> =
   "checkout-standard-v1": CHECKOUT_VISUAL_PRESET,
   "clean-standard-v1": CLEAN_VISUAL_PRESET,
   "find-items-standard-v1": FIND_ITEMS_VISUAL_PRESET,
-  "find-items-golden-v1": FIND_ITEMS_GOLDEN_VISUAL_PRESET
+  "find-items-golden-standard-v1": FIND_ITEMS_GOLDEN_VISUAL_PRESET
 });
 
 export function resolveMarketLevelVisualPreset(
