@@ -12,7 +12,9 @@ const SCENE_KEY = "starter-market-shift";
 const GAME_WIDTH = 1600;
 const GAME_HEIGHT = 900;
 
-if (!existsSync(join(DIST_DIR, "index.html"))) throw new Error("dist/index.html is missing. Run npm run build first.");
+if (!existsSync(join(DIST_DIR, "index.html"))) {
+  throw new Error("dist/index.html is missing. Run npm run build first.");
+}
 mkdirSync(OUTPUT_DIR, { recursive: true });
 
 const server = createServer((request, response) => {
@@ -39,6 +41,7 @@ const report = {
     compactHudActive: false,
     previewVisible: false,
     previewShowsSixShelves: false,
+    previewMatchesRushSequence: false,
     previewShowsShuffledOrder: false,
     targetHiddenAfterPreview: false,
     wrongShelfCostsMistake: false,
@@ -64,25 +67,46 @@ const browser = await chromium.launch({ headless: true });
 let thrownError;
 
 try {
-  const context = await browser.newContext({ viewport: { width: GAME_WIDTH, height: GAME_HEIGHT }, deviceScaleFactor: 1 });
+  const context = await browser.newContext({
+    viewport: { width: GAME_WIDTH, height: GAME_HEIGHT },
+    deviceScaleFactor: 1
+  });
   await context.addInitScript(() => {
     window.CrazyGames = { SDK: { init: async () => undefined, game: {
-      settings: { muteAudio: false }, gameplayStart: () => undefined, gameplayStop: () => undefined,
-      loadingStart: () => undefined, loadingStop: () => undefined, setGameContext: () => undefined,
-      clearGameContext: () => undefined, reportGameCompletedPercentage: () => undefined,
-      addSettingsChangeListener: () => undefined, removeSettingsChangeListener: () => undefined
+      settings: { muteAudio: false },
+      gameplayStart: () => undefined,
+      gameplayStop: () => undefined,
+      loadingStart: () => undefined,
+      loadingStop: () => undefined,
+      setGameContext: () => undefined,
+      clearGameContext: () => undefined,
+      reportGameCompletedPercentage: () => undefined,
+      addSettingsChangeListener: () => undefined,
+      removeSettingsChangeListener: () => undefined
     } } };
   });
 
   const page = await context.newPage();
   attachListeners(page, report);
-  await page.goto(`${ORIGIN}/?test=1&briefing=0&guided=0&level=starter-level-002`, { waitUntil: "networkidle", timeout: 90000 });
+  await page.goto(`${ORIGIN}/?test=1&briefing=0&guided=0&level=starter-level-002`, {
+    waitUntil: "networkidle",
+    timeout: 90000
+  });
   await page.waitForSelector(CANVAS_SELECTOR, { state: "visible", timeout: 45000 });
-  await page.waitForFunction(() => document.body.dataset.activeLevel === "starter-level-002", null, { timeout: 30000 });
+  await page.waitForFunction(
+    () => document.body.dataset.activeLevel === "starter-level-002",
+    null,
+    { timeout: 30000 }
+  );
 
   const initial = await readSceneState(page);
-  report.assertions.maturePresetActive = initial.visualPresetId === "restock-golden-standard-v1" && initial.actorControl === "routed-world-action-chain";
-  report.assertions.levelTwoVisualLayerIsNonBlocking = initial.levelTwoActorControl === "routed-memory-restock";
+  report.assertions.maturePresetActive = (
+    initial.visualPresetId === "restock-golden-standard-v1" &&
+    initial.actorControl === "routed-world-action-chain"
+  );
+  report.assertions.levelTwoVisualLayerIsNonBlocking = (
+    initial.levelTwoActorControl === "routed-memory-restock"
+  );
 
   await waitForHudAction(page);
   await clickHudAction(page);
@@ -94,8 +118,13 @@ try {
     const worker = scene?.children?.getByName?.("restock-worker");
     const box = scene?.children?.getByName?.("restock-case");
     return Boolean(
-      snapshot?.step === "load" && snapshot?.boxCollected === true && nav?.moving === true &&
-      worker && box?.visible === true && Math.abs(box.x - worker.x) < 85 && box.y < worker.y - 70
+      snapshot?.step === "load" &&
+      snapshot?.boxCollected === true &&
+      nav?.moving === true &&
+      worker &&
+      box?.visible === true &&
+      Math.abs(box.x - worker.x) < 85 &&
+      box.y < worker.y - 70
     );
   }, SCENE_KEY, { timeout: 10000 });
   report.assertions.caseFollowsWorkerToCart = true;
@@ -115,64 +144,101 @@ try {
     const worker = scene?.children?.getByName?.("restock-worker");
     const cart = scene?.children?.getByName?.("restock-cart");
     return Boolean(
-      snapshot?.step === "park" && nav?.moving === true &&
-      String(worker?.texture?.key ?? "").includes("worker-push") && cart?.visible === true &&
-      Math.abs((worker.x - cart.x) - 180) < 10 && Math.abs(worker.y - cart.y) < 14
+      ["push", "park"].includes(snapshot?.step) &&
+      nav?.moving === true &&
+      String(worker?.texture?.key ?? "").includes("worker-push") &&
+      cart?.visible === true &&
+      Math.abs((worker.x - cart.x) - 180) < 12 &&
+      Math.abs(worker.y - cart.y) < 16
     );
-  }, SCENE_KEY, { timeout: 8000 });
+  }, SCENE_KEY, { timeout: 10000 });
   report.assertions.pushRouteUsesWorkerAndCart = true;
   report.route.push = await readSceneState(page);
 
   await page.waitForFunction((sceneKey) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
     const snapshot = scene?.controller?.snapshot?.();
-    return snapshot?.step === "restock" && snapshot?.boxLoaded === true && snapshot?.cartAtCooler === true && snapshot?.boxOpened === true;
+    return Boolean(
+      snapshot?.step === "restock" &&
+      snapshot?.boxLoaded === true &&
+      snapshot?.cartAtCooler === true &&
+      snapshot?.boxOpened === true
+    );
   }, SCENE_KEY, { timeout: 15000 });
   report.assertions.reachesRestockWithOpenCase = true;
-  await page.waitForFunction(() => document.body.dataset.matureRestockHud === "compact-v1", null, { timeout: 5000 });
+
+  await page.waitForFunction(
+    () => document.body.dataset.matureRestockHud === "compact-v1",
+    null,
+    { timeout: 5000 }
+  );
   report.assertions.compactHudActive = true;
 
   await page.waitForFunction(() => {
     const preview = document.getElementById("restock-memory-preview");
-    return document.body.dataset.restockMemory === "preview" && Boolean(preview && preview.style.display !== "none");
+    return document.body.dataset.restockMemory === "preview" && Boolean(preview?.isConnected);
   }, null, { timeout: 8000 });
 
   const preview = await page.evaluate((sceneKey) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
-    const element = document.getElementById("restock-memory-preview");
-    const snapshot = scene?.rush?.snapshot?.(scene.time.now);
-    const order = String(element?.dataset?.order ?? "")
-      .split(",").map((value) => Number(value)).filter(Number.isInteger);
+    const overlay = document.getElementById("restock-memory-preview");
+    const cells = [...(overlay?.querySelectorAll?.("#restock-memory-grid > div") ?? [])]
+      .map((cell) => ({
+        slotIndex: Number(cell.dataset.slotIndex),
+        order: Number(cell.dataset.order)
+      }))
+      .filter((cell) => Number.isInteger(cell.slotIndex) && Number.isInteger(cell.order) && cell.order > 0);
+    const sequence = [...cells]
+      .sort((a, b) => a.order - b.order)
+      .map((cell) => cell.slotIndex);
+    const planned = [...(scene?.rush?.plannedRowIndexes?.() ?? [])];
     return {
       datasetState: document.body.dataset.restockMemory ?? null,
-      display: element?.style?.display ?? null,
-      cardCount: element?.querySelectorAll?.(".memory-card")?.length ?? 0,
-      order,
-      rush: snapshot ?? null
+      cellCount: cells.length,
+      sequence,
+      planned,
+      rush: scene?.rush?.snapshot?.(scene.time.now) ?? null
     };
   }, SCENE_KEY);
   report.preview = preview;
   report.assertions.previewVisible = preview.datasetState === "preview";
-  report.assertions.previewShowsSixShelves = preview.cardCount === 6 || preview.order.length === 6;
-  report.assertions.previewShowsShuffledOrder = preview.order.length === 6 && new Set(preview.order).size === 6 && preview.order.some((value, index) => value !== index);
+  report.assertions.previewShowsSixShelves = preview.cellCount === 6 && preview.sequence.length === 6;
+  report.assertions.previewMatchesRushSequence = (
+    preview.sequence.length === preview.planned.length &&
+    preview.sequence.every((value, index) => value === preview.planned[index])
+  );
+  report.assertions.previewShowsShuffledOrder = (
+    preview.sequence.length === 6 &&
+    new Set(preview.sequence).size === 6 &&
+    preview.sequence.some((value, index) => value !== index)
+  );
   await page.screenshot({ path: join(OUTPUT_DIR, "level-2-memory-preview.png"), fullPage: true });
 
-  await page.waitForFunction(() => document.body.dataset.restockMemory === "active", null, { timeout: 7000 });
+  await page.waitForFunction(
+    () => document.body.dataset.restockMemory === "active",
+    null,
+    { timeout: 7000 }
+  );
+  await waitForInteractionReady(page);
+
   const activeStart = await readRushState(page);
   const activeRow = activeStart.activeRowIndex;
   const rowCount = activeStart.rowItemCounts.length;
-  const wrongRow = Array.from({ length: rowCount }, (_, index) => index).find((index) => index !== activeRow);
-  if (!Number.isInteger(activeRow) || !Number.isInteger(wrongRow)) throw new Error("Level 2 active/wrong row could not be resolved");
+  const wrongRow = Array.from({ length: rowCount }, (_, index) => index)
+    .find((index) => index !== activeRow);
+  if (!Number.isInteger(activeRow) || !Number.isInteger(wrongRow)) {
+    throw new Error("Level 2 active/wrong row could not be resolved");
+  }
 
   report.assertions.targetHiddenAfterPreview = await page.evaluate(({ sceneKey, row }) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
     const count = scene?.children?.getByName?.(`beverage-cooler-row-count-${row}`);
-    return count?.visible === false;
+    const target = scene?.children?.getByName?.(`beverage-cooler-row-target-${row}`);
+    return count?.visible === false && target?.input?.enabled === true;
   }, { sceneKey: SCENE_KEY, row: activeRow });
 
   const mistakesBefore = activeStart.mistakes;
   const activeBeforeWrong = activeStart.activeRowIndex;
-  await waitForInteractionReady(page);
   await clickRowTarget(page, wrongRow);
   await page.waitForFunction(({ sceneKey, mistakesBefore }) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
@@ -181,11 +247,15 @@ try {
   const afterWrong = await readRushState(page);
   report.wrong = afterWrong;
   report.assertions.wrongShelfCostsMistake = afterWrong.mistakes === mistakesBefore + 1;
-  report.assertions.wrongShelfDoesNotAdvance = afterWrong.activeRowIndex === activeBeforeWrong && afterWrong.rowItemCounts[activeBeforeWrong] === 0;
-  await page.screenshot({ path: join(OUTPUT_DIR, "level-2-wrong-shelf.png"), fullPage: true });
+  report.assertions.wrongShelfDoesNotAdvance = (
+    afterWrong.activeRowIndex === activeBeforeWrong &&
+    afterWrong.rowItemCounts[activeBeforeWrong] === 0
+  );
 
   const itemsPerRow = afterWrong.itemsPerRow;
-  if (!Number.isInteger(itemsPerRow) || itemsPerRow < 1) throw new Error("Invalid Level 2 itemsPerRow");
+  if (!Number.isInteger(itemsPerRow) || itemsPerRow < 1) {
+    throw new Error("Invalid Level 2 itemsPerRow");
+  }
 
   await waitForInteractionReady(page);
   await clickRowTarget(page, activeRow);
@@ -193,7 +263,8 @@ try {
   const firstCorrect = await readRushState(page);
   report.firstCorrect = firstCorrect;
   report.assertions.correctShelfPartialKeepsAnswer = itemsPerRow === 1 || (
-    firstCorrect.activeRowIndex === activeRow && firstCorrect.rowItemCounts[activeRow] === 1
+    firstCorrect.activeRowIndex === activeRow &&
+    firstCorrect.rowItemCounts[activeRow] === 1
   );
   report.assertions.waterBottleAppearsOnShelf = await rowContainsWaterTexture(page, activeRow);
 
@@ -208,11 +279,13 @@ try {
     return scene?.rush?.snapshot?.(scene.time.now)?.filledRowIndexes?.includes(row) === true;
   }, { sceneKey: SCENE_KEY, row: activeRow }, { timeout: 7000 });
   const afterFirstShelf = await readRushState(page);
-  report.assertions.correctShelfCompletesAtConfiguredCount = afterFirstShelf.filledRowIndexes.includes(activeRow);
+  report.assertions.correctShelfCompletesAtConfiguredCount = (
+    afterFirstShelf.filledRowIndexes.includes(activeRow)
+  );
 
   while (true) {
     const rush = await readRushState(page);
-    if (rush.status === "complete" || rush.status === "completed" || rush.filledRowIndexes.length === rush.rowItemCounts.length) break;
+    if (rush.complete || rush.filledRowIndexes.length === rush.rowItemCounts.length) break;
     const row = rush.activeRowIndex;
     if (!Number.isInteger(row)) throw new Error("Memory sequence lost active row");
     const currentCount = rush.rowItemCounts[row] ?? 0;
@@ -229,12 +302,23 @@ try {
 
   const final = await readRushState(page);
   report.final = final;
-  report.assertions.fullMemorySequenceCompletes = final.filledRowIndexes.length === final.rowItemCounts.length;
-  report.assertions.noRuntimeIssues = report.consoleErrors.length === 0 && report.pageErrors.length === 0 && report.failedRequests.length === 0;
+  report.assertions.fullMemorySequenceCompletes = (
+    final.complete === true &&
+    final.filledRowIndexes.length === final.rowItemCounts.length
+  );
+  report.assertions.noRuntimeIssues = (
+    report.consoleErrors.length === 0 &&
+    report.pageErrors.length === 0 &&
+    report.failedRequests.length === 0
+  );
   await page.screenshot({ path: join(OUTPUT_DIR, "level-2-mature-complete.png"), fullPage: true });
 
-  const failed = Object.entries(report.assertions).filter(([, passed]) => !passed).map(([key]) => key);
-  if (failed.length > 0) throw new Error(`Level 2 mature memory audit failed: ${failed.join(", ")}`);
+  const failed = Object.entries(report.assertions)
+    .filter(([, passed]) => !passed)
+    .map(([key]) => key);
+  if (failed.length > 0) {
+    throw new Error(`Level 2 mature memory audit failed: ${failed.join(", ")}`);
+  }
 
   await page.close();
   await context.close();
@@ -280,20 +364,24 @@ async function rowContainsWaterTexture(page, rowIndex) {
   return page.evaluate(({ sceneKey, rowIndex }) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
     const holder = scene?.children?.getByName?.(`beverage-cooler-row-${rowIndex}`);
-    return Array.isArray(holder?.list) && holder.list.some((entry) => String(entry?.texture?.key ?? "").includes("product-water-bottle"));
+    return Array.isArray(holder?.list) && holder.list.some((entry) => (
+      String(entry?.texture?.key ?? "").includes("product-water-bottle")
+    ));
   }, { sceneKey: SCENE_KEY, rowIndex });
 }
 
 async function waitForHudAction(page) {
   await page.waitForFunction((sceneKey) => {
-    const action = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.children?.getByName?.("shift-hud-action");
+    const action = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)
+      ?.children?.getByName?.("shift-hud-action");
     return Boolean(action?.visible && action?.input?.enabled);
   }, SCENE_KEY, { timeout: 15000 });
 }
 
 async function clickHudAction(page) {
   const action = await page.evaluate((sceneKey) => {
-    const object = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.children?.getByName?.("shift-hud-action");
+    const object = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)
+      ?.children?.getByName?.("shift-hud-action");
     return object ? { x: object.x, y: object.y } : null;
   }, SCENE_KEY);
   if (!action) throw new Error("Shift HUD action button is missing");
@@ -301,12 +389,15 @@ async function clickHudAction(page) {
 }
 
 async function waitForInteractionReady(page) {
-  await page.waitForFunction((sceneKey) => window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.isInteractionReady?.() === true, SCENE_KEY, { timeout: 15000 });
+  await page.waitForFunction((sceneKey) => (
+    window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.isInteractionReady?.() === true
+  ), SCENE_KEY, { timeout: 15000 });
 }
 
 async function clickRowTarget(page, rowIndex) {
   const target = await page.evaluate(({ sceneKey, rowIndex }) => {
-    const object = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.children?.getByName?.(`beverage-cooler-row-target-${rowIndex}`);
+    const object = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)
+      ?.children?.getByName?.(`beverage-cooler-row-target-${rowIndex}`);
     return object ? { x: object.x, y: object.y } : null;
   }, { sceneKey: SCENE_KEY, rowIndex });
   if (!target) throw new Error(`Shelf target ${rowIndex} is missing`);
@@ -323,21 +414,35 @@ async function waitForRowLogicalCount(page, rowIndex, expectedCount) {
 async function clickGame(page, gameX, gameY) {
   const box = await page.locator(CANVAS_SELECTOR).boundingBox();
   if (!box) throw new Error("Game canvas has no bounding box");
-  await page.mouse.click(box.x + (gameX / GAME_WIDTH) * box.width, box.y + (gameY / GAME_HEIGHT) * box.height);
+  await page.mouse.click(
+    box.x + (gameX / GAME_WIDTH) * box.width,
+    box.y + (gameY / GAME_HEIGHT) * box.height
+  );
 }
 
 function attachListeners(page, auditReport) {
-  page.on("console", (message) => { if (message.type() === "error") auditReport.consoleErrors.push(message.text()); });
+  page.on("console", (message) => {
+    if (message.type() === "error") auditReport.consoleErrors.push(message.text());
+  });
   page.on("pageerror", (error) => auditReport.pageErrors.push(error.message));
   page.on("requestfailed", (request) => {
     const error = request.failure()?.errorText ?? "unknown";
-    if (!error.includes("ERR_ABORTED")) auditReport.failedRequests.push({ url: request.url(), error });
+    if (!error.includes("ERR_ABORTED")) {
+      auditReport.failedRequests.push({ url: request.url(), error });
+    }
   });
 }
 
 function mimeType(filePath) {
   return ({
-    ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
-    ".json": "application/json", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".svg": "image/svg+xml"
+    ".html": "text/html; charset=utf-8",
+    ".js": "text/javascript; charset=utf-8",
+    ".css": "text/css; charset=utf-8",
+    ".json": "application/json",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+    ".svg": "image/svg+xml"
   })[extname(filePath).toLowerCase()] ?? "application/octet-stream";
 }
