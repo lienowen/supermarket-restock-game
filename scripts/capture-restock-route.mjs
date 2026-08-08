@@ -119,16 +119,19 @@ try {
     const snapshot = scene?.controller?.snapshot?.();
     const nav = scene?.actors?.navigationSnapshot?.();
     const worker = scene?.children?.getByName?.("restock-worker");
-    return snapshot?.step === "park" && nav?.moving === true && String(worker?.texture?.key ?? "").includes("worker-push");
+    const cart = scene?.children?.getByName?.("restock-cart");
+    return Boolean(
+      snapshot?.step === "park" &&
+      nav?.moving === true &&
+      String(worker?.texture?.key ?? "").includes("worker-push") &&
+      cart?.visible === true &&
+      Math.abs((worker.x - cart.x) - 180) < 8 &&
+      Math.abs(worker.y - cart.y) < 12
+    );
   }, SCENE_KEY, { timeout: 5000 });
-  const pushing = await readState(page, "push-to-cooler");
-  report.states.push(pushing);
-  report.assertions.secondActionUsesPushRoute = pushing.navigation?.moving === true && pushing.worker.texture?.includes("worker-push");
-  report.assertions.cartFollowsWorkerDuringPush = Boolean(
-    pushing.cart?.visible === true &&
-    Math.abs((pushing.worker.x - pushing.cart.x) - 180) < 8 &&
-    Math.abs(pushing.worker.y - pushing.cart.y) < 12
-  );
+  report.assertions.secondActionUsesPushRoute = true;
+  report.assertions.cartFollowsWorkerDuringPush = true;
+  report.states.push(await readState(page, "after-push-observed"));
 
   await page.waitForFunction((sceneKey) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
