@@ -1,0 +1,6 @@
+/* Level 4 now cleans directly on the in-world spill. The legacy circular
+   hold overlay must not cover or intercept the mature scrub interaction. */
+body[data-active-level="starter-level-004"] #hold-work-overlay {
+  display: none !important;
+  pointer-events: none !important;
+}
