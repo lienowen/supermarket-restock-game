@@ -42,6 +42,8 @@ const requireFixturePosition = (fixtureId: string): VisualPoint => {
 
 const [logicalWidth, logicalHeight] = STARTER_MARKET_LAYOUT.logicalSize;
 const beverageCoolerCentre = requireFixturePosition("beverage-cooler-a");
+const WALKABLE_FLOOR_TOP_Y = 620;
+const WALKABLE_FLOOR_BOTTOM_Y = 800;
 
 /**
  * Presentation-only values. World zones, logical size, actor spawn and fixture
@@ -70,8 +72,21 @@ export const STARTER_MARKET_VISUAL_SPEC = {
     pushSize: { width: 400, height: 370 },
     carrySize: { width: 390, height: 365 },
     idleSize: { width: 400, height: 360 },
-    navigationBounds: { x: 260, y: 430, width: 1100, height: 370 },
-    safeBounds: { x: 260, y: 430, width: 1100, height: 370 },
+    // The background is a fixed-perspective illustration. Player coordinates
+    // represent the actor's feet, so allowing Y values above the visible floor
+    // makes the worker appear to stand on walls, shelves or inside the cooler.
+    navigationBounds: {
+      x: 260,
+      y: WALKABLE_FLOOR_TOP_Y,
+      width: 1100,
+      height: WALKABLE_FLOOR_BOTTOM_Y - WALKABLE_FLOOR_TOP_Y
+    },
+    safeBounds: {
+      x: 260,
+      y: WALKABLE_FLOOR_TOP_Y,
+      width: 1100,
+      height: WALKABLE_FLOOR_BOTTOM_Y - WALKABLE_FLOOR_TOP_Y
+    },
     shadowOffset: { x: 0, y: 5 }
   },
   backroom: {
@@ -139,6 +154,15 @@ export function validateStarterMarketVisualSpec(): VisualTargetValidationResult 
   }
   if (spec.actor.spawn.y < spec.camera.foregroundStartY) {
     errors.push("The employee must remain in the foreground composition");
+  }
+  if (spec.actor.navigationBounds.y < spec.camera.foregroundStartY) {
+    errors.push("The employee walkable bounds must remain on the visible floor");
+  }
+  if (
+    spec.actor.navigationBounds.y + spec.actor.navigationBounds.height >
+    spec.hud.instructionPanel.y
+  ) {
+    errors.push("The employee walkable floor must stay above the instruction HUD");
   }
   if (spec.composition.produceZone.x >= spec.composition.backroomZone.x) {
     errors.push("Produce must remain left of the backroom");
