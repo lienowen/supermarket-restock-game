@@ -99,6 +99,11 @@ export interface FindItemsLevelVisualPreset extends BaseMarketLevelVisualPreset 
   readonly id: "find-items-standard-v1";
   readonly mode: "find-items";
   readonly fixture: { readonly position: VisualPoint; readonly size: VisualSize };
+  readonly auxiliaryFixtures: readonly {
+    readonly assetKey: string;
+    readonly position: VisualPoint;
+    readonly size: VisualSize;
+  }[];
   readonly basket: { readonly position: VisualPoint; readonly size: VisualSize };
   readonly orderTicket: {
     readonly centre: VisualPoint;
@@ -227,40 +232,47 @@ export const FIND_ITEMS_VISUAL_PRESET: FindItemsLevelVisualPreset = Object.freez
   id: "find-items-standard-v1",
   mode: "find-items",
   actor: Object.freeze({
-    idleSize: Object.freeze({ width: 275, height: 295 }),
-    shadowOffset: SHARED_ACTOR.shadowOffset
+    idleSize: Object.freeze({ width: 360, height: 390 }),
+    shadowOffset: Object.freeze({ x: 0, y: 8 })
   }),
   environment: Object.freeze({
-    focus: Object.freeze({ x: 850, y: 700 }),
-    focusSize: Object.freeze({ width: 900, height: 300 }),
+    focus: Object.freeze({ x: 930, y: 675 }),
+    focusSize: Object.freeze({ width: 1040, height: 360 }),
     routeAlpha: 0,
     inactiveWashAlpha: 0,
-    vignetteAlpha: 0.05
+    vignetteAlpha: 0.025
   }),
   fixture: Object.freeze({
-    position: Object.freeze({ x: 0, y: 0 }),
-    size: Object.freeze({ width: 0, height: 0 })
+    position: Object.freeze({ x: 1180, y: 650 }),
+    size: Object.freeze({ width: 520, height: 360 })
   }),
+  auxiliaryFixtures: Object.freeze([
+    Object.freeze({
+      assetKey: "fixture-produce-display-a",
+      position: Object.freeze({ x: 720, y: 720 }),
+      size: Object.freeze({ width: 360, height: 250 })
+    })
+  ]),
   basket: Object.freeze({
-    position: Object.freeze({ x: 905, y: 805 }),
-    size: Object.freeze({ width: 108, height: 74 })
+    position: Object.freeze({ x: 875, y: 812 }),
+    size: Object.freeze({ width: 104, height: 68 })
   }),
   orderTicket: Object.freeze({
-    centre: Object.freeze({ x: 1280, y: 242 }),
-    size: Object.freeze({ width: 390, height: 136 }),
-    slotSize: Object.freeze({ width: 104, height: 74 }),
-    iconMaxSize: Object.freeze({ width: 52, height: 56 }),
-    itemGap: 115
+    centre: Object.freeze({ x: 1310, y: 178 }),
+    size: Object.freeze({ width: 330, height: 118 }),
+    slotSize: Object.freeze({ width: 86, height: 64 }),
+    iconMaxSize: Object.freeze({ width: 46, height: 50 }),
+    itemGap: 92
   }),
   itemSizes: Object.freeze({
-    "milk-bottle": Object.freeze({ width: 48, height: 66 }),
-    apple: Object.freeze({ width: 44, height: 46 }),
-    "cereal-box": Object.freeze({ width: 48, height: 68 })
+    "milk-bottle": Object.freeze({ width: 68, height: 96 }),
+    apple: Object.freeze({ width: 64, height: 64 }),
+    "cereal-box": Object.freeze({ width: 72, height: 100 })
   }),
   itemPositions: Object.freeze({
-    "milk-bottle": Object.freeze({ x: 330, y: 410 }),
-    apple: Object.freeze({ x: 1430, y: 560 }),
-    "cereal-box": Object.freeze({ x: 690, y: 432 })
+    "milk-bottle": Object.freeze({ x: 1045, y: 565 }),
+    apple: Object.freeze({ x: 720, y: 655 }),
+    "cereal-box": Object.freeze({ x: 1195, y: 565 })
   })
 });
 
