@@ -4,7 +4,7 @@ import { CampaignSession } from "../../application/CampaignSession";
 import { STARTER_RUNTIME_ASSET_REGISTRY } from "../../assets/RuntimeAssetRegistry";
 import { resolveCartCapacityExperienceSpec } from "../../content/experience/CartCapacityExperienceSpec";
 import { resolveCheckoutPatienceExperienceSpec } from "../../content/experience/CheckoutPatienceExperienceSpec";
-import { resolveLevelExperienceSpec } from "../../content/experience/LevelExperienceSpec";
+import { resolveMatureLevelExperienceSpec } from "../../content/experience/MatureLevelExperience";
 import { gameDomainEvents } from "../../events/GameDomainEvents";
 import {
   createStarterMarketPresentationContext,
@@ -70,7 +70,7 @@ export async function createPhaserGame(
   const requestedId = options.levelId ?? options.shiftId ?? requestedLevelFromLocation();
   const levelId = requestedId ?? firstLevel.level.id;
   const basePresentation = createStarterMarketPresentationContext(levelId);
-  const experience = resolveLevelExperienceSpec(basePresentation.campaignLevel.level);
+  const experience = resolveMatureLevelExperienceSpec(basePresentation.campaignLevel.level);
   const cartCapacity = resolveCartCapacityExperienceSpec(basePresentation.campaignLevel.level);
   const checkoutPatience = resolveCheckoutPatienceExperienceSpec(basePresentation.campaignLevel.level);
 
