@@ -43,6 +43,7 @@ ShiftHud.prototype.update = function updateMatureRestockHud(
   if (snapshot.step === "restock") {
     if (!state.compactActivated) {
       hideLegacyShiftHud(view.scene);
+      hideRedundantShelfRule(view.scene);
       handOffChecklist();
       state.compactActivated = true;
     }
@@ -101,6 +102,14 @@ function hideLegacyShiftHud(scene: Phaser.Scene): void {
     display.setVisible?.(false);
     display.disableInteractive?.();
   });
+}
+
+function hideRedundantShelfRule(scene: Phaser.Scene): void {
+  const rule = scene.children.getByName("restock-cooler-shelf-rule") as Phaser.GameObjects.GameObject & {
+    setVisible?: (visible: boolean) => unknown;
+  } | null;
+  rule?.setVisible?.(false);
+  document.body.dataset.matureRestockShelfRule = "hidden";
 }
 
 function handOffChecklist(): void {
