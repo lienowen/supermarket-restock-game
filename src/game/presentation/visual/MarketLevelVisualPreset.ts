@@ -10,7 +10,8 @@ export type MarketVisualPresetId =
   | "restock-standard-v1"
   | "checkout-standard-v1"
   | "clean-standard-v1"
-  | "find-items-standard-v1";
+  | "find-items-standard-v1"
+  | "find-items-golden-v1";
 
 interface BaseMarketLevelVisualPreset {
   readonly id: MarketVisualPresetId;
@@ -96,7 +97,7 @@ export interface CleanLevelVisualPreset extends BaseMarketLevelVisualPreset {
 }
 
 export interface FindItemsLevelVisualPreset extends BaseMarketLevelVisualPreset {
-  readonly id: "find-items-standard-v1";
+  readonly id: "find-items-standard-v1" | "find-items-golden-v1";
   readonly mode: "find-items";
   readonly fixture: { readonly position: VisualPoint; readonly size: VisualSize };
   readonly auxiliaryFixtures: readonly {
@@ -232,29 +233,71 @@ export const FIND_ITEMS_VISUAL_PRESET: FindItemsLevelVisualPreset = Object.freez
   id: "find-items-standard-v1",
   mode: "find-items",
   actor: Object.freeze({
+    idleSize: Object.freeze({ width: 275, height: 295 }),
+    shadowOffset: SHARED_ACTOR.shadowOffset
+  }),
+  environment: Object.freeze({
+    focus: Object.freeze({ x: 850, y: 700 }),
+    focusSize: Object.freeze({ width: 900, height: 300 }),
+    routeAlpha: 0,
+    inactiveWashAlpha: 0,
+    vignetteAlpha: 0.05
+  }),
+  fixture: Object.freeze({
+    position: Object.freeze({ x: 0, y: 0 }),
+    size: Object.freeze({ width: 0, height: 0 })
+  }),
+  auxiliaryFixtures: Object.freeze([]),
+  basket: Object.freeze({
+    position: Object.freeze({ x: 905, y: 805 }),
+    size: Object.freeze({ width: 108, height: 74 })
+  }),
+  orderTicket: Object.freeze({
+    centre: Object.freeze({ x: 1280, y: 242 }),
+    size: Object.freeze({ width: 390, height: 136 }),
+    slotSize: Object.freeze({ width: 104, height: 74 }),
+    iconMaxSize: Object.freeze({ width: 52, height: 56 }),
+    itemGap: 115
+  }),
+  itemSizes: Object.freeze({
+    "milk-bottle": Object.freeze({ width: 48, height: 66 }),
+    apple: Object.freeze({ width: 44, height: 46 }),
+    "cereal-box": Object.freeze({ width: 48, height: 68 })
+  }),
+  itemPositions: Object.freeze({
+    "milk-bottle": Object.freeze({ x: 330, y: 410 }),
+    apple: Object.freeze({ x: 1430, y: 560 }),
+    "cereal-box": Object.freeze({ x: 690, y: 432 })
+  })
+});
+
+export const FIND_ITEMS_GOLDEN_VISUAL_PRESET: FindItemsLevelVisualPreset = Object.freeze({
+  id: "find-items-golden-v1",
+  mode: "find-items",
+  actor: Object.freeze({
     idleSize: Object.freeze({ width: 360, height: 390 }),
     shadowOffset: Object.freeze({ x: 0, y: 8 })
   }),
   environment: Object.freeze({
-    focus: Object.freeze({ x: 930, y: 675 }),
-    focusSize: Object.freeze({ width: 1040, height: 360 }),
+    focus: Object.freeze({ x: 850, y: 690 }),
+    focusSize: Object.freeze({ width: 1080, height: 370 }),
     routeAlpha: 0,
     inactiveWashAlpha: 0,
     vignetteAlpha: 0.025
   }),
   fixture: Object.freeze({
-    position: Object.freeze({ x: 1180, y: 650 }),
-    size: Object.freeze({ width: 520, height: 360 })
+    position: Object.freeze({ x: 690, y: 650 }),
+    size: Object.freeze({ width: 600, height: 360 })
   }),
   auxiliaryFixtures: Object.freeze([
     Object.freeze({
       assetKey: "fixture-produce-display-a",
-      position: Object.freeze({ x: 720, y: 720 }),
+      position: Object.freeze({ x: 1180, y: 720 }),
       size: Object.freeze({ width: 360, height: 250 })
     })
   ]),
   basket: Object.freeze({
-    position: Object.freeze({ x: 875, y: 812 }),
+    position: Object.freeze({ x: 950, y: 810 }),
     size: Object.freeze({ width: 104, height: 68 })
   }),
   orderTicket: Object.freeze({
@@ -270,9 +313,9 @@ export const FIND_ITEMS_VISUAL_PRESET: FindItemsLevelVisualPreset = Object.freez
     "cereal-box": Object.freeze({ width: 72, height: 100 })
   }),
   itemPositions: Object.freeze({
-    "milk-bottle": Object.freeze({ x: 1045, y: 565 }),
-    apple: Object.freeze({ x: 720, y: 655 }),
-    "cereal-box": Object.freeze({ x: 1195, y: 565 })
+    "milk-bottle": Object.freeze({ x: 520, y: 565 }),
+    apple: Object.freeze({ x: 1180, y: 655 }),
+    "cereal-box": Object.freeze({ x: 820, y: 565 })
   })
 });
 
@@ -280,7 +323,8 @@ const PRESETS: Readonly<Record<MarketVisualPresetId, MarketLevelVisualPreset>> =
   [RESTOCK_VISUAL_PRESET.id]: RESTOCK_VISUAL_PRESET,
   [CHECKOUT_VISUAL_PRESET.id]: CHECKOUT_VISUAL_PRESET,
   [CLEAN_VISUAL_PRESET.id]: CLEAN_VISUAL_PRESET,
-  [FIND_ITEMS_VISUAL_PRESET.id]: FIND_ITEMS_VISUAL_PRESET
+  [FIND_ITEMS_VISUAL_PRESET.id]: FIND_ITEMS_VISUAL_PRESET,
+  [FIND_ITEMS_GOLDEN_VISUAL_PRESET.id]: FIND_ITEMS_GOLDEN_VISUAL_PRESET
 });
 
 export function resolveMarketLevelVisualPreset(
