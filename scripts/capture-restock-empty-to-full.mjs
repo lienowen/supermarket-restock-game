@@ -34,6 +34,7 @@ const report = {
   interactionsPerRow: null,
   unitsPerInteraction: null,
   physicalItemsPerRow: null,
+  visibleTextsAtRestock: [],
   states: [],
   assertions: {
     setupUsesLiveHudAction: false,
@@ -92,6 +93,7 @@ try {
   report.interactionsPerRow = initial.rush.itemsPerRow;
   report.unitsPerInteraction = initial.rush.unitsPerInteraction;
   report.physicalItemsPerRow = initial.rush.itemsPerRow * initial.rush.unitsPerInteraction;
+  report.visibleTextsAtRestock = initial.visibleTexts;
   report.states.push(initial);
 
   report.assertions.productionV3BackgroundActive = initial.backgroundState === "production-v3-hd";
@@ -117,8 +119,6 @@ try {
     report.states.push(state);
     await captureActiveRow(page, rowIndex, `restock-visual-${expectedPhysicalItems}-of-${report.physicalItemsPerRow}.png`);
   }
-
-  await createContactSheet(context, report.states.map((state) => state.itemCount), report.physicalItemsPerRow);
 
   report.assertions.shelfBuildsByConfiguredUnits = report.states.every((state, index) => {
     const expectedPhysicalItems = index * report.unitsPerInteraction;
@@ -146,29 +146,15 @@ try {
   await new Promise((resolveServer) => server.close(resolveServer));
 }
 
-console.log(JSON.stringify({ assertions: report.assertions, interactionsPerRow: report.interactionsPerRow, unitsPerInteraction: report.unitsPerInteraction, physicalItemsPerRow: report.physicalItemsPerRow, fatalError: report.fatalError }, null, 2));
+console.log(JSON.stringify({
+  assertions: report.assertions,
+  visibleTextsAtRestock: report.visibleTextsAtRestock,
+  interactionsPerRow: report.interactionsPerRow,
+  unitsPerInteraction: report.unitsPerInteraction,
+  physicalItemsPerRow: report.physicalItemsPerRow,
+  fatalError: report.fatalError
+}, null, 2));
 if (thrownError) throw thrownError;
-
-async function createContactSheet(context, counts, physicalItemsPerRow) {
-  const evidencePage = await context.newPage();
-  const panelWidth = 300;
-  const panelHeight = 180;
-  const width = panelWidth * counts.length;
-  await evidencePage.setViewportSize({ width, height: panelHeight });
-  const images = counts.map((count) => {
-    const bytes = readFileSync(join(OUTPUT_DIR, `restock-visual-${count}-of-${physicalItemsPerRow}.png`));
-    return `data:image/png;base64,${bytes.toString("base64")}`;
-  });
-  await evidencePage.setContent(`<!doctype html><html><head><style>
-    html,body{margin:0;width:${width}px;height:${panelHeight}px;overflow:hidden;background:#101510}
-    main{display:grid;grid-template-columns:repeat(${counts.length},${panelWidth}px);width:${width}px;height:${panelHeight}px}
-    figure{position:relative;margin:0;width:${panelWidth}px;height:${panelHeight}px;overflow:hidden}
-    img{display:block;width:${panelWidth}px;height:${panelHeight}px;object-fit:cover}
-    figcaption{position:absolute;left:8px;top:8px;padding:4px 8px;border-radius:999px;background:rgba(5,14,10,.9);color:#ffd95e;font:900 12px Arial,sans-serif}
-  </style></head><body><main>${images.map((src, index) => `<figure><img src="${src}"><figcaption>${counts[index]}/${physicalItemsPerRow}</figcaption></figure>`).join("")}</main></body></html>`);
-  await evidencePage.screenshot({ path: join(OUTPUT_DIR, "restock-contact-sheet.jpg"), type: "jpeg", quality: 78, fullPage: false });
-  await evidencePage.close();
-}
 
 async function readVisualState(page, forcedRowIndex) {
   return page.evaluate(({ sceneKey, rowIndex }) => {
@@ -179,10 +165,22 @@ async function readVisualState(page, forcedRowIndex) {
     const target = scene?.children?.getByName?.(`beverage-cooler-row-target-${activeRowIndex}`);
     const shell = scene?.children?.getByName?.("beverage-cooler-empty-shell");
     const matureHud = scene?.children?.getByName?.("mature-restock-hud");
-    const legacyHudVisibleCount = (scene?.children?.list ?? []).filter((entry) => {
+    const children = scene?.children?.list ?? [];
+    const legacyHudVisibleCount = children.filter((entry) => {
       const depth = entry?.depth ?? -1;
       return depth >= 99 && depth <= 105 && entry?.visible === true;
     }).length;
+    const visibleTexts = children
+      .filter((entry) => entry?.visible === true && typeof entry?.text === "string" && entry.text.trim().length > 0)
+      .map((entry) => ({
+        text: entry.text,
+        name: entry.name ?? "",
+        x: Math.round(entry.x ?? 0),
+        y: Math.round(entry.y ?? 0),
+        depth: entry.depth ?? 0,
+        type: entry.constructor?.name ?? ""
+      }))
+      .sort((a, b) => (a.depth - b.depth) || (a.y - b.y) || (a.x - b.x));
     const checklist = document.getElementById("level-checklist");
     return {
       backgroundState: document.body.dataset.restockCoolerBackground ?? null,
@@ -193,6 +191,7 @@ async function readVisualState(page, forcedRowIndex) {
       legacyHudVisibleCount,
       checklistState: document.body.dataset.levelChecklist ?? null,
       checklistVisible: Boolean(checklist && checklist.style.visibility !== "hidden" && checklist.style.opacity !== "0"),
+      visibleTexts,
       controller: scene?.controller?.snapshot?.() ?? null,
       rush,
       itemCount: Array.isArray(holder?.list) ? holder.list.length : -1,
