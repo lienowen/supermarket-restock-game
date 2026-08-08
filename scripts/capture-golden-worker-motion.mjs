@@ -32,6 +32,7 @@ const report = {
   generatedAt: new Date().toISOString(),
   assertions: {
     startsIdle: false,
+    noPickupBeforeSelection: false,
     workerActuallyMoves: false,
     walkMotionObserved: false,
     walkTextureAppears: false,
@@ -73,6 +74,8 @@ try {
   await page.waitForSelector(GAME_CANVAS_SELECTOR, { state: "visible", timeout: 45000 });
   await page.waitForFunction(() => document.body.dataset.goldenLevel === "level-5-mature-pass-v1", null, { timeout: 30000 });
 
+  // Give the idle scene enough time to expose accidental proximity-driven pickup.
+  await page.waitForTimeout(650);
   const start = await readWorker(page);
   report.start = start;
   report.assertions.startsIdle = Boolean(
@@ -80,6 +83,7 @@ try {
     start.textureKey?.includes("worker-a-idle") &&
     start.textureKey?.endsWith("--opaque-cutout")
   );
+  report.assertions.noPickupBeforeSelection = start.pickupObserved === "false";
 
   const apple = await page.evaluate((sceneKey) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
