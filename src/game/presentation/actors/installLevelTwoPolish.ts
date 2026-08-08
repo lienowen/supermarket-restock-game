@@ -23,6 +23,10 @@ interface RestockActorInternals {
   readonly currentSnapshot?: RestockSceneSnapshot;
 }
 
+interface CoolerInternals {
+  readonly scene: Phaser.Scene;
+}
+
 interface CoolerPrototypeInternals {
   createStockBottle(
     this: IntegratedBeverageCoolerView,
@@ -83,7 +87,8 @@ coolerPrototype.createStockBottle = function createLevelTwoWaterStock(
   animate: boolean
 ): Phaser.GameObjects.Image {
   const bottle = originalCreateStockBottle.call(this, rowIndex, itemIndex, animate);
-  if (!isPromotionLevel() || !this.scene.textures.exists(WATER_BOTTLE_KEY)) return bottle;
+  const view = this as unknown as CoolerInternals;
+  if (!isPromotionLevel() || !view.scene.textures.exists(WATER_BOTTLE_KEY)) return bottle;
   bottle.setTexture(WATER_BOTTLE_KEY).setDisplaySize(30, 70);
   return bottle;
 };
