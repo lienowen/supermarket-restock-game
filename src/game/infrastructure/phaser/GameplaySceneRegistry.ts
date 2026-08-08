@@ -48,7 +48,7 @@ const GAMEPLAY_SCENE_FACTORIES: Readonly<Record<LevelDefinition["mode"], Gamepla
       presentation,
       "find-items"
     ) as FindItemsStarterMarketPresentationContext;
-    return context.campaignLevel.level.presentation.visualPresetId === "find-items-golden-v1"
+    return context.campaignLevel.level.presentation.visualPresetId === "find-items-golden-standard-v1"
       ? new GoldenOrderHuntScene(context, session)
       : new UtilityTaskScene(context, session);
   }
