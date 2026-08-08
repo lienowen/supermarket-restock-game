@@ -320,11 +320,11 @@ export const FIND_ITEMS_GOLDEN_VISUAL_PRESET: FindItemsLevelVisualPreset = Objec
 });
 
 const PRESETS: Readonly<Record<MarketVisualPresetId, MarketLevelVisualPreset>> = Object.freeze({
-  [RESTOCK_VISUAL_PRESET.id]: RESTOCK_VISUAL_PRESET,
-  [CHECKOUT_VISUAL_PRESET.id]: CHECKOUT_VISUAL_PRESET,
-  [CLEAN_VISUAL_PRESET.id]: CLEAN_VISUAL_PRESET,
-  [FIND_ITEMS_VISUAL_PRESET.id]: FIND_ITEMS_VISUAL_PRESET,
-  [FIND_ITEMS_GOLDEN_VISUAL_PRESET.id]: FIND_ITEMS_GOLDEN_VISUAL_PRESET
+  "restock-standard-v1": RESTOCK_VISUAL_PRESET,
+  "checkout-standard-v1": CHECKOUT_VISUAL_PRESET,
+  "clean-standard-v1": CLEAN_VISUAL_PRESET,
+  "find-items-standard-v1": FIND_ITEMS_VISUAL_PRESET,
+  "find-items-golden-v1": FIND_ITEMS_GOLDEN_VISUAL_PRESET
 });
 
 export function resolveMarketLevelVisualPreset(
