@@ -14,9 +14,9 @@ const GOLDEN_EXTRA_PRODUCT_KEYS = Object.freeze([
 ]);
 
 const GOLDEN_ZONE_LAYOUT = Object.freeze({
-  breakfastFixture: Object.freeze({ x: 700, y: 690, maxWidth: 430, maxHeight: 270 }),
-  produceFixture: Object.freeze({ x: 1220, y: 742, maxWidth: 320, maxHeight: 205 }),
-  basket: Object.freeze({ x: 865, y: 815, maxWidth: 118, maxHeight: 72 }),
+  breakfastFixture: Object.freeze({ x: 700, y: 706, maxWidth: 470, maxHeight: 320 }),
+  produceFixture: Object.freeze({ x: 1220, y: 752, maxWidth: 360, maxHeight: 250 }),
+  basket: Object.freeze({ x: 855, y: 816, maxWidth: 118, maxHeight: 82 }),
   worker: Object.freeze({ maxWidth: 185, maxHeight: 300 })
 });
 
@@ -26,19 +26,19 @@ const GOLDEN_PRODUCT_LAYOUT = Object.freeze([
     name: "find-item-milk-bottle",
     assetKey: "product-milk-bottle",
     x: 940,
-    y: 570,
-    maxWidth: 52,
-    maxHeight: 88,
+    y: 590,
+    maxWidth: 40,
+    maxHeight: 64,
     requested: true
   }),
   Object.freeze({
     sourceName: "find-decoy-decoy-yogurt",
     name: "find-decoy-yogurt",
     assetKey: "product-yogurt-cup",
-    x: 1020,
-    y: 575,
-    maxWidth: 54,
-    maxHeight: 62,
+    x: 1015,
+    y: 590,
+    maxWidth: 40,
+    maxHeight: 46,
     requested: false
   }),
   Object.freeze({
@@ -46,29 +46,29 @@ const GOLDEN_PRODUCT_LAYOUT = Object.freeze([
     name: "find-item-cereal-box",
     assetKey: "product-cereal-box",
     x: 720,
-    y: 610,
-    maxWidth: 68,
-    maxHeight: 92,
+    y: 620,
+    maxWidth: 38,
+    maxHeight: 54,
     requested: true
   }),
   Object.freeze({
     sourceName: "find-decoy-decoy-oats",
     name: "find-decoy-oats",
     assetKey: "product-oats-canister",
-    x: 625,
-    y: 610,
-    maxWidth: 64,
-    maxHeight: 88,
+    x: 650,
+    y: 620,
+    maxWidth: 38,
+    maxHeight: 50,
     requested: false
   }),
   Object.freeze({
     sourceName: "find-decoy-decoy-paper-towels",
     name: "find-decoy-peanut-butter",
     assetKey: "product-peanut-butter",
-    x: 810,
-    y: 612,
-    maxWidth: 58,
-    maxHeight: 82,
+    x: 790,
+    y: 620,
+    maxWidth: 36,
+    maxHeight: 50,
     requested: false
   }),
   Object.freeze({
@@ -76,29 +76,29 @@ const GOLDEN_PRODUCT_LAYOUT = Object.freeze([
     name: "find-item-apple",
     assetKey: "product-apple",
     x: 1220,
-    y: 675,
-    maxWidth: 62,
-    maxHeight: 62,
+    y: 697,
+    maxWidth: 42,
+    maxHeight: 42,
     requested: true
   }),
   Object.freeze({
     sourceName: "find-decoy-decoy-chips",
     name: "find-decoy-banana",
     assetKey: "product-banana-bunch",
-    x: 1135,
-    y: 681,
-    maxWidth: 82,
-    maxHeight: 62,
+    x: 1155,
+    y: 700,
+    maxWidth: 56,
+    maxHeight: 42,
     requested: false
   }),
   Object.freeze({
     sourceName: "find-decoy-decoy-detergent",
     name: "find-decoy-grapes",
     assetKey: "product-grapes-pack",
-    x: 1300,
-    y: 681,
-    maxWidth: 72,
-    maxHeight: 60,
+    x: 1285,
+    y: 700,
+    maxWidth: 48,
+    maxHeight: 40,
     requested: false
   })
 ]);
@@ -133,7 +133,10 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
     super.create();
     document.body.dataset.goldenLevel = "level-5-mature-pass-v1";
     document.body.dataset.goldenEnvironment = this.goldenContext.levelAssets.environment.key;
-    document.body.dataset.goldenWorldScale = "trimmed-v2";
+    document.body.dataset.goldenWorldScale = "trimmed-v3";
+    document.body.dataset.goldenHud = "compact-v1";
+    this.hideLegacyHudChrome();
+    this.createCompactHeader();
     this.createStoreFixtures();
     this.reframeProducts();
     this.reframeBasket();
@@ -143,6 +146,41 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
   override update(time: number, delta: number): void {
     super.update(time, delta);
     this.normalizeWorkerTexture();
+  }
+
+  private hideLegacyHudChrome(): void {
+    this.children.getChildren().forEach((gameObject) => {
+      const displayObject = gameObject as Phaser.GameObjects.GameObject & {
+        depth?: number;
+        setVisible?: (visible: boolean) => unknown;
+        disableInteractive?: () => unknown;
+      };
+      const depth = displayObject.depth ?? -1;
+      if (depth < 99 || depth > 105) return;
+      displayObject.setVisible?.(false);
+      displayObject.disableInteractive?.();
+    });
+  }
+
+  private createCompactHeader(): void {
+    const panel = this.add.graphics().setDepth(110).setScrollFactor(0);
+    panel.fillStyle(0x101b16, 0.88);
+    panel.fillRoundedRect(24, 22, 248, 54, 16);
+    panel.lineStyle(1, 0xffffff, 0.12);
+    panel.strokeRoundedRect(24, 22, 248, 54, 16);
+
+    this.add.text(44, 34, "ORDER HUNT", {
+      fontFamily: "Arial",
+      fontSize: "15px",
+      color: "#ffffff",
+      fontStyle: "bold",
+      letterSpacing: 1.2
+    }).setDepth(111).setScrollFactor(0);
+    this.add.text(44, 54, "Find the 3 items on the order card", {
+      fontFamily: "Arial",
+      fontSize: "12px",
+      color: "#b9d9c5"
+    }).setDepth(111).setScrollFactor(0);
   }
 
   private createStoreFixtures(): void {
