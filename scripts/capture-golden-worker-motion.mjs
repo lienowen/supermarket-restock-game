@@ -37,12 +37,15 @@ const report = {
     workerActuallyMoves: false,
     walkTextureAppears: false,
     walkFrameDatasetAppears: false,
+    pickupPoseAppears: false,
     appleCollectsAfterTravel: false,
+    basketFeedbackIncrements: false,
     returnsToIdle: false,
     noRuntimeIssues: false
   },
   start: null,
   walking: null,
+  pickup: null,
   finished: null,
   consoleErrors: [],
   pageErrors: [],
@@ -102,11 +105,32 @@ try {
   report.assertions.walkFrameDatasetAppears = walking.frame === "1" || walking.frame === "2";
   await page.screenshot({ path: join(OUTPUT_DIR, "golden-order-hunt-walking.png"), fullPage: true });
 
+  await page.waitForFunction(
+    () => document.body.dataset.goldenWorkerMotion === "pickup",
+    null,
+    { timeout: 6000 }
+  );
+  const pickup = await readWorker(page);
+  report.pickup = pickup;
+  report.assertions.pickupPoseAppears = Boolean(
+    pickup.motion === "pickup" &&
+    pickup.textureKey?.includes("worker-a-think") &&
+    pickup.textureKey?.endsWith("--opaque-cutout")
+  );
+  await page.screenshot({ path: join(OUTPUT_DIR, "golden-order-hunt-pickup.png"), fullPage: true });
+
   await page.waitForFunction((sceneKey) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
     return scene?.findChallenge?.snapshot?.().collectedProductIds?.includes("apple") === true;
   }, GAME_SCENE_KEY, { timeout: 15000 });
   report.assertions.appleCollectsAfterTravel = true;
+
+  await page.waitForFunction(
+    () => document.body.dataset.goldenBasketCount === "1",
+    null,
+    { timeout: 5000 }
+  );
+  report.assertions.basketFeedbackIncrements = true;
 
   await page.waitForFunction(
     () => document.body.dataset.goldenWorkerMotion === "idle",
