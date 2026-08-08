@@ -1,11 +1,13 @@
 import Phaser from "phaser";
 import type { NavigationPoint } from "../../application/PlayerNavigationController";
 import type { CleanLevelVisualPreset } from "../visual/MarketLevelVisualPreset";
+import { createTrimmedTexture, fitImageIntoBox } from "../visual/TrimmedTexture";
 
 export interface CleaningTaskViewConfig {
   readonly fixtureAssetKey: string;
   readonly cleaningCartAssetKey: string;
   readonly wetFloorSignAssetKey: string;
+  readonly spillAssetKeys: readonly string[];
   readonly toolPoint: NavigationPoint;
   readonly spotPositions: readonly NavigationPoint[];
   readonly visual: CleanLevelVisualPreset;
@@ -16,9 +18,16 @@ export interface CleaningTaskViewState {
   readonly completedSpills: number;
 }
 
+const SPILL_SIZE_MULTIPLIERS = Object.freeze([
+  Object.freeze({ width: 1.0, height: 0.9 }),
+  Object.freeze({ width: 1.12, height: 0.98 }),
+  Object.freeze({ width: 1.22, height: 1.02 })
+]);
+
 /**
- * Reusable cleaning presentation. Gameplay owns which spill is active; this
- * view owns how the compact floor station and spills read to the player.
+ * Reusable mature cleaning presentation. Gameplay owns which spill is active;
+ * this view renders the actual water / juice / dirt production art at grounded
+ * floor scale instead of prototype vector puddles.
  */
 export class CleaningTaskView {
   private readonly staticObjects: Phaser.GameObjects.GameObject[] = [];
@@ -40,12 +49,14 @@ export class CleaningTaskView {
     const { scene, config } = this;
     const { visual } = config;
 
-    // The coherent supermarket background already contains shelving. The
-    // cleaning-cart sprite also includes its own caution marker, so rendering
-    // either extra asset would duplicate the environment and the sign.
     scene.textures.exists(config.fixtureAssetKey);
     scene.textures.exists(config.wetFloorSignAssetKey);
 
+    const cartTexture = createTrimmedTexture(scene, config.cleaningCartAssetKey, {
+      alphaThreshold: 10,
+      suffix: "--clean-trimmed",
+      padding: 2
+    });
     const cartShadow = scene.add.ellipse(
       config.toolPoint.x + 5,
       config.toolPoint.y + 4,
@@ -58,7 +69,7 @@ export class CleaningTaskView {
     const cart = scene.add.image(
       config.toolPoint.x,
       config.toolPoint.y,
-      config.cleaningCartAssetKey
+      cartTexture
     )
       .setOrigin(0.5, 0.96)
       .setDisplaySize(visual.cartSize.width, visual.cartSize.height)
@@ -72,6 +83,8 @@ export class CleaningTaskView {
       this.spills.push(this.createSpill(point, index));
     });
     this.showToolsPhase(false);
+    document.body.dataset.cleaningPresentation = "mature-clean-v1";
+    document.body.dataset.cleaningSpillArt = "water-juice-dirt-production";
     return Object.freeze([...this.spills]);
   }
 
@@ -143,21 +156,21 @@ export class CleaningTaskView {
           this.scene.tweens.add({
             targets: spill,
             alpha: 0,
-            scaleX: 0.4,
-            scaleY: 0.4,
-            duration: 360,
-            ease: "Back.In",
+            scaleX: 0.58,
+            scaleY: 0.58,
+            duration: 340,
+            ease: "Cubic.In",
             onComplete: () => spill.setVisible(false)
           });
         } else {
-          spill.setVisible(false).setAlpha(0).setScale(0.4);
+          spill.setVisible(false).setAlpha(0).setScale(0.58);
         }
         return;
       }
 
       const active = index === completedSpills;
-      const targetAlpha = active ? visual.activeSpillAlpha : visual.inactiveSpillAlpha;
-      const targetScale = active ? 1.06 : 1;
+      const targetAlpha = active ? 1 : 0.54;
+      const targetScale = active ? 1.04 : 0.94;
       spill.setVisible(true);
 
       if (!animate) {
@@ -199,62 +212,37 @@ export class CleaningTaskView {
   ): Phaser.GameObjects.Container {
     const { scene, config } = this;
     const visual = config.visual;
-    const width = visual.spillBaseSize.width + (index % 2) * 16;
-    const height = visual.spillBaseSize.height + (index % 3) * 5;
+    const sourceKey = config.spillAssetKeys[index % config.spillAssetKeys.length];
+    if (!sourceKey) throw new Error("Clean mode requires at least one spill asset");
+    const textureKey = createTrimmedTexture(scene, sourceKey, {
+      alphaThreshold: 8,
+      suffix: "--clean-spill",
+      padding: 2
+    });
+    const multiplier = SPILL_SIZE_MULTIPLIERS[index % SPILL_SIZE_MULTIPLIERS.length] ?? SPILL_SIZE_MULTIPLIERS[0];
+    const maxWidth = visual.spillTargetSize.width * multiplier.width;
+    const maxHeight = visual.spillTargetSize.height * multiplier.height;
 
     const shadow = scene.add.ellipse(
       3,
       5,
-      width * 1.05,
-      height * 0.94,
-      0x273a3f,
-      0.22
+      maxWidth * 0.88,
+      Math.max(14, maxHeight * 0.42),
+      0x17211d,
+      0.14
     );
-    const base = scene.add.ellipse(
-      0,
-      0,
-      width,
-      height,
-      visual.spillColor,
-      0.5
-    ).setStrokeStyle(2, visual.spillEdgeColor, 0.58);
-    const leftLobe = scene.add.ellipse(
-      -width * 0.27,
-      -height * 0.04,
-      width * 0.56,
-      height * 0.72,
-      visual.spillColor,
-      0.42
-    );
-    const rightLobe = scene.add.ellipse(
-      width * 0.25,
-      height * 0.08,
-      width * 0.48,
-      height * 0.62,
-      visual.spillColor,
-      0.4
-    );
-    const shine = scene.add.ellipse(
-      -width * 0.18,
-      -height * 0.15,
-      width * 0.22,
-      Math.max(5, height * 0.16),
-      visual.spillHighlightColor,
-      0.5
-    );
+    const art = scene.add.image(0, 0, textureKey)
+      .setOrigin(0.5, 0.5)
+      .setName(`clean-spill-art-${index + 1}`);
+    fitImageIntoBox(art, maxWidth, maxHeight);
 
-    return scene.add.container(point.x, point.y, [
-      shadow,
-      base,
-      leftLobe,
-      rightLobe,
-      shine
-    ])
-      .setDepth(9)
-      .setAngle([-5, 4, -2, 6][index % 4] ?? 0)
+    return scene.add.container(point.x, point.y, [shadow, art])
+      .setDepth(9 + point.y / 1000)
+      .setAngle([-4, 3, -2, 5][index % 4] ?? 0)
       .setVisible(false)
       .setAlpha(0)
       .setScale(0.82)
+      .setData("spill-source-key", sourceKey)
       .setName(`clean-spill-${index + 1}`);
   }
 }
