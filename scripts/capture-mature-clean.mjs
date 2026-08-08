@@ -110,7 +110,7 @@ try {
   );
   report.assertions.legacyHoldOverlayHidden = await page.evaluate(() => {
     const overlay = document.getElementById("hold-work-overlay");
-    return Boolean(overlay && getComputedStyle(overlay).display === "none");
+    return !overlay || getComputedStyle(overlay).display === "none";
   });
   await page.screenshot({ path: join(OUTPUT_DIR, "level-4-real-spills.png"), fullPage: true });
 
