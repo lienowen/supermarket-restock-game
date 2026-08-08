@@ -2,6 +2,25 @@ import type { AssetCatalogue, AssetDescriptor } from "./AssetDescriptor";
 
 const asset = (descriptor: AssetDescriptor): AssetDescriptor => descriptor;
 
+const matureSpill = (
+  key: string,
+  fileName: string,
+  state: string
+): AssetDescriptor => asset({
+  key,
+  path: `assets/game/production-v2/mature-clean/${fileName}`,
+  category: "effect",
+  canvasSize: [768, 512],
+  anchor: [0.5, 0.5],
+  defaultScale: 1,
+  depthGroup: "world-effects",
+  preloadGroup: "starter-market",
+  perspective: "fixed-third-person",
+  lightDirection: "upper-left",
+  state,
+  status: "production"
+});
+
 /**
  * Project-wide production assets belong here only after their files are present
  * in the repository and pass the release bundle checks. Asset ideas and gap
@@ -37,6 +56,9 @@ export const GLOBAL_PROJECT_ASSET_CATALOGUE: AssetCatalogue = Object.freeze({
       lightDirection: "upper-left",
       state: "glass-overlay",
       status: "production"
-    })
+    }),
+    matureSpill("spill-water-large", "spill-water-large.png", "water"),
+    matureSpill("spill-juice-large", "spill-juice-large.png", "juice"),
+    matureSpill("spill-dirt-smear-large", "spill-dirt-smear-large.png", "dirt")
   ])
 });
