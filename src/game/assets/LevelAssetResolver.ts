@@ -48,6 +48,7 @@ export interface ResolvedCheckoutLevelAssets extends BaseResolvedLevelAssets {
   readonly workerScan: AssetDescriptor;
   readonly customers: readonly AssetDescriptor[];
   readonly equipment: readonly AssetDescriptor[];
+  readonly products: readonly AssetDescriptor[];
 }
 
 export interface ResolvedCleanLevelAssets extends BaseResolvedLevelAssets {
@@ -65,6 +66,13 @@ export interface ResolvedFindItemsLevelAssets extends BaseResolvedLevelAssets {
   readonly basket: AssetDescriptor;
   readonly items: readonly AssetDescriptor[];
 }
+
+const CHECKOUT_HD_ENVIRONMENT_KEY = "environment-starter-market-restock-hd-v3";
+const CHECKOUT_PRODUCT_ASSET_KEYS = Object.freeze([
+  "product-apple",
+  "product-milk-bottle",
+  "product-cereal-box"
+]);
 
 const resolveDescriptors = (
   registry: RuntimeAssetRegistry,
@@ -132,23 +140,26 @@ export function resolveCheckoutLevelAssets(
 ): ResolvedCheckoutLevelAssets {
   const pack = resolveGlobalAssetPack(level.presentation.assetPackId, "checkout");
   const preload = resolveDescriptors(registry, [
-    pack.environmentAssetKey,
+    CHECKOUT_HD_ENVIRONMENT_KEY,
     ...pack.sharedStoreAssetKeys,
     ...pack.workerWalkAssetKeys,
     pack.workerIdleAssetKey,
     pack.workerScanAssetKey,
     runtime.fixture.assetKey,
     ...pack.customerAssetKeys,
-    ...pack.equipmentAssetKeys
+    ...pack.equipmentAssetKeys,
+    ...CHECKOUT_PRODUCT_ASSET_KEYS
   ]);
   return Object.freeze({
     ...baseAssets(registry, pack),
     preload,
+    environment: registry.require(CHECKOUT_HD_ENVIRONMENT_KEY),
     fixture: registry.require(runtime.fixture.assetKey),
     worker: registry.require(pack.workerIdleAssetKey),
     workerScan: registry.require(pack.workerScanAssetKey),
     customers: Object.freeze(pack.customerAssetKeys.map((key) => registry.require(key))),
-    equipment: Object.freeze(pack.equipmentAssetKeys.map((key) => registry.require(key)))
+    equipment: Object.freeze(pack.equipmentAssetKeys.map((key) => registry.require(key))),
+    products: Object.freeze(CHECKOUT_PRODUCT_ASSET_KEYS.map((key) => registry.require(key)))
   });
 }
 
