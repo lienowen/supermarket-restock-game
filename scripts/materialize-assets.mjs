@@ -43,3 +43,102 @@ if (!isWebp || bytes.length !== EXPECTED_BYTES || digest !== EXPECTED_SHA256) {
 mkdirSync(dirname(OUTPUT_PATH), { recursive: true });
 writeFileSync(OUTPUT_PATH, bytes);
 process.stdout.write(`Materialized verified salesfloor asset (${bytes.length} bytes).\n`);
+
+const P0_SOURCE_DIRECTORY = resolve(ROOT, "asset-source/supermarket-restock-p0-assets-v1");
+const P0_OUTPUT_DIRECTORY = resolve(ROOT, "public/assets/game/production-v2/p0-levels-2-5");
+const P0_ASSET_NAMES = Object.freeze([
+  "equipment-checkout-bag-open.png",
+  "market-salesfloor-v3.png",
+  "prop-checkout-receipt.png",
+  "spill-dirt-smear-large.png",
+  "spill-juice-large.png",
+  "spill-water-large.png",
+  "water-case-closed.png",
+  "water-case-open.png"
+]);
+
+const PNG_SIGNATURE = Buffer.from("89504e470d0a1a0a", "hex");
+const SAFE_PNG_CHUNKS = new Set(["IHDR", "PLTE", "tRNS", "IDAT", "IEND"]);
+
+const crcTable = Array.from({ length: 256 }, (_, index) => {
+  let value = index;
+  for (let bit = 0; bit < 8; bit += 1) {
+    value = (value & 1) !== 0
+      ? 0xedb88320 ^ (value >>> 1)
+      : value >>> 1;
+  }
+  return value >>> 0;
+});
+
+const crc32 = (buffer) => {
+  let crc = 0xffffffff;
+  for (const value of buffer) {
+    crc = crcTable[(crc ^ value) & 0xff] ^ (crc >>> 8);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+};
+
+const makePngChunk = (type, data) => {
+  const typeBytes = Buffer.from(type, "ascii");
+  const length = Buffer.allocUnsafe(4);
+  length.writeUInt32BE(data.length, 0);
+  const checksum = Buffer.allocUnsafe(4);
+  checksum.writeUInt32BE(crc32(Buffer.concat([typeBytes, data])), 0);
+  return Buffer.concat([length, typeBytes, data, checksum]);
+};
+
+const sanitizePng = (pngBytes, assetName) => {
+  if (pngBytes.length < 24 || !pngBytes.subarray(0, 8).equals(PNG_SIGNATURE)) {
+    throw new Error(`P0 source is not a valid PNG file: ${assetName}`);
+  }
+
+  const outputChunks = [];
+  const seen = new Set();
+  let offset = 8;
+  while (offset + 12 <= pngBytes.length) {
+    const length = pngBytes.readUInt32BE(offset);
+    const typeStart = offset + 4;
+    const dataStart = offset + 8;
+    const dataEnd = dataStart + length;
+    const chunkEnd = dataEnd + 4;
+    if (chunkEnd > pngBytes.length) {
+      throw new Error(`Truncated PNG chunk in ${assetName}`);
+    }
+
+    const type = pngBytes.subarray(typeStart, dataStart).toString("ascii");
+    if (SAFE_PNG_CHUNKS.has(type)) {
+      outputChunks.push(makePngChunk(type, pngBytes.subarray(dataStart, dataEnd)));
+      seen.add(type);
+    }
+    offset = chunkEnd;
+    if (type === "IEND") break;
+  }
+
+  if (!seen.has("IHDR") || !seen.has("IDAT") || !seen.has("IEND")) {
+    throw new Error(`PNG is missing a required chunk: ${assetName}`);
+  }
+  return Buffer.concat([PNG_SIGNATURE, ...outputChunks]);
+};
+
+const pngDimensions = (pngBytes) => ({
+  width: pngBytes.readUInt32BE(16),
+  height: pngBytes.readUInt32BE(20)
+});
+
+mkdirSync(P0_OUTPUT_DIRECTORY, { recursive: true });
+for (const assetName of P0_ASSET_NAMES) {
+  const sourcePath = resolve(P0_SOURCE_DIRECTORY, assetName);
+  const outputPath = resolve(P0_OUTPUT_DIRECTORY, assetName);
+  const sourceBytes = readFileSync(sourcePath);
+  const assetBytes = sanitizePng(sourceBytes, assetName);
+  const dimensions = pngDimensions(assetBytes);
+  if (dimensions.width < 256 || dimensions.height < 256) {
+    throw new Error(
+      `P0 asset is below runtime resolution: ${assetName} (${dimensions.width}x${dimensions.height})`
+    );
+  }
+  writeFileSync(outputPath, assetBytes);
+  process.stdout.write(
+    `Materialized browser-safe P0 asset ${assetName} (${dimensions.width}x${dimensions.height}, ${assetBytes.length} bytes).\n`
+  );
+}

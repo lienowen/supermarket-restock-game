@@ -1,0 +1,55 @@
+name: P0 Levels 3-5 Audit
+
+on:
+  pull_request:
+    paths:
+      - "asset-source/supermarket-restock-p0-assets-v1/**"
+      - "scripts/materialize-assets.mjs"
+      - "scripts/capture-p0-levels-3-5.mjs"
+      - "src/game/assets/**"
+      - "src/game/infrastructure/phaser/createPhaserGame.ts"
+      - "src/game/presentation/ui/CheckoutScanDom.ts"
+      - "src/game/presentation/ui/HoldWorkDom.ts"
+      - ".github/workflows/p0-levels-2-5-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  focused-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.54.1
+          npx playwright install --with-deps chromium
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Verify P0 assets used by Levels 3-5
+        run: node scripts/capture-p0-levels-3-5.mjs
+
+      - name: Upload focused evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p0-levels-3-5-audit
+          path: ui-audit/p0-levels-3-5
+          if-no-files-found: error
+          retention-days: 14
