@@ -45,10 +45,10 @@ const PICKUP_HOLD_MS = 440;
 export class GoldenOrderHuntScene extends UtilityTaskScene {
   private readonly goldenVisual: FindItemsLevelVisualPreset;
   private readonly basketFeedbackSeen = new Set<string>();
+  private readonly pickupTriggeredProductIds = new Set<string>();
   private previousWorkerPosition?: { readonly x: number; readonly y: number };
   private walkFrameElapsedMs = 0;
   private walkFrameIndex = 0;
-  private pendingGoldenPickupProductId?: string;
   private pickupVisualUntil = 0;
 
   constructor(
@@ -170,12 +170,6 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
         .setData("requested", layout.requested);
       fitImageIntoBox(object, layout.maxWidth, layout.maxHeight);
       object.setInteractive({ useHandCursor: true });
-      if (layout.requested) {
-        const productId = layout.name.replace("find-item-", "");
-        object.on("pointerdown", () => {
-          this.pendingGoldenPickupProductId = productId;
-        });
-      }
     });
   }
 
@@ -195,16 +189,21 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
   }
 
   private syncPickupIntent(): void {
-    const productId = this.pendingGoldenPickupProductId;
-    if (!productId || this.time.now < this.pickupVisualUntil) return;
-    const target = this.goldenContext.runtime.itemTargets.find((entry) => entry.productId === productId);
+    if (this.time.now < this.pickupVisualUntil) return;
     const actor = this.children.getByName("find-items-worker");
-    if (!target || !(actor instanceof Phaser.GameObjects.Image)) return;
-    if (Phaser.Math.Distance.Between(actor.x, actor.y, target.x, target.y) > PICKUP_START_RADIUS) return;
+    if (!(actor instanceof Phaser.GameObjects.Image)) return;
 
-    this.pickupVisualUntil = this.time.now + PICKUP_HOLD_MS;
-    this.pendingGoldenPickupProductId = undefined;
-    document.body.dataset.goldenPickupProduct = productId;
+    for (const target of this.goldenContext.runtime.itemTargets) {
+      if (this.pickupTriggeredProductIds.has(target.productId)) continue;
+      const item = this.children.getByName(`find-item-${target.productId}`);
+      if (!(item instanceof Phaser.GameObjects.Image) || !item.visible) continue;
+      if (Phaser.Math.Distance.Between(actor.x, actor.y, target.x, target.y) > PICKUP_START_RADIUS) continue;
+
+      this.pickupTriggeredProductIds.add(target.productId);
+      this.pickupVisualUntil = this.time.now + PICKUP_HOLD_MS;
+      document.body.dataset.goldenPickupProduct = target.productId;
+      return;
+    }
   }
 
   private syncBasketFeedback(): void {
