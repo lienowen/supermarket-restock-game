@@ -18,7 +18,8 @@ export interface RestockActorViewConfig {
   readonly workerStart: NavigationPoint;
   readonly navigationBounds: NavigationBounds;
   readonly moveSpeed: number;
-  readonly motionMode: "fixed" | "route";
+  /** Explicit in new callers; omitted by older scene wiring for compatibility. */
+  readonly motionMode?: "fixed" | "route";
   readonly caseStart: NavigationPoint;
   readonly cartStart: NavigationPoint;
   readonly cartDestination: NavigationPoint;
@@ -67,6 +68,9 @@ const RESTOCK_CART_CASE_OFFSET: NavigationPoint = Object.freeze({ x: 3, y: -96 }
 const ROUTE_CART_WORKER_OFFSET_X = -180;
 const ROUTE_CART_OFFSET_Y = 5;
 const ROUTE_HELD_CASE_OFFSET: NavigationPoint = Object.freeze({ x: 26, y: -116 });
+const ROUTE_CASE_STAND_OFFSET: NavigationPoint = Object.freeze({ x: -120, y: 0 });
+const ROUTE_CART_STAND_OFFSET: NavigationPoint = Object.freeze({ x: 180, y: -5 });
+const ROUTE_COOLER_STAND_OFFSET: NavigationPoint = Object.freeze({ x: 180, y: 0 });
 
 export class RestockActorView {
   private readonly textures: RestockTextureKeys;
@@ -78,12 +82,19 @@ export class RestockActorView {
   private readonly handProduct: Phaser.GameObjects.Image;
   private readonly loadDropZone: Phaser.GameObjects.Rectangle;
   private readonly usesColaStockPose: boolean;
+  private readonly motionMode: "fixed" | "route";
   private currentSnapshot?: RestockSceneSnapshot;
 
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly config: RestockActorViewConfig
   ) {
+    // The dedicated mature restock preset uses compact visible-art sizing.
+    // Keep this fallback until all scene constructors explicitly pass motionMode.
+    this.motionMode = config.motionMode ?? (
+      config.idleSize.width <= 220 && config.idleSize.height <= 320 ? "route" : "fixed"
+    );
+
     const walkSources = config.workerWalkAssetKeys ?? ["worker-a-walk-01", "worker-a-walk-02"];
     const workerIdleCut = prepareTrimmedTexture(
       scene,
@@ -147,22 +158,22 @@ export class RestockActorView {
       )
     });
 
-    const start = config.motionMode === "route" ? config.workerStart : RESTOCK_WORKER_POSITION;
+    const start = this.motionMode === "route" ? config.workerStart : RESTOCK_WORKER_POSITION;
     this.navigation = new PlayerNavigationView(scene, {
       start,
       bounds: config.navigationBounds,
       speed: config.moveSpeed,
       assetKey: workerIdleCut,
-      walkAssetKeys: config.motionMode === "route"
+      walkAssetKeys: this.motionMode === "route"
         ? this.textures.workerWalk
         : [workerIdleCut, workerIdleCut],
-      displaySize: config.motionMode === "route" ? config.idleSize : RESTOCK_WORKER_SIZE,
+      displaySize: this.motionMode === "route" ? config.idleSize : RESTOCK_WORKER_SIZE,
       shadowOffset: config.shadowOffset,
       name: "restock-worker",
       baseDepth: 24,
       onManualNavigation: config.onManualNavigation
     });
-    this.navigation.setEnabled(config.motionMode === "route");
+    this.navigation.setEnabled(this.motionMode === "route");
 
     this.cartShadow = scene.add.ellipse(
       config.cartStart.x,
@@ -220,14 +231,14 @@ export class RestockActorView {
 
     document.body.dataset.restockAssetCutting = "approved-stock-pose-mask";
     document.body.dataset.restockActorComposition = "action-pose-and-layered-cart";
-    document.body.dataset.restockActorControl = config.motionMode === "route"
+    document.body.dataset.restockActorControl = this.motionMode === "route"
       ? "routed-world-action-chain"
       : "fixed-position-action-swap";
     document.body.dataset.restockLoadVisual = "cart-back-case-cart-front";
   }
 
   update(deltaMs: number): void {
-    if (this.config.motionMode === "fixed") {
+    if (this.motionMode === "fixed") {
       this.placeWorkerAtRestockStation();
       return;
     }
@@ -241,20 +252,20 @@ export class RestockActorView {
   }
 
   position(): NavigationPoint {
-    return this.config.motionMode === "route"
+    return this.motionMode === "route"
       ? this.navigation.position()
       : RESTOCK_WORKER_POSITION;
   }
 
   isNear(point: NavigationPoint, radius: number): boolean {
-    return this.config.motionMode === "route"
-      ? this.navigation.isNear(point, radius)
+    return this.motionMode === "route"
+      ? this.navigation.isNear(this.routeStandPoint(point), radius)
       : true;
   }
 
   setDestination(point: NavigationPoint): void {
-    if (this.config.motionMode === "route") {
-      this.navigation.setDestination(point);
+    if (this.motionMode === "route") {
+      this.navigation.setDestination(this.routeStandPoint(point));
       return;
     }
     this.placeWorkerAtRestockStation();
@@ -262,7 +273,7 @@ export class RestockActorView {
 
   sync(snapshot: RestockSceneSnapshot): void {
     this.currentSnapshot = snapshot;
-    if (this.config.motionMode === "route") {
+    if (this.motionMode === "route") {
       this.syncRouteState(snapshot);
       return;
     }
@@ -289,6 +300,24 @@ export class RestockActorView {
     this.loadDropZone.destroy();
   }
 
+  private routeStandPoint(point: NavigationPoint): NavigationPoint {
+    const offset = this.samePoint(point, this.config.caseStart)
+      ? ROUTE_CASE_STAND_OFFSET
+      : this.samePoint(point, this.config.cartStart)
+        ? ROUTE_CART_STAND_OFFSET
+        : this.samePoint(point, this.config.cartDestination)
+          ? ROUTE_COOLER_STAND_OFFSET
+          : { x: 0, y: 0 };
+    return {
+      x: point.x + offset.x,
+      y: point.y + offset.y
+    };
+  }
+
+  private samePoint(a: NavigationPoint, b: NavigationPoint): boolean {
+    return Math.abs(a.x - b.x) < 0.5 && Math.abs(a.y - b.y) < 0.5;
+  }
+
   private syncRouteState(snapshot: RestockSceneSnapshot): void {
     const moving = this.navigation.snapshot().moving;
     this.navigation.setVisible(true);
@@ -304,7 +333,8 @@ export class RestockActorView {
           .setPosition(this.config.caseStart.x, this.config.caseStart.y)
           .setDisplaySize(this.config.caseSize.width, this.config.caseSize.height)
           .setAngle(0)
-          .setAlpha(1);
+          .setAlpha(1)
+          .setDepth(23);
         this.cartFront.setVisible(false);
         this.handProduct.setVisible(false);
         return;
