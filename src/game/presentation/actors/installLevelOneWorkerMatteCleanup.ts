@@ -14,6 +14,7 @@ interface WorkerTextureInternals {
 }
 
 interface WorkerNavigationInternals {
+  snapshot(): { readonly moving: boolean };
   setTexture(assetKey: string): void;
   setDisplaySize(width: number, height: number): void;
 }
@@ -44,7 +45,7 @@ const resolvePose = (
       return {
         sourceKey: view.textures.workerCarry,
         aliasKey: "cut-level-one-worker-carry-matte-clean-v2",
-        width: 218,
+        width: 205,
         height: 300
       };
     case "push":
@@ -52,7 +53,7 @@ const resolvePose = (
       return {
         sourceKey: view.textures.workerPush,
         aliasKey: "cut-level-one-worker-push-matte-clean-v2",
-        width: 226,
+        width: 220,
         height: 300
       };
     case "open":
@@ -90,6 +91,16 @@ RestockActorView.prototype.sync = function syncWithCleanWorkerMatte(
   if (!isFirstDelivery()) return;
 
   const view = this as unknown as RestockActorInternals;
+  const moving = view.navigation.snapshot().moving;
+
+  // Walking to the case or carrying the case toward the cart must keep the
+  // live walk frames chosen by RestockActorView. The cleanup installer is only
+  // allowed to replace stable action poses; push is itself a moving action pose.
+  if (moving && (snapshot.step === "collect" || snapshot.step === "load")) {
+    document.body.dataset.levelOneWorkerMatte = "deferred-during-walk";
+    return;
+  }
+
   const pose = resolvePose(view, snapshot.step);
   const cleanedTexture = prepareTrimmedTexture(
     view.scene,

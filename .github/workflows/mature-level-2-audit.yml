@@ -1,0 +1,56 @@
+name: Mature Level 2 Audit
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "src/game/content/levels/starterMarketLevels.ts"
+      - "src/game/presentation/actors/**"
+      - "src/game/presentation/fixtures/**"
+      - "src/game/presentation/ui/**"
+      - "src/game/presentation/visual/**"
+      - "scripts/capture-promotion-memory.mjs"
+      - ".github/workflows/mature-level-2-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mature-memory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.54.1
+          npx playwright install --with-deps chromium
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Verify routed Level 2 memory flow
+        run: node scripts/capture-promotion-memory.mjs
+
+      - name: Upload Level 2 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mature-level-2-audit
+          path: ui-audit/mature-level-2
+          if-no-files-found: error
+          retention-days: 14

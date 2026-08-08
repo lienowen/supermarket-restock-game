@@ -8,6 +8,7 @@ import type {
   StarterMarketPresentationContext
 } from "../../presentation/context/StarterMarketPresentationContext";
 import { CheckoutMarketScene } from "../../presentation/scenes/CheckoutMarketScene";
+import { GoldenOrderHuntScene } from "../../presentation/scenes/GoldenOrderHuntScene";
 import {
   StarterMarketScene,
   type SceneCampaignSessionContext
@@ -42,10 +43,15 @@ const GAMEPLAY_SCENE_FACTORIES: Readonly<Record<LevelDefinition["mode"], Gamepla
     requireMode(presentation, "clean") as CleanStarterMarketPresentationContext,
     session
   ),
-  "find-items": (presentation, session) => new UtilityTaskScene(
-    requireMode(presentation, "find-items") as FindItemsStarterMarketPresentationContext,
-    session
-  )
+  "find-items": (presentation, session) => {
+    const context = requireMode(
+      presentation,
+      "find-items"
+    ) as FindItemsStarterMarketPresentationContext;
+    return context.campaignLevel.level.presentation.visualPresetId === "find-items-golden-standard-v1"
+      ? new GoldenOrderHuntScene(context, session)
+      : new UtilityTaskScene(context, session);
+  }
 });
 
 export function createGameplayScene(

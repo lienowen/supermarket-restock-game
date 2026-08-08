@@ -27,7 +27,7 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     navigation: FIRST_DELIVERY_NAVIGATION,
     presentation: {
       assetPackId: "market-restock-v1",
-      visualPresetId: "restock-standard-v1"
+      visualPresetId: "restock-golden-standard-v1"
     },
     rules: NO_RULE_OVERRIDES,
     tuning: {
@@ -60,7 +60,7 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     navigation: { moveSpeed: 560, interactionRadius: 155 },
     presentation: {
       assetPackId: "market-restock-v1",
-      visualPresetId: "restock-standard-v1"
+      visualPresetId: "restock-golden-standard-v1"
     },
     rules: NO_RULE_OVERRIDES,
     tuning: {
@@ -143,17 +143,19 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     navigation: { moveSpeed: 470, interactionRadius: 165 },
     presentation: {
       assetPackId: "market-find-items-v1",
-      visualPresetId: "find-items-standard-v1"
+      visualPresetId: "find-items-golden-standard-v1"
     },
     rules: NO_RULE_OVERRIDES,
     tuning: {
       initialCoins: 490,
       timeLimitSeconds: 60,
       mistakePenaltySeconds: 5,
+      // Navigation targets are floor stand points in front of the fixture.
+      // Product sprite positions remain owned by the Golden visual preset.
       itemTargets: [
-        { productId: "milk-bottle", x: 520, y: 700 },
-        { productId: "apple", x: 1180, y: 720 },
-        { productId: "cereal-box", x: 820, y: 650 }
+        { productId: "milk-bottle", x: 940, y: 780 },
+        { productId: "apple", x: 1220, y: 810 },
+        { productId: "cereal-box", x: 720, y: 780 }
       ]
     }
   },

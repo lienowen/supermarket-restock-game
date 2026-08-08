@@ -11,11 +11,8 @@ const CANVAS_SELECTOR = "#app > canvas:not(#mobile-game-backdrop)";
 const SCENE_KEY = "starter-market-shift";
 const GAME_WIDTH = 1600;
 const GAME_HEIGHT = 900;
-const ITEMS_PER_SHELF = 3;
 
-if (!existsSync(join(DIST_DIR, "index.html"))) {
-  throw new Error("dist/index.html is missing. Run npm run build first.");
-}
+if (!existsSync(join(DIST_DIR, "index.html"))) throw new Error("dist/index.html is missing. Run npm run build first.");
 mkdirSync(OUTPUT_DIR, { recursive: true });
 
 const server = createServer((request, response) => {
@@ -34,13 +31,23 @@ await new Promise((resolveServer) => server.listen(PORT, "127.0.0.1", resolveSer
 const report = {
   generatedAt: new Date().toISOString(),
   rowIndex: null,
+  interactionsPerRow: null,
+  unitsPerInteraction: null,
+  physicalItemsPerRow: null,
+  visibleTextsAtRestock: [],
   states: [],
   assertions: {
-    bakedBackgroundMarkedOccluded: false,
-    opaqueEmptyShellExists: false,
+    setupUsesLiveHudAction: false,
+    productionV3BackgroundActive: false,
+    integratedCoolerActive: false,
+    legacyEmptyShellRemoved: false,
+    compactMatureHudActive: false,
+    legacyShiftHudHidden: false,
+    checklistHandedOff: false,
     emptyShelfHasZeroItems: false,
-    shelfBuildsOneItemAtATime: false,
-    thirdItemCompletesShelf: false
+    shelfBuildsByConfiguredUnits: false,
+    finalInteractionCompletesShelf: false,
+    noRuntimeIssues: false
   },
   consoleErrors: [],
   pageErrors: [],
@@ -52,105 +59,81 @@ const browser = await chromium.launch({ headless: true });
 let thrownError;
 
 try {
-  const context = await browser.newContext({
-    viewport: { width: GAME_WIDTH, height: GAME_HEIGHT },
-    deviceScaleFactor: 1
-  });
+  const context = await browser.newContext({ viewport: { width: GAME_WIDTH, height: GAME_HEIGHT }, deviceScaleFactor: 1 });
   await context.addInitScript(() => {
-    window.CrazyGames = {
-      SDK: {
-        init: async () => undefined,
-        game: {
-          settings: { muteAudio: false },
-          gameplayStart: () => undefined,
-          gameplayStop: () => undefined,
-          loadingStart: () => undefined,
-          loadingStop: () => undefined,
-          setGameContext: () => undefined,
-          clearGameContext: () => undefined,
-          reportGameCompletedPercentage: () => undefined,
-          addSettingsChangeListener: () => undefined,
-          removeSettingsChangeListener: () => undefined
-        }
-      }
-    };
+    window.CrazyGames = { SDK: { init: async () => undefined, game: {
+      settings: { muteAudio: false }, gameplayStart: () => undefined, gameplayStop: () => undefined,
+      loadingStart: () => undefined, loadingStop: () => undefined, setGameContext: () => undefined,
+      clearGameContext: () => undefined, reportGameCompletedPercentage: () => undefined,
+      addSettingsChangeListener: () => undefined, removeSettingsChangeListener: () => undefined
+    } } };
   });
 
   const page = await context.newPage();
   attachListeners(page, report);
-  await page.goto(
-    `${ORIGIN}/?test=1&briefing=0&guided=0&level=starter-level-001`,
-    { waitUntil: "networkidle", timeout: 90000 }
-  );
+  await page.goto(`${ORIGIN}/?test=1&briefing=0&guided=0&level=starter-level-001`, { waitUntil: "networkidle", timeout: 90000 });
   await page.waitForSelector(CANVAS_SELECTOR, { state: "visible", timeout: 45000 });
-  await page.waitForFunction(
-    () => document.body.dataset.activeLevel === "starter-level-001",
-    null,
-    { timeout: 30000 }
-  );
+  await page.waitForFunction(() => document.body.dataset.activeLevel === "starter-level-001", null, { timeout: 30000 });
 
-  await clickGame(page, 1228, 850);
-  await waitForSnapshot(page, { step: "load", boxCollected: true });
-  await clickGame(page, 1228, 850);
-  await waitForSnapshot(page, { step: "restock", boxLoaded: true, boxOpened: true }, 25000);
+  await waitForHudAction(page);
+  await clickHudAction(page);
+  await waitForSnapshot(page, { step: "load", boxCollected: true }, 25000);
   await waitForInteractionReady(page);
+  await waitForHudAction(page);
+  await clickHudAction(page);
+  await waitForSnapshot(page, { step: "restock", boxLoaded: true, boxOpened: true }, 30000);
+  await waitForInteractionReady(page);
+  await page.waitForFunction(() => document.body.dataset.matureRestockHud === "compact-v1", null, { timeout: 5000 });
+  report.assertions.setupUsesLiveHudAction = true;
 
   const initial = await readVisualState(page);
-  report.rowIndex = initial.rush.activeRowIndex;
-  report.states.push(initial);
-  report.assertions.bakedBackgroundMarkedOccluded = initial.backgroundState === "occluded";
-  report.assertions.opaqueEmptyShellExists = Boolean(
-    initial.shell &&
-    initial.shell.visible &&
-    initial.shell.alpha === 1 &&
-    initial.shell.backgroundStockOccluded === true &&
-    initial.shell.depth < initial.rowDepth
-  );
-  report.assertions.emptyShelfHasZeroItems = (
-    initial.itemCount === 0 &&
-    initial.rush.activeRowItemCount === 0 &&
-    initial.controller.stockedRows === 0
-  );
-  await captureCooler(page, "restock-visual-0-of-3.png");
-
   const rowIndex = initial.rush.activeRowIndex;
+  if (!Number.isInteger(rowIndex)) throw new Error("Active restock row is missing");
+  report.rowIndex = rowIndex;
+  report.interactionsPerRow = initial.rush.itemsPerRow;
+  report.unitsPerInteraction = initial.rush.unitsPerInteraction;
+  report.physicalItemsPerRow = initial.rush.itemsPerRow * initial.rush.unitsPerInteraction;
+  report.visibleTextsAtRestock = initial.visibleTexts;
+  report.states.push(initial);
+
+  report.assertions.productionV3BackgroundActive = initial.backgroundState === "production-v3-hd";
+  report.assertions.integratedCoolerActive = initial.coolerView === "background-integrated" && initial.coolerForeground === "shelf-lips-only";
+  report.assertions.legacyEmptyShellRemoved = initial.shell === null;
+  report.assertions.compactMatureHudActive = initial.matureHudState === "compact-v1" && initial.matureHudVisible === true;
+  report.assertions.legacyShiftHudHidden = initial.legacyHudVisibleCount === 0;
+  report.assertions.checklistHandedOff = initial.checklistState === "handoff" && initial.checklistVisible === false;
+  report.assertions.emptyShelfHasZeroItems = initial.itemCount === 0 && initial.rush.activeRowItemCount === 0 && initial.controller.stockedRows === 0;
+
+  await page.screenshot({ path: join(OUTPUT_DIR, "level-1-mature-restock.png"), fullPage: true });
+  await captureActiveRow(page, rowIndex, `restock-visual-0-of-${report.physicalItemsPerRow}.png`);
   const target = initial.target;
-  for (let itemNumber = 1; itemNumber <= ITEMS_PER_SHELF; itemNumber += 1) {
+  if (!target) throw new Error("Active restock row target is missing");
+
+  for (let interactionNumber = 1; interactionNumber <= report.interactionsPerRow; interactionNumber += 1) {
     await waitForInteractionReady(page);
     await clickGame(page, target.x, target.y);
-    await waitForRowItemCount(page, rowIndex, itemNumber);
-    if (itemNumber === ITEMS_PER_SHELF) {
-      await waitForSnapshot(page, { stockedRows: 1 }, 15000);
-    }
+    const expectedPhysicalItems = interactionNumber * report.unitsPerInteraction;
+    await waitForRowState(page, rowIndex, interactionNumber, expectedPhysicalItems);
+    if (interactionNumber === report.interactionsPerRow) await waitForSnapshot(page, { stockedRows: 1 }, 15000);
     const state = await readVisualState(page, rowIndex);
     report.states.push(state);
-    await captureCooler(page, `restock-visual-${itemNumber}-of-3.png`);
+    await captureActiveRow(page, rowIndex, `restock-visual-${expectedPhysicalItems}-of-${report.physicalItemsPerRow}.png`);
   }
 
-  await createContactSheet(context);
-
-  const one = report.states[1];
-  const two = report.states[2];
-  const three = report.states[3];
-  report.assertions.shelfBuildsOneItemAtATime = Boolean(
-    one?.itemCount === 1 &&
-    two?.itemCount === 2 &&
-    one?.controller.stockedRows === 0 &&
-    two?.controller.stockedRows === 0
+  report.assertions.shelfBuildsByConfiguredUnits = report.states.every((state, index) => {
+    const expectedPhysicalItems = index * report.unitsPerInteraction;
+    return state.itemCount === expectedPhysicalItems && state.rush.rowItemCounts[rowIndex] === index;
+  });
+  const finalState = report.states.at(-1);
+  report.assertions.finalInteractionCompletesShelf = Boolean(
+    finalState?.itemCount === report.physicalItemsPerRow &&
+    finalState?.controller.stockedRows === 1 &&
+    finalState?.rush.filledRowIndexes.includes(rowIndex)
   );
-  report.assertions.thirdItemCompletesShelf = Boolean(
-    three?.itemCount === 3 &&
-    three?.controller.stockedRows === 1 &&
-    three?.rush.filledRowIndexes.includes(rowIndex)
-  );
+  report.assertions.noRuntimeIssues = report.consoleErrors.length === 0 && report.pageErrors.length === 0 && report.failedRequests.length === 0;
 
-  const issueCount = report.consoleErrors.length + report.pageErrors.length + report.failedRequests.length;
-  const failed = Object.entries(report.assertions)
-    .filter(([, passed]) => !passed)
-    .map(([key]) => key);
-  if (failed.length > 0 || issueCount > 0) {
-    throw new Error(`Restock visual audit failed: ${failed.join(", ") || "runtime"}; issues ${issueCount}`);
-  }
+  const failed = Object.entries(report.assertions).filter(([, passed]) => !passed).map(([key]) => key);
+  if (failed.length > 0) throw new Error(`Restock visual audit failed: ${failed.join(", ")}`);
 
   await page.close();
   await context.close();
@@ -158,49 +141,20 @@ try {
   thrownError = error;
   report.fatalError = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
 } finally {
-  writeFileSync(
-    join(OUTPUT_DIR, "restock-visual-audit.json"),
-    JSON.stringify(report, null, 2)
-  );
+  writeFileSync(join(OUTPUT_DIR, "restock-visual-audit.json"), JSON.stringify(report, null, 2));
   await browser.close();
   await new Promise((resolveServer) => server.close(resolveServer));
 }
 
-console.log(JSON.stringify({ assertions: report.assertions, fatalError: report.fatalError }, null, 2));
+console.log(JSON.stringify({
+  assertions: report.assertions,
+  visibleTextsAtRestock: report.visibleTextsAtRestock,
+  interactionsPerRow: report.interactionsPerRow,
+  unitsPerInteraction: report.unitsPerInteraction,
+  physicalItemsPerRow: report.physicalItemsPerRow,
+  fatalError: report.fatalError
+}, null, 2));
 if (thrownError) throw thrownError;
-
-async function createContactSheet(context) {
-  const evidencePage = await context.newPage();
-  await evidencePage.setViewportSize({ width: 640, height: 268 });
-  const images = Array.from({ length: 4 }, (_, index) => {
-    const bytes = readFileSync(join(OUTPUT_DIR, `restock-visual-${index}-of-3.png`));
-    return `data:image/png;base64,${bytes.toString("base64")}`;
-  });
-  await evidencePage.setContent(`<!doctype html>
-<html>
-<head>
-<style>
-  html, body { margin: 0; width: 640px; height: 268px; overflow: hidden; background: #101510; }
-  main { display: grid; grid-template-columns: repeat(4, 160px); width: 640px; height: 268px; }
-  figure { position: relative; margin: 0; width: 160px; height: 268px; overflow: hidden; }
-  img { display: block; width: 160px; height: 268px; object-fit: cover; }
-  figcaption { position: absolute; left: 5px; top: 5px; min-width: 30px; padding: 3px 6px;
-    border-radius: 999px; background: rgba(5, 14, 10, .9); color: #ffd95e;
-    font: 900 10px Arial, sans-serif; text-align: center; }
-</style>
-</head>
-<body>
-<main>${images.map((src, index) => `<figure><img src="${src}"><figcaption>${index}/3</figcaption></figure>`).join("")}</main>
-</body>
-</html>`);
-  await evidencePage.screenshot({
-    path: join(OUTPUT_DIR, "restock-contact-sheet.jpg"),
-    type: "jpeg",
-    quality: 55,
-    fullPage: false
-  });
-  await evidencePage.close();
-}
 
 async function readVisualState(page, forcedRowIndex) {
   return page.evaluate(({ sceneKey, rowIndex }) => {
@@ -210,34 +164,50 @@ async function readVisualState(page, forcedRowIndex) {
     const holder = scene?.children?.getByName?.(`beverage-cooler-row-${activeRowIndex}`);
     const target = scene?.children?.getByName?.(`beverage-cooler-row-target-${activeRowIndex}`);
     const shell = scene?.children?.getByName?.("beverage-cooler-empty-shell");
+    const matureHud = scene?.children?.getByName?.("mature-restock-hud");
+    const children = scene?.children?.list ?? [];
+    const legacyHudVisibleCount = children.filter((entry) => {
+      const depth = entry?.depth ?? -1;
+      return depth >= 99 && depth <= 105 && entry?.visible === true;
+    }).length;
+    const visibleTexts = children
+      .filter((entry) => entry?.visible === true && typeof entry?.text === "string" && entry.text.trim().length > 0)
+      .map((entry) => ({
+        text: entry.text,
+        name: entry.name ?? "",
+        x: Math.round(entry.x ?? 0),
+        y: Math.round(entry.y ?? 0),
+        depth: entry.depth ?? 0,
+        type: entry.constructor?.name ?? ""
+      }))
+      .sort((a, b) => (a.depth - b.depth) || (a.y - b.y) || (a.x - b.x));
+    const checklist = document.getElementById("level-checklist");
     return {
-      backgroundState: document.body.dataset.restockCoolerBackground,
+      backgroundState: document.body.dataset.restockCoolerBackground ?? null,
+      coolerView: document.body.dataset.restockCoolerView ?? null,
+      coolerForeground: document.body.dataset.restockCoolerForeground ?? null,
+      matureHudState: document.body.dataset.matureRestockHud ?? null,
+      matureHudVisible: matureHud?.visible ?? false,
+      legacyHudVisibleCount,
+      checklistState: document.body.dataset.levelChecklist ?? null,
+      checklistVisible: Boolean(checklist && checklist.style.visibility !== "hidden" && checklist.style.opacity !== "0"),
+      visibleTexts,
       controller: scene?.controller?.snapshot?.() ?? null,
       rush,
       itemCount: Array.isArray(holder?.list) ? holder.list.length : -1,
-      rowDepth: holder?.depth ?? null,
-      target: target ? { x: target.x, y: target.y } : null,
-      shell: shell ? {
-        visible: shell.visible,
-        alpha: shell.alpha,
-        depth: shell.depth,
-        backgroundStockOccluded: shell.getData?.("background-stock-occluded") === true
-      } : null
+      target: target ? { x: target.x, y: target.y, width: target.width, height: target.height } : null,
+      shell: shell ? { visible: shell.visible, alpha: shell.alpha, depth: shell.depth } : null
     };
   }, { sceneKey: SCENE_KEY, rowIndex: forcedRowIndex });
 }
 
-async function waitForRowItemCount(page, rowIndex, expectedCount) {
-  await page.waitForFunction(({ sceneKey, rowIndex, expectedCount }) => {
+async function waitForRowState(page, rowIndex, expectedLogicalCount, expectedPhysicalCount) {
+  await page.waitForFunction(({ sceneKey, rowIndex, expectedLogicalCount, expectedPhysicalCount }) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
     const rush = scene?.rush?.snapshot?.(scene.time.now);
     const holder = scene?.children?.getByName?.(`beverage-cooler-row-${rowIndex}`);
-    return (
-      rush?.rowItemCounts?.[rowIndex] === expectedCount &&
-      Array.isArray(holder?.list) &&
-      holder.list.length === expectedCount
-    );
-  }, { sceneKey: SCENE_KEY, rowIndex, expectedCount }, { timeout: 15000 });
+    return rush?.rowItemCounts?.[rowIndex] === expectedLogicalCount && Array.isArray(holder?.list) && holder.list.length === expectedPhysicalCount;
+  }, { sceneKey: SCENE_KEY, rowIndex, expectedLogicalCount, expectedPhysicalCount }, { timeout: 15000 });
 }
 
 async function waitForSnapshot(page, expected, timeout = 15000) {
@@ -249,43 +219,58 @@ async function waitForSnapshot(page, expected, timeout = 15000) {
 }
 
 async function waitForInteractionReady(page) {
+  await page.waitForFunction((sceneKey) => window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.isInteractionReady?.() === true, SCENE_KEY, { timeout: 25000 });
+}
+
+async function waitForHudAction(page) {
   await page.waitForFunction((sceneKey) => {
-    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
-    return scene?.isInteractionReady?.() === true;
-  }, SCENE_KEY, { timeout: 20000 });
+    const action = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.children?.getByName?.("shift-hud-action");
+    return Boolean(action?.visible && action?.input?.enabled);
+  }, SCENE_KEY, { timeout: 15000 });
+}
+
+async function clickHudAction(page) {
+  const action = await page.evaluate((sceneKey) => {
+    const object = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.children?.getByName?.("shift-hud-action");
+    return object ? { x: object.x, y: object.y } : null;
+  }, SCENE_KEY);
+  if (!action) throw new Error("Shift HUD action button is missing");
+  await clickGame(page, action.x, action.y);
 }
 
 async function clickGame(page, gameX, gameY) {
   const box = await page.locator(CANVAS_SELECTOR).boundingBox();
   if (!box) throw new Error("Game canvas has no bounding box");
-  await page.mouse.click(
-    box.x + (gameX / GAME_WIDTH) * box.width,
-    box.y + (gameY / GAME_HEIGHT) * box.height
-  );
+  await page.mouse.click(box.x + (gameX / GAME_WIDTH) * box.width, box.y + (gameY / GAME_HEIGHT) * box.height);
 }
 
-async function captureCooler(page, filename) {
+async function captureActiveRow(page, rowIndex, filename) {
   const box = await page.locator(CANVAS_SELECTOR).boundingBox();
   if (!box) throw new Error("Game canvas has no bounding box");
-  const gameLeft = 1280;
-  const gameTop = 155;
-  const gameWidth = 320;
-  const gameHeight = 535;
+  const row = await page.evaluate(({ sceneKey, rowIndex }) => {
+    const target = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.children?.getByName?.(`beverage-cooler-row-target-${rowIndex}`);
+    return target ? { x: target.x, y: target.y, width: target.width, height: target.height } : null;
+  }, { sceneKey: SCENE_KEY, rowIndex });
+  if (!row) throw new Error(`Row target ${rowIndex} is missing`);
+  const marginX = 24;
+  const marginY = 22;
+  const left = row.x - row.width / 2 - marginX;
+  const top = row.y - row.height / 2 - marginY;
+  const width = row.width + marginX * 2;
+  const height = row.height + marginY * 2;
   await page.screenshot({
     path: join(OUTPUT_DIR, filename),
     clip: {
-      x: box.x + (gameLeft / GAME_WIDTH) * box.width,
-      y: box.y + (gameTop / GAME_HEIGHT) * box.height,
-      width: (gameWidth / GAME_WIDTH) * box.width,
-      height: (gameHeight / GAME_HEIGHT) * box.height
+      x: box.x + (left / GAME_WIDTH) * box.width,
+      y: box.y + (top / GAME_HEIGHT) * box.height,
+      width: (width / GAME_WIDTH) * box.width,
+      height: (height / GAME_HEIGHT) * box.height
     }
   });
 }
 
 function attachListeners(page, auditReport) {
-  page.on("console", (message) => {
-    if (message.type() === "error") auditReport.consoleErrors.push(message.text());
-  });
+  page.on("console", (message) => { if (message.type() === "error") auditReport.consoleErrors.push(message.text()); });
   page.on("pageerror", (error) => auditReport.pageErrors.push(error.message));
   page.on("requestfailed", (request) => {
     const error = request.failure()?.errorText ?? "unknown";
@@ -294,16 +279,8 @@ function attachListeners(page, auditReport) {
 }
 
 function mimeType(filePath) {
-  const extension = extname(filePath).toLowerCase();
-  return {
-    ".html": "text/html; charset=utf-8",
-    ".js": "text/javascript; charset=utf-8",
-    ".css": "text/css; charset=utf-8",
-    ".json": "application/json; charset=utf-8",
-    ".png": "image/png",
-    ".jpg": "image/jpeg",
-    ".jpeg": "image/jpeg",
-    ".webp": "image/webp",
-    ".svg": "image/svg+xml"
-  }[extension] ?? "application/octet-stream";
+  return ({
+    ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
+    ".json": "application/json; charset=utf-8", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".svg": "image/svg+xml"
+  })[extname(filePath).toLowerCase()] ?? "application/octet-stream";
 }

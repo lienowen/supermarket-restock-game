@@ -200,7 +200,11 @@ export class PlayerNavigationView {
 
   setTexture(assetKey: string): void {
     this.currentPoseKey = assetKey;
-    if (!this.moving || !this.canUseWalkFrames()) this.actor.setTexture(assetKey);
+    if (this.moving && this.canUseWalkFrames()) {
+      this.actor.setTexture(this.config.walkAssetKeys?.[this.walkFrame] ?? assetKey);
+      return;
+    }
+    this.actor.setTexture(assetKey);
   }
 
   setDisplaySize(width: number, height: number): void {
