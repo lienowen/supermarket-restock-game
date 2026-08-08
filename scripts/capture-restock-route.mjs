@@ -79,27 +79,31 @@ try {
     const worker = scene?.children?.getByName?.("restock-worker");
     return nav?.moving === true && String(worker?.texture?.key ?? "").includes("worker-walk");
   }, SCENE_KEY, { timeout: 3000 });
+  const firstWalk = await readState(page, "after-walk-observed");
+  report.states.push(firstWalk);
   report.assertions.firstActionUsesWalkFrame = true;
-  report.states.push(await readState(page, "after-walk-observed"));
+  report.assertions.carriedCaseFollowsWorker = isCaseFollowingWorker(firstWalk);
 
-  await page.waitForFunction((sceneKey) => {
-    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
-    const snapshot = scene?.controller?.snapshot?.();
-    const nav = scene?.actors?.navigationSnapshot?.();
-    const worker = scene?.children?.getByName?.("restock-worker");
-    const box = scene?.children?.getByName?.("restock-case");
-    return Boolean(
-      snapshot?.step === "load" &&
-      snapshot?.boxCollected === true &&
-      nav?.moving === true &&
-      box?.visible === true &&
-      worker &&
-      Math.abs(box.x - worker.x) < 80 &&
-      box.y < worker.y - 70
-    );
-  }, SCENE_KEY, { timeout: 8000 });
-  report.assertions.carriedCaseFollowsWorker = true;
-  report.states.push(await readState(page, "after-carry-observed"));
+  if (!report.assertions.carriedCaseFollowsWorker) {
+    await page.waitForFunction((sceneKey) => {
+      const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+      const snapshot = scene?.controller?.snapshot?.();
+      const nav = scene?.actors?.navigationSnapshot?.();
+      const worker = scene?.children?.getByName?.("restock-worker");
+      const box = scene?.children?.getByName?.("restock-case");
+      return Boolean(
+        snapshot?.step === "load" &&
+        snapshot?.boxCollected === true &&
+        nav?.moving === true &&
+        box?.visible === true &&
+        worker &&
+        Math.abs(box.x - worker.x) < 80 &&
+        box.y < worker.y - 70
+      );
+    }, SCENE_KEY, { timeout: 8000 });
+    report.assertions.carriedCaseFollowsWorker = true;
+    report.states.push(await readState(page, "after-carry-observed"));
+  }
 
   await page.waitForFunction((sceneKey) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
@@ -160,6 +164,17 @@ try {
 
 console.log(JSON.stringify({ assertions: report.assertions, fatalError: report.fatalError }, null, 2));
 if (thrownError) throw thrownError;
+
+function isCaseFollowingWorker(state) {
+  return Boolean(
+    state.controller?.step === "load" &&
+    state.controller?.boxCollected === true &&
+    state.navigation?.moving === true &&
+    state.caseBox?.visible === true &&
+    Math.abs(state.caseBox.x - state.worker.x) < 80 &&
+    state.caseBox.y < state.worker.y - 70
+  );
+}
 
 async function readState(page, label) {
   return page.evaluate(({ sceneKey, label }) => {
