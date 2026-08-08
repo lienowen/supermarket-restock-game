@@ -78,6 +78,7 @@ export class CheckoutMarketScene extends Phaser.Scene {
     document.body.dataset.activeDay = String(context.campaignShift.dayNumber);
     document.body.dataset.activeLevel = context.campaignLevel.level.id;
     document.body.dataset.activeMode = context.mode;
+    document.body.dataset.checkoutEnvironment = context.levelAssets.environment.key;
     this.cameras.main.setBackgroundColor("#171712");
 
     new StarterMarketEnvironmentView(this, context).create();
@@ -86,6 +87,8 @@ export class CheckoutMarketScene extends Phaser.Scene {
       queueStart: context.world.customerQueueStart,
       checkoutAssetKey: context.levelAssets.fixture.key,
       basketAssetKey: basketAsset.key,
+      customerAssetKeys: context.levelAssets.customers.map((asset) => asset.key),
+      productAssetKeys: context.levelAssets.products.map((asset) => asset.key),
       customerCount: context.runtime.customerCount,
       scanDurationMs: context.campaignLevel.level.tuning.scanDurationMs,
       queueAdvanceDurationMs: context.campaignLevel.level.tuning.queueAdvanceDurationMs,
@@ -108,7 +111,8 @@ export class CheckoutMarketScene extends Phaser.Scene {
       displaySize: visual.actor.idleSize,
       shadowOffset: visual.actor.shadowOffset,
       name: "checkout-worker",
-      baseDepth: 24
+      baseDepth: 24,
+      solidCutout: true
     });
     this.target = new InteractionTargetView(
       this,
