@@ -18,7 +18,7 @@ export interface PlayerNavigationViewConfig {
   readonly name: string;
   readonly baseDepth?: number;
   readonly onManualNavigation?: () => void;
-  /** Crop transparent source padding and normalize visible pixels to full alpha. */
+  /** Mature actors are solid by default. Set false only for an intentional translucent actor. */
   readonly solidCutout?: boolean;
 }
 
@@ -46,6 +46,7 @@ export class PlayerNavigationView {
   private readonly keys?: NavigationKeys;
   private readonly idlePoseKey: string;
   private readonly walkPoseKeys?: readonly [string, string];
+  private readonly solidCutout: boolean;
   private enabled = true;
   private currentPoseKey: string;
   private walkElapsedMs = 0;
@@ -64,8 +65,9 @@ export class PlayerNavigationView {
       bounds: config.bounds,
       speed: config.speed
     });
+    this.solidCutout = config.solidCutout !== false;
     const resolvePoseKey = (assetKey: string): string => (
-      config.solidCutout ? createOpaqueCutoutTexture(scene, assetKey) : assetKey
+      this.solidCutout ? createOpaqueCutoutTexture(scene, assetKey) : assetKey
     );
     this.idlePoseKey = resolvePoseKey(config.assetKey);
     this.walkPoseKeys = config.walkAssetKeys
@@ -214,7 +216,7 @@ export class PlayerNavigationView {
   }
 
   setTexture(assetKey: string): void {
-    const resolvedKey = this.config.solidCutout
+    const resolvedKey = this.solidCutout
       ? createOpaqueCutoutTexture(this.scene, assetKey)
       : assetKey;
     this.currentPoseKey = resolvedKey;
