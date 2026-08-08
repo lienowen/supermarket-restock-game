@@ -1,10 +1,18 @@
 import type { LevelDefinition } from "../GameContent";
 
+export type CartCaseSize = "small" | "medium" | "large";
+
 export interface CartCaseOptionSpec {
   readonly id: string;
   readonly label: string;
   readonly assetKey: string;
-  readonly accepted: boolean;
+  readonly size: CartCaseSize;
+}
+
+export interface CartCapacityLaneSpec {
+  readonly id: string;
+  readonly label: string;
+  readonly acceptsSize: CartCaseSize;
 }
 
 export interface CartCapacityExperienceSpec {
@@ -15,8 +23,11 @@ export interface CartCapacityExperienceSpec {
   readonly eyebrow: string;
   readonly title: string;
   readonly instruction: string;
-  readonly capacity: number;
+  readonly roundsRequired: number;
   readonly targetLabel: string;
+  readonly targetAssetKey: string;
+  readonly loadedTargetAssetKey: string;
+  readonly lanes: readonly CartCapacityLaneSpec[];
   readonly options: readonly CartCaseOptionSpec[];
 }
 
@@ -27,28 +38,53 @@ export const CART_CAPACITY_EXPERIENCE_SPECS: readonly CartCapacityExperienceSpec
     unlockAfterAction: "PICK_BOX",
     confirmAction: "LOAD_CART",
     eyebrow: "CART CAPACITY",
-    title: "Load the closing stock",
-    instruction: "The cart holds two cases. Load both cola cases and leave the water case in the backroom.",
-    capacity: 2,
-    targetLabel: "2-CASE RESTOCK CART",
+    title: "Load the evening delivery",
+    instruction: "Match each delivery box to the cart bay that fits its size. Build two complete loads with no wasted space.",
+    roundsRequired: 2,
+    targetLabel: "CAPACITY CART · 3 BAYS",
+    targetAssetKey: "equipment-capacity-cart-empty",
+    loadedTargetAssetKey: "equipment-capacity-cart-loaded",
+    lanes: Object.freeze([
+      Object.freeze({ id: "large-bay", label: "LARGE BAY", acceptsSize: "large" as const }),
+      Object.freeze({ id: "medium-bay", label: "MEDIUM BAY", acceptsSize: "medium" as const }),
+      Object.freeze({ id: "small-bay", label: "SMALL BAY", acceptsSize: "small" as const })
+    ]),
     options: Object.freeze([
       Object.freeze({
-        id: "closing-cola-a",
-        label: "COLA CASE A",
-        assetKey: "prop-cola-case-closed",
-        accepted: true
+        id: "delivery-small-a",
+        label: "SMALL BOX A",
+        assetKey: "delivery-box-small",
+        size: "small" as const
       }),
       Object.freeze({
-        id: "closing-water-decoy",
-        label: "WATER CASE",
-        assetKey: "prop-water-case-closed",
-        accepted: false
+        id: "delivery-large-a",
+        label: "LARGE BOX A",
+        assetKey: "delivery-box-large",
+        size: "large" as const
       }),
       Object.freeze({
-        id: "closing-cola-b",
-        label: "COLA CASE B",
-        assetKey: "prop-cola-case-closed",
-        accepted: true
+        id: "delivery-medium-a",
+        label: "MEDIUM BOX A",
+        assetKey: "delivery-box-medium",
+        size: "medium" as const
+      }),
+      Object.freeze({
+        id: "delivery-medium-b",
+        label: "MEDIUM BOX B",
+        assetKey: "delivery-box-medium",
+        size: "medium" as const
+      }),
+      Object.freeze({
+        id: "delivery-small-b",
+        label: "SMALL BOX B",
+        assetKey: "delivery-box-small",
+        size: "small" as const
+      }),
+      Object.freeze({
+        id: "delivery-large-b",
+        label: "LARGE BOX B",
+        assetKey: "delivery-box-large",
+        size: "large" as const
       })
     ])
   })
@@ -77,22 +113,35 @@ export function validateCartCapacityExperienceSpecs(
 
   CART_CAPACITY_EXPERIENCE_SPECS.forEach((spec) => {
     if (!levelIds.has(spec.levelId)) errors.push(`Cart capacity spec references missing level: ${spec.levelId}`);
-    if (!Number.isInteger(spec.capacity) || spec.capacity < 2) {
-      errors.push(`Cart capacity spec ${spec.levelId} requires capacity of at least two`);
+    if (!Number.isInteger(spec.roundsRequired) || spec.roundsRequired < 2) {
+      errors.push(`Cart capacity spec ${spec.levelId} requires at least two loads`);
     }
-    const accepted = spec.options.filter((option) => option.accepted);
-    const rejected = spec.options.filter((option) => !option.accepted);
-    if (accepted.length !== spec.capacity) {
-      errors.push(`Cart capacity spec ${spec.levelId} accepted case count must equal cart capacity`);
+    if (spec.lanes.length < 3) {
+      errors.push(`Cart capacity spec ${spec.levelId} requires at least three capacity bays`);
     }
-    if (rejected.length === 0) errors.push(`Cart capacity spec ${spec.levelId} requires at least one wrong case`);
+    if (new Set(spec.lanes.map((lane) => lane.id)).size !== spec.lanes.length) {
+      errors.push(`Cart capacity spec ${spec.levelId} has duplicate lane ids`);
+    }
     if (new Set(spec.options.map((option) => option.id)).size !== spec.options.length) {
       errors.push(`Cart capacity spec ${spec.levelId} has duplicate case option ids`);
     }
+    if (spec.options.length !== spec.lanes.length * spec.roundsRequired) {
+      errors.push(`Cart capacity spec ${spec.levelId} must provide one box per lane for every load`);
+    }
+    spec.lanes.forEach((lane) => {
+      if (!lane.label.trim()) errors.push(`Cart capacity lane ${lane.id} requires a label`);
+      const matchingCases = spec.options.filter((option) => option.size === lane.acceptsSize);
+      if (matchingCases.length !== spec.roundsRequired) {
+        errors.push(`Cart capacity lane ${lane.id} requires one matching box per load`);
+      }
+    });
     spec.options.forEach((option) => {
       if (!option.label.trim()) errors.push(`Cart capacity option ${option.id} requires a label`);
       if (!option.assetKey.trim()) errors.push(`Cart capacity option ${option.id} requires an asset key`);
     });
+    if (!spec.targetAssetKey.trim() || !spec.loadedTargetAssetKey.trim()) {
+      errors.push(`Cart capacity spec ${spec.levelId} requires empty and loaded cart assets`);
+    }
   });
 
   return Object.freeze(errors);
