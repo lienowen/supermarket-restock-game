@@ -143,7 +143,7 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     navigation: { moveSpeed: 470, interactionRadius: 165 },
     presentation: {
       assetPackId: "market-find-items-v1",
-      visualPresetId: "find-items-golden-v1"
+      visualPresetId: "find-items-golden-standard-v1"
     },
     rules: NO_RULE_OVERRIDES,
     tuning: {
