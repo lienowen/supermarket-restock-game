@@ -239,7 +239,13 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
     const moving = !initialize && Math.hypot(dx, dy) > WALK_EPSILON;
     const pickupActive = this.isPickupInProgress();
 
-    if (moving) {
+    if (pickupActive) {
+      this.walkFrameElapsedMs = 0;
+      this.walkFrameIndex = 0;
+      actor.setTexture(createOpaqueCutoutTexture(this, this.goldenContext.levelAssets.workerThinking.key));
+      document.body.dataset.goldenWorkerMotion = "pickup";
+      document.body.dataset.goldenWorkerFrame = "pick";
+    } else if (moving) {
       this.walkFrameElapsedMs += delta;
       if (this.walkFrameElapsedMs >= WALK_FRAME_MS) {
         this.walkFrameElapsedMs %= WALK_FRAME_MS;
@@ -250,12 +256,6 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
       if (Math.abs(dx) > 0.05) actor.setFlipX(dx < 0);
       document.body.dataset.goldenWorkerMotion = "walk";
       document.body.dataset.goldenWorkerFrame = String(this.walkFrameIndex + 1);
-    } else if (pickupActive) {
-      this.walkFrameElapsedMs = 0;
-      this.walkFrameIndex = 0;
-      actor.setTexture(createOpaqueCutoutTexture(this, this.goldenContext.levelAssets.workerThinking.key));
-      document.body.dataset.goldenWorkerMotion = "pickup";
-      document.body.dataset.goldenWorkerFrame = "pick";
     } else {
       this.walkFrameElapsedMs = 0;
       this.walkFrameIndex = 0;
