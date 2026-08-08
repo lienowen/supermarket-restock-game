@@ -151,9 +151,9 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
       timeLimitSeconds: 60,
       mistakePenaltySeconds: 5,
       itemTargets: [
-        { productId: "milk-bottle", x: 520, y: 700 },
-        { productId: "apple", x: 1180, y: 720 },
-        { productId: "cereal-box", x: 820, y: 650 }
+        { productId: "milk-bottle", x: 940, y: 690 },
+        { productId: "apple", x: 1220, y: 720 },
+        { productId: "cereal-box", x: 720, y: 690 }
       ]
     }
   },
