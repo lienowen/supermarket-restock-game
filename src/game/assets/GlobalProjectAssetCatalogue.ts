@@ -21,6 +21,26 @@ const matureSpill = (
   status: "production"
 });
 
+const matureDeliveryProp = (
+  key: string,
+  fileName: string,
+  category: "prop" | "equipment",
+  state: string
+): AssetDescriptor => asset({
+  key,
+  path: `assets/game/missing-assets-batch-01/${fileName}`,
+  category,
+  canvasSize: [1536, 1024],
+  anchor: [0.5, 0.96],
+  defaultScale: 1,
+  depthGroup: category === "equipment" ? "fixtures" : "props",
+  preloadGroup: "starter-market",
+  perspective: "fixed-third-person",
+  lightDirection: "upper-left",
+  state,
+  status: "production"
+});
+
 /**
  * Project-wide production assets belong here only after their files are present
  * in the repository and pass the release bundle checks. Asset ideas and gap
@@ -59,6 +79,11 @@ export const GLOBAL_PROJECT_ASSET_CATALOGUE: AssetCatalogue = Object.freeze({
     }),
     matureSpill("spill-water-large", "spill-water-large.png", "water"),
     matureSpill("spill-juice-large", "spill-juice-large.png", "juice"),
-    matureSpill("spill-dirt-smear-large", "spill-dirt-smear-large.png", "dirt")
+    matureSpill("spill-dirt-smear-large", "spill-dirt-smear-large.png", "dirt"),
+    matureDeliveryProp("delivery-box-small", "delivery-box-small.png", "prop", "small"),
+    matureDeliveryProp("delivery-box-medium", "delivery-box-medium.png", "prop", "medium"),
+    matureDeliveryProp("delivery-box-large", "delivery-box-large.png", "prop", "large"),
+    matureDeliveryProp("equipment-capacity-cart-empty", "equipment-capacity-cart-empty.png", "equipment", "empty"),
+    matureDeliveryProp("equipment-capacity-cart-loaded", "equipment-capacity-cart-loaded.png", "equipment", "loaded")
   ])
 });
