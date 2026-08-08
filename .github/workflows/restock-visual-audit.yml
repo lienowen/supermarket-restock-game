@@ -46,8 +46,12 @@ jobs:
       - name: Print focused result
         if: always()
         run: |
+          echo "=== LEVEL 1 OVERRIDE SOURCES ==="
+          grep -R -n -E 'simple-fixed-action-poses|level-one-worker|matte-clean' src scripts 2>/dev/null || true
+          echo "=== ROUTE RESULT ==="
           echo "ROUTE_OUTCOME=${{ steps.route.outcome }}"
-          tail -n 80 /tmp/restock-route.log || true
+          tail -n 100 /tmp/restock-route.log || true
+          echo "=== CAPTURE RESULT ==="
           echo "CAPTURE_OUTCOME=${{ steps.capture.outcome }}"
           find restock-visual-audit -maxdepth 1 -type f -printf '%f %s bytes\n' 2>/dev/null || true
           tail -n 30 /tmp/restock-capture.log || true
