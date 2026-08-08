@@ -31,12 +31,18 @@ const GOLDEN_PRODUCT_LAYOUT = Object.freeze([
   Object.freeze({ sourceName: "find-decoy-decoy-detergent", name: "find-decoy-grapes", assetKey: "product-grapes-pack", x: 1285, y: 700, maxWidth: 48, maxHeight: 40, requested: false })
 ]);
 
+const GOLDEN_REQUESTED_NAMES = Object.freeze([
+  "find-item-milk-bottle",
+  "find-item-apple",
+  "find-item-cereal-box"
+]);
 const WALK_FRAME_MS = 140;
 const WALK_EPSILON = 0.35;
 
 /** Level 5 mature-pass golden presentation over the proven Order Hunt controller. */
 export class GoldenOrderHuntScene extends UtilityTaskScene {
   private readonly goldenVisual: FindItemsLevelVisualPreset;
+  private readonly basketFeedbackSeen = new Set<string>();
   private previousWorkerPosition?: { readonly x: number; readonly y: number };
   private walkFrameElapsedMs = 0;
   private walkFrameIndex = 0;
@@ -64,6 +70,7 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
     document.body.dataset.goldenWorldScale = "trimmed-v3";
     document.body.dataset.goldenHud = "compact-v1";
     document.body.dataset.goldenWorkerMotion = "idle";
+    document.body.dataset.goldenBasketCount = "0";
     this.hideLegacyHudChrome();
     this.createCompactHeader();
     this.createStoreFixtures();
@@ -75,6 +82,7 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
   override update(time: number, delta: number): void {
     super.update(time, delta);
     this.hideLegacyHudChrome();
+    this.syncBasketFeedback();
     this.syncWorkerMotion(delta, false);
   }
 
@@ -175,6 +183,52 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
     fitImageIntoBox(basket, GOLDEN_ZONE_LAYOUT.basket.maxWidth, GOLDEN_ZONE_LAYOUT.basket.maxHeight);
   }
 
+  private syncBasketFeedback(): void {
+    GOLDEN_REQUESTED_NAMES.forEach((name) => {
+      if (this.basketFeedbackSeen.has(name)) return;
+      const item = this.children.getByName(name);
+      if (!(item instanceof Phaser.GameObjects.Image) || item.visible) return;
+      this.basketFeedbackSeen.add(name);
+      this.playBasketFeedback();
+    });
+    document.body.dataset.goldenBasketCount = String(this.basketFeedbackSeen.size);
+  }
+
+  private playBasketFeedback(): void {
+    const basket = this.children.getByName("order-basket");
+    if (!(basket instanceof Phaser.GameObjects.Image)) return;
+
+    this.tweens.killTweensOf(basket);
+    const baseScaleX = basket.scaleX;
+    const baseScaleY = basket.scaleY;
+    this.tweens.add({
+      targets: basket,
+      scaleX: baseScaleX * 1.14,
+      scaleY: baseScaleY * 1.14,
+      duration: 120,
+      yoyo: true,
+      ease: "Sine.Out",
+      onComplete: () => basket.setScale(baseScaleX, baseScaleY)
+    });
+
+    const plusOne = this.add.text(basket.x, basket.y - basket.displayHeight - 8, "+1", {
+      fontFamily: "Arial",
+      fontSize: "18px",
+      color: "#f7e7a9",
+      fontStyle: "bold",
+      stroke: "#16231c",
+      strokeThickness: 3
+    }).setOrigin(0.5).setDepth(112).setName("golden-basket-plus-one");
+    this.tweens.add({
+      targets: plusOne,
+      y: plusOne.y - 28,
+      alpha: 0,
+      duration: 520,
+      ease: "Cubic.Out",
+      onComplete: () => plusOne.destroy()
+    });
+  }
+
   private syncWorkerMotion(delta: number, initialize: boolean): void {
     const actor = this.children.getByName("find-items-worker");
     if (!(actor instanceof Phaser.GameObjects.Image)) return;
@@ -183,6 +237,7 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
     const dx = previous ? actor.x - previous.x : 0;
     const dy = previous ? actor.y - previous.y : 0;
     const moving = !initialize && Math.hypot(dx, dy) > WALK_EPSILON;
+    const pickupActive = this.isPickupInProgress();
 
     if (moving) {
       this.walkFrameElapsedMs += delta;
@@ -195,6 +250,12 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
       if (Math.abs(dx) > 0.05) actor.setFlipX(dx < 0);
       document.body.dataset.goldenWorkerMotion = "walk";
       document.body.dataset.goldenWorkerFrame = String(this.walkFrameIndex + 1);
+    } else if (pickupActive) {
+      this.walkFrameElapsedMs = 0;
+      this.walkFrameIndex = 0;
+      actor.setTexture(createOpaqueCutoutTexture(this, this.goldenContext.levelAssets.workerThinking.key));
+      document.body.dataset.goldenWorkerMotion = "pickup";
+      document.body.dataset.goldenWorkerFrame = "pick";
     } else {
       this.walkFrameElapsedMs = 0;
       this.walkFrameIndex = 0;
@@ -209,5 +270,12 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
       .setBlendMode(Phaser.BlendModes.NORMAL);
     fitImageIntoBox(actor, GOLDEN_ZONE_LAYOUT.worker.maxWidth, GOLDEN_ZONE_LAYOUT.worker.maxHeight);
     this.previousWorkerPosition = { x: actor.x, y: actor.y };
+  }
+
+  private isPickupInProgress(): boolean {
+    return GOLDEN_REQUESTED_NAMES.some((name) => {
+      const item = this.children.getByName(name);
+      return item instanceof Phaser.GameObjects.Image && item.visible && item.alpha > 0.03 && item.alpha < 0.98;
+    });
   }
 }
