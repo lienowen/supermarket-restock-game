@@ -14,6 +14,7 @@ on:
       - "src/game/presentation/visual/OpaqueCutoutTexture.ts"
       - "src/game/presentation/visual/TrimmedTexture.ts"
       - "scripts/capture-golden-order-hunt.mjs"
+      - "scripts/capture-golden-worker-motion.mjs"
       - ".github/workflows/mature-level-5-audit.yml"
   workflow_dispatch:
 
@@ -42,6 +43,8 @@ jobs:
         run: npm run build
       - name: Verify mature Level 5
         run: node scripts/capture-golden-order-hunt.mjs
+      - name: Verify golden worker movement
+        run: node scripts/capture-golden-worker-motion.mjs
       - name: Upload golden-level evidence
         if: always()
         uses: actions/upload-artifact@v4
