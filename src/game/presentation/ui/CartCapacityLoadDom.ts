@@ -1,6 +1,7 @@
 import type Phaser from "phaser";
 import type {
   CartCapacityExperienceSpec,
+  CartCapacityLaneSpec,
   CartCaseOptionSpec
 } from "../../content/experience/CartCapacityExperienceSpec";
 import { gameDomainEvents } from "../../events/GameDomainEvents";
@@ -17,6 +18,7 @@ export interface CartCapacityLoadDomConfig {
   readonly spec: CartCapacityExperienceSpec;
   readonly options: readonly CartCapacityLoadOption[];
   readonly targetImagePath: string;
+  readonly loadedTargetImagePath: string;
 }
 
 export interface CartCapacityLoadDomHandle {
@@ -74,7 +76,7 @@ export function mountCartCapacityLoadDom(
 
   const panel = document.createElement("div");
   applyStyles(panel, {
-    width: "min(820px, 100%)",
+    width: "min(940px, 100%)",
     boxSizing: "border-box",
     padding: "16px 18px 18px",
     border: "1px solid rgba(255, 217, 94, 0.58)",
@@ -112,8 +114,8 @@ export function mountCartCapacityLoadDom(
   const workArea = document.createElement("div");
   applyStyles(workArea, {
     display: "grid",
-    gridTemplateColumns: "minmax(300px, 1.2fr) 52px minmax(260px, 1fr)",
-    gap: "14px",
+    gridTemplateColumns: "minmax(340px, 1.25fr) 42px minmax(300px, 1fr)",
+    gap: "12px",
     alignItems: "stretch"
   });
 
@@ -121,8 +123,8 @@ export function mountCartCapacityLoadDom(
   choices.id = "cart-capacity-options";
   applyStyles(choices, {
     display: "grid",
-    gridTemplateColumns: "repeat(3, minmax(86px, 1fr))",
-    gap: "10px"
+    gridTemplateColumns: "repeat(3, minmax(96px, 1fr))",
+    gap: "9px"
   });
 
   const arrow = document.createElement("div");
@@ -144,9 +146,9 @@ export function mountCartCapacityLoadDom(
   applyStyles(target, {
     position: "relative",
     display: "grid",
-    gridTemplateRows: "1fr auto auto",
+    gridTemplateRows: "auto auto auto",
     alignItems: "center",
-    minHeight: "154px",
+    minHeight: "214px",
     padding: "10px",
     boxSizing: "border-box",
     border: "2px dashed rgba(255, 217, 94, 0.65)",
@@ -156,44 +158,75 @@ export function mountCartCapacityLoadDom(
   });
 
   const cartImage = document.createElement("img");
+  cartImage.id = "cart-capacity-cart-image";
   cartImage.src = assetUrl(config.targetImagePath);
   cartImage.alt = "";
   cartImage.draggable = false;
   applyStyles(cartImage, {
-    width: "148px",
-    height: "80px",
+    width: "188px",
+    height: "108px",
     justifySelf: "center",
     objectFit: "contain",
-    opacity: "0.92",
-    pointerEvents: "none"
+    opacity: "0.96",
+    pointerEvents: "none",
+    filter: "drop-shadow(0 8px 12px rgba(0,0,0,0.3))"
   });
 
   const slots = document.createElement("div");
   slots.id = "cart-capacity-slots";
   applyStyles(slots, {
     display: "grid",
-    gridTemplateColumns: `repeat(${config.spec.capacity}, minmax(70px, 1fr))`,
-    gap: "8px",
+    gridTemplateColumns: `repeat(${config.spec.lanes.length}, minmax(82px, 1fr))`,
+    gap: "7px",
     width: "100%"
   });
-  for (let index = 0; index < config.spec.capacity; index += 1) {
+
+  const laneElements = new Map<string, HTMLElement>();
+
+  const renderEmptyLane = (slot: HTMLElement, lane: CartCapacityLaneSpec): void => {
+    slot.replaceChildren();
+    const size = document.createElement("strong");
+    size.textContent = lane.acceptsSize.toUpperCase();
+    applyStyles(size, {
+      fontSize: "11px",
+      color: "#ffe993",
+      letterSpacing: "0.8px"
+    });
+    const label = document.createElement("span");
+    label.textContent = lane.label;
+    applyStyles(label, {
+      marginTop: "2px",
+      fontSize: "8px",
+      color: "#9bb7a4",
+      letterSpacing: "0.6px"
+    });
+    slot.append(size, label);
+    slot.style.borderColor = "rgba(255, 255, 255, 0.18)";
+    slot.style.background = "rgba(0, 0, 0, 0.18)";
+  };
+
+  config.spec.lanes.forEach((lane) => {
     const slot = document.createElement("div");
-    slot.dataset.slotIndex = String(index);
-    slot.textContent = `EMPTY ${index + 1}`;
+    slot.dataset.capacityLaneId = lane.id;
+    slot.dataset.capacitySize = lane.acceptsSize;
     applyStyles(slot, {
       display: "grid",
       placeItems: "center",
-      minHeight: "42px",
+      alignContent: "center",
+      minHeight: "64px",
       border: "1px solid rgba(255, 255, 255, 0.18)",
       borderRadius: "10px",
       color: "#9bb7a4",
       fontSize: "9px",
       fontWeight: "900",
       letterSpacing: "0.8px",
-      background: "rgba(0, 0, 0, 0.18)"
+      background: "rgba(0, 0, 0, 0.18)",
+      transition: "border-color 120ms ease, background 120ms ease, transform 120ms ease"
     });
+    renderEmptyLane(slot, lane);
+    laneElements.set(lane.id, slot);
     slots.appendChild(slot);
-  }
+  });
 
   const targetLabel = document.createElement("div");
   targetLabel.textContent = config.spec.targetLabel;
@@ -210,7 +243,6 @@ export function mountCartCapacityLoadDom(
   const feedback = document.createElement("div");
   feedback.id = "cart-capacity-feedback";
   feedback.setAttribute("aria-live", "polite");
-  feedback.textContent = `Load 0/${config.spec.capacity} correct cases`;
   applyStyles(feedback, {
     minHeight: "18px",
     marginTop: "10px",
@@ -226,14 +258,24 @@ export function mountCartCapacityLoadDom(
   document.body.appendChild(overlay);
   document.body.dataset.cartCapacityLoad = "waiting";
   document.body.dataset.cartCapacityLoaded = "0";
+  document.body.dataset.cartCapacityRound = "1";
 
-  const loadedOptionIds = new Set<string>();
+  const usedOptionIds = new Set<string>();
+  const filledLaneIds = new Map<string, string>();
   const dragStates = new Map<string, DragState>();
+  let currentRound = 1;
   let armed = false;
   let visible = false;
   let completed = false;
+  let finishing = false;
   let selectedKeyboardOptionId: string | undefined;
   let readinessTimer: number | undefined;
+
+  const updateRoundFeedback = (): void => {
+    feedback.textContent = `LOAD ${currentRound}/${config.spec.roundsRequired} · Match small, medium and large boxes to their bays`;
+    feedback.style.color = "#a9cfb7";
+  };
+  updateRoundFeedback();
 
   const scenePort = (): PrimaryActionScenePort | undefined => {
     try {
@@ -250,6 +292,16 @@ export function mountCartCapacityLoadDom(
 
   const isReady = (): boolean => Boolean(scenePort()?.isInteractionReady?.());
 
+  const clearLaneHighlights = (): void => {
+    config.spec.lanes.forEach((lane) => {
+      const slot = laneElements.get(lane.id);
+      if (!slot || filledLaneIds.has(lane.id)) return;
+      slot.style.borderColor = "rgba(255, 255, 255, 0.18)";
+      slot.style.background = "rgba(0, 0, 0, 0.18)";
+      slot.style.transform = "scale(1)";
+    });
+  };
+
   const resetCard = (state: DragState): void => {
     state.pointerId = undefined;
     state.startX = 0;
@@ -259,10 +311,11 @@ export function mountCartCapacityLoadDom(
     state.dragging = false;
     state.card.style.transform = "translate(0, 0)";
     state.card.style.zIndex = "";
-    state.card.style.cursor = loadedOptionIds.has(state.option.spec.id) ? "default" : "grab";
+    state.card.style.cursor = usedOptionIds.has(state.option.spec.id) ? "default" : "grab";
     target.style.borderColor = "rgba(255, 217, 94, 0.65)";
     target.style.background = "rgba(90, 145, 79, 0.12)";
     target.style.transform = "scale(1)";
+    clearLaneHighlights();
   };
 
   const hide = (): void => {
@@ -278,9 +331,10 @@ export function mountCartCapacityLoadDom(
     if (!action) {
       feedback.textContent = "The cart action is not available yet";
       feedback.style.color = "#ffba9b";
+      finishing = false;
       return;
     }
-    feedback.textContent = "Cart loaded. Deliver the cases to the cooler.";
+    feedback.textContent = `LOAD ${config.spec.roundsRequired}/${config.spec.roundsRequired} · FULL · NO WASTE`;
     feedback.style.color = "#ffd95e";
     action.emit("pointerdown");
   };
@@ -291,7 +345,7 @@ export function mountCartCapacityLoadDom(
     overlay.style.display = "flex";
     setSceneInputEnabled(false);
     document.body.dataset.cartCapacityLoad = "active";
-    requestAnimationFrame(() => choices.querySelector<HTMLElement>("[data-case-id]")?.focus());
+    requestAnimationFrame(() => choices.querySelector<HTMLElement>("[data-case-id]:not([aria-disabled='true'])")?.focus());
   };
 
   const beginReadinessWatch = (): void => {
@@ -301,76 +355,142 @@ export function mountCartCapacityLoadDom(
     }, 100);
   };
 
-  const sourceCentreInsideTarget = (card: HTMLElement): boolean => {
+  const laneAtCardCentre = (card: HTMLElement): CartCapacityLaneSpec | undefined => {
     const sourceRect = card.getBoundingClientRect();
-    const targetRect = target.getBoundingClientRect();
     const centreX = sourceRect.left + sourceRect.width / 2;
     const centreY = sourceRect.top + sourceRect.height / 2;
-    return (
-      centreX >= targetRect.left &&
-      centreX <= targetRect.right &&
-      centreY >= targetRect.top &&
-      centreY <= targetRect.bottom
-    );
+    return config.spec.lanes.find((lane) => {
+      const slot = laneElements.get(lane.id);
+      if (!slot) return false;
+      const rect = slot.getBoundingClientRect();
+      return centreX >= rect.left && centreX <= rect.right && centreY >= rect.top && centreY <= rect.bottom;
+    });
   };
 
-  const addLoadedCaseToSlot = (option: CartCapacityLoadOption): void => {
-    const slot = slots.children.item(loadedOptionIds.size - 1) as HTMLElement | null;
+  const matchingOpenLane = (option: CartCapacityLoadOption): CartCapacityLaneSpec | undefined => (
+    config.spec.lanes.find((lane) => (
+      lane.acceptsSize === option.spec.size && !filledLaneIds.has(lane.id)
+    ))
+  );
+
+  const renderLoadedLane = (
+    lane: CartCapacityLaneSpec,
+    option: CartCapacityLoadOption
+  ): void => {
+    const slot = laneElements.get(lane.id);
     if (!slot) return;
-    slot.textContent = "";
+    slot.replaceChildren();
     const image = document.createElement("img");
     image.src = assetUrl(option.imagePath);
     image.alt = option.spec.label;
     image.draggable = false;
     applyStyles(image, {
-      width: "54px",
-      height: "38px",
+      width: "66px",
+      height: "44px",
       objectFit: "contain",
       pointerEvents: "none"
     });
-    slot.appendChild(image);
-    slot.style.borderColor = "rgba(255, 217, 94, 0.78)";
-    slot.style.background = "rgba(220, 181, 63, 0.14)";
+    const label = document.createElement("span");
+    label.textContent = lane.label;
+    applyStyles(label, {
+      fontSize: "8px",
+      color: "#ffe993",
+      fontWeight: "900",
+      letterSpacing: "0.5px"
+    });
+    slot.append(image, label);
+    slot.style.borderColor = "rgba(255, 217, 94, 0.82)";
+    slot.style.background = "rgba(220, 181, 63, 0.16)";
   };
 
-  const tryLoad = (state: DragState): void => {
+  const resetForNextRound = (): void => {
+    filledLaneIds.clear();
+    currentRound += 1;
+    document.body.dataset.cartCapacityRound = String(currentRound);
+    cartImage.src = assetUrl(config.targetImagePath);
+    config.spec.lanes.forEach((lane) => {
+      const slot = laneElements.get(lane.id);
+      if (slot) renderEmptyLane(slot, lane);
+    });
+    updateRoundFeedback();
+    requestAnimationFrame(() => choices.querySelector<HTMLElement>("[data-case-id]:not([aria-disabled='true'])")?.focus());
+  };
+
+  const completeRound = (): void => {
+    cartImage.src = assetUrl(config.loadedTargetImagePath);
+    target.style.borderColor = "#ffd95e";
+    target.style.background = "rgba(220, 181, 63, 0.22)";
+    feedback.textContent = `LOAD ${currentRound}/${config.spec.roundsRequired} · FULL · NO WASTE`;
+    feedback.style.color = "#ffd95e";
+
+    if (currentRound < config.spec.roundsRequired) {
+      window.setTimeout(resetForNextRound, 700);
+      return;
+    }
+
+    finishing = true;
+    window.setTimeout(() => {
+      if (finishing) confirmPrimaryAction();
+    }, 320);
+  };
+
+  const rejectPlacement = (
+    state: DragState,
+    lane: CartCapacityLaneSpec,
+    message: string
+  ): void => {
+    const slot = laneElements.get(lane.id);
+    feedback.textContent = message;
+    feedback.style.color = "#ff9e91";
+    state.card.style.borderColor = "#ff786e";
+    if (slot) {
+      slot.style.borderColor = "#ff786e";
+      slot.style.background = "rgba(214, 83, 74, 0.18)";
+    }
+    window.setTimeout(() => {
+      state.card.style.borderColor = "rgba(255, 255, 255, 0.2)";
+      resetCard(state);
+    }, 280);
+  };
+
+  const tryLoad = (state: DragState, lane: CartCapacityLaneSpec): void => {
     const { option, card } = state;
-    if (loadedOptionIds.has(option.spec.id)) {
+    if (usedOptionIds.has(option.spec.id) || finishing) {
       resetCard(state);
       return;
     }
-    if (!option.spec.accepted) {
-      feedback.textContent = `${option.spec.label} is not part of the closing cola load`;
-      feedback.style.color = "#ff9e91";
-      card.style.borderColor = "#ff786e";
-      setTimeout(() => {
-        card.style.borderColor = "rgba(255, 255, 255, 0.2)";
-        resetCard(state);
-      }, 260);
+    if (filledLaneIds.has(lane.id)) {
+      rejectPlacement(state, lane, `${lane.label} is already filled`);
+      return;
+    }
+    if (option.spec.size !== lane.acceptsSize) {
+      rejectPlacement(
+        state,
+        lane,
+        `${option.spec.label} does not fit the ${lane.label.toLowerCase()}`
+      );
       return;
     }
 
-    loadedOptionIds.add(option.spec.id);
-    addLoadedCaseToSlot(option);
-    card.style.opacity = "0.36";
+    usedOptionIds.add(option.spec.id);
+    filledLaneIds.set(lane.id, option.spec.id);
+    renderLoadedLane(lane, option);
+    card.style.opacity = "0.28";
     card.style.borderColor = "rgba(255, 217, 94, 0.62)";
     card.setAttribute("aria-disabled", "true");
     card.tabIndex = -1;
     resetCard(state);
-    document.body.dataset.cartCapacityLoaded = String(loadedOptionIds.size);
-    feedback.textContent = `Load ${loadedOptionIds.size}/${config.spec.capacity} correct cases`;
+    document.body.dataset.cartCapacityLoaded = String(usedOptionIds.size);
+    feedback.textContent = `LOAD ${currentRound}/${config.spec.roundsRequired} · ${filledLaneIds.size}/${config.spec.lanes.length} bays filled`;
     feedback.style.color = "#ffd95e";
 
-    if (loadedOptionIds.size === config.spec.capacity) {
-      target.style.borderColor = "#ffd95e";
-      target.style.background = "rgba(220, 181, 63, 0.22)";
-      window.setTimeout(confirmPrimaryAction, 220);
-    }
+    if (filledLaneIds.size === config.spec.lanes.length) completeRound();
   };
 
   config.options.forEach((option) => {
     const card = document.createElement("div");
     card.dataset.caseId = option.spec.id;
+    card.dataset.caseSize = option.spec.size;
     card.tabIndex = 0;
     card.setAttribute("role", "button");
     card.setAttribute("aria-label", `Load ${option.spec.label}`);
@@ -378,7 +498,7 @@ export function mountCartCapacityLoadDom(
       position: "relative",
       display: "grid",
       placeItems: "center",
-      minHeight: "128px",
+      minHeight: "118px",
       border: "2px solid rgba(255, 255, 255, 0.2)",
       borderRadius: "14px",
       background: "rgba(255, 255, 255, 0.07)",
@@ -393,8 +513,8 @@ export function mountCartCapacityLoadDom(
     image.alt = "";
     image.draggable = false;
     applyStyles(image, {
-      width: "92px",
-      height: "78px",
+      width: option.spec.size === "large" ? "104px" : option.spec.size === "medium" ? "94px" : "82px",
+      height: "72px",
       objectFit: "contain",
       pointerEvents: "none",
       filter: "drop-shadow(0 8px 10px rgba(0,0,0,0.3))"
@@ -429,7 +549,7 @@ export function mountCartCapacityLoadDom(
     dragStates.set(option.spec.id, state);
 
     card.addEventListener("pointerdown", (event) => {
-      if (!visible || completed || loadedOptionIds.has(option.spec.id)) return;
+      if (!visible || completed || finishing || usedOptionIds.has(option.spec.id)) return;
       event.preventDefault();
       event.stopPropagation();
       state.dragging = true;
@@ -440,7 +560,7 @@ export function mountCartCapacityLoadDom(
       card.style.zIndex = "4";
       card.style.cursor = "grabbing";
       card.style.borderColor = "#ffd95e";
-      feedback.textContent = `Drag ${option.spec.label} into the cart`;
+      feedback.textContent = `Drag ${option.spec.label} to the ${option.spec.size.toUpperCase()} bay`;
       feedback.style.color = "#d8e8dd";
     });
 
@@ -451,22 +571,30 @@ export function mountCartCapacityLoadDom(
       state.translateX = event.clientX - state.startX;
       state.translateY = event.clientY - state.startY;
       card.style.transform = `translate(${state.translateX}px, ${state.translateY}px)`;
-      const overTarget = sourceCentreInsideTarget(card);
-      target.style.transform = overTarget ? "scale(1.025)" : "scale(1)";
-      target.style.background = overTarget
-        ? "rgba(90, 145, 79, 0.3)"
-        : "rgba(90, 145, 79, 0.12)";
+      clearLaneHighlights();
+      const lane = laneAtCardCentre(card);
+      if (lane) {
+        const slot = laneElements.get(lane.id);
+        if (slot && !filledLaneIds.has(lane.id)) {
+          const fits = lane.acceptsSize === option.spec.size;
+          slot.style.transform = "scale(1.035)";
+          slot.style.borderColor = fits ? "#72ef9e" : "#ff786e";
+          slot.style.background = fits
+            ? "rgba(57,132,84,0.3)"
+            : "rgba(214,83,74,0.18)";
+        }
+      }
     });
 
     card.addEventListener("pointerup", (event) => {
       if (!state.dragging || state.pointerId !== event.pointerId) return;
       event.preventDefault();
       event.stopPropagation();
-      const acceptedDrop = sourceCentreInsideTarget(card);
+      const lane = laneAtCardCentre(card);
       if (card.hasPointerCapture(event.pointerId)) card.releasePointerCapture(event.pointerId);
-      if (acceptedDrop) tryLoad(state);
+      if (lane) tryLoad(state, lane);
       else {
-        feedback.textContent = "Drop the whole case inside the cart area";
+        feedback.textContent = "Drop the whole box inside one of the cart bays";
         feedback.style.color = "#ffba9b";
         resetCard(state);
       }
@@ -475,7 +603,7 @@ export function mountCartCapacityLoadDom(
     card.addEventListener("pointercancel", () => resetCard(state));
     card.addEventListener("keydown", (event) => {
       if (event.key !== "Enter" && event.key !== " ") return;
-      if (loadedOptionIds.has(option.spec.id)) return;
+      if (usedOptionIds.has(option.spec.id) || finishing) return;
       event.preventDefault();
       selectedKeyboardOptionId = option.spec.id;
       feedback.textContent = `${option.spec.label} selected. Focus the cart and press Enter.`;
@@ -489,7 +617,9 @@ export function mountCartCapacityLoadDom(
     event.preventDefault();
     const state = dragStates.get(selectedKeyboardOptionId);
     selectedKeyboardOptionId = undefined;
-    if (state) tryLoad(state);
+    if (!state) return;
+    const lane = matchingOpenLane(state.option);
+    if (lane) tryLoad(state, lane);
   });
 
   const blockUnderlyingPointer = (event: Event): void => event.stopPropagation();
@@ -514,12 +644,14 @@ export function mountCartCapacityLoadDom(
       }
       if (event.payload.action === config.spec.confirmAction) {
         completed = true;
+        finishing = false;
         hide();
       }
     }),
     gameDomainEvents.subscribe("task.completed", (event) => {
       if (event.payload.levelId !== config.levelId) return;
       completed = true;
+      finishing = false;
       hide();
     })
   ];
@@ -532,6 +664,7 @@ export function mountCartCapacityLoadDom(
       overlay.remove();
       delete document.body.dataset.cartCapacityLoad;
       delete document.body.dataset.cartCapacityLoaded;
+      delete document.body.dataset.cartCapacityRound;
     }
   });
 }
