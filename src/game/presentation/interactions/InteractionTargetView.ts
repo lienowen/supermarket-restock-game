@@ -12,12 +12,17 @@ export class InteractionTargetView {
   private readonly hitTarget: Phaser.GameObjects.Rectangle;
   private readonly arrow: Phaser.GameObjects.Text;
   private readonly pulse: Phaser.Tweens.Tween;
+  private readonly pointerActionsEnabled: boolean;
 
   constructor(
     scene: Phaser.Scene,
     config: InteractionTargetViewConfig,
     onAction: () => void
   ) {
+    // Mature cleaning uses the spill sprite itself as the scrub surface. Keep
+    // its target ring/arrow as guidance only so it cannot bypass the scrub by
+    // dispatching CLEAN_SPOT on a single click.
+    this.pointerActionsEnabled = config.name !== "clean-interaction-target";
     this.hitTarget = scene.add.rectangle(0, 0, 120, 90, config.color, 0.001)
       .setDepth(59)
       .setName(`${config.name ?? "interaction-target"}-hit-area`);
@@ -71,12 +76,12 @@ export class InteractionTargetView {
         .setDisplaySize(hitWidth, hitHeight)
         .setData("actionEnabled", enabled)
         .disableInteractive();
-      if (enabled) this.hitTarget.setInteractive({ useHandCursor: true });
+      if (enabled && this.pointerActionsEnabled) this.hitTarget.setInteractive({ useHandCursor: true });
       this.target.disableInteractive();
     } else {
       this.hitTarget.setVisible(false).disableInteractive();
       this.target.disableInteractive();
-      if (enabled) this.target.setInteractive({ useHandCursor: true });
+      if (enabled && this.pointerActionsEnabled) this.target.setInteractive({ useHandCursor: true });
     }
 
     this.target.setVisible(true)
