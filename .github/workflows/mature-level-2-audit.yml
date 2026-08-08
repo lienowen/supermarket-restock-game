@@ -1,6 +1,17 @@
 name: Mature Level 2 Audit
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "src/game/content/levels/starterMarketLevels.ts"
+      - "src/game/presentation/actors/**"
+      - "src/game/presentation/fixtures/**"
+      - "src/game/presentation/ui/**"
+      - "src/game/presentation/visual/**"
+      - "scripts/capture-promotion-memory.mjs"
+      - ".github/workflows/mature-level-2-audit.yml"
   pull_request:
     branches:
       - main
