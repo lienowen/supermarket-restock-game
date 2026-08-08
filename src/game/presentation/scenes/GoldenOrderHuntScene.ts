@@ -12,6 +12,7 @@ const GOLDEN_EXTRA_PRODUCT_KEYS = Object.freeze([
   "product-grapes-pack",
   "product-peanut-butter"
 ]);
+const GOLDEN_PICKUP_WORKER_KEY = "worker-a-place-middle";
 
 const GOLDEN_ZONE_LAYOUT = Object.freeze({
   breakfastFixture: Object.freeze({ x: 700, y: 706, maxWidth: 470, maxHeight: 320 }),
@@ -61,7 +62,7 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
 
   override preload(): void {
     super.preload();
-    GOLDEN_EXTRA_PRODUCT_KEYS.forEach((assetKey) => {
+    [...GOLDEN_EXTRA_PRODUCT_KEYS, GOLDEN_PICKUP_WORKER_KEY].forEach((assetKey) => {
       const asset = this.goldenContext.assets.require(assetKey);
       if (!this.textures.exists(asset.key)) this.load.image(asset.key, asset.path);
     });
@@ -74,6 +75,8 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
     document.body.dataset.goldenWorldScale = "trimmed-v3";
     document.body.dataset.goldenHud = "compact-v1";
     document.body.dataset.goldenWorkerMotion = "idle";
+    document.body.dataset.goldenWorkerWalkObserved = "false";
+    document.body.dataset.goldenPickupObserved = "false";
     document.body.dataset.goldenBasketCount = "0";
     this.hideLegacyHudChrome();
     this.createCompactHeader();
@@ -265,9 +268,12 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
     if (pickupActive) {
       this.walkFrameElapsedMs = 0;
       this.walkFrameIndex = 0;
-      actor.setTexture(createOpaqueCutoutTexture(this, this.goldenContext.levelAssets.workerThinking.key));
+      const pickupTexture = createOpaqueCutoutTexture(this, GOLDEN_PICKUP_WORKER_KEY);
+      actor.setTexture(pickupTexture);
       document.body.dataset.goldenWorkerMotion = "pickup";
       document.body.dataset.goldenWorkerFrame = "pick";
+      document.body.dataset.goldenPickupObserved = "true";
+      document.body.dataset.goldenLastPickupTexture = pickupTexture;
     } else if (moving) {
       this.walkFrameElapsedMs += delta;
       if (this.walkFrameElapsedMs >= WALK_FRAME_MS) {
@@ -279,6 +285,8 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
       if (Math.abs(dx) > 0.05) actor.setFlipX(dx < 0);
       document.body.dataset.goldenWorkerMotion = "walk";
       document.body.dataset.goldenWorkerFrame = String(this.walkFrameIndex + 1);
+      document.body.dataset.goldenWorkerWalkObserved = "true";
+      document.body.dataset.goldenLastWalkTexture = actor.texture.key;
     } else {
       this.walkFrameElapsedMs = 0;
       this.walkFrameIndex = 0;
