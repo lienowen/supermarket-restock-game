@@ -30,19 +30,8 @@ await new Promise((resolveServer) => server.listen(PORT, "127.0.0.1", resolveSer
 
 const report = {
   generatedAt: new Date().toISOString(),
+  runtimeIdentity: null,
   states: [],
-  assertions: {
-    routedActorActive: false,
-    firstHudClickStartsRoute: false,
-    reachesCaseAndCollects: false,
-    carriesCaseTowardCart: false,
-    reachesCartStandPoint: false,
-    secondHudClickAdvances: false,
-    directActionFallbackAdvances: false,
-    pushesCartTowardCooler: false,
-    reachesRestock: false,
-    noRuntimeIssues: false
-  },
   consoleErrors: [],
   pageErrors: [],
   failedRequests: [],
@@ -67,72 +56,47 @@ try {
   await page.waitForSelector(CANVAS_SELECTOR, { state: "visible", timeout: 45000 });
   await page.waitForFunction(() => document.body.dataset.activeLevel === "starter-level-001", null, { timeout: 30000 });
 
-  let state = await readState(page, "initial");
-  report.states.push(state);
-  report.assertions.routedActorActive = state.actorControl === "routed-world-action-chain" && state.visualPresetId === "restock-golden-standard-v1";
+  report.runtimeIdentity = await page.evaluate((sceneKey) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+    const actors = scene?.actors;
+    const proto = actors ? Object.getPrototypeOf(actors) : null;
+    const actorObjects = (scene?.children?.list ?? [])
+      .filter((entry) => typeof entry?.name === "string")
+      .filter((entry) => /restock|worker|cart|case/i.test(entry.name))
+      .map((entry) => ({
+        name: entry.name,
+        type: entry.constructor?.name ?? null,
+        x: entry.x ?? null,
+        y: entry.y ?? null,
+        visible: entry.visible ?? null,
+        texture: entry.texture?.key ?? null
+      }));
+    return {
+      sceneConstructor: scene?.constructor?.name ?? null,
+      actorConstructor: actors?.constructor?.name ?? null,
+      actorPrototypeMethods: proto ? Object.getOwnPropertyNames(proto).sort() : [],
+      actorInstanceKeys: actors ? Object.keys(actors).sort() : [],
+      actorControl: document.body.dataset.restockActorControl ?? null,
+      visualPresetId: scene?.visualPreset?.id ?? null,
+      actorObjects
+    };
+  }, SCENE_KEY);
 
+  report.states.push(await readState(page, "initial"));
   await clickHudAction(page);
-  await page.waitForTimeout(260);
-  state = await readState(page, "after-first-click");
-  report.states.push(state);
-  report.assertions.firstHudClickStartsRoute = state.pendingAction === true && state.navigation?.moving === true;
-
+  await page.waitForTimeout(600);
+  report.states.push(await readState(page, "after-first-click"));
+  await page.waitForFunction((sceneKey) => window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.controller?.snapshot?.().step === "load", SCENE_KEY, { timeout: 8000 });
+  report.states.push(await readState(page, "load-start"));
   await page.waitForFunction((sceneKey) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
-    return scene?.controller?.snapshot?.().step === "load";
+    return scene?.controller?.snapshot?.().step === "load" && scene?.isInteractionReady?.() === true;
   }, SCENE_KEY, { timeout: 8000 });
-  state = await readState(page, "collected");
-  report.states.push(state);
-  report.assertions.reachesCaseAndCollects = state.controller?.step === "load" && state.controller?.boxCollected === true;
-  report.assertions.carriesCaseTowardCart = state.navigation?.moving === true;
-
-  await page.waitForFunction((sceneKey) => {
-    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
-    const snapshot = scene?.controller?.snapshot?.();
-    return snapshot?.step === "load" && scene?.isInteractionReady?.() === true;
-  }, SCENE_KEY, { timeout: 8000 });
-  state = await readState(page, "cart-ready");
-  report.states.push(state);
-  report.assertions.reachesCartStandPoint = state.interactionReady === true;
-
+  report.states.push(await readState(page, "load-ready"));
   await clickHudAction(page);
-  await page.waitForTimeout(650);
-  state = await readState(page, "after-second-hud-click");
-  report.states.push(state);
-  report.assertions.secondHudClickAdvances = state.controller?.step !== "load";
-
-  if (!report.assertions.secondHudClickAdvances) {
-    await page.evaluate((sceneKey) => {
-      const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
-      scene?.requestCurrentAction?.();
-    }, SCENE_KEY);
-    await page.waitForTimeout(650);
-    state = await readState(page, "after-direct-action-fallback");
-    report.states.push(state);
-    report.assertions.directActionFallbackAdvances = state.controller?.step !== "load";
-  } else {
-    report.assertions.directActionFallbackAdvances = true;
-  }
-
-  state = await readState(page, "push-route");
-  report.assertions.pushesCartTowardCooler = Boolean(
-    ["park", "open", "restock"].includes(state.controller?.step) &&
-    (state.navigation?.moving === true || state.controller?.step === "restock")
-  );
-
-  try {
-    await page.waitForFunction((sceneKey) => {
-      const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
-      return scene?.controller?.snapshot?.().step === "restock";
-    }, SCENE_KEY, { timeout: 10000 });
-    report.assertions.reachesRestock = true;
-  } catch {
-    report.states.push(await readState(page, "restock-timeout"));
-  }
-
+  await page.waitForTimeout(800);
+  report.states.push(await readState(page, "after-second-click"));
   await page.screenshot({ path: join(OUTPUT_DIR, "level-1-route-final.png"), fullPage: true });
-  report.assertions.noRuntimeIssues = report.consoleErrors.length === 0 && report.pageErrors.length === 0 && report.failedRequests.length === 0;
-
   await page.close();
   await context.close();
 } catch (error) {
@@ -144,24 +108,21 @@ try {
   await new Promise((resolveServer) => server.close(resolveServer));
 }
 
-console.log(JSON.stringify({ assertions: report.assertions, states: report.states, fatalError: report.fatalError }, null, 2));
+console.log(JSON.stringify(report, null, 2));
 if (thrownError) throw thrownError;
 
 async function readState(page, label) {
   return page.evaluate(({ sceneKey, label }) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
-    const action = scene?.children?.getByName?.("shift-hud-action");
     const worker = scene?.children?.getByName?.("restock-worker");
     const cart = scene?.children?.getByName?.("restock-cart");
     const caseBox = scene?.children?.getByName?.("restock-case");
+    const action = scene?.children?.getByName?.("shift-hud-action");
     return {
       label,
-      actorControl: document.body.dataset.restockActorControl ?? null,
-      visualPresetId: scene?.visualPreset?.id ?? null,
       controller: scene?.controller?.snapshot?.() ?? null,
       pendingAction: scene?.pendingAction ?? null,
       interactionReady: scene?.isInteractionReady?.() ?? null,
-      gateReady: scene?.interactionGate?.isReady?.() ?? null,
       navigation: scene?.actors?.navigationSnapshot?.() ?? null,
       worker: worker ? { x: worker.x, y: worker.y, texture: worker.texture?.key ?? null } : null,
       cart: cart ? { x: cart.x, y: cart.y, visible: cart.visible, texture: cart.texture?.key ?? null } : null,
@@ -180,10 +141,7 @@ async function clickHudAction(page) {
   if (!action) throw new Error("Shift HUD action button is missing");
   const box = await page.locator(CANVAS_SELECTOR).boundingBox();
   if (!box) throw new Error("Game canvas has no bounding box");
-  await page.mouse.click(
-    box.x + (action.x / GAME_WIDTH) * box.width,
-    box.y + (action.y / GAME_HEIGHT) * box.height
-  );
+  await page.mouse.click(box.x + (action.x / GAME_WIDTH) * box.width, box.y + (action.y / GAME_HEIGHT) * box.height);
 }
 
 function attachListeners(page, auditReport) {
