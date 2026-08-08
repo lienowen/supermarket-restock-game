@@ -1,5 +1,6 @@
 import "./styles.css";
 import "./visual-comfort.css";
+import "./mature-clean.css";
 import "./game/presentation/actors/installRestockCartCombo";
 import "./game/presentation/actors/installLevelOnePolish";
 import "./game/presentation/actors/installLevelOneWorkerMatteCleanup";
