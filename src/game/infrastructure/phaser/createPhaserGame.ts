@@ -172,7 +172,12 @@ export async function createPhaserGame(
         spec: option,
         imagePath: STARTER_RUNTIME_ASSET_REGISTRY.require(option.assetKey).path
       })),
-      targetImagePath: presentation.levelAssets.cart.path
+      targetImagePath: STARTER_RUNTIME_ASSET_REGISTRY.require(
+        cartCapacity.targetAssetKey
+      ).path,
+      loadedTargetImagePath: STARTER_RUNTIME_ASSET_REGISTRY.require(
+        cartCapacity.loadedTargetAssetKey
+      ).path
     });
   } else {
     document.body.dataset.cartCapacityLoad = cartCapacity ? "skipped" : "none";
