@@ -41,6 +41,25 @@ const matureDeliveryProp = (
   status: "production"
 });
 
+const matureCustomer = (
+  key: string,
+  fileName: string,
+  state: string
+): AssetDescriptor => asset({
+  key,
+  path: `assets/game/missing-assets-batch-01/${fileName}`,
+  category: "character",
+  canvasSize: [1024, 1536],
+  anchor: [0.5, 0.98],
+  defaultScale: 0.36,
+  depthGroup: "actors",
+  preloadGroup: "starter-market",
+  perspective: "fixed-third-person",
+  lightDirection: "upper-left",
+  state,
+  status: "production"
+});
+
 /**
  * Project-wide production assets belong here only after their files are present
  * in the repository and pass the release bundle checks. Asset ideas and gap
@@ -84,6 +103,9 @@ export const GLOBAL_PROJECT_ASSET_CATALOGUE: AssetCatalogue = Object.freeze({
     matureDeliveryProp("delivery-box-medium", "delivery-box-medium.png", "prop", "medium"),
     matureDeliveryProp("delivery-box-large", "delivery-box-large.png", "prop", "large"),
     matureDeliveryProp("equipment-capacity-cart-empty", "equipment-capacity-cart-empty.png", "equipment", "empty"),
-    matureDeliveryProp("equipment-capacity-cart-loaded", "equipment-capacity-cart-loaded.png", "equipment", "loaded")
+    matureDeliveryProp("equipment-capacity-cart-loaded", "equipment-capacity-cart-loaded.png", "equipment", "loaded"),
+    matureDeliveryProp("equipment-produce-scale", "equipment-produce-scale.png", "equipment", "ready"),
+    matureCustomer("customer-evening-happy", "customer-happy.png", "happy"),
+    matureCustomer("customer-evening-impatient", "customer-impatient.png", "impatient")
   ])
 });
