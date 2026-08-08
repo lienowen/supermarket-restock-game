@@ -31,9 +31,15 @@ const GOLDEN_PRODUCT_LAYOUT = Object.freeze([
   Object.freeze({ sourceName: "find-decoy-decoy-detergent", name: "find-decoy-grapes", assetKey: "product-grapes-pack", x: 1285, y: 700, maxWidth: 48, maxHeight: 40, requested: false })
 ]);
 
+const WALK_FRAME_MS = 140;
+const WALK_EPSILON = 0.35;
+
 /** Level 5 mature-pass golden presentation over the proven Order Hunt controller. */
 export class GoldenOrderHuntScene extends UtilityTaskScene {
   private readonly goldenVisual: FindItemsLevelVisualPreset;
+  private previousWorkerPosition?: { readonly x: number; readonly y: number };
+  private walkFrameElapsedMs = 0;
+  private walkFrameIndex = 0;
 
   constructor(
     private readonly goldenContext: FindItemsStarterMarketPresentationContext,
@@ -57,18 +63,19 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
     document.body.dataset.goldenEnvironment = this.goldenContext.levelAssets.environment.key;
     document.body.dataset.goldenWorldScale = "trimmed-v3";
     document.body.dataset.goldenHud = "compact-v1";
+    document.body.dataset.goldenWorkerMotion = "idle";
     this.hideLegacyHudChrome();
     this.createCompactHeader();
     this.createStoreFixtures();
     this.reframeProducts();
     this.reframeBasket();
-    this.normalizeWorkerTexture();
+    this.syncWorkerMotion(0, true);
   }
 
   override update(time: number, delta: number): void {
     super.update(time, delta);
     this.hideLegacyHudChrome();
-    this.normalizeWorkerTexture();
+    this.syncWorkerMotion(delta, false);
   }
 
   private hideLegacyHudChrome(): void {
@@ -168,12 +175,39 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
     fitImageIntoBox(basket, GOLDEN_ZONE_LAYOUT.basket.maxWidth, GOLDEN_ZONE_LAYOUT.basket.maxHeight);
   }
 
-  private normalizeWorkerTexture(): void {
+  private syncWorkerMotion(delta: number, initialize: boolean): void {
     const actor = this.children.getByName("find-items-worker");
     if (!(actor instanceof Phaser.GameObjects.Image)) return;
-    const currentKey = actor.texture.key;
-    if (!currentKey.endsWith("--opaque-cutout")) actor.setTexture(createOpaqueCutoutTexture(this, currentKey));
-    actor.setAlpha(1).setOrigin(0.5, 0.98).setBlendMode(Phaser.BlendModes.NORMAL);
+
+    const previous = this.previousWorkerPosition;
+    const dx = previous ? actor.x - previous.x : 0;
+    const dy = previous ? actor.y - previous.y : 0;
+    const moving = !initialize && Math.hypot(dx, dy) > WALK_EPSILON;
+
+    if (moving) {
+      this.walkFrameElapsedMs += delta;
+      if (this.walkFrameElapsedMs >= WALK_FRAME_MS) {
+        this.walkFrameElapsedMs %= WALK_FRAME_MS;
+        this.walkFrameIndex = (this.walkFrameIndex + 1) % this.goldenContext.levelAssets.workerWalk.length;
+      }
+      const walkKey = this.goldenContext.levelAssets.workerWalk[this.walkFrameIndex]?.key;
+      if (walkKey) actor.setTexture(createOpaqueCutoutTexture(this, walkKey));
+      if (Math.abs(dx) > 0.05) actor.setFlipX(dx < 0);
+      document.body.dataset.goldenWorkerMotion = "walk";
+      document.body.dataset.goldenWorkerFrame = String(this.walkFrameIndex + 1);
+    } else {
+      this.walkFrameElapsedMs = 0;
+      this.walkFrameIndex = 0;
+      actor.setTexture(createOpaqueCutoutTexture(this, this.goldenContext.levelAssets.worker.key));
+      document.body.dataset.goldenWorkerMotion = "idle";
+      document.body.dataset.goldenWorkerFrame = "0";
+    }
+
+    actor
+      .setAlpha(1)
+      .setOrigin(0.5, 0.98)
+      .setBlendMode(Phaser.BlendModes.NORMAL);
     fitImageIntoBox(actor, GOLDEN_ZONE_LAYOUT.worker.maxWidth, GOLDEN_ZONE_LAYOUT.worker.maxHeight);
+    this.previousWorkerPosition = { x: actor.x, y: actor.y };
   }
 }
