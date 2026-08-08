@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import type { RestockSceneSnapshot } from "../../application/RestockSceneController";
-import { IntegratedBeverageCoolerView } from "../fixtures/IntegratedBeverageCoolerView";
 import type { VisualPoint } from "../visual/StarterMarketVisualSpec";
+import { IntegratedBeverageCoolerView } from "../world/IntegratedBeverageCoolerView";
 import { RestockActorView } from "./RestockActorView";
 
 const PROMOTION_LEVEL_ID = "starter-level-002";
