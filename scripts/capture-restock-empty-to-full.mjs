@@ -40,6 +40,9 @@ const report = {
     productionV3BackgroundActive: false,
     integratedCoolerActive: false,
     legacyEmptyShellRemoved: false,
+    compactMatureHudActive: false,
+    legacyShiftHudHidden: false,
+    checklistHandedOff: false,
     emptyShelfHasZeroItems: false,
     shelfBuildsByConfiguredUnits: false,
     finalInteractionCompletesShelf: false,
@@ -79,6 +82,7 @@ try {
   await clickHudAction(page);
   await waitForSnapshot(page, { step: "restock", boxLoaded: true, boxOpened: true }, 30000);
   await waitForInteractionReady(page);
+  await page.waitForFunction(() => document.body.dataset.matureRestockHud === "compact-v1", null, { timeout: 5000 });
   report.assertions.setupUsesLiveHudAction = true;
 
   const initial = await readVisualState(page);
@@ -93,8 +97,12 @@ try {
   report.assertions.productionV3BackgroundActive = initial.backgroundState === "production-v3-hd";
   report.assertions.integratedCoolerActive = initial.coolerView === "background-integrated" && initial.coolerForeground === "shelf-lips-only";
   report.assertions.legacyEmptyShellRemoved = initial.shell === null;
+  report.assertions.compactMatureHudActive = initial.matureHudState === "compact-v1" && initial.matureHudVisible === true;
+  report.assertions.legacyShiftHudHidden = initial.legacyHudVisibleCount === 0;
+  report.assertions.checklistHandedOff = initial.checklistState === "handoff" && initial.checklistVisible === false;
   report.assertions.emptyShelfHasZeroItems = initial.itemCount === 0 && initial.rush.activeRowItemCount === 0 && initial.controller.stockedRows === 0;
 
+  await page.screenshot({ path: join(OUTPUT_DIR, "level-1-mature-restock.png"), fullPage: true });
   await captureActiveRow(page, rowIndex, `restock-visual-0-of-${report.physicalItemsPerRow}.png`);
   const target = initial.target;
   if (!target) throw new Error("Active restock row target is missing");
@@ -170,10 +178,21 @@ async function readVisualState(page, forcedRowIndex) {
     const holder = scene?.children?.getByName?.(`beverage-cooler-row-${activeRowIndex}`);
     const target = scene?.children?.getByName?.(`beverage-cooler-row-target-${activeRowIndex}`);
     const shell = scene?.children?.getByName?.("beverage-cooler-empty-shell");
+    const matureHud = scene?.children?.getByName?.("mature-restock-hud");
+    const legacyHudVisibleCount = (scene?.children?.list ?? []).filter((entry) => {
+      const depth = entry?.depth ?? -1;
+      return depth >= 99 && depth <= 105 && entry?.visible === true;
+    }).length;
+    const checklist = document.getElementById("level-checklist");
     return {
       backgroundState: document.body.dataset.restockCoolerBackground ?? null,
       coolerView: document.body.dataset.restockCoolerView ?? null,
       coolerForeground: document.body.dataset.restockCoolerForeground ?? null,
+      matureHudState: document.body.dataset.matureRestockHud ?? null,
+      matureHudVisible: matureHud?.visible ?? false,
+      legacyHudVisibleCount,
+      checklistState: document.body.dataset.levelChecklist ?? null,
+      checklistVisible: Boolean(checklist && checklist.style.visibility !== "hidden" && checklist.style.opacity !== "0"),
       controller: scene?.controller?.snapshot?.() ?? null,
       rush,
       itemCount: Array.isArray(holder?.list) ? holder.list.length : -1,
