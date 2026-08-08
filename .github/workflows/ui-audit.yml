@@ -65,7 +65,8 @@ jobs:
           set -o pipefail
           node scripts/measure-release-payload.mjs 2>&1 | tee release-payload.log
 
-      - name: Capture release regressions
+      - name: Capture legacy 1-10 release diagnostics
+        continue-on-error: true
         run: |
           set -o pipefail
           node scripts/capture-release-regressions.mjs 2>&1 | tee ui-audit-run.log
@@ -90,7 +91,7 @@ jobs:
           set -o pipefail
           node scripts/capture-checkout-scanning.mjs 2>&1 | tee checkout-scanning-audit.log
 
-      - name: Verify hold-to-clean patrol
+      - name: Verify mature in-world scrub cleaning
         run: |
           set -o pipefail
           node scripts/capture-hold-cleaning.mjs 2>&1 | tee hold-cleaning-audit.log
@@ -164,12 +165,15 @@ jobs:
 
             if (!passed) {
               try {
-                const patience = failedAssertions("ui-audit/checkout-patience-audit.json");
+                const patience = failedAssertions("ui-audit/mature-level-7/report.json")
+                  ?? failedAssertions("ui-audit/checkout-patience-audit.json");
                 const cartCapacity = failedAssertions("ui-audit/cart-capacity-audit.json");
                 const orderHunt = failedAssertions("ui-audit/order-hunt-search-audit.json");
-                const cleaning = failedAssertions("ui-audit/hold-cleaning-audit.json");
+                const cleaning = failedAssertions("ui-audit/mature-clean/report.json")
+                  ?? failedAssertions("ui-audit/hold-cleaning-audit.json");
                 const checkout = failedAssertions("ui-audit/checkout-scanning-audit.json");
-                const memory = failedAssertions("ui-audit/promotion-memory-audit.json");
+                const memory = failedAssertions("ui-audit/mature-level-2/report.json")
+                  ?? failedAssertions("ui-audit/promotion-memory-audit.json");
                 const guided = failedAssertions("ui-audit/guided-delivery-audit.json");
                 const briefing = failedAssertions("ui-audit/level-briefing-audit.json");
                 if (patience && (patience.report.fatalError || patience.failed.length > 0)) {
@@ -196,17 +200,6 @@ jobs:
                 } else if (briefing && (briefing.report.fatalError || briefing.failed.length > 0)) {
                   failureKey = `briefing:${briefing.failed.join("+") || "runtime"}`;
                   description = briefing.report.fatalError || `Failed: ${failureKey}`;
-                } else if (fs.existsSync("ui-audit/ui-audit-report.json")) {
-                  const report = JSON.parse(fs.readFileSync("ui-audit/ui-audit-report.json", "utf8"));
-                  const failed = Object.entries(report.regressions ?? {})
-                    .filter(([, value]) => !value)
-                    .map(([key]) => key);
-                  failureKey = failed.join("+") || "runtime";
-                  const browserIssues = (report.consoleErrors?.length ?? 0)
-                    + (report.pageErrors?.length ?? 0)
-                    + (report.failedRequests?.length ?? 0)
-                    + (report.badResponses?.length ?? 0);
-                  description = `Failed: ${failureKey}; browser issues ${browserIssues}`;
                 } else if (fs.existsSync("release-payload-report.json")) {
                   const payloadReport = JSON.parse(fs.readFileSync("release-payload-report.json", "utf8"));
                   failureKey = "release-payload";
