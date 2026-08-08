@@ -34,17 +34,20 @@ const report = {
     solidWorkerActive: false,
     matureCleanPresentationActive: false,
     threeProductionSpillsRegistered: false,
+    legacyHoldOverlayHidden: false,
     toolsRequireMovement: false,
     toolsCollected: false,
     mopPoseIsSolid: false,
     firstSpillRequiresMovement: false,
     spillSequenceUsesWaterJuiceDirt: false,
+    scrubChangesSpillBeforeCommit: false,
     completedSpillDisappears: false,
     fullCleaningCompletes: false,
     noRuntimeIssues: false
   },
   initial: null,
   afterTools: null,
+  scrubMidpoint: null,
   afterFirst: null,
   final: null,
   consoleErrors: [],
@@ -67,17 +70,17 @@ try {
   });
   const page = await context.newPage();
   attachListeners(page, report);
-  await page.goto(`${ORIGIN}/?test=1&briefing=0&guided=0&level=${LEVEL_ID}`, { waitUntil: "networkidle", timeout: 90000 });
+  await page.goto(`${ORIGIN}/?test=1&briefing=0&guided=0&hold=1&level=${LEVEL_ID}`, { waitUntil: "networkidle", timeout: 90000 });
   await page.waitForSelector(CANVAS_SELECTOR, { state: "visible", timeout: 45000 });
   await page.waitForFunction(() => document.body.dataset.activeLevel === "starter-level-004", null, { timeout: 30000 });
-  await page.waitForFunction(() => document.body.dataset.cleaningPresentation === "mature-clean-v1", null, { timeout: 15000 });
+  await page.waitForFunction(() => document.body.dataset.cleaningPresentation === "mature-clean-v2-scrub", null, { timeout: 15000 });
 
   const initial = await readState(page);
   report.initial = initial;
   report.assertions.hdEnvironmentActive = initial.environmentKey === "environment-starter-market-restock-hd-v3";
   report.assertions.solidWorkerActive = Boolean(initial.worker?.texture?.includes("--opaque-cutout"));
   report.assertions.matureCleanPresentationActive = (
-    initial.presentation === "mature-clean-v1" && initial.spillArtMode === "water-juice-dirt-production"
+    initial.presentation === "mature-clean-v2-scrub" && initial.spillArtMode === "water-juice-dirt-production"
   );
   report.assertions.threeProductionSpillsRegistered = (
     initial.spills.length === 3 &&
@@ -86,8 +89,7 @@ try {
   );
 
   const workerStart = initial.worker;
-  const toolPoint = initial.toolPoint;
-  await movePlayer(page, toolPoint);
+  await movePlayer(page, initial.toolPoint);
   await waitForInteractionReady(page);
   const atTools = await readState(page);
   report.assertions.toolsRequireMovement = Boolean(
@@ -106,6 +108,10 @@ try {
   report.assertions.spillSequenceUsesWaterJuiceDirt = (
     afterTools.spills.map((spill) => spill.sourceKey).join("|") === "spill-water-large|spill-juice-large|spill-dirt-smear-large"
   );
+  report.assertions.legacyHoldOverlayHidden = await page.evaluate(() => {
+    const overlay = document.getElementById("hold-work-overlay");
+    return Boolean(overlay && getComputedStyle(overlay).display === "none");
+  });
   await page.screenshot({ path: join(OUTPUT_DIR, "level-4-real-spills.png"), fullPage: true });
 
   const firstSpot = afterTools.spotPositions[0];
@@ -116,7 +122,16 @@ try {
   report.assertions.firstSpillRequiresMovement = Boolean(
     beforeFirstPosition && Math.hypot(atFirst.worker.x - beforeFirstPosition.x, atFirst.worker.y - beforeFirstPosition.y) > 80
   );
-  await clickHudAction(page);
+
+  await scrubSpill(page, 0, { partial: true });
+  const scrubMidpoint = await readState(page);
+  report.scrubMidpoint = scrubMidpoint;
+  report.assertions.scrubChangesSpillBeforeCommit = Boolean(
+    scrubMidpoint.controller?.progress === 0 &&
+    scrubMidpoint.scrubProgress > 0 && scrubMidpoint.scrubProgress < 100 &&
+    scrubMidpoint.spills[0]?.alpha < 1
+  );
+  await scrubSpill(page, 0, { partial: false });
   await page.waitForFunction((sceneKey) => (
     (window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.controller?.snapshot?.().progress ?? 0) >= 1
   ), SCENE_KEY, { timeout: 5000 });
@@ -128,12 +143,17 @@ try {
   while (true) {
     const state = await readState(page);
     if (state.controller?.step === "complete") break;
-    const spot = state.spotPositions[state.controller.progress];
-    if (!spot) throw new Error(`Missing cleaning spot ${state.controller.progress}`);
+    const index = state.controller.progress;
+    const spot = state.spotPositions[index];
+    if (!spot) throw new Error(`Missing cleaning spot ${index}`);
     await movePlayer(page, spot);
     await waitForInteractionReady(page);
-    await clickHudAction(page);
-    await page.waitForTimeout(500);
+    await scrubSpill(page, index, { partial: false });
+    await page.waitForFunction(({ sceneKey, expected }) => (
+      (window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.controller?.snapshot?.().progress ?? 0) >= expected ||
+      window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.controller?.snapshot?.().step === "complete"
+    ), { sceneKey: SCENE_KEY, expected: index + 1 }, { timeout: 6000 });
+    await page.waitForTimeout(420);
   }
 
   const final = await readState(page);
@@ -182,6 +202,7 @@ async function readState(page) {
       environmentKey: scene?.context?.levelAssets?.environment?.key ?? null,
       presentation: document.body.dataset.cleaningPresentation ?? null,
       spillArtMode: document.body.dataset.cleaningSpillArt ?? null,
+      scrubProgress: Number(document.body.dataset.cleanScrubProgress ?? "0"),
       controller: scene?.controller?.snapshot?.() ?? null,
       toolPoint: scene?.context?.runtime?.toolPoint ?? null,
       spotPositions: [...(scene?.context?.runtime?.spotPositions ?? [])],
@@ -222,6 +243,29 @@ async function clickHudAction(page) {
   const box = await page.locator(CANVAS_SELECTOR).boundingBox();
   if (!box) throw new Error("Game canvas has no bounding box");
   await page.mouse.click(box.x + (action.x / 1600) * box.width, box.y + (action.y / 900) * box.height);
+}
+
+async function scrubSpill(page, index, { partial }) {
+  const state = await readState(page);
+  const spill = state.spills[index];
+  if (!spill?.visible) throw new Error(`Spill ${index + 1} is not visible for scrubbing`);
+  const box = await page.locator(CANVAS_SELECTOR).boundingBox();
+  if (!box) throw new Error("Game canvas has no bounding box");
+  const toScreen = (x, y) => ({
+    x: box.x + (x / 1600) * box.width,
+    y: box.y + (y / 900) * box.height
+  });
+  const centre = toScreen(spill.x, spill.y);
+  await page.mouse.move(centre.x, centre.y);
+  await page.mouse.down();
+  const passes = partial ? 2 : 7;
+  for (let pass = 0; pass < passes; pass += 1) {
+    const direction = pass % 2 === 0 ? 1 : -1;
+    const next = toScreen(spill.x + direction * 72, spill.y + ((pass % 3) - 1) * 14);
+    await page.mouse.move(next.x, next.y, { steps: 3 });
+  }
+  await page.mouse.up();
+  await page.waitForTimeout(120);
 }
 
 function attachListeners(page, auditReport) {
