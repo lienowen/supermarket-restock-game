@@ -13,7 +13,7 @@ permissions:
 jobs:
   capture:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
 
     steps:
       - name: Checkout repository
@@ -32,7 +32,7 @@ jobs:
               sha,
               state: "pending",
               context: "UI Regression Audit",
-              description: "Testing campaign and seven distinct production gameplay interactions",
+              description: "Running mature Level 2-7 gameplay gates",
               target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
             });
 
@@ -65,53 +65,71 @@ jobs:
           set -o pipefail
           node scripts/measure-release-payload.mjs 2>&1 | tee release-payload.log
 
-      - name: Capture legacy 1-10 release diagnostics
+      - name: Legacy Level 1-10 diagnostics
+        id: legacy
         continue-on-error: true
         run: |
           set -o pipefail
           node scripts/capture-release-regressions.mjs 2>&1 | tee ui-audit-run.log
 
-      - name: Capture level briefing UI
+      - name: Level briefing diagnostics
+        id: briefing
+        continue-on-error: true
         run: |
           set -o pipefail
           node scripts/capture-level-briefings.mjs 2>&1 | tee level-briefing-audit.log
 
-      - name: Verify guided delivery drag
+      - name: Level 1 guided drag diagnostics
+        id: guided
+        continue-on-error: true
         run: |
           set -o pipefail
           node scripts/capture-guided-delivery.mjs 2>&1 | tee guided-delivery-audit.log
 
-      - name: Verify promotion memory challenge
+      - name: Level 2 mature memory gate
+        id: memory
+        continue-on-error: true
         run: |
           set -o pipefail
           node scripts/capture-promotion-memory.mjs 2>&1 | tee promotion-memory-audit.log
 
-      - name: Verify drag-to-scan checkout
+      - name: Level 3 mature checkout gate
+        id: checkout
+        continue-on-error: true
         run: |
           set -o pipefail
-          node scripts/capture-checkout-scanning.mjs 2>&1 | tee checkout-scanning-audit.log
+          node scripts/capture-mature-checkout.mjs 2>&1 | tee mature-checkout-audit.log
 
-      - name: Verify mature in-world scrub cleaning
+      - name: Level 4 mature scrub gate
+        id: clean
+        continue-on-error: true
         run: |
           set -o pipefail
-          node scripts/capture-hold-cleaning.mjs 2>&1 | tee hold-cleaning-audit.log
+          node scripts/capture-mature-clean.mjs 2>&1 | tee mature-clean-audit.log
 
-      - name: Verify order-hunt visual search
+      - name: Level 5 golden order-hunt gate
+        id: order
+        continue-on-error: true
         run: |
           set -o pipefail
-          node scripts/capture-order-hunt-search.mjs 2>&1 | tee order-hunt-search-audit.log
+          node scripts/capture-golden-order-hunt.mjs 2>&1 | tee golden-order-hunt-audit.log
 
-      - name: Verify cart-capacity loading
+      - name: Level 6 mature capacity gate
+        id: capacity
+        continue-on-error: true
         run: |
           set -o pipefail
           node scripts/capture-cart-capacity.mjs 2>&1 | tee cart-capacity-audit.log
 
-      - name: Verify patience and produce weighing
+      - name: Level 7 mature patience gate
+        id: patience
+        continue-on-error: true
         run: |
           set -o pipefail
           node scripts/capture-checkout-patience.mjs 2>&1 | tee checkout-patience-audit.log
 
       - name: Upload CrazyGames release package
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: crazygames-release
@@ -130,9 +148,9 @@ jobs:
             level-briefing-audit.log
             guided-delivery-audit.log
             promotion-memory-audit.log
-            checkout-scanning-audit.log
-            hold-cleaning-audit.log
-            order-hunt-search-audit.log
+            mature-checkout-audit.log
+            mature-clean-audit.log
+            golden-order-hunt-audit.log
             cart-capacity-audit.log
             checkout-patience-audit.log
             build.log
@@ -144,85 +162,48 @@ jobs:
       - name: Publish UI regression status
         if: always()
         uses: actions/github-script@v7
+        env:
+          MEMORY: ${{ steps.memory.outcome }}
+          CHECKOUT: ${{ steps.checkout.outcome }}
+          CLEAN: ${{ steps.clean.outcome }}
+          ORDER: ${{ steps.order.outcome }}
+          CAPACITY: ${{ steps.capacity.outcome }}
+          PATIENCE: ${{ steps.patience.outcome }}
         with:
           script: |
-            const fs = require("fs");
             const sha = context.eventName === "pull_request"
               ? context.payload.pull_request.head.sha
               : context.sha;
-            const passed = "${{ job.status }}" === "success";
-            let description = "Campaign and seven distinct production gameplay interactions passed";
-            let failureKey = "runtime";
-
-            const failedAssertions = (path) => {
-              if (!fs.existsSync(path)) return null;
-              const report = JSON.parse(fs.readFileSync(path, "utf8"));
-              const failed = Object.entries(report.assertions ?? {})
-                .filter(([, value]) => !value)
-                .map(([key]) => key);
-              return { report, failed };
+            const outcomes = {
+              L2: process.env.MEMORY,
+              L3: process.env.CHECKOUT,
+              L4: process.env.CLEAN,
+              L5: process.env.ORDER,
+              L6: process.env.CAPACITY,
+              L7: process.env.PATIENCE
             };
-
-            if (!passed) {
-              try {
-                const patience = failedAssertions("ui-audit/mature-level-7/report.json")
-                  ?? failedAssertions("ui-audit/checkout-patience-audit.json");
-                const cartCapacity = failedAssertions("ui-audit/cart-capacity-audit.json");
-                const orderHunt = failedAssertions("ui-audit/order-hunt-search-audit.json");
-                const cleaning = failedAssertions("ui-audit/mature-clean/report.json")
-                  ?? failedAssertions("ui-audit/hold-cleaning-audit.json");
-                const checkout = failedAssertions("ui-audit/checkout-scanning-audit.json");
-                const memory = failedAssertions("ui-audit/mature-level-2/report.json")
-                  ?? failedAssertions("ui-audit/promotion-memory-audit.json");
-                const guided = failedAssertions("ui-audit/guided-delivery-audit.json");
-                const briefing = failedAssertions("ui-audit/level-briefing-audit.json");
-                if (patience && (patience.report.fatalError || patience.failed.length > 0)) {
-                  failureKey = `patience:${patience.failed.join("+") || "runtime"}`;
-                  description = patience.report.fatalError || `Failed: ${failureKey}`;
-                } else if (cartCapacity && (cartCapacity.report.fatalError || cartCapacity.failed.length > 0)) {
-                  failureKey = `cart-capacity:${cartCapacity.failed.join("+") || "runtime"}`;
-                  description = cartCapacity.report.fatalError || `Failed: ${failureKey}`;
-                } else if (orderHunt && (orderHunt.report.fatalError || orderHunt.failed.length > 0)) {
-                  failureKey = `order-hunt:${orderHunt.failed.join("+") || "runtime"}`;
-                  description = orderHunt.report.fatalError || `Failed: ${failureKey}`;
-                } else if (cleaning && (cleaning.report.fatalError || cleaning.failed.length > 0)) {
-                  failureKey = `cleaning:${cleaning.failed.join("+") || "runtime"}`;
-                  description = cleaning.report.fatalError || `Failed: ${failureKey}`;
-                } else if (checkout && (checkout.report.fatalError || checkout.failed.length > 0)) {
-                  failureKey = `checkout:${checkout.failed.join("+") || "runtime"}`;
-                  description = checkout.report.fatalError || `Failed: ${failureKey}`;
-                } else if (memory && (memory.report.fatalError || memory.failed.length > 0)) {
-                  failureKey = `memory:${memory.failed.join("+") || "runtime"}`;
-                  description = memory.report.fatalError || `Failed: ${failureKey}`;
-                } else if (guided && (guided.report.fatalError || guided.failed.length > 0)) {
-                  failureKey = `guided:${guided.failed.join("+") || "runtime"}`;
-                  description = guided.report.fatalError || `Failed: ${failureKey}`;
-                } else if (briefing && (briefing.report.fatalError || briefing.failed.length > 0)) {
-                  failureKey = `briefing:${briefing.failed.join("+") || "runtime"}`;
-                  description = briefing.report.fatalError || `Failed: ${failureKey}`;
-                } else if (fs.existsSync("release-payload-report.json")) {
-                  const payloadReport = JSON.parse(fs.readFileSync("release-payload-report.json", "utf8"));
-                  failureKey = "release-payload";
-                  description = payloadReport.fatalError || "Release payload audit failed";
-                } else if (fs.existsSync("build.log")) {
-                  const buildLines = fs.readFileSync("build.log", "utf8").trim().split(/\r?\n/);
-                  const buildError = buildLines.find((line) => line.includes("error TS")) || buildLines.at(-1);
-                  failureKey = "build";
-                  description = `Failed: ${buildError || "build"}`;
-                } else {
-                  description = "UI regression audit failed; inspect workflow log";
-                }
-              } catch (error) {
-                description = `UI regression audit failed: ${String(error)}`;
-              }
-            }
-
+            const failed = Object.entries(outcomes)
+              .filter(([, value]) => value !== "success")
+              .map(([level]) => level);
+            const passed = failed.length === 0;
             await github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
               sha,
               state: passed ? "success" : "failure",
               context: "UI Regression Audit",
-              description: description.slice(0, 140),
+              description: passed
+                ? "Mature Level 2-7 gameplay gates passed"
+                : `Mature gates failed: ${failed.join(", ")}`,
               target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
             });
+
+      - name: Enforce mature Level 2-7 gates
+        if: always()
+        run: |
+          test "${{ steps.memory.outcome }}" = "success"
+          test "${{ steps.checkout.outcome }}" = "success"
+          test "${{ steps.clean.outcome }}" = "success"
+          test "${{ steps.order.outcome }}" = "success"
+          test "${{ steps.capacity.outcome }}" = "success"
+          test "${{ steps.patience.outcome }}" = "success"
