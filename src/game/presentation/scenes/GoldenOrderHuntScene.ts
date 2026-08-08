@@ -38,6 +38,8 @@ const GOLDEN_REQUESTED_NAMES = Object.freeze([
 ]);
 const WALK_FRAME_MS = 140;
 const WALK_EPSILON = 0.35;
+const PICKUP_START_RADIUS = 82;
+const PICKUP_HOLD_MS = 440;
 
 /** Level 5 mature-pass golden presentation over the proven Order Hunt controller. */
 export class GoldenOrderHuntScene extends UtilityTaskScene {
@@ -46,6 +48,8 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
   private previousWorkerPosition?: { readonly x: number; readonly y: number };
   private walkFrameElapsedMs = 0;
   private walkFrameIndex = 0;
+  private pendingGoldenPickupProductId?: string;
+  private pickupVisualUntil = 0;
 
   constructor(
     private readonly goldenContext: FindItemsStarterMarketPresentationContext,
@@ -83,6 +87,7 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
     super.update(time, delta);
     this.hideLegacyHudChrome();
     this.syncBasketFeedback();
+    this.syncPickupIntent();
     this.syncWorkerMotion(delta, false);
   }
 
@@ -165,6 +170,12 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
         .setData("requested", layout.requested);
       fitImageIntoBox(object, layout.maxWidth, layout.maxHeight);
       object.setInteractive({ useHandCursor: true });
+      if (layout.requested) {
+        const productId = layout.name.replace("find-item-", "");
+        object.on("pointerdown", () => {
+          this.pendingGoldenPickupProductId = productId;
+        });
+      }
     });
   }
 
@@ -181,6 +192,19 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
       .setOrigin(0.5, 0.98)
       .setDepth(20);
     fitImageIntoBox(basket, GOLDEN_ZONE_LAYOUT.basket.maxWidth, GOLDEN_ZONE_LAYOUT.basket.maxHeight);
+  }
+
+  private syncPickupIntent(): void {
+    const productId = this.pendingGoldenPickupProductId;
+    if (!productId || this.time.now < this.pickupVisualUntil) return;
+    const target = this.goldenContext.runtime.itemTargets.find((entry) => entry.productId === productId);
+    const actor = this.children.getByName("find-items-worker");
+    if (!target || !(actor instanceof Phaser.GameObjects.Image)) return;
+    if (Phaser.Math.Distance.Between(actor.x, actor.y, target.x, target.y) > PICKUP_START_RADIUS) return;
+
+    this.pickupVisualUntil = this.time.now + PICKUP_HOLD_MS;
+    this.pendingGoldenPickupProductId = undefined;
+    document.body.dataset.goldenPickupProduct = productId;
   }
 
   private syncBasketFeedback(): void {
@@ -237,7 +261,7 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
     const dx = previous ? actor.x - previous.x : 0;
     const dy = previous ? actor.y - previous.y : 0;
     const moving = !initialize && Math.hypot(dx, dy) > WALK_EPSILON;
-    const pickupActive = this.isPickupInProgress();
+    const pickupActive = this.time.now < this.pickupVisualUntil;
 
     if (pickupActive) {
       this.walkFrameElapsedMs = 0;
@@ -270,15 +294,5 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
       .setBlendMode(Phaser.BlendModes.NORMAL);
     fitImageIntoBox(actor, GOLDEN_ZONE_LAYOUT.worker.maxWidth, GOLDEN_ZONE_LAYOUT.worker.maxHeight);
     this.previousWorkerPosition = { x: actor.x, y: actor.y };
-  }
-
-  private isPickupInProgress(): boolean {
-    return GOLDEN_REQUESTED_NAMES.some((name) => {
-      const item = this.children.getByName(name);
-      if (!(item instanceof Phaser.GameObjects.Image) || !item.visible) return false;
-      const inputLocked = item.input?.enabled === false;
-      const alphaTweenActive = item.alpha > 0.03 && item.alpha < 0.98;
-      return inputLocked || alphaTweenActive;
-    });
   }
 }
