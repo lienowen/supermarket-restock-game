@@ -41,6 +41,11 @@ export function resolveLevelVisualPreset(level: LevelDefinition): MarketLevelVis
     case "clean":
       return resolveMarketLevelVisualPreset(level.presentation.visualPresetId, "clean");
     case "find-items":
-      return resolveMarketLevelVisualPreset(level.presentation.visualPresetId, "find-items");
+      return resolveMarketLevelVisualPreset(
+        level.id === "starter-level-005"
+          ? "find-items-golden-v1"
+          : level.presentation.visualPresetId,
+        "find-items"
+      );
   }
 }
