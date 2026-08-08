@@ -186,8 +186,11 @@ export function resolveFindItemsLevelAssets(
 ): ResolvedFindItemsLevelAssets {
   const pack = resolveGlobalAssetPack(level.presentation.assetPackId, "find-items");
   const productAssetKeys = runtime.products.map((product) => product.assetKey);
+  const environmentAssetKey = level.id === "starter-level-005"
+    ? "environment-starter-market-restock-hd-v3"
+    : pack.environmentAssetKey;
   const preload = resolveDescriptors(registry, [
-    pack.environmentAssetKey,
+    environmentAssetKey,
     ...pack.sharedStoreAssetKeys,
     ...pack.workerWalkAssetKeys,
     pack.workerIdleAssetKey,
@@ -199,6 +202,7 @@ export function resolveFindItemsLevelAssets(
   return Object.freeze({
     ...baseAssets(registry, pack),
     preload,
+    environment: registry.require(environmentAssetKey),
     worker: registry.require(pack.workerIdleAssetKey),
     workerThinking: registry.require(pack.workerThinkingAssetKey),
     fixture: registry.require(runtime.fixture.assetKey),
