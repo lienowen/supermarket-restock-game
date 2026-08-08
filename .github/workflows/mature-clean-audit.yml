@@ -1,0 +1,89 @@
+name: Mature Clean Audit
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "asset-source/supermarket-restock-p0-assets-v1/spill-*.png"
+      - "scripts/materialize-assets.mjs"
+      - "src/game/assets/GlobalProjectAssetCatalogue.ts"
+      - "src/game/assets/LevelAssetResolver.ts"
+      - "src/game/presentation/actors/PlayerNavigationView.ts"
+      - "src/game/presentation/cleaning/**"
+      - "src/game/presentation/scenes/UtilityTaskScene.ts"
+      - "scripts/capture-mature-clean.mjs"
+      - ".github/workflows/mature-clean-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  clean:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.54.1
+          npx playwright install --with-deps chromium
+
+      - name: Build production bundle
+        id: build
+        continue-on-error: true
+        run: npm run build
+
+      - name: Verify mature cleaning
+        id: audit
+        if: steps.build.outcome == 'success'
+        continue-on-error: true
+        run: node scripts/capture-mature-clean.mjs
+
+      - name: Upload cleaning evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mature-clean-audit
+          path: ui-audit/mature-clean
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Publish clean commit status
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          AUDIT_OUTCOME: ${{ steps.audit.outcome }}
+        run: |
+          if [ "$BUILD_OUTCOME" = "success" ] && [ "$AUDIT_OUTCOME" = "success" ]; then
+            STATE=success
+            DESC="HD clean scene + real spills + routed mop flow passed"
+          else
+            STATE=failure
+            DESC="mature cleaning build/browser audit failed"
+          fi
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state="$STATE" \
+            -f context="Mature Clean Audit" \
+            -f description="$DESC" \
+            -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+      - name: Enforce clean result
+        if: always()
+        run: |
+          test "${{ steps.build.outcome }}" = "success"
+          test "${{ steps.audit.outcome }}" = "success"
