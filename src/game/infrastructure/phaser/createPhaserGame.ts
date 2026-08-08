@@ -234,6 +234,15 @@ export async function createPhaserGame(
       weighedProductAsset: STARTER_RUNTIME_ASSET_REGISTRY.require(
         checkoutPatience.weighedProductAssetKey
       ),
+      scaleAsset: STARTER_RUNTIME_ASSET_REGISTRY.require(
+        checkoutPatience.scaleAssetKey
+      ),
+      happyCustomerAsset: STARTER_RUNTIME_ASSET_REGISTRY.require(
+        checkoutPatience.happyCustomerAssetKey
+      ),
+      impatientCustomerAsset: STARTER_RUNTIME_ASSET_REGISTRY.require(
+        checkoutPatience.impatientCustomerAssetKey
+      ),
       scannerAsset,
       posAsset
     });
