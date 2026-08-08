@@ -38,12 +38,16 @@ const report = {
     goldenSceneActive: false,
     hdEnvironmentActive: false,
     hdEnvironmentResolution: false,
+    trimmedWorldScaleActive: false,
     workerIsOpaqueCutout: false,
-    workerUsesGoldenScale: false,
-    dairyFixtureVisible: false,
+    workerUsesHumanScale: false,
+    breakfastFixtureVisible: false,
     produceFixtureVisible: false,
+    basketTrimmedAndGrounded: false,
     eightProductsVisible: false,
+    productsUseTrimmedTextures: false,
     categorySimilarDecoysVisible: false,
+    threeStoreZonesReadable: false,
     wrongItemCostsTime: false,
     wrongItemDoesNotAdvanceOrder: false,
     orderCompletes: false,
@@ -111,8 +115,9 @@ try {
     const named = (name) => list.find((entry) => entry?.name === name);
     const environment = named("commercial-supermarket-salesfloor");
     const worker = named("find-items-worker");
-    const dairy = named("golden-order-dairy-fixture");
-    const produce = named("golden-order-aux-fixture-1");
+    const breakfast = named("golden-order-breakfast-fixture");
+    const produce = named("golden-order-produce-fixture");
+    const basket = named("order-basket");
     const source = environment?.texture?.getSourceImage?.();
     const products = list
       .filter((entry) => typeof entry?.name === "string")
@@ -130,6 +135,7 @@ try {
     return {
       goldenLevel: document.body.dataset.goldenLevel ?? null,
       goldenEnvironment: document.body.dataset.goldenEnvironment ?? null,
+      goldenWorldScale: document.body.dataset.goldenWorldScale ?? null,
       environment: environment ? {
         textureKey: environment.texture?.key ?? null,
         sourceWidth: source?.width ?? 0,
@@ -140,18 +146,34 @@ try {
       worker: worker ? {
         textureKey: worker.texture?.key ?? null,
         alpha: worker.alpha,
+        x: worker.x,
+        y: worker.y,
         displayWidth: worker.displayWidth,
         displayHeight: worker.displayHeight
       } : null,
-      dairy: dairy ? {
-        visible: dairy.visible,
-        displayWidth: dairy.displayWidth,
-        displayHeight: dairy.displayHeight
+      breakfast: breakfast ? {
+        visible: breakfast.visible,
+        textureKey: breakfast.texture?.key ?? null,
+        x: breakfast.x,
+        y: breakfast.y,
+        displayWidth: breakfast.displayWidth,
+        displayHeight: breakfast.displayHeight
       } : null,
       produce: produce ? {
         visible: produce.visible,
+        textureKey: produce.texture?.key ?? null,
+        x: produce.x,
+        y: produce.y,
         displayWidth: produce.displayWidth,
         displayHeight: produce.displayHeight
+      } : null,
+      basket: basket ? {
+        visible: basket.visible,
+        textureKey: basket.texture?.key ?? null,
+        x: basket.x,
+        y: basket.y,
+        displayWidth: basket.displayWidth,
+        displayHeight: basket.displayHeight
       } : null,
       products
     };
@@ -168,38 +190,71 @@ try {
     presentation.environment.sourceWidth >= 1600 &&
     presentation.environment.sourceHeight >= 900
   );
+  report.assertions.trimmedWorldScaleActive = presentation.goldenWorldScale === "trimmed-v2";
   report.assertions.workerIsOpaqueCutout = Boolean(
     presentation.worker &&
     presentation.worker.alpha === 1 &&
     presentation.worker.textureKey?.endsWith("--opaque-cutout")
   );
-  report.assertions.workerUsesGoldenScale = Boolean(
+  report.assertions.workerUsesHumanScale = Boolean(
     presentation.worker &&
-    Math.abs(presentation.worker.displayWidth - 360) <= 2 &&
-    Math.abs(presentation.worker.displayHeight - 390) <= 2
+    presentation.worker.displayHeight >= 250 &&
+    presentation.worker.displayHeight <= 302 &&
+    presentation.worker.displayWidth >= 90 &&
+    presentation.worker.displayWidth <= 187
   );
-  report.assertions.dairyFixtureVisible = Boolean(
-    presentation.dairy?.visible &&
-    presentation.dairy.displayWidth >= 580 &&
-    presentation.dairy.displayHeight >= 340
+  report.assertions.breakfastFixtureVisible = Boolean(
+    presentation.breakfast?.visible &&
+    presentation.breakfast.textureKey?.endsWith("--golden-trimmed") &&
+    presentation.breakfast.displayWidth >= 280 &&
+    presentation.breakfast.displayHeight >= 150
   );
   report.assertions.produceFixtureVisible = Boolean(
     presentation.produce?.visible &&
-    presentation.produce.displayWidth >= 340 &&
-    presentation.produce.displayHeight >= 230
+    presentation.produce.textureKey?.endsWith("--golden-trimmed") &&
+    presentation.produce.displayWidth >= 220 &&
+    presentation.produce.displayHeight >= 120
+  );
+  report.assertions.basketTrimmedAndGrounded = Boolean(
+    presentation.basket?.visible &&
+    presentation.basket.textureKey?.endsWith("--golden-trimmed") &&
+    presentation.basket.y >= 790 &&
+    presentation.basket.displayWidth >= 60 &&
+    presentation.basket.displayHeight >= 35
   );
   report.assertions.eightProductsVisible = presentation.products.length === 8;
+  report.assertions.productsUseTrimmedTextures = presentation.products.every(
+    (product) => product.textureKey?.endsWith("--golden-trimmed") === true
+  );
 
-  const visibleDecoyTextures = new Set(
-    presentation.products.filter((product) => !product.requested).map((product) => product.textureKey)
+  const decoyByName = new Map(
+    presentation.products.filter((product) => !product.requested).map((product) => [product.name, product])
   );
   report.assertions.categorySimilarDecoysVisible = [
-    "product-oats-canister",
-    "product-yogurt-cup",
-    "product-banana-bunch",
-    "product-grapes-pack",
-    "product-peanut-butter"
-  ].every((key) => visibleDecoyTextures.has(key));
+    "find-decoy-oats",
+    "find-decoy-yogurt",
+    "find-decoy-banana",
+    "find-decoy-grapes",
+    "find-decoy-peanut-butter"
+  ].every((name) => decoyByName.has(name));
+
+  const productByName = new Map(presentation.products.map((product) => [product.name, product]));
+  const inBreakfastZone = ["find-item-cereal-box", "find-decoy-oats", "find-decoy-peanut-butter"]
+    .every((name) => {
+      const product = productByName.get(name);
+      return product && product.x >= 590 && product.x <= 840 && product.y >= 570 && product.y <= 640;
+    });
+  const inDairyZone = ["find-item-milk-bottle", "find-decoy-yogurt"]
+    .every((name) => {
+      const product = productByName.get(name);
+      return product && product.x >= 900 && product.x <= 1060 && product.y >= 535 && product.y <= 600;
+    });
+  const inProduceZone = ["find-item-apple", "find-decoy-banana", "find-decoy-grapes"]
+    .every((name) => {
+      const product = productByName.get(name);
+      return product && product.x >= 1090 && product.x <= 1340 && product.y >= 645 && product.y <= 700;
+    });
+  report.assertions.threeStoreZonesReadable = Boolean(inBreakfastZone && inDairyZone && inProduceZone);
 
   report.initialState = await readSearchState(page);
   await page.screenshot({
@@ -207,7 +262,7 @@ try {
     fullPage: true
   });
 
-  const oats = presentation.products.find((product) => product.textureKey === "product-oats-canister");
+  const oats = presentation.products.find((product) => product.name === "find-decoy-oats");
   if (!oats) throw new Error("Golden oats decoy was not found");
   await clickGame(page, oats.x, oats.y);
   await page.waitForFunction((sceneKey) => {
