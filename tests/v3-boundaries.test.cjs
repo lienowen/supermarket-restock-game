@@ -124,7 +124,9 @@ test("Utility scene delegates phase-driven cleaning focus to a reusable view", (
   assert.equal(view.includes("clean-spill"), true);
   assert.equal(view.includes("completedSpills"), true);
   assert.equal(view.includes("setVisible(false)"), true);
-  assert.equal(view.includes("activeSpillAlpha"), true);
+  assert.equal(view.includes("SCRUB_DISTANCE_REQUIRED"), true);
+  assert.equal(view.includes("handleScrubMove"), true);
+  assert.equal(view.includes("cleanScrubProgress"), true);
   assert.equal(view.includes("spotPositions"), true);
   assert.equal(view.includes("starter-level-"), false);
 });
