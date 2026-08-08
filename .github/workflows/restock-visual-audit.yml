@@ -33,12 +33,12 @@ jobs:
           npx playwright install --with-deps chromium > /tmp/restock-playwright-browser.log 2>&1
           npm run build > /tmp/restock-build.log 2>&1
 
-      - name: Run routed movement diagnostic
+      - name: Run routed movement audit
         id: route
         continue-on-error: true
         run: node scripts/capture-restock-route.mjs > /tmp/restock-route.log 2>&1
 
-      - name: Run focused capture
+      - name: Run visual and HUD audit
         id: capture
         continue-on-error: true
         run: node scripts/capture-restock-empty-to-full.mjs > /tmp/restock-capture.log 2>&1
@@ -46,15 +46,13 @@ jobs:
       - name: Print focused result
         if: always()
         run: |
-          echo "=== LEVEL 1 OVERRIDE SOURCES ==="
-          grep -R -n -E 'simple-fixed-action-poses|level-one-worker|matte-clean' src scripts 2>/dev/null || true
           echo "=== ROUTE RESULT ==="
           echo "ROUTE_OUTCOME=${{ steps.route.outcome }}"
-          tail -n 100 /tmp/restock-route.log || true
-          echo "=== CAPTURE RESULT ==="
+          tail -n 60 /tmp/restock-route.log || true
+          echo "=== VISUAL/HUD RESULT ==="
           echo "CAPTURE_OUTCOME=${{ steps.capture.outcome }}"
           find restock-visual-audit -maxdepth 1 -type f -printf '%f %s bytes\n' 2>/dev/null || true
-          tail -n 30 /tmp/restock-capture.log || true
+          tail -n 40 /tmp/restock-capture.log || true
 
       - name: Upload compact restock evidence
         if: always()
@@ -64,6 +62,7 @@ jobs:
           path: |
             restock-route-audit/route-report.json
             restock-route-audit/level-1-route-final.png
+            restock-visual-audit/level-1-mature-restock.png
             restock-visual-audit/restock-contact-sheet.jpg
             restock-visual-audit/restock-visual-audit.json
             public/assets/game/environments/stores/starter-market/salesfloor-v2.webp
