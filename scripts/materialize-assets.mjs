@@ -1,8 +1,11 @@
 import { createHash } from "node:crypto";
 import {
+  copyFileSync,
+  existsSync,
   mkdirSync,
   readFileSync,
   readdirSync,
+  statSync,
   writeFileSync
 } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -43,3 +46,22 @@ if (!isWebp || bytes.length !== EXPECTED_BYTES || digest !== EXPECTED_SHA256) {
 mkdirSync(dirname(OUTPUT_PATH), { recursive: true });
 writeFileSync(OUTPUT_PATH, bytes);
 process.stdout.write(`Materialized verified salesfloor asset (${bytes.length} bytes).\n`);
+
+const CLEAN_SOURCE_DIRECTORY = resolve(ROOT, "asset-source/supermarket-restock-p0-assets-v1");
+const CLEAN_OUTPUT_DIRECTORY = resolve(ROOT, "public/assets/game/production-v2/mature-clean");
+const CLEAN_SPILLS = Object.freeze([
+  "spill-water-large.png",
+  "spill-juice-large.png",
+  "spill-dirt-smear-large.png"
+]);
+
+mkdirSync(CLEAN_OUTPUT_DIRECTORY, { recursive: true });
+CLEAN_SPILLS.forEach((fileName) => {
+  const source = resolve(CLEAN_SOURCE_DIRECTORY, fileName);
+  const output = resolve(CLEAN_OUTPUT_DIRECTORY, fileName);
+  if (!existsSync(source) || !statSync(source).isFile()) {
+    throw new Error(`Missing mature cleaning source asset: ${fileName}`);
+  }
+  copyFileSync(source, output);
+  process.stdout.write(`Materialized mature cleaning asset ${fileName} (${statSync(output).size} bytes).\n`);
+});
