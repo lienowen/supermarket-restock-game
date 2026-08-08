@@ -39,17 +39,16 @@ const GOLDEN_REQUESTED_NAMES = Object.freeze([
 ]);
 const WALK_FRAME_MS = 140;
 const WALK_EPSILON = 0.35;
-const PICKUP_START_RADIUS = 82;
 const PICKUP_HOLD_MS = 440;
 
 /** Level 5 mature-pass golden presentation over the proven Order Hunt controller. */
 export class GoldenOrderHuntScene extends UtilityTaskScene {
   private readonly goldenVisual: FindItemsLevelVisualPreset;
   private readonly basketFeedbackSeen = new Set<string>();
-  private readonly pickupTriggeredProductIds = new Set<string>();
   private previousWorkerPosition?: { readonly x: number; readonly y: number };
   private walkFrameElapsedMs = 0;
   private walkFrameIndex = 0;
+  private pendingGoldenPickupProductId?: string;
   private pickupVisualUntil = 0;
 
   constructor(
@@ -92,6 +91,19 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
     this.syncBasketFeedback();
     this.syncPickupIntent();
     this.syncWorkerMotion(delta, false);
+  }
+
+  override attemptFindProduct(productId: string): void {
+    const targetExists = this.goldenContext.runtime.itemTargets.some((target) => target.productId === productId);
+    const item = this.children.getByName(`find-item-${productId}`);
+    this.pendingGoldenPickupProductId =
+      this.isInteractionReady() &&
+      targetExists &&
+      item instanceof Phaser.GameObjects.Image &&
+      item.visible
+        ? productId
+        : undefined;
+    super.attemptFindProduct(productId);
   }
 
   private hideLegacyHudChrome(): void {
@@ -193,20 +205,23 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
 
   private syncPickupIntent(): void {
     if (this.time.now < this.pickupVisualUntil) return;
-    const actor = this.children.getByName("find-items-worker");
-    if (!(actor instanceof Phaser.GameObjects.Image)) return;
-
-    for (const target of this.goldenContext.runtime.itemTargets) {
-      if (this.pickupTriggeredProductIds.has(target.productId)) continue;
-      const item = this.children.getByName(`find-item-${target.productId}`);
-      if (!(item instanceof Phaser.GameObjects.Image) || !item.visible) continue;
-      if (Phaser.Math.Distance.Between(actor.x, actor.y, target.x, target.y) > PICKUP_START_RADIUS) continue;
-
-      this.pickupTriggeredProductIds.add(target.productId);
-      this.pickupVisualUntil = this.time.now + PICKUP_HOLD_MS;
-      document.body.dataset.goldenPickupProduct = target.productId;
+    const productId = this.pendingGoldenPickupProductId;
+    if (!productId) return;
+    const item = this.children.getByName(`find-item-${productId}`);
+    if (!(item instanceof Phaser.GameObjects.Image)) {
+      this.pendingGoldenPickupProductId = undefined;
       return;
     }
+
+    // The base Order Hunt scene starts the collect tween only after the player
+    // has actually reached the configured stand point and the selection is accepted.
+    // Waiting for alpha to leave 1 ties the pickup pose to that real collect event,
+    // rather than guessing intent from proximity or pointer event ordering.
+    if (item.visible && item.alpha >= 0.995) return;
+
+    this.pickupVisualUntil = this.time.now + PICKUP_HOLD_MS;
+    this.pendingGoldenPickupProductId = undefined;
+    document.body.dataset.goldenPickupProduct = productId;
   }
 
   private syncBasketFeedback(): void {
