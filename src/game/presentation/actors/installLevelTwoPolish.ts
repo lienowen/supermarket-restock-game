@@ -1,12 +1,11 @@
 import Phaser from "phaser";
 import type { RestockSceneSnapshot } from "../../application/RestockSceneController";
+import { IntegratedBeverageCoolerView } from "../fixtures/IntegratedBeverageCoolerView";
 import type { VisualPoint } from "../visual/StarterMarketVisualSpec";
 import { RestockActorView } from "./RestockActorView";
-import { RestockCoolerProductSprite } from "./RestockCoolerProductSprite";
 
 const PROMOTION_LEVEL_ID = "starter-level-002";
-const WATER_BOTTLE_SOURCE_KEY = "restock-water-bottle-hd-v2";
-const WATER_BOTTLE_SOURCE_PATH = "assets/game/production-v2/products/product-water-bottle.png";
+const WATER_BOTTLE_KEY = "product-water-bottle";
 const WATER_BOTTLE_SIZE = Object.freeze({ width: 42, height: 96 });
 const WATER_BOTTLE_NAMES = Object.freeze([
   "restock-level-two-water-a",
@@ -22,6 +21,15 @@ interface RestockActorInternals {
   readonly caseBox: Phaser.GameObjects.Image;
   readonly handProduct: Phaser.GameObjects.Image;
   readonly currentSnapshot?: RestockSceneSnapshot;
+}
+
+interface CoolerPrototypeInternals {
+  createStockBottle(
+    this: IntegratedBeverageCoolerView,
+    rowIndex: number,
+    itemIndex: number,
+    animate: boolean
+  ): Phaser.GameObjects.Image;
 }
 
 const isPromotionLevel = (): boolean => (
@@ -42,7 +50,9 @@ RestockActorView.prototype.sync = function syncLevelTwoWaterVisual(
   if (!isPromotionLevel()) return;
 
   const view = this as unknown as RestockActorInternals;
-  view.handProduct.setTexture(WATER_BOTTLE_SOURCE_KEY);
+  if (view.scene.textures.exists(WATER_BOTTLE_KEY)) {
+    view.handProduct.setTexture(WATER_BOTTLE_KEY);
+  }
   syncPromotionCartWater(view, snapshot);
   document.body.dataset.levelTwoActorControl = "routed-memory-restock";
   document.body.dataset.levelTwoProductVisual = "water-bottle-only";
@@ -57,21 +67,25 @@ RestockActorView.prototype.update = function updateLevelTwoWaterVisual(
   if (!isPromotionLevel()) return;
 
   const view = this as unknown as RestockActorInternals;
-  view.handProduct.setTexture(WATER_BOTTLE_SOURCE_KEY);
+  if (view.scene.textures.exists(WATER_BOTTLE_KEY)) {
+    view.handProduct.setTexture(WATER_BOTTLE_KEY);
+  }
   const snapshot = view.currentSnapshot;
   if (snapshot) syncPromotionCartWater(view, snapshot);
 };
 
-const originalCreateStockBottle = RestockCoolerProductSprite.prototype.createStockBottle;
-RestockCoolerProductSprite.prototype.createStockBottle = function createLevelTwoWaterStock(
-  this: RestockCoolerProductSprite,
-  position: VisualPoint
+const coolerPrototype = IntegratedBeverageCoolerView.prototype as unknown as CoolerPrototypeInternals;
+const originalCreateStockBottle = coolerPrototype.createStockBottle;
+coolerPrototype.createStockBottle = function createLevelTwoWaterStock(
+  this: IntegratedBeverageCoolerView,
+  rowIndex: number,
+  itemIndex: number,
+  animate: boolean
 ): Phaser.GameObjects.Image {
-  if (!isPromotionLevel()) return originalCreateStockBottle.call(this, position);
-  return this.scene.add.image(position.x, position.y, WATER_BOTTLE_SOURCE_KEY)
-    .setOrigin(0.5, 0.96)
-    .setDisplaySize(30, 70)
-    .setDepth(31);
+  const bottle = originalCreateStockBottle.call(this, rowIndex, itemIndex, animate);
+  if (!isPromotionLevel() || !this.scene.textures.exists(WATER_BOTTLE_KEY)) return bottle;
+  bottle.setTexture(WATER_BOTTLE_KEY).setDisplaySize(30, 70);
+  return bottle;
 };
 
 function syncPromotionCartWater(
@@ -100,14 +114,8 @@ function getOrCreateWaterBottle(
 ): Phaser.GameObjects.Image {
   const existing = scene.children.getByName(name);
   if (existing instanceof Phaser.GameObjects.Image) return existing;
-  return scene.add.image(0, 0, WATER_BOTTLE_SOURCE_KEY)
+  return scene.add.image(0, 0, WATER_BOTTLE_KEY)
     .setOrigin(0.5, 0.96)
     .setVisible(false)
     .setName(name);
-}
-
-export function preloadLevelTwoWaterBottle(scene: Phaser.Scene): void {
-  if (!scene.textures.exists(WATER_BOTTLE_SOURCE_KEY)) {
-    scene.load.image(WATER_BOTTLE_SOURCE_KEY, WATER_BOTTLE_SOURCE_PATH);
-  }
 }
