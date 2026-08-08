@@ -30,7 +30,18 @@ await new Promise((resolveServer) => server.listen(PORT, "127.0.0.1", resolveSer
 
 const report = {
   generatedAt: new Date().toISOString(),
-  runtimeIdentity: null,
+  assertions: {
+    routedPresetActive: false,
+    workerStartsAtWorldStart: false,
+    firstActionUsesWalkFrame: false,
+    carriedCaseFollowsWorker: false,
+    workerReachesCartStandPoint: false,
+    secondActionUsesPushRoute: false,
+    cartFollowsWorkerDuringPush: false,
+    reachesCoolerStandPoint: false,
+    automaticParkOpenChainCompletes: false,
+    noRuntimeIssues: false
+  },
   states: [],
   consoleErrors: [],
   pageErrors: [],
@@ -56,47 +67,84 @@ try {
   await page.waitForSelector(CANVAS_SELECTOR, { state: "visible", timeout: 45000 });
   await page.waitForFunction(() => document.body.dataset.activeLevel === "starter-level-001", null, { timeout: 30000 });
 
-  report.runtimeIdentity = await page.evaluate((sceneKey) => {
-    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
-    const actors = scene?.actors;
-    const proto = actors ? Object.getPrototypeOf(actors) : null;
-    const actorObjects = (scene?.children?.list ?? [])
-      .filter((entry) => typeof entry?.name === "string")
-      .filter((entry) => /restock|worker|cart|case/i.test(entry.name))
-      .map((entry) => ({
-        name: entry.name,
-        type: entry.constructor?.name ?? null,
-        x: entry.x ?? null,
-        y: entry.y ?? null,
-        visible: entry.visible ?? null,
-        texture: entry.texture?.key ?? null
-      }));
-    return {
-      sceneConstructor: scene?.constructor?.name ?? null,
-      actorConstructor: actors?.constructor?.name ?? null,
-      actorPrototypeMethods: proto ? Object.getOwnPropertyNames(proto).sort() : [],
-      actorInstanceKeys: actors ? Object.keys(actors).sort() : [],
-      actorControl: document.body.dataset.restockActorControl ?? null,
-      visualPresetId: scene?.visualPreset?.id ?? null,
-      actorObjects
-    };
-  }, SCENE_KEY);
+  const initial = await readState(page, "initial");
+  report.states.push(initial);
+  report.assertions.routedPresetActive = initial.actorControl === "routed-world-action-chain" && initial.visualPresetId === "restock-golden-standard-v1";
+  report.assertions.workerStartsAtWorldStart = Math.abs(initial.worker.x - 920) < 2 && Math.abs(initial.worker.y - 790) < 2;
 
-  report.states.push(await readState(page, "initial"));
   await clickHudAction(page);
-  await page.waitForTimeout(600);
-  report.states.push(await readState(page, "after-first-click"));
-  await page.waitForFunction((sceneKey) => window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.controller?.snapshot?.().step === "load", SCENE_KEY, { timeout: 8000 });
-  report.states.push(await readState(page, "load-start"));
+  await page.waitForFunction((sceneKey) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+    const nav = scene?.actors?.navigationSnapshot?.();
+    const worker = scene?.children?.getByName?.("restock-worker");
+    return nav?.moving === true && String(worker?.texture?.key ?? "").includes("worker-walk");
+  }, SCENE_KEY, { timeout: 3000 });
+  const firstWalk = await readState(page, "walk-to-case");
+  report.states.push(firstWalk);
+  report.assertions.firstActionUsesWalkFrame = firstWalk.navigation?.moving === true && firstWalk.worker.texture?.includes("worker-walk");
+
+  await page.waitForFunction((sceneKey) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+    const snapshot = scene?.controller?.snapshot?.();
+    const nav = scene?.actors?.navigationSnapshot?.();
+    const box = scene?.children?.getByName?.("restock-case");
+    return snapshot?.step === "load" && snapshot?.boxCollected === true && nav?.moving === true && box?.visible === true;
+  }, SCENE_KEY, { timeout: 8000 });
+  const carrying = await readState(page, "carry-to-cart");
+  report.states.push(carrying);
+  report.assertions.carriedCaseFollowsWorker = Boolean(
+    carrying.navigation?.moving === true &&
+    carrying.caseBox?.visible === true &&
+    Math.abs(carrying.caseBox.x - carrying.worker.x) < 80 &&
+    carrying.caseBox.y < carrying.worker.y - 70
+  );
+
   await page.waitForFunction((sceneKey) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
     return scene?.controller?.snapshot?.().step === "load" && scene?.isInteractionReady?.() === true;
   }, SCENE_KEY, { timeout: 8000 });
-  report.states.push(await readState(page, "load-ready"));
+  const atCart = await readState(page, "at-cart");
+  report.states.push(atCart);
+  report.assertions.workerReachesCartStandPoint = Math.abs(atCart.worker.x - 1250) < 3 && Math.abs(atCart.worker.y - 800) < 3;
+
   await clickHudAction(page);
-  await page.waitForTimeout(800);
-  report.states.push(await readState(page, "after-second-click"));
+  await page.waitForFunction((sceneKey) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+    const snapshot = scene?.controller?.snapshot?.();
+    const nav = scene?.actors?.navigationSnapshot?.();
+    const worker = scene?.children?.getByName?.("restock-worker");
+    return snapshot?.step === "park" && nav?.moving === true && String(worker?.texture?.key ?? "").includes("worker-push");
+  }, SCENE_KEY, { timeout: 5000 });
+  const pushing = await readState(page, "push-to-cooler");
+  report.states.push(pushing);
+  report.assertions.secondActionUsesPushRoute = pushing.navigation?.moving === true && pushing.worker.texture?.includes("worker-push");
+  report.assertions.cartFollowsWorkerDuringPush = Boolean(
+    pushing.cart?.visible === true &&
+    Math.abs((pushing.worker.x - pushing.cart.x) - 180) < 8 &&
+    Math.abs(pushing.worker.y - pushing.cart.y) < 12
+  );
+
+  await page.waitForFunction((sceneKey) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+    const nav = scene?.actors?.navigationSnapshot?.();
+    return scene?.controller?.snapshot?.().step === "restock" && nav?.moving !== true;
+  }, SCENE_KEY, { timeout: 12000 });
+  const restock = await readState(page, "restock-ready");
+  report.states.push(restock);
+  report.assertions.reachesCoolerStandPoint = Math.abs(restock.worker.x - 900) < 3 && Math.abs(restock.worker.y - 760) < 3;
+  report.assertions.automaticParkOpenChainCompletes = Boolean(
+    restock.controller?.step === "restock" &&
+    restock.controller?.boxLoaded === true &&
+    restock.controller?.cartAtCooler === true &&
+    restock.controller?.boxOpened === true
+  );
+
+  report.assertions.noRuntimeIssues = report.consoleErrors.length === 0 && report.pageErrors.length === 0 && report.failedRequests.length === 0;
   await page.screenshot({ path: join(OUTPUT_DIR, "level-1-route-final.png"), fullPage: true });
+
+  const failed = Object.entries(report.assertions).filter(([, passed]) => !passed).map(([key]) => key);
+  if (failed.length > 0) throw new Error(`Level 1 route audit failed: ${failed.join(", ")}`);
+
   await page.close();
   await context.close();
 } catch (error) {
@@ -108,7 +156,7 @@ try {
   await new Promise((resolveServer) => server.close(resolveServer));
 }
 
-console.log(JSON.stringify(report, null, 2));
+console.log(JSON.stringify({ assertions: report.assertions, fatalError: report.fatalError }, null, 2));
 if (thrownError) throw thrownError;
 
 async function readState(page, label) {
@@ -117,25 +165,23 @@ async function readState(page, label) {
     const worker = scene?.children?.getByName?.("restock-worker");
     const cart = scene?.children?.getByName?.("restock-cart");
     const caseBox = scene?.children?.getByName?.("restock-case");
-    const action = scene?.children?.getByName?.("shift-hud-action");
     return {
       label,
+      actorControl: document.body.dataset.restockActorControl ?? null,
+      visualPresetId: scene?.visualPreset?.id ?? null,
       controller: scene?.controller?.snapshot?.() ?? null,
-      pendingAction: scene?.pendingAction ?? null,
       interactionReady: scene?.isInteractionReady?.() ?? null,
       navigation: scene?.actors?.navigationSnapshot?.() ?? null,
       worker: worker ? { x: worker.x, y: worker.y, texture: worker.texture?.key ?? null } : null,
       cart: cart ? { x: cart.x, y: cart.y, visible: cart.visible, texture: cart.texture?.key ?? null } : null,
-      caseBox: caseBox ? { x: caseBox.x, y: caseBox.y, visible: caseBox.visible, texture: caseBox.texture?.key ?? null } : null,
-      hudAction: action ? { x: action.x, y: action.y, visible: action.visible, enabled: action.input?.enabled ?? false } : null
+      caseBox: caseBox ? { x: caseBox.x, y: caseBox.y, visible: caseBox.visible, texture: caseBox.texture?.key ?? null } : null
     };
   }, { sceneKey: SCENE_KEY, label });
 }
 
 async function clickHudAction(page) {
   const action = await page.evaluate((sceneKey) => {
-    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
-    const object = scene?.children?.getByName?.("shift-hud-action");
+    const object = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.children?.getByName?.("shift-hud-action");
     return object ? { x: object.x, y: object.y } : null;
   }, SCENE_KEY);
   if (!action) throw new Error("Shift HUD action button is missing");
