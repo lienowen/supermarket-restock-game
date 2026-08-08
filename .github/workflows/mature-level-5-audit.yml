@@ -1,6 +1,23 @@
 name: Mature Level 5 Audit
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "src/game/assets/MaturePassAssetCatalogue.ts"
+      - "src/game/assets/RuntimeAssetRegistry.ts"
+      - "src/game/assets/LevelAssetResolver.ts"
+      - "src/game/content/levels/starterMarketLevels.ts"
+      - "src/game/infrastructure/phaser/GameplaySceneRegistry.ts"
+      - "src/game/presentation/scenes/GoldenOrderHuntScene.ts"
+      - "src/game/presentation/visual/LevelVisualPresetResolver.ts"
+      - "src/game/presentation/visual/MarketLevelVisualPreset.ts"
+      - "src/game/presentation/visual/OpaqueCutoutTexture.ts"
+      - "src/game/presentation/visual/TrimmedTexture.ts"
+      - "scripts/capture-golden-order-hunt.mjs"
+      - "scripts/capture-golden-worker-motion.mjs"
+      - ".github/workflows/mature-level-5-audit.yml"
   pull_request:
     paths:
       - "src/game/assets/MaturePassAssetCatalogue.ts"
