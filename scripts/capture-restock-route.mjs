@@ -79,25 +79,27 @@ try {
     const worker = scene?.children?.getByName?.("restock-worker");
     return nav?.moving === true && String(worker?.texture?.key ?? "").includes("worker-walk");
   }, SCENE_KEY, { timeout: 3000 });
-  const firstWalk = await readState(page, "walk-to-case");
-  report.states.push(firstWalk);
-  report.assertions.firstActionUsesWalkFrame = firstWalk.navigation?.moving === true && firstWalk.worker.texture?.includes("worker-walk");
+  report.assertions.firstActionUsesWalkFrame = true;
+  report.states.push(await readState(page, "after-walk-observed"));
 
   await page.waitForFunction((sceneKey) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
     const snapshot = scene?.controller?.snapshot?.();
     const nav = scene?.actors?.navigationSnapshot?.();
+    const worker = scene?.children?.getByName?.("restock-worker");
     const box = scene?.children?.getByName?.("restock-case");
-    return snapshot?.step === "load" && snapshot?.boxCollected === true && nav?.moving === true && box?.visible === true;
+    return Boolean(
+      snapshot?.step === "load" &&
+      snapshot?.boxCollected === true &&
+      nav?.moving === true &&
+      box?.visible === true &&
+      worker &&
+      Math.abs(box.x - worker.x) < 80 &&
+      box.y < worker.y - 70
+    );
   }, SCENE_KEY, { timeout: 8000 });
-  const carrying = await readState(page, "carry-to-cart");
-  report.states.push(carrying);
-  report.assertions.carriedCaseFollowsWorker = Boolean(
-    carrying.navigation?.moving === true &&
-    carrying.caseBox?.visible === true &&
-    Math.abs(carrying.caseBox.x - carrying.worker.x) < 80 &&
-    carrying.caseBox.y < carrying.worker.y - 70
-  );
+  report.assertions.carriedCaseFollowsWorker = true;
+  report.states.push(await readState(page, "after-carry-observed"));
 
   await page.waitForFunction((sceneKey) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
