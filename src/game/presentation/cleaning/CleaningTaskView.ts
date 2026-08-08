@@ -7,7 +7,7 @@ export interface CleaningTaskViewConfig {
   readonly fixtureAssetKey: string;
   readonly cleaningCartAssetKey: string;
   readonly wetFloorSignAssetKey: string;
-  readonly spillAssetKeys: readonly string[];
+  readonly spillAssetKeys?: readonly string[];
   readonly toolPoint: NavigationPoint;
   readonly spotPositions: readonly NavigationPoint[];
   readonly visual: CleanLevelVisualPreset;
@@ -18,6 +18,11 @@ export interface CleaningTaskViewState {
   readonly completedSpills: number;
 }
 
+const DEFAULT_SPILL_ASSET_KEYS = Object.freeze([
+  "spill-water-large",
+  "spill-juice-large",
+  "spill-dirt-smear-large"
+]);
 const SPILL_SIZE_MULTIPLIERS = Object.freeze([
   Object.freeze({ width: 1.0, height: 0.9 }),
   Object.freeze({ width: 1.12, height: 0.98 }),
@@ -212,7 +217,8 @@ export class CleaningTaskView {
   ): Phaser.GameObjects.Container {
     const { scene, config } = this;
     const visual = config.visual;
-    const sourceKey = config.spillAssetKeys[index % config.spillAssetKeys.length];
+    const spillAssetKeys = config.spillAssetKeys ?? DEFAULT_SPILL_ASSET_KEYS;
+    const sourceKey = spillAssetKeys[index % spillAssetKeys.length];
     if (!sourceKey) throw new Error("Clean mode requires at least one spill asset");
     const textureKey = createTrimmedTexture(scene, sourceKey, {
       alphaThreshold: 8,
