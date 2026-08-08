@@ -5,6 +5,7 @@ import {
   type NavigationPoint,
   type PlayerNavigationSnapshot
 } from "../../application/PlayerNavigationController";
+import { createOpaqueCutoutTexture } from "../visual/OpaqueCutoutTexture";
 
 export interface PlayerNavigationViewConfig {
   readonly start: NavigationPoint;
@@ -17,6 +18,8 @@ export interface PlayerNavigationViewConfig {
   readonly name: string;
   readonly baseDepth?: number;
   readonly onManualNavigation?: () => void;
+  /** Crop transparent source padding and normalize visible pixels to full alpha. */
+  readonly solidCutout?: boolean;
 }
 
 type NavigationKeys = {
@@ -41,6 +44,8 @@ export class PlayerNavigationView {
   private readonly shadow: Phaser.GameObjects.Ellipse;
   private readonly actor: Phaser.GameObjects.Image;
   private readonly keys?: NavigationKeys;
+  private readonly idlePoseKey: string;
+  private readonly walkPoseKeys?: readonly [string, string];
   private enabled = true;
   private currentPoseKey: string;
   private walkElapsedMs = 0;
@@ -59,7 +64,17 @@ export class PlayerNavigationView {
       bounds: config.bounds,
       speed: config.speed
     });
-    this.currentPoseKey = config.assetKey;
+    const resolvePoseKey = (assetKey: string): string => (
+      config.solidCutout ? createOpaqueCutoutTexture(scene, assetKey) : assetKey
+    );
+    this.idlePoseKey = resolvePoseKey(config.assetKey);
+    this.walkPoseKeys = config.walkAssetKeys
+      ? Object.freeze([
+          resolvePoseKey(config.walkAssetKeys[0]),
+          resolvePoseKey(config.walkAssetKeys[1])
+        ]) as readonly [string, string]
+      : undefined;
+    this.currentPoseKey = this.idlePoseKey;
     this.lastVisualX = config.start.x;
 
     scene.input.topOnly = true;
@@ -85,7 +100,7 @@ export class PlayerNavigationView {
       0.22
     ).setDepth((config.baseDepth ?? 24) - 1);
 
-    this.actor = scene.add.image(config.start.x, config.start.y, config.assetKey)
+    this.actor = scene.add.image(config.start.x, config.start.y, this.idlePoseKey)
       .setOrigin(0.5, 0.96)
       .setDisplaySize(config.displaySize.width, config.displaySize.height)
       .setDepth(config.baseDepth ?? 24)
@@ -199,12 +214,15 @@ export class PlayerNavigationView {
   }
 
   setTexture(assetKey: string): void {
-    this.currentPoseKey = assetKey;
+    const resolvedKey = this.config.solidCutout
+      ? createOpaqueCutoutTexture(this.scene, assetKey)
+      : assetKey;
+    this.currentPoseKey = resolvedKey;
     if (this.moving && this.canUseWalkFrames()) {
-      this.actor.setTexture(this.config.walkAssetKeys?.[this.walkFrame] ?? assetKey);
+      this.actor.setTexture(this.walkPoseKeys?.[this.walkFrame] ?? resolvedKey);
       return;
     }
-    this.actor.setTexture(assetKey);
+    this.actor.setTexture(resolvedKey);
   }
 
   setDisplaySize(width: number, height: number): void {
@@ -249,20 +267,20 @@ export class PlayerNavigationView {
     if (!moving || !this.canUseWalkFrames()) {
       this.actor.setTexture(this.currentPoseKey);
     } else {
-      this.actor.setTexture(this.config.walkAssetKeys?.[0] ?? this.currentPoseKey);
+      this.actor.setTexture(this.walkPoseKeys?.[0] ?? this.currentPoseKey);
     }
   }
 
   private canUseWalkFrames(): boolean {
     return Boolean(
-      this.config.walkAssetKeys &&
-      this.currentPoseKey === this.config.assetKey
+      this.walkPoseKeys &&
+      this.currentPoseKey === this.idlePoseKey
     );
   }
 
   private updateWalkFrame(deltaMs: number): void {
     if (!this.moving || !this.canUseWalkFrames()) return;
-    const frames = this.config.walkAssetKeys;
+    const frames = this.walkPoseKeys;
     if (!frames) return;
     this.walkElapsedMs += deltaMs;
     if (this.walkElapsedMs < 135) return;
