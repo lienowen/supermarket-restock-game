@@ -40,11 +40,13 @@ const report = {
     appleCollectsAfterTravel: false,
     basketFeedbackIncrements: false,
     returnsToIdle: false,
+    workerGroundedInFrontOfProduce: false,
     noRuntimeIssues: false
   },
   start: null,
   evidence: null,
   finished: null,
+  grounding: null,
   consoleErrors: [],
   pageErrors: [],
   failedRequests: [],
@@ -136,6 +138,29 @@ try {
     finished.textureKey?.includes("worker-a-idle") &&
     finished.textureKey?.endsWith("--opaque-cutout")
   );
+
+  const grounding = await page.evaluate((sceneKey) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+    const worker = scene?.children?.getByName?.("find-items-worker");
+    const produce = scene?.children?.getByName?.("golden-order-produce-fixture");
+    if (!worker || !produce?.getBounds) return null;
+    const bounds = produce.getBounds();
+    return {
+      workerX: worker.x,
+      workerFeetY: worker.y,
+      produceLeft: bounds.left,
+      produceRight: bounds.right,
+      produceBottom: bounds.bottom
+    };
+  }, GAME_SCENE_KEY);
+  report.grounding = grounding;
+  report.assertions.workerGroundedInFrontOfProduce = Boolean(
+    grounding &&
+    grounding.workerX >= grounding.produceLeft - 30 &&
+    grounding.workerX <= grounding.produceRight + 30 &&
+    grounding.workerFeetY >= grounding.produceBottom + 20
+  );
+
   await page.screenshot({ path: join(OUTPUT_DIR, "golden-order-hunt-motion-finished.png"), fullPage: true });
 
   report.assertions.noRuntimeIssues = report.consoleErrors.length === 0 && report.pageErrors.length === 0 && report.failedRequests.length === 0;
@@ -153,7 +178,7 @@ try {
   await new Promise((resolveServer) => server.close(resolveServer));
 }
 
-console.log(JSON.stringify({ assertions: report.assertions, fatalError: report.fatalError }, null, 2));
+console.log(JSON.stringify({ assertions: report.assertions, grounding: report.grounding, fatalError: report.fatalError }, null, 2));
 if (thrownError) throw thrownError;
 
 async function readWorker(page) {
