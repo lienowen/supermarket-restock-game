@@ -13,6 +13,9 @@ export interface CheckoutPatienceDomConfig {
   readonly weighedProductAsset: AssetDescriptor;
   readonly scannerAsset?: AssetDescriptor;
   readonly posAsset?: AssetDescriptor;
+  readonly scaleAsset: AssetDescriptor;
+  readonly happyCustomerAsset: AssetDescriptor;
+  readonly impatientCustomerAsset: AssetDescriptor;
 }
 
 export interface CheckoutPatienceDomHandle {
@@ -73,7 +76,7 @@ export function mountCheckoutPatienceDom(
 
   const panel = document.createElement("div");
   applyStyles(panel, {
-    width: "min(920px, 100%)",
+    width: "min(980px, 100%)",
     padding: "15px 16px 16px",
     boxSizing: "border-box",
     border: "1px solid rgba(255, 217, 94, 0.58)",
@@ -85,11 +88,36 @@ export function mountCheckoutPatienceDom(
   const header = document.createElement("div");
   applyStyles(header, {
     display: "grid",
-    gridTemplateColumns: "minmax(160px, 1fr) minmax(240px, 1.5fr)",
-    gap: "14px",
+    gridTemplateColumns: "88px minmax(160px, 1fr) minmax(240px, 1.5fr)",
+    gap: "12px",
     alignItems: "end",
     marginBottom: "10px"
   });
+
+  const customerMoodWrap = document.createElement("div");
+  applyStyles(customerMoodWrap, {
+    display: "grid",
+    placeItems: "end center",
+    height: "100px",
+    overflow: "hidden",
+    borderRadius: "14px",
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "rgba(255,255,255,0.055)"
+  });
+  const customerMoodImage = document.createElement("img");
+  customerMoodImage.id = "checkout-patience-customer-mood";
+  customerMoodImage.src = assetUrl(config.happyCustomerAsset.path);
+  customerMoodImage.alt = "Customer mood";
+  customerMoodImage.draggable = false;
+  applyStyles(customerMoodImage, {
+    width: "78px",
+    height: "118px",
+    objectFit: "contain",
+    objectPosition: "center bottom",
+    pointerEvents: "none",
+    transition: "opacity 120ms ease, transform 120ms ease"
+  });
+  customerMoodWrap.appendChild(customerMoodImage);
 
   const headingWrap = document.createElement("div");
   const eyebrow = document.createElement("div");
@@ -150,10 +178,10 @@ export function mountCheckoutPatienceDom(
   });
   patienceTrack.appendChild(patienceFill);
   patienceWrap.append(patienceHeader, patienceTrack);
-  header.append(headingWrap, patienceWrap);
+  header.append(customerMoodWrap, headingWrap, patienceWrap);
 
   const instruction = document.createElement("div");
-  instruction.textContent = "Scan the standard item, enter the apple weight shown on the produce label, then take payment before patience runs out.";
+  instruction.textContent = "Scan the standard item, weigh the apple on the produce scale, then take payment before the customer loses patience.";
   applyStyles(instruction, {
     marginBottom: "11px",
     color: "#cfe1d4",
@@ -164,7 +192,7 @@ export function mountCheckoutPatienceDom(
   const workArea = document.createElement("div");
   applyStyles(workArea, {
     display: "grid",
-    gridTemplateColumns: "minmax(150px, 0.85fr) minmax(150px, 0.8fr) minmax(230px, 1.25fr) minmax(150px, 0.8fr)",
+    gridTemplateColumns: "minmax(145px, 0.8fr) minmax(145px, 0.78fr) minmax(270px, 1.45fr) minmax(145px, 0.78fr)",
     gap: "10px",
     alignItems: "stretch"
   });
@@ -178,7 +206,7 @@ export function mountCheckoutPatienceDom(
     position: "relative",
     display: "grid",
     placeItems: "center",
-    minHeight: "154px",
+    minHeight: "168px",
     border: "2px solid rgba(255,255,255,0.2)",
     borderRadius: "15px",
     background: "rgba(255,255,255,0.065)",
@@ -192,7 +220,7 @@ export function mountCheckoutPatienceDom(
   standardImage.draggable = false;
   applyStyles(standardImage, {
     width: "90px",
-    height: "100px",
+    height: "108px",
     objectFit: "contain",
     pointerEvents: "none",
     filter: "drop-shadow(0 8px 10px rgba(0,0,0,0.3))"
@@ -219,7 +247,7 @@ export function mountCheckoutPatienceDom(
     position: "relative",
     display: "grid",
     placeItems: "center",
-    minHeight: "154px",
+    minHeight: "168px",
     border: "2px dashed rgba(103, 216, 145, 0.7)",
     borderRadius: "15px",
     background: "rgba(57, 132, 84, 0.12)",
@@ -273,52 +301,82 @@ export function mountCheckoutPatienceDom(
   applyStyles(scalePanel, {
     display: "grid",
     gridTemplateRows: "auto auto 1fr",
-    minHeight: "154px",
-    padding: "10px",
+    minHeight: "168px",
+    padding: "9px",
     boxSizing: "border-box",
     border: "2px solid rgba(255,217,94,0.38)",
     borderRadius: "15px",
     background: "rgba(220,181,63,0.08)"
   });
+
   const produceRow = document.createElement("div");
   applyStyles(produceRow, {
-    display: "flex",
+    display: "grid",
+    gridTemplateColumns: "minmax(110px, 1fr) auto",
     alignItems: "center",
-    justifyContent: "center",
     gap: "8px"
+  });
+
+  const scaleVisual = document.createElement("div");
+  scaleVisual.id = "produce-scale-visual";
+  applyStyles(scaleVisual, {
+    position: "relative",
+    display: "grid",
+    placeItems: "center",
+    minHeight: "90px"
+  });
+  const scaleImage = document.createElement("img");
+  scaleImage.src = assetUrl(config.scaleAsset.path);
+  scaleImage.alt = "Produce scale";
+  scaleImage.draggable = false;
+  applyStyles(scaleImage, {
+    width: "132px",
+    height: "88px",
+    objectFit: "contain",
+    pointerEvents: "none",
+    filter: "drop-shadow(0 7px 9px rgba(0,0,0,0.28))"
   });
   const appleImage = document.createElement("img");
   appleImage.src = assetUrl(config.weighedProductAsset.path);
   appleImage.alt = "Apple";
   appleImage.draggable = false;
   applyStyles(appleImage, {
-    width: "54px",
-    height: "54px",
+    position: "absolute",
+    left: "50%",
+    top: "2px",
+    width: "42px",
+    height: "42px",
+    transform: "translateX(-50%)",
     objectFit: "contain",
-    pointerEvents: "none"
+    pointerEvents: "none",
+    filter: "drop-shadow(0 4px 5px rgba(0,0,0,0.25))"
   });
+  scaleVisual.append(scaleImage, appleImage);
+
   const weightTicket = document.createElement("div");
   weightTicket.id = "produce-target-weight";
   applyStyles(weightTicket, {
-    padding: "8px 10px",
+    padding: "8px 9px",
     borderRadius: "10px",
     background: "#f4ead0",
     color: "#26352d",
-    fontSize: "13px",
+    fontSize: "12px",
     fontWeight: "900",
     whiteSpace: "nowrap"
   });
-  produceRow.append(appleImage, weightTicket);
+  produceRow.append(scaleVisual, weightTicket);
+
   const scaleInstruction = document.createElement("div");
   scaleInstruction.textContent = config.spec.scaleLabel;
   applyStyles(scaleInstruction, {
-    margin: "7px 0",
+    margin: "3px 0 6px",
     textAlign: "center",
     color: "#ffe993",
     fontSize: "9px",
     fontWeight: "900",
     letterSpacing: "0.8px"
   });
+
   const weightChoices = document.createElement("div");
   weightChoices.id = "produce-weight-choices";
   applyStyles(weightChoices, {
@@ -333,7 +391,7 @@ export function mountCheckoutPatienceDom(
     button.dataset.weightKg = String(weight);
     button.textContent = `${weight.toFixed(1)} kg`;
     applyStyles(button, {
-      minHeight: "40px",
+      minHeight: "38px",
       border: "1px solid rgba(255,255,255,0.18)",
       borderRadius: "9px",
       background: "rgba(255,255,255,0.08)",
@@ -352,7 +410,7 @@ export function mountCheckoutPatienceDom(
   payment.type = "button";
   payment.disabled = true;
   applyStyles(payment, {
-    minHeight: "154px",
+    minHeight: "168px",
     border: "0",
     borderRadius: "15px",
     background: "rgba(255,255,255,0.08)",
@@ -401,6 +459,7 @@ export function mountCheckoutPatienceDom(
   document.body.dataset.checkoutPatience = "waiting";
   document.body.dataset.checkoutPatienceMistakes = "0";
   document.body.dataset.checkoutPatienceAbandonments = "0";
+  document.body.dataset.checkoutPatienceMood = "happy";
 
   let activeCustomer = -1;
   let standardScanned = false;
@@ -419,6 +478,7 @@ export function mountCheckoutPatienceDom(
   let dragStartY = 0;
   let translateX = 0;
   let translateY = 0;
+  let mood: "happy" | "impatient" = "happy";
 
   const scenePort = (): CheckoutScenePort | undefined => {
     try {
@@ -434,6 +494,24 @@ export function mountCheckoutPatienceDom(
     if (input) input.enabled = enabled;
   };
   const isReady = () => Boolean(scenePort()?.isInteractionReady?.());
+
+  const setMood = (nextMood: "happy" | "impatient"): void => {
+    if (mood === nextMood) return;
+    mood = nextMood;
+    customerMoodImage.style.opacity = "0.55";
+    customerMoodImage.style.transform = "scale(0.98)";
+    window.setTimeout(() => {
+      if (destroyed) return;
+      customerMoodImage.src = assetUrl(
+        nextMood === "happy"
+          ? config.happyCustomerAsset.path
+          : config.impatientCustomerAsset.path
+      );
+      customerMoodImage.style.opacity = "1";
+      customerMoodImage.style.transform = "scale(1)";
+    }, 70);
+    document.body.dataset.checkoutPatienceMood = nextMood;
+  };
 
   const setPaymentEnabled = (): void => {
     const enabled = standardScanned && weightCorrect && isReady();
@@ -455,6 +533,7 @@ export function mountCheckoutPatienceDom(
       : ratio > 0.25
         ? "linear-gradient(90deg, #d9ab35, #f1d267)"
         : "linear-gradient(90deg, #d6534a, #f18b78)";
+    setMood(ratio <= 0.45 ? "impatient" : "happy");
     document.body.dataset.checkoutPatienceRemaining = String(Math.ceil(remainingMs));
   };
 
@@ -495,6 +574,8 @@ export function mountCheckoutPatienceDom(
     lastFrameMs = performance.now();
     document.body.dataset.checkoutPatienceScanned = "false";
     document.body.dataset.checkoutPatienceWeightCorrect = "false";
+    mood = "impatient";
+    setMood("happy");
     resetDrag();
 
     const standardAsset = config.standardProductAssets[
@@ -508,7 +589,7 @@ export function mountCheckoutPatienceDom(
     standardLabel.textContent = `SCAN ${standardAsset.key.replace(/^product-/, "").replaceAll("-", " ").toUpperCase()}`;
     weightTicket.textContent = `APPLE LABEL  ${targetWeight.toFixed(1)} kg`;
     customerLabel.textContent = `CUSTOMER ${customerIndex + 1} / ${config.totalCustomers}`;
-    feedback.textContent = "Scan the standard item and enter the apple weight.";
+    feedback.textContent = "Scan the standard item and weigh the apple.";
     feedback.style.color = "#a9cfb7";
     updatePatienceUi();
     updateCompletionUi();
@@ -547,7 +628,7 @@ export function mountCheckoutPatienceDom(
   const markStandardScanned = (): void => {
     if (standardScanned) return;
     standardScanned = true;
-    feedback.textContent = "Standard item scanned. Enter the apple weight.";
+    feedback.textContent = "Standard item scanned. Weigh the apple.";
     feedback.style.color = "#72ef9e";
     resetDrag();
     updateCompletionUi();
@@ -611,17 +692,19 @@ export function mountCheckoutPatienceDom(
       const targetWeight = config.spec.targetWeightsKg[activeCustomer];
       if (selectedWeight === targetWeight) {
         weightCorrect = true;
-        feedback.textContent = `Apple weight accepted: ${selectedWeight.toFixed(1)} kg.`;
+        feedback.textContent = `Exact weight: ${selectedWeight.toFixed(1)} kg. Customer patience stabilized.`;
         feedback.style.color = "#72ef9e";
+        remainingMs = Math.min(config.spec.patienceDurationMs, remainingMs + 700);
         document.body.dataset.checkoutPatienceWeightCorrect = "true";
+        setMood("happy");
       } else {
         mistakes += 1;
         remainingMs = Math.max(0, remainingMs - config.spec.wrongWeightPenaltyMs);
         feedback.textContent = `Wrong weight. Customer patience -${Math.round(config.spec.wrongWeightPenaltyMs / 1000)}s.`;
         feedback.style.color = "#ff9e91";
         document.body.dataset.checkoutPatienceMistakes = String(mistakes);
-        updatePatienceUi();
       }
+      updatePatienceUi();
       updateCompletionUi();
     });
   });
@@ -637,7 +720,8 @@ export function mountCheckoutPatienceDom(
       return;
     }
     payment.disabled = true;
-    feedback.textContent = "Payment accepted. Advancing the queue.";
+    setMood("happy");
+    feedback.textContent = "Payment accepted. Customer satisfied.";
     feedback.style.color = "#ffd95e";
     action.emit("pointerdown");
   });
@@ -652,6 +736,7 @@ export function mountCheckoutPatienceDom(
       if (remainingMs === 0) {
         abandonments += 1;
         document.body.dataset.checkoutPatienceAbandonments = String(abandonments);
+        setMood("impatient");
         prepareCustomer(activeCustomer);
         feedback.textContent = "Customer lost patience. The current basket has restarted.";
         feedback.style.color = "#ff786e";
@@ -687,6 +772,7 @@ export function mountCheckoutPatienceDom(
   const disposers = [
     gameDomainEvents.subscribe("task.completed", (event) => {
       if (event.payload.levelId !== config.levelId) return;
+      setMood("happy");
       hide("complete");
     })
   ];
@@ -709,6 +795,7 @@ export function mountCheckoutPatienceDom(
       delete document.body.dataset.checkoutPatienceCustomer;
       delete document.body.dataset.checkoutPatienceScanned;
       delete document.body.dataset.checkoutPatienceWeightCorrect;
+      delete document.body.dataset.checkoutPatienceMood;
     }
   });
 }

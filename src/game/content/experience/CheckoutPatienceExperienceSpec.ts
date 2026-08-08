@@ -8,6 +8,9 @@ export interface CheckoutPatienceExperienceSpec {
   readonly wrongWeightPenaltyMs: number;
   readonly standardProductAssetKeys: readonly string[];
   readonly weighedProductAssetKey: string;
+  readonly scaleAssetKey: string;
+  readonly happyCustomerAssetKey: string;
+  readonly impatientCustomerAssetKey: string;
   readonly targetWeightsKg: readonly number[];
   readonly weightChoicesKg: readonly number[];
   readonly scannerLabel: string;
@@ -30,10 +33,13 @@ export const CHECKOUT_PATIENCE_EXPERIENCE_SPECS: readonly CheckoutPatienceExperi
       "product-yogurt-cup"
     ]),
     weighedProductAssetKey: "product-apple",
+    scaleAssetKey: "equipment-produce-scale",
+    happyCustomerAssetKey: "customer-evening-happy",
+    impatientCustomerAssetKey: "customer-evening-impatient",
     targetWeightsKg: Object.freeze([0.5, 1, 1.5, 0.5, 1.5, 1, 0.5, 1.5]),
     weightChoicesKg: Object.freeze([0.5, 1, 1.5]),
     scannerLabel: "SCAN STANDARD ITEM",
-    scaleLabel: "ENTER PRODUCE WEIGHT",
+    scaleLabel: "WEIGH PRODUCE",
     paymentLabel: "TAKE PAYMENT"
   })
 ]);
@@ -87,8 +93,14 @@ export function validateCheckoutPatienceExperienceSpecs(
     if (spec.targetWeightsKg.some((weight) => !validWeights.has(weight))) {
       errors.push(`Checkout patience spec ${spec.levelId} uses a target weight outside its choices`);
     }
-    if (!spec.weighedProductAssetKey.trim()) {
-      errors.push(`Checkout patience spec ${spec.levelId} requires a weighed product asset`);
+    const requiredAssetKeys = [
+      spec.weighedProductAssetKey,
+      spec.scaleAssetKey,
+      spec.happyCustomerAssetKey,
+      spec.impatientCustomerAssetKey
+    ];
+    if (requiredAssetKeys.some((assetKey) => !assetKey.trim())) {
+      errors.push(`Checkout patience spec ${spec.levelId} requires produce, scale and customer mood assets`);
     }
   });
 
