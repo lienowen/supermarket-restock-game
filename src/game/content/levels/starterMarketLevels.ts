@@ -150,10 +150,12 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
       initialCoins: 490,
       timeLimitSeconds: 60,
       mistakePenaltySeconds: 5,
+      // Navigation targets are floor stand points in front of the fixture.
+      // Product sprite positions remain owned by the Golden visual preset.
       itemTargets: [
-        { productId: "milk-bottle", x: 940, y: 690 },
-        { productId: "apple", x: 1220, y: 720 },
-        { productId: "cereal-box", x: 720, y: 690 }
+        { productId: "milk-bottle", x: 940, y: 780 },
+        { productId: "apple", x: 1220, y: 810 },
+        { productId: "cereal-box", x: 720, y: 780 }
       ]
     }
   },
