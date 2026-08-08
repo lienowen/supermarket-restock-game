@@ -11,7 +11,6 @@ const CANVAS_SELECTOR = "#app > canvas:not(#mobile-game-backdrop)";
 const SCENE_KEY = "starter-market-shift";
 const GAME_WIDTH = 1600;
 const GAME_HEIGHT = 900;
-const ITEMS_PER_SHELF = 3;
 
 if (!existsSync(join(DIST_DIR, "index.html"))) {
   throw new Error("dist/index.html is missing. Run npm run build first.");
@@ -34,13 +33,18 @@ await new Promise((resolveServer) => server.listen(PORT, "127.0.0.1", resolveSer
 const report = {
   generatedAt: new Date().toISOString(),
   rowIndex: null,
+  interactionsPerRow: null,
+  unitsPerInteraction: null,
+  physicalItemsPerRow: null,
   states: [],
   assertions: {
+    setupUsesLiveHudAction: false,
     bakedBackgroundMarkedOccluded: false,
     opaqueEmptyShellExists: false,
     emptyShelfHasZeroItems: false,
-    shelfBuildsOneItemAtATime: false,
-    thirdItemCompletesShelf: false
+    shelfBuildsByConfiguredUnits: false,
+    finalInteractionCompletesShelf: false,
+    noRuntimeIssues: false
   },
   consoleErrors: [],
   pageErrors: [],
@@ -89,14 +93,21 @@ try {
     { timeout: 30000 }
   );
 
-  await clickGame(page, 1228, 850);
-  await waitForSnapshot(page, { step: "load", boxCollected: true });
-  await clickGame(page, 1228, 850);
-  await waitForSnapshot(page, { step: "restock", boxLoaded: true, boxOpened: true }, 25000);
+  await waitForHudAction(page);
+  await clickHudAction(page);
+  await waitForSnapshot(page, { step: "load", boxCollected: true }, 25000);
   await waitForInteractionReady(page);
+  await waitForHudAction(page);
+  await clickHudAction(page);
+  await waitForSnapshot(page, { step: "restock", boxLoaded: true, boxOpened: true }, 30000);
+  await waitForInteractionReady(page);
+  report.assertions.setupUsesLiveHudAction = true;
 
   const initial = await readVisualState(page);
   report.rowIndex = initial.rush.activeRowIndex;
+  report.interactionsPerRow = initial.rush.itemsPerRow;
+  report.unitsPerInteraction = initial.rush.unitsPerInteraction;
+  report.physicalItemsPerRow = initial.rush.itemsPerRow * initial.rush.unitsPerInteraction;
   report.states.push(initial);
   report.assertions.bakedBackgroundMarkedOccluded = initial.backgroundState === "occluded";
   report.assertions.opaqueEmptyShellExists = Boolean(
@@ -111,45 +122,56 @@ try {
     initial.rush.activeRowItemCount === 0 &&
     initial.controller.stockedRows === 0
   );
-  await captureCooler(page, "restock-visual-0-of-3.png");
+  await captureCooler(page, `restock-visual-0-of-${report.physicalItemsPerRow}.png`);
 
   const rowIndex = initial.rush.activeRowIndex;
   const target = initial.target;
-  for (let itemNumber = 1; itemNumber <= ITEMS_PER_SHELF; itemNumber += 1) {
+  if (!target) throw new Error("Active restock row target is missing");
+
+  for (let interactionNumber = 1; interactionNumber <= report.interactionsPerRow; interactionNumber += 1) {
     await waitForInteractionReady(page);
     await clickGame(page, target.x, target.y);
-    await waitForRowItemCount(page, rowIndex, itemNumber);
-    if (itemNumber === ITEMS_PER_SHELF) {
+    const expectedPhysicalItems = interactionNumber * report.unitsPerInteraction;
+    await waitForRowState(page, rowIndex, interactionNumber, expectedPhysicalItems);
+    if (interactionNumber === report.interactionsPerRow) {
       await waitForSnapshot(page, { stockedRows: 1 }, 15000);
     }
     const state = await readVisualState(page, rowIndex);
     report.states.push(state);
-    await captureCooler(page, `restock-visual-${itemNumber}-of-3.png`);
+    await captureCooler(
+      page,
+      `restock-visual-${expectedPhysicalItems}-of-${report.physicalItemsPerRow}.png`
+    );
   }
 
-  await createContactSheet(context);
+  await createContactSheet(context, report.states.map((state) => state.itemCount), report.physicalItemsPerRow);
 
-  const one = report.states[1];
-  const two = report.states[2];
-  const three = report.states[3];
-  report.assertions.shelfBuildsOneItemAtATime = Boolean(
-    one?.itemCount === 1 &&
-    two?.itemCount === 2 &&
-    one?.controller.stockedRows === 0 &&
-    two?.controller.stockedRows === 0
-  );
-  report.assertions.thirdItemCompletesShelf = Boolean(
-    three?.itemCount === 3 &&
-    three?.controller.stockedRows === 1 &&
-    three?.rush.filledRowIndexes.includes(rowIndex)
+  report.assertions.shelfBuildsByConfiguredUnits = report.states.every((state, index) => {
+    const expectedPhysicalItems = index * report.unitsPerInteraction;
+    return (
+      state.itemCount === expectedPhysicalItems &&
+      state.rush.rowItemCounts[rowIndex] === index
+    );
+  });
+
+  const finalState = report.states.at(-1);
+  report.assertions.finalInteractionCompletesShelf = Boolean(
+    finalState?.itemCount === report.physicalItemsPerRow &&
+    finalState?.controller.stockedRows === 1 &&
+    finalState?.rush.filledRowIndexes.includes(rowIndex)
   );
 
-  const issueCount = report.consoleErrors.length + report.pageErrors.length + report.failedRequests.length;
+  report.assertions.noRuntimeIssues = (
+    report.consoleErrors.length === 0 &&
+    report.pageErrors.length === 0 &&
+    report.failedRequests.length === 0
+  );
+
   const failed = Object.entries(report.assertions)
     .filter(([, passed]) => !passed)
     .map(([key]) => key);
-  if (failed.length > 0 || issueCount > 0) {
-    throw new Error(`Restock visual audit failed: ${failed.join(", ") || "runtime"}; issues ${issueCount}`);
+  if (failed.length > 0) {
+    throw new Error(`Restock visual audit failed: ${failed.join(", ")}`);
   }
 
   await page.close();
@@ -166,37 +188,46 @@ try {
   await new Promise((resolveServer) => server.close(resolveServer));
 }
 
-console.log(JSON.stringify({ assertions: report.assertions, fatalError: report.fatalError }, null, 2));
+console.log(JSON.stringify({
+  assertions: report.assertions,
+  interactionsPerRow: report.interactionsPerRow,
+  unitsPerInteraction: report.unitsPerInteraction,
+  physicalItemsPerRow: report.physicalItemsPerRow,
+  fatalError: report.fatalError
+}, null, 2));
 if (thrownError) throw thrownError;
 
-async function createContactSheet(context) {
+async function createContactSheet(context, counts, physicalItemsPerRow) {
   const evidencePage = await context.newPage();
-  await evidencePage.setViewportSize({ width: 640, height: 268 });
-  const images = Array.from({ length: 4 }, (_, index) => {
-    const bytes = readFileSync(join(OUTPUT_DIR, `restock-visual-${index}-of-3.png`));
+  const panelWidth = 240;
+  const width = panelWidth * counts.length;
+  const height = 402;
+  await evidencePage.setViewportSize({ width, height });
+  const images = counts.map((count) => {
+    const bytes = readFileSync(join(OUTPUT_DIR, `restock-visual-${count}-of-${physicalItemsPerRow}.png`));
     return `data:image/png;base64,${bytes.toString("base64")}`;
   });
   await evidencePage.setContent(`<!doctype html>
 <html>
 <head>
 <style>
-  html, body { margin: 0; width: 640px; height: 268px; overflow: hidden; background: #101510; }
-  main { display: grid; grid-template-columns: repeat(4, 160px); width: 640px; height: 268px; }
-  figure { position: relative; margin: 0; width: 160px; height: 268px; overflow: hidden; }
-  img { display: block; width: 160px; height: 268px; object-fit: cover; }
-  figcaption { position: absolute; left: 5px; top: 5px; min-width: 30px; padding: 3px 6px;
+  html, body { margin: 0; width: ${width}px; height: ${height}px; overflow: hidden; background: #101510; }
+  main { display: grid; grid-template-columns: repeat(${counts.length}, ${panelWidth}px); width: ${width}px; height: ${height}px; }
+  figure { position: relative; margin: 0; width: ${panelWidth}px; height: ${height}px; overflow: hidden; }
+  img { display: block; width: ${panelWidth}px; height: ${height}px; object-fit: cover; }
+  figcaption { position: absolute; left: 8px; top: 8px; min-width: 38px; padding: 4px 8px;
     border-radius: 999px; background: rgba(5, 14, 10, .9); color: #ffd95e;
-    font: 900 10px Arial, sans-serif; text-align: center; }
+    font: 900 12px Arial, sans-serif; text-align: center; }
 </style>
 </head>
 <body>
-<main>${images.map((src, index) => `<figure><img src="${src}"><figcaption>${index}/3</figcaption></figure>`).join("")}</main>
+<main>${images.map((src, index) => `<figure><img src="${src}"><figcaption>${counts[index]}/${physicalItemsPerRow}</figcaption></figure>`).join("")}</main>
 </body>
 </html>`);
   await evidencePage.screenshot({
     path: join(OUTPUT_DIR, "restock-contact-sheet.jpg"),
     type: "jpeg",
-    quality: 55,
+    quality: 70,
     fullPage: false
   });
   await evidencePage.close();
@@ -227,17 +258,17 @@ async function readVisualState(page, forcedRowIndex) {
   }, { sceneKey: SCENE_KEY, rowIndex: forcedRowIndex });
 }
 
-async function waitForRowItemCount(page, rowIndex, expectedCount) {
-  await page.waitForFunction(({ sceneKey, rowIndex, expectedCount }) => {
+async function waitForRowState(page, rowIndex, expectedLogicalCount, expectedPhysicalCount) {
+  await page.waitForFunction(({ sceneKey, rowIndex, expectedLogicalCount, expectedPhysicalCount }) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
     const rush = scene?.rush?.snapshot?.(scene.time.now);
     const holder = scene?.children?.getByName?.(`beverage-cooler-row-${rowIndex}`);
     return (
-      rush?.rowItemCounts?.[rowIndex] === expectedCount &&
+      rush?.rowItemCounts?.[rowIndex] === expectedLogicalCount &&
       Array.isArray(holder?.list) &&
-      holder.list.length === expectedCount
+      holder.list.length === expectedPhysicalCount
     );
-  }, { sceneKey: SCENE_KEY, rowIndex, expectedCount }, { timeout: 15000 });
+  }, { sceneKey: SCENE_KEY, rowIndex, expectedLogicalCount, expectedPhysicalCount }, { timeout: 15000 });
 }
 
 async function waitForSnapshot(page, expected, timeout = 15000) {
@@ -252,7 +283,25 @@ async function waitForInteractionReady(page) {
   await page.waitForFunction((sceneKey) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
     return scene?.isInteractionReady?.() === true;
-  }, SCENE_KEY, { timeout: 20000 });
+  }, SCENE_KEY, { timeout: 25000 });
+}
+
+async function waitForHudAction(page) {
+  await page.waitForFunction((sceneKey) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+    const action = scene?.children?.getByName?.("shift-hud-action");
+    return Boolean(action?.visible && action?.input?.enabled);
+  }, SCENE_KEY, { timeout: 15000 });
+}
+
+async function clickHudAction(page) {
+  const action = await page.evaluate((sceneKey) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+    const object = scene?.children?.getByName?.("shift-hud-action");
+    return object ? { x: object.x, y: object.y } : null;
+  }, SCENE_KEY);
+  if (!action) throw new Error("Shift HUD action button is missing");
+  await clickGame(page, action.x, action.y);
 }
 
 async function clickGame(page, gameX, gameY) {
