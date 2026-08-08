@@ -57,6 +57,7 @@ export interface ResolvedCleanLevelAssets extends BaseResolvedLevelAssets {
   readonly cleaningFixture: AssetDescriptor;
   readonly cleaningCart: AssetDescriptor;
   readonly wetFloorSign: AssetDescriptor;
+  readonly spills: readonly AssetDescriptor[];
 }
 
 export interface ResolvedFindItemsLevelAssets extends BaseResolvedLevelAssets {
@@ -67,11 +68,16 @@ export interface ResolvedFindItemsLevelAssets extends BaseResolvedLevelAssets {
   readonly items: readonly AssetDescriptor[];
 }
 
-const CHECKOUT_HD_ENVIRONMENT_KEY = "environment-starter-market-restock-hd-v3";
+const HD_ENVIRONMENT_KEY = "environment-starter-market-restock-hd-v3";
 const CHECKOUT_PRODUCT_ASSET_KEYS = Object.freeze([
   "product-apple",
   "product-milk-bottle",
   "product-cereal-box"
+]);
+const CLEAN_SPILL_ASSET_KEYS = Object.freeze([
+  "spill-water-large",
+  "spill-juice-large",
+  "spill-dirt-smear-large"
 ]);
 
 const resolveDescriptors = (
@@ -140,7 +146,7 @@ export function resolveCheckoutLevelAssets(
 ): ResolvedCheckoutLevelAssets {
   const pack = resolveGlobalAssetPack(level.presentation.assetPackId, "checkout");
   const preload = resolveDescriptors(registry, [
-    CHECKOUT_HD_ENVIRONMENT_KEY,
+    HD_ENVIRONMENT_KEY,
     ...pack.sharedStoreAssetKeys,
     ...pack.workerWalkAssetKeys,
     pack.workerIdleAssetKey,
@@ -153,7 +159,7 @@ export function resolveCheckoutLevelAssets(
   return Object.freeze({
     ...baseAssets(registry, pack),
     preload,
-    environment: registry.require(CHECKOUT_HD_ENVIRONMENT_KEY),
+    environment: registry.require(HD_ENVIRONMENT_KEY),
     fixture: registry.require(runtime.fixture.assetKey),
     worker: registry.require(pack.workerIdleAssetKey),
     workerScan: registry.require(pack.workerScanAssetKey),
@@ -170,23 +176,26 @@ export function resolveCleanLevelAssets(
 ): ResolvedCleanLevelAssets {
   const pack = resolveGlobalAssetPack(level.presentation.assetPackId, "clean");
   const preload = resolveDescriptors(registry, [
-    pack.environmentAssetKey,
+    HD_ENVIRONMENT_KEY,
     ...pack.sharedStoreAssetKeys,
     ...pack.workerWalkAssetKeys,
     pack.workerIdleAssetKey,
     pack.workerMopAssetKey,
     pack.cleaningFixtureAssetKey,
     pack.cleaningCartAssetKey,
-    pack.wetFloorSignAssetKey
+    pack.wetFloorSignAssetKey,
+    ...CLEAN_SPILL_ASSET_KEYS
   ]);
   return Object.freeze({
     ...baseAssets(registry, pack),
     preload,
+    environment: registry.require(HD_ENVIRONMENT_KEY),
     worker: registry.require(pack.workerIdleAssetKey),
     workerMop: registry.require(pack.workerMopAssetKey),
     cleaningFixture: registry.require(pack.cleaningFixtureAssetKey),
     cleaningCart: registry.require(pack.cleaningCartAssetKey),
-    wetFloorSign: registry.require(pack.wetFloorSignAssetKey)
+    wetFloorSign: registry.require(pack.wetFloorSignAssetKey),
+    spills: Object.freeze(CLEAN_SPILL_ASSET_KEYS.map((key) => registry.require(key)))
   });
 }
 
@@ -198,7 +207,7 @@ export function resolveFindItemsLevelAssets(
   const pack = resolveGlobalAssetPack(level.presentation.assetPackId, "find-items");
   const productAssetKeys = runtime.products.map((product) => product.assetKey);
   const environmentAssetKey = level.presentation.visualPresetId === "find-items-golden-standard-v1"
-    ? "environment-starter-market-restock-hd-v3"
+    ? HD_ENVIRONMENT_KEY
     : pack.environmentAssetKey;
   const preload = resolveDescriptors(registry, [
     environmentAssetKey,
