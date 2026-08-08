@@ -52,7 +52,7 @@ jobs:
           echo "=== VISUAL/HUD RESULT ==="
           echo "CAPTURE_OUTCOME=${{ steps.capture.outcome }}"
           find restock-visual-audit -maxdepth 1 -type f -printf '%f %s bytes\n' 2>/dev/null || true
-          tail -n 40 /tmp/restock-capture.log || true
+          tail -n 120 /tmp/restock-capture.log || true
 
       - name: Upload compact restock evidence
         if: always()
@@ -63,7 +63,8 @@ jobs:
             restock-route-audit/route-report.json
             restock-route-audit/level-1-route-final.png
             restock-visual-audit/level-1-mature-restock.png
-            restock-visual-audit/restock-contact-sheet.jpg
+            restock-visual-audit/restock-visual-0-of-3.png
+            restock-visual-audit/restock-visual-3-of-3.png
             restock-visual-audit/restock-visual-audit.json
             public/assets/game/environments/stores/starter-market/salesfloor-v2.webp
             public/assets/game/production-v1/fixtures/fixture-beverage-cooler.webp
