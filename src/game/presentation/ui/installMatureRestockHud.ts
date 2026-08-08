@@ -43,6 +43,7 @@ ShiftHud.prototype.update = function updateMatureRestockHud(
   if (snapshot.step === "restock") {
     if (!state.compactActivated) {
       hideLegacyShiftHud(view.scene);
+      handOffChecklist();
       state.compactActivated = true;
     }
     state.economy.setText(`★ ${snapshot.stars}    COINS ${snapshot.coins}`);
@@ -100,4 +101,13 @@ function hideLegacyShiftHud(scene: Phaser.Scene): void {
     display.setVisible?.(false);
     display.disableInteractive?.();
   });
+}
+
+function handOffChecklist(): void {
+  const checklist = document.getElementById("level-checklist");
+  if (!checklist) return;
+  checklist.style.opacity = "0";
+  checklist.style.transform = "translateX(-8px)";
+  checklist.style.visibility = "hidden";
+  document.body.dataset.levelChecklist = "handoff";
 }
