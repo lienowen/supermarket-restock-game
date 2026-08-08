@@ -275,7 +275,10 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
   private isPickupInProgress(): boolean {
     return GOLDEN_REQUESTED_NAMES.some((name) => {
       const item = this.children.getByName(name);
-      return item instanceof Phaser.GameObjects.Image && item.visible && item.alpha > 0.03 && item.alpha < 0.98;
+      if (!(item instanceof Phaser.GameObjects.Image) || !item.visible) return false;
+      const inputLocked = item.input?.enabled === false;
+      const alphaTweenActive = item.alpha > 0.03 && item.alpha < 0.98;
+      return inputLocked || alphaTweenActive;
     });
   }
 }
