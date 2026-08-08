@@ -186,7 +186,7 @@ export function resolveFindItemsLevelAssets(
 ): ResolvedFindItemsLevelAssets {
   const pack = resolveGlobalAssetPack(level.presentation.assetPackId, "find-items");
   const productAssetKeys = runtime.products.map((product) => product.assetKey);
-  const environmentAssetKey = level.presentation.visualPresetId === "find-items-golden-v1"
+  const environmentAssetKey = level.presentation.visualPresetId === "find-items-golden-standard-v1"
     ? "environment-starter-market-restock-hd-v3"
     : pack.environmentAssetKey;
   const preload = resolveDescriptors(registry, [
