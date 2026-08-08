@@ -33,6 +33,11 @@ jobs:
           npx playwright install --with-deps chromium > /tmp/restock-playwright-browser.log 2>&1
           npm run build > /tmp/restock-build.log 2>&1
 
+      - name: Run routed movement diagnostic
+        id: route
+        continue-on-error: true
+        run: node scripts/capture-restock-route.mjs > /tmp/restock-route.log 2>&1
+
       - name: Run focused capture
         id: capture
         continue-on-error: true
@@ -41,6 +46,8 @@ jobs:
       - name: Print focused result
         if: always()
         run: |
+          echo "ROUTE_OUTCOME=${{ steps.route.outcome }}"
+          tail -n 80 /tmp/restock-route.log || true
           echo "CAPTURE_OUTCOME=${{ steps.capture.outcome }}"
           find restock-visual-audit -maxdepth 1 -type f -printf '%f %s bytes\n' 2>/dev/null || true
           tail -n 30 /tmp/restock-capture.log || true
@@ -51,13 +58,17 @@ jobs:
         with:
           name: restock-empty-to-full-${{ github.run_id }}
           path: |
+            restock-route-audit/route-report.json
+            restock-route-audit/level-1-route-final.png
             restock-visual-audit/restock-contact-sheet.jpg
             restock-visual-audit/restock-visual-audit.json
             public/assets/game/environments/stores/starter-market/salesfloor-v2.webp
             public/assets/game/production-v1/fixtures/fixture-beverage-cooler.webp
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 3
 
       - name: Enforce focused result
         if: always()
-        run: test "${{ steps.capture.outcome }}" = "success"
+        run: |
+          test "${{ steps.route.outcome }}" = "success"
+          test "${{ steps.capture.outcome }}" = "success"
