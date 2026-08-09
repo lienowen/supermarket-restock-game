@@ -36,6 +36,12 @@ type NavigationKeys = {
 const shadowWidth = (displayWidth: number): number => Phaser.Math.Clamp(displayWidth * 0.24, 110, 155);
 const shadowHeight = (displayHeight: number): number => Phaser.Math.Clamp(displayHeight * 0.075, 28, 38);
 const MAX_MOVEMENT_DELTA_MS = 50;
+const DEFAULT_FOOT_ORIGIN_Y = 0.96;
+const TOOL_POSE_FOOT_ORIGIN_Y = 0.78;
+
+const footOriginForAsset = (assetKey: string): number => (
+  assetKey === "worker-a-mop-floor" ? TOOL_POSE_FOOT_ORIGIN_Y : DEFAULT_FOOT_ORIGIN_Y
+);
 
 export class PlayerNavigationView {
   readonly controller: PlayerNavigationController;
@@ -103,7 +109,7 @@ export class PlayerNavigationView {
     ).setDepth((config.baseDepth ?? 24) - 1);
 
     this.actor = scene.add.image(config.start.x, config.start.y, this.idlePoseKey)
-      .setOrigin(0.5, 0.96)
+      .setOrigin(0.5, footOriginForAsset(config.assetKey))
       .setDisplaySize(config.displaySize.width, config.displaySize.height)
       .setDepth(config.baseDepth ?? 24)
       .setName(config.name);
@@ -220,6 +226,7 @@ export class PlayerNavigationView {
       ? createOpaqueCutoutTexture(this.scene, assetKey)
       : assetKey;
     this.currentPoseKey = resolvedKey;
+    this.actor.setOrigin(0.5, footOriginForAsset(assetKey));
     if (this.moving && this.canUseWalkFrames()) {
       this.actor.setTexture(this.walkPoseKeys?.[this.walkFrame] ?? resolvedKey);
       return;
