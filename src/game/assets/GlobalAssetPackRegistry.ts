@@ -85,7 +85,7 @@ const SHARED_WORKER_WALK_KEYS = Object.freeze([
 export const MARKET_RESTOCK_ASSET_PACK: RestockGlobalAssetPack = Object.freeze({
   id: "market-restock-v1",
   mode: "restock",
-  environmentAssetKey: "environment-starter-market-restock-hd-v3",
+  environmentAssetKey: "environment-project-restock-v2",
   sharedStoreAssetKeys: RESTOCK_SHARED_STORE_ASSET_KEYS,
   workerIdleAssetKey: "worker-a-idle",
   workerWalkAssetKeys: SHARED_WORKER_WALK_KEYS,
@@ -119,7 +119,7 @@ export const MARKET_RESTOCK_ASSET_PACK: RestockGlobalAssetPack = Object.freeze({
 export const MARKET_CHECKOUT_ASSET_PACK: CheckoutGlobalAssetPack = Object.freeze({
   id: "market-checkout-v1",
   mode: "checkout",
-  environmentAssetKey: "environment-starter-market-salesfloor-prototype",
+  environmentAssetKey: "environment-project-checkout-v2",
   sharedStoreAssetKeys: SHARED_STORE_ASSET_KEYS,
   workerIdleAssetKey: "worker-a-idle",
   workerWalkAssetKeys: SHARED_WORKER_WALK_KEYS,
@@ -140,7 +140,7 @@ export const MARKET_CHECKOUT_ASSET_PACK: CheckoutGlobalAssetPack = Object.freeze
 export const MARKET_CLEAN_ASSET_PACK: CleanGlobalAssetPack = Object.freeze({
   id: "market-clean-v1",
   mode: "clean",
-  environmentAssetKey: "environment-starter-market-salesfloor-prototype",
+  environmentAssetKey: "environment-project-cleaning-v2",
   sharedStoreAssetKeys: SHARED_STORE_ASSET_KEYS,
   workerIdleAssetKey: "worker-a-idle",
   workerWalkAssetKeys: SHARED_WORKER_WALK_KEYS,
@@ -153,7 +153,7 @@ export const MARKET_CLEAN_ASSET_PACK: CleanGlobalAssetPack = Object.freeze({
 export const MARKET_FIND_ITEMS_ASSET_PACK: FindItemsGlobalAssetPack = Object.freeze({
   id: "market-find-items-v1",
   mode: "find-items",
-  environmentAssetKey: "environment-starter-market-salesfloor-prototype",
+  environmentAssetKey: "environment-project-order-hunt-v2",
   sharedStoreAssetKeys: SHARED_STORE_ASSET_KEYS,
   workerIdleAssetKey: "worker-a-idle",
   workerWalkAssetKeys: SHARED_WORKER_WALK_KEYS,
