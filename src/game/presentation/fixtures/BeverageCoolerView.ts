@@ -127,12 +127,16 @@ export class BeverageCoolerView extends IntegratedBeverageCoolerView {
       512,
       0.18
     );
+    // Normalize the production bottle into a shelf-sized runtime texture.
+    // IntegratedBeverageCoolerView animates scale values; keeping the derived
+    // texture physically small prevents an animation reset from turning a
+    // bottle back into a giant source-canvas sprite.
     aliasCanvasTexture(
       scene,
       "restock-cola-bottle-hd-v2",
       config.restockProductKey,
-      46,
-      108,
+      28,
+      68,
       1,
       true
     );
