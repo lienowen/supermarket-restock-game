@@ -65,3 +65,46 @@ CLEAN_SPILLS.forEach((fileName) => {
   copyFileSync(source, output);
   process.stdout.write(`Materialized mature cleaning asset ${fileName} (${statSync(output).size} bytes).\n`);
 });
+
+const PROJECT_BACKGROUND_SOURCE_DIRECTORY = resolve(
+  ROOT,
+  "asset-source/supermarket-project-backgrounds-v2"
+);
+const PROJECT_BACKGROUND_OUTPUT_DIRECTORY = resolve(
+  ROOT,
+  "public/assets/game/production-v4/project-backgrounds"
+);
+
+// The two source filenames were packaged with checkout/cleaning labels swapped.
+// Map by the actual scene content here while preserving the committed source pack.
+const PROJECT_BACKGROUNDS = Object.freeze([
+  Object.freeze({
+    source: "bg-restock-cold-display-zone-1672x941.png",
+    output: "bg-restock-zone-v2.png"
+  }),
+  Object.freeze({
+    source: "bg-cleaning-open-floor-zone-1672x941.png",
+    output: "bg-checkout-zone-v2.png"
+  }),
+  Object.freeze({
+    source: "bg-checkout-market-interior-1672x941.png",
+    output: "bg-cleaning-zone-v2.png"
+  }),
+  Object.freeze({
+    source: "bg-order-hunt-produce-grocery-1672x941.png",
+    output: "bg-order-hunt-zone-v2.png"
+  })
+]);
+
+mkdirSync(PROJECT_BACKGROUND_OUTPUT_DIRECTORY, { recursive: true });
+PROJECT_BACKGROUNDS.forEach(({ source: sourceName, output: outputName }) => {
+  const source = resolve(PROJECT_BACKGROUND_SOURCE_DIRECTORY, sourceName);
+  const output = resolve(PROJECT_BACKGROUND_OUTPUT_DIRECTORY, outputName);
+  if (!existsSync(source) || !statSync(source).isFile()) {
+    throw new Error(`Missing project background source asset: ${sourceName}`);
+  }
+  copyFileSync(source, output);
+  process.stdout.write(
+    `Materialized project background ${outputName} (${statSync(output).size} bytes).\n`
+  );
+});
