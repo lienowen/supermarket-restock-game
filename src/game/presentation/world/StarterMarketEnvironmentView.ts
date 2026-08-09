@@ -29,16 +29,19 @@ export class StarterMarketEnvironmentView {
 
   private createBase(): void {
     const { scene, context } = this;
-    const isHdRestockBackground =
-      context.levelAssets.environment.key === "environment-starter-market-restock-hd-v3";
+    const environmentKey = context.levelAssets.environment.key;
+    const keepsAuthoredOrientation =
+      environmentKey === "environment-starter-market-restock-hd-v3" ||
+      environmentKey.startsWith("environment-project-");
+
     scene.add.image(
       context.world.width / 2,
       context.world.height / 2,
-      context.levelAssets.environment.key
+      environmentKey
     )
       .setOrigin(0.5)
       .setDisplaySize(context.world.width, context.world.height)
-      .setFlipX(context.mode === "restock" && !isHdRestockBackground)
+      .setFlipX(context.mode === "restock" && !keepsAuthoredOrientation)
       .setDepth(-30)
       .setName("commercial-supermarket-salesfloor");
   }
@@ -62,7 +65,9 @@ export class StarterMarketEnvironmentView {
       return;
     }
 
-    document.body.dataset.restockCoolerBackground = "production-v3-hd";
+    document.body.dataset.restockCoolerBackground = this.context.levelAssets.environment.key === "environment-project-restock-v2"
+      ? "project-v2"
+      : "production-v3-hd";
     document.body.dataset.restockCoolerAsset = "world-integrated-layered";
   }
 
