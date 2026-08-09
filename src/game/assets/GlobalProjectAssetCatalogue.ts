@@ -60,6 +60,25 @@ const matureCustomer = (
   status: "production"
 });
 
+const projectBackground = (
+  key: string,
+  fileName: string,
+  state: string
+): AssetDescriptor => asset({
+  key,
+  path: `assets/game/production-v4/project-backgrounds/${fileName}`,
+  category: "environment",
+  canvasSize: [1672, 941],
+  anchor: [0.5, 0.5],
+  defaultScale: 1,
+  depthGroup: "far-environment",
+  preloadGroup: "starter-market",
+  perspective: "fixed-third-person",
+  lightDirection: "upper-left",
+  state,
+  status: "production"
+});
+
 /**
  * Project-wide production assets belong here only after their files are present
  * in the repository and pass the release bundle checks. Asset ideas and gap
@@ -82,6 +101,26 @@ export const GLOBAL_PROJECT_ASSET_CATALOGUE: AssetCatalogue = Object.freeze({
       state: "restock-hd-v3",
       status: "production"
     }),
+    projectBackground(
+      "environment-project-restock-v2",
+      "bg-restock-zone-v2.png",
+      "restock-zone-v2"
+    ),
+    projectBackground(
+      "environment-project-checkout-v2",
+      "bg-checkout-zone-v2.png",
+      "checkout-zone-v2"
+    ),
+    projectBackground(
+      "environment-project-cleaning-v2",
+      "bg-cleaning-zone-v2.png",
+      "cleaning-zone-v2"
+    ),
+    projectBackground(
+      "environment-project-order-hunt-v2",
+      "bg-order-hunt-zone-v2.png",
+      "order-hunt-zone-v2"
+    ),
     asset({
       key: "fixture-beverage-cooler-glass-hd-v3",
       path: "assets/game/production-v3/cooler-restock/cooler_front_glass_hd.png",
