@@ -9,6 +9,32 @@ export interface TrimmedTextureOptions {
 
 const DEFAULT_ALPHA_THRESHOLD = 10;
 
+const fitSize = (
+  width: number,
+  height: number,
+  maxWidth: number,
+  maxHeight: number
+): { readonly width: number; readonly height: number } => {
+  const scale = Math.min(maxWidth / Math.max(1, width), maxHeight / Math.max(1, height));
+  return {
+    width: Math.max(1, Math.round(width * scale)),
+    height: Math.max(1, Math.round(height * scale))
+  };
+};
+
+const normalizedTextureSize = (
+  sourceKey: string,
+  suffix: string,
+  width: number,
+  height: number
+): { readonly width: number; readonly height: number } => {
+  if (suffix === "--checkout-product") return fitSize(width, height, 44, 64);
+  if (suffix === "--checkout-trimmed" && sourceKey === "equipment-shopping-basket") {
+    return fitSize(width, height, 88, 62);
+  }
+  return { width, height };
+};
+
 /**
  * Production art in the current repository often lives on a much larger
  * transparent canvas than the visible prop. Scaling that canvas directly is
@@ -72,11 +98,12 @@ export function createTrimmedTexture(
 
   const croppedWidth = maxX - minX + 1;
   const croppedHeight = maxY - minY + 1;
-  const texture = scene.textures.createCanvas(derivedKey, croppedWidth, croppedHeight);
+  const outputSize = normalizedTextureSize(sourceKey, suffix, croppedWidth, croppedHeight);
+  const texture = scene.textures.createCanvas(derivedKey, outputSize.width, outputSize.height);
   if (!texture) return sourceKey;
 
   const context = texture.context;
-  context.clearRect(0, 0, croppedWidth, croppedHeight);
+  context.clearRect(0, 0, outputSize.width, outputSize.height);
   context.drawImage(
     source,
     minX,
@@ -85,12 +112,12 @@ export function createTrimmedTexture(
     croppedHeight,
     0,
     0,
-    croppedWidth,
-    croppedHeight
+    outputSize.width,
+    outputSize.height
   );
 
   if (options.opaque) {
-    const croppedData = context.getImageData(0, 0, croppedWidth, croppedHeight);
+    const croppedData = context.getImageData(0, 0, outputSize.width, outputSize.height);
     const croppedPixels = croppedData.data;
     for (let offset = 3; offset < croppedPixels.length; offset += 4) {
       const alpha = croppedPixels[offset] ?? 0;
