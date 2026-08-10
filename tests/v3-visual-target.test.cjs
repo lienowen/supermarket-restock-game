@@ -48,19 +48,23 @@ test("Visual spec and world layout share the same locked composition", () => {
   assert.deepEqual(zones.get("beverage-zone"), STARTER_MARKET_VISUAL_SPEC.composition.beverageZone);
 });
 
-test("Restock scene uses the cooler baked into the right side of the supermarket", () => {
+test("Restock route follows the V2 left-to-right supermarket composition", () => {
   const cooler = RESTOCK_VISUAL_PRESET.cooler;
   const coolerFixture = STARTER_MARKET_LAYOUT.fixtures.find(
     (entry) => entry.fixtureId === "beverage-cooler-a"
   );
-  const restockZone = STARTER_MARKET_LAYOUT.interactions.find(
-    (entry) => entry.id === "beverage-restock-zone"
+  const pickupZone = STARTER_MARKET_LAYOUT.interactions.find(
+    (entry) => entry.id === "cola-case-pickup-point"
   );
   const cartLoadZone = STARTER_MARKET_LAYOUT.interactions.find(
     (entry) => entry.id === "restock-cart-load-point"
   );
+  const restockZone = STARTER_MARKET_LAYOUT.interactions.find(
+    (entry) => entry.id === "beverage-restock-zone"
+  );
 
   assert.ok(coolerFixture);
+  assert.ok(pickupZone);
   assert.ok(restockZone);
   assert.ok(cartLoadZone);
   assert.deepEqual(STARTER_MARKET_VISUAL_SPEC.cooler.centre, coolerFixture.position);
@@ -68,9 +72,15 @@ test("Restock scene uses the cooler baked into the right side of the supermarket
   assert.equal(cooler.restockItemCount, 3);
   assert.ok(cooler.activeStockWidth <= 100);
   assert.ok(coolerFixture.position.x >= 1030 && coolerFixture.position.x <= 1100);
-  assert.ok(restockZone.position.x >= 680 && restockZone.position.x <= 750);
+
+  // V2 background: stock source is on the left, the cart is in the open floor,
+  // and the worker parks immediately left of the cooler before placing stock.
+  assert.ok(pickupZone.position.x >= 430 && pickupZone.position.x <= 520);
+  assert.ok(cartLoadZone.position.x >= 570 && cartLoadZone.position.x <= 660);
+  assert.ok(restockZone.position.x >= 790 && restockZone.position.x <= 880);
+  assert.ok(pickupZone.position.x < cartLoadZone.position.x);
+  assert.ok(cartLoadZone.position.x < restockZone.position.x);
   assert.ok(restockZone.position.x < coolerFixture.position.x);
-  assert.ok(cartLoadZone.position.x > restockZone.position.x);
 });
 
 test("Checkout uses a compact grocery basket queue instead of pasted customer cutouts", () => {
