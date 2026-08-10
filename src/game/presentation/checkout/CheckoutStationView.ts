@@ -27,10 +27,9 @@ const PRODUCT_BOXES = Object.freeze([
 ]);
 
 /**
- * Mature checkout presentation keeps the register grounded in the store world:
- * real product art sits on the belt, one solid customer stands at the counter,
- * and each served order visibly advances the customer instead of only changing
- * a number in the HUD.
+ * Checkout uses the counter already authored into the checkout background.
+ * Only changing gameplay state stays independent: products, basket, customer,
+ * register state, queue information and scan feedback.
  */
 export class CheckoutStationView {
   private readonly objects: Phaser.GameObjects.GameObject[] = [];
@@ -57,44 +56,15 @@ export class CheckoutStationView {
       config.customerAssetKeys.map((assetKey) => createOpaqueCutoutTexture(scene, assetKey))
     );
 
+    // Soft interaction emphasis only. The physical counter is part of the plate.
     this.serviceHalo = scene.add.ellipse(
       checkoutPosition.x - 34,
       checkoutPosition.y - 6,
       270,
       102,
       config.accentColor,
-      0.04
-    ).setStrokeStyle(2, config.accentColor, 0.18).setDepth(18);
-
-    const shadow = scene.add.ellipse(
-      checkoutPosition.x + 8,
-      checkoutPosition.y + 25,
-      visual.station.shadowSize.width,
-      visual.station.shadowSize.height,
-      0x1b2c26,
-      0.22
-    ).setDepth(19);
-
-    const counterTexture = createTrimmedTexture(scene, config.checkoutAssetKey, {
-      alphaThreshold: 10,
-      suffix: "--checkout-trimmed",
-      padding: 2
-    });
-    const counter = scene.add.image(
-      checkoutPosition.x,
-      checkoutPosition.y + visual.station.counterOffsetY,
-      counterTexture
-    )
-      .setOrigin(0.5, 0.96)
-      .setDisplaySize(visual.station.counterSize.width, visual.station.counterSize.height)
-      .setDepth(25)
-      .setName("checkout-counter-production");
-
-    const beltSurface = scene.add.graphics().setDepth(29);
-    beltSurface.fillStyle(0x192824, 0.76);
-    beltSurface.fillRoundedRect(checkoutPosition.x - 146, checkoutPosition.y - 88, 170, 46, 14);
-    beltSurface.lineStyle(2, 0xffffff, 0.1);
-    beltSurface.strokeRoundedRect(checkoutPosition.x - 146, checkoutPosition.y - 88, 170, 46, 14);
+      0.035
+    ).setStrokeStyle(2, config.accentColor, 0.16).setDepth(18);
 
     const basketTexture = createTrimmedTexture(scene, config.basketAssetKey, {
       alphaThreshold: 10,
@@ -247,9 +217,6 @@ export class CheckoutStationView {
 
     this.objects.push(
       this.serviceHalo,
-      shadow,
-      counter,
-      beltSurface,
       this.beltBasket,
       this.scanBeam,
       this.registerText,
@@ -258,7 +225,7 @@ export class CheckoutStationView {
       this.waitingText,
       this.queueOverflowText
     );
-    document.body.dataset.checkoutPresentation = "mature-station-v1";
+    document.body.dataset.checkoutPresentation = "background-counter-v2";
     document.body.dataset.checkoutProducts = "real-product-sprites";
     document.body.dataset.checkoutCustomer = this.activeCustomer ? "solid-active-customer" : "unavailable";
   }
