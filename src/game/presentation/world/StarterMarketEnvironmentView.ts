@@ -1,13 +1,17 @@
 import Phaser from "phaser";
 import type { StarterMarketPresentationContext } from "../context/StarterMarketPresentationContext";
+import { createOpaqueCutoutTexture } from "../visual/OpaqueCutoutTexture";
 import { resolveLevelVisualPreset } from "../visual/LevelVisualPresetResolver";
 import type { MarketLevelVisualPreset } from "../visual/MarketLevelVisualPreset";
 
+const PURE_BACKGROUND_LEVEL_IDS = new Set(["starter-level-001"]);
+
 /**
- * Owns the supermarket shell and non-gameplay scene dressing. The authored
- * environment image is deliberately only the base plate; fixtures, props and
- * ambient customers are reusable layers so each level can be composed without
- * baking every visible object into one background image.
+ * Owns the supermarket shell and non-gameplay scene dressing. Level 1 is kept
+ * deliberately clean: its authored background is used as-is and only gameplay
+ * actors / props are layered by their dedicated views. Later levels may add
+ * reusable dressing, but every layered fixture is normalized to an opaque
+ * cutout so it never reads as a translucent "ghost" over the background.
  */
 export class StarterMarketEnvironmentView {
   private readonly visualPreset: MarketLevelVisualPreset;
@@ -21,13 +25,24 @@ export class StarterMarketEnvironmentView {
 
   create(): void {
     this.createBase();
-    this.createFloor();
-    this.createStoreComposition();
-    this.createAmbientLife();
+
+    if (this.isPureBackgroundLevel()) {
+      document.body.dataset.sceneDressing = "background-only";
+    } else {
+      document.body.dataset.sceneDressing = "layered-solid";
+      this.createFloor();
+      this.createStoreComposition();
+      this.createAmbientLife();
+      this.createModeFocus();
+      this.createAtmosphere();
+    }
+
     this.registerRestockCoolerPresentation();
     this.registerSharedFixtureAvailability();
-    this.createModeFocus();
-    this.createAtmosphere();
+  }
+
+  private isPureBackgroundLevel(): boolean {
+    return PURE_BACKGROUND_LEVEL_IDS.has(this.context.campaignLevel.level.id);
   }
 
   private createBase(): void {
@@ -181,10 +196,12 @@ export class StarterMarketEnvironmentView {
     flipX = false
   ): Phaser.GameObjects.Image | undefined {
     if (!this.scene.textures.exists(key)) return undefined;
-    return this.scene.add.image(x, y, key)
+    const solidKey = createOpaqueCutoutTexture(this.scene, key, 24);
+    return this.scene.add.image(x, y, solidKey)
       .setOrigin(0.5, 0.96)
       .setDisplaySize(width, height)
       .setFlipX(flipX)
+      .setAlpha(1)
       .setDepth(depth + y / 1000)
       .setName(name);
   }
@@ -200,6 +217,7 @@ export class StarterMarketEnvironmentView {
   ): Phaser.GameObjects.Container | undefined {
     if (!this.scene.textures.exists(key)) return undefined;
 
+    const solidKey = createOpaqueCutoutTexture(this.scene, key, 24);
     const shadow = this.scene.add.ellipse(
       0,
       3,
@@ -208,11 +226,11 @@ export class StarterMarketEnvironmentView {
       0x102018,
       0.2
     );
-    const customer = this.scene.add.image(0, 0, key)
+    const customer = this.scene.add.image(0, 0, solidKey)
       .setOrigin(0.5, 0.96)
       .setDisplaySize(width, height)
       .setFlipX(flipX)
-      .setAlpha(0.94);
+      .setAlpha(1);
 
     return this.scene.add.container(x, y, [shadow, customer])
       .setDepth(18 + y / 1000)
