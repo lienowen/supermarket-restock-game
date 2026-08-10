@@ -4,8 +4,11 @@ import { MAIN_CAMPAIGN_RUNTIME } from "./presentation/context/StarterMarketPrese
 import { createPhaserGame } from "./infrastructure/phaser/createPhaserGame";
 
 const runtimeValidationRequired = (): boolean => {
-  if (import.meta.env.DEV) return true;
-  return new URLSearchParams(window.location.search).get("test") === "1";
+  const parameters = new URLSearchParams(window.location.search);
+  if (parameters.get("test") === "1") return true;
+
+  const host = window.location.hostname;
+  return host === "localhost" || host === "127.0.0.1";
 };
 
 /** Project-wide startup boundary. Heavy contract validation is code-split away
