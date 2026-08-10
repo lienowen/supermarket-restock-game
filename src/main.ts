@@ -11,11 +11,9 @@ import "./game/presentation/actors/installLevelTwoMemoryFeedback";
 import "./game/presentation/actors/installLevelOneCompletionPolish";
 import "./game/presentation/ui/installMatureRestockHud";
 import { bootstrapGame } from "./game/bootstrap";
-import { installMobileGuidedDragFix } from "./game/infrastructure/browser/MobileGuidedDragFix";
 import { installMobileLandscapeController } from "./game/infrastructure/browser/MobileLandscapeController";
 
 installMobileLandscapeController();
-installMobileGuidedDragFix();
 
 void bootstrapGame().catch((error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);
