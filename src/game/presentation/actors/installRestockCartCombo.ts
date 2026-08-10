@@ -80,7 +80,7 @@ StarterMarketScene.prototype.create = function createWithDeferredFirstDeliveryAr
     if (!this.sys.isActive()) return;
     document.body.dataset.levelOneDeferredArt = "ready";
   });
-  this.load.once(Phaser.Loader.Events.LOAD_ERROR, () => {
+  this.load.once(Phaser.Loader.Events.FILE_LOAD_ERROR, () => {
     document.body.dataset.levelOneDeferredArt = "error";
   });
   this.load.start();
