@@ -33,14 +33,14 @@ const report = {
   generatedAt: new Date().toISOString(),
   assertions: {
     correctLevelLoads: false,
-    requestedAndDecoyItemsVisible: false,
-    wrongItemRejected: false,
+    exactlyThreePriorityItemsVisible: false,
+    countdownContractActive: false,
     requestedItemsCollectThroughCanvas: false,
+    zeroMistakeCompletion: false,
     levelCompletes: false,
     noRuntimeIssues: false
   },
   initial: null,
-  afterMistake: null,
   final: null,
   consoleErrors: [],
   pageErrors: [],
@@ -57,43 +57,44 @@ try {
   await page.goto(`${ORIGIN}/?test=1&briefing=0&level=${LEVEL_ID}`, { waitUntil: "networkidle", timeout: 90000 });
   await page.waitForSelector(CANVAS, { state: "visible", timeout: 45000 });
   await page.waitForFunction((levelId) => document.body.dataset.activeLevel === levelId, LEVEL_ID, { timeout: 30000 });
-  await page.waitForFunction(() => Number(document.body.dataset.findItemsVisibleCount ?? "0") >= 3, null, { timeout: 15000 });
+  await page.waitForFunction(() => Number(document.body.dataset.findItemsVisibleCount ?? "0") === 3, null, { timeout: 15000 });
 
   const initial = await readState(page);
   report.initial = initial;
   report.assertions.correctLevelLoads = initial.environmentKey === "environment-project-order-hunt-v2";
-  report.assertions.requestedAndDecoyItemsVisible = initial.requested.length > 0 && initial.decoys.length > 0;
-
-  const decoy = initial.decoys[0];
-  if (!decoy) throw new Error("Level 9 has no visible decoy for mistake validation");
-  await clickGame(page, decoy.x, decoy.y);
-  await page.waitForFunction((sceneKey) => (window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.findChallenge?.snapshot?.().mistakes ?? 0) >= 1, SCENE_KEY, { timeout: 10000 });
-  const afterMistake = await readState(page);
-  report.afterMistake = afterMistake;
-  report.assertions.wrongItemRejected = Boolean(
-    afterMistake.challenge?.mistakes === 1 &&
-    afterMistake.controller?.progress === 0 &&
-    afterMistake.challenge?.collectedProductIds?.length === 0
+  report.assertions.exactlyThreePriorityItemsVisible = (
+    initial.requested.length === 3 &&
+    initial.decoys.length === 0 &&
+    initial.products.length === 3
+  );
+  report.assertions.countdownContractActive = Boolean(
+    initial.challenge?.status === "active" &&
+    initial.challenge.remainingSeconds > 0 &&
+    initial.challenge.remainingSeconds <= 40 &&
+    initial.challenge.mistakes === 0
   );
 
   let expectedProgress = 0;
   for (const requested of initial.requested) {
     const current = await readState(page);
     const product = current.products.find((entry) => entry.name === requested.name);
-    if (!product) throw new Error(`Level 9 requested product disappeared before selection: ${requested.name}`);
+    if (!product) throw new Error(`Level 9 priority product disappeared before selection: ${requested.name}`);
     await clickGame(page, product.x, product.y);
     expectedProgress += 1;
     await page.waitForFunction(({ sceneKey, expected }) => {
       const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
-      return (scene?.controller?.snapshot?.().progress ?? 0) >= expected || scene?.controller?.snapshot?.().step === "complete";
+      const snapshot = scene?.controller?.snapshot?.();
+      return (snapshot?.progress ?? 0) >= expected || snapshot?.step === "complete";
     }, { sceneKey: SCENE_KEY, expected: expectedProgress }, { timeout: 20000 });
   }
 
   const final = await readState(page);
   report.final = final;
-  report.assertions.requestedItemsCollectThroughCanvas = final.challenge?.collectedProductIds?.length === initial.requested.length;
+  report.assertions.requestedItemsCollectThroughCanvas = final.challenge?.collectedProductIds?.length === 3;
+  report.assertions.zeroMistakeCompletion = final.challenge?.mistakes === 0 && final.challenge?.remainingMs > 0;
   report.assertions.levelCompletes = Boolean(
     final.controller?.step === "complete" &&
+    final.controller.progress === 3 &&
     final.challenge?.status === "complete"
   );
   report.assertions.noRuntimeIssues = report.consoleErrors.length === 0 && report.pageErrors.length === 0 && report.failedRequests.length === 0;
