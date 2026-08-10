@@ -13,7 +13,7 @@ permissions:
 jobs:
   capture:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
 
     steps:
       - name: Checkout repository
@@ -32,7 +32,7 @@ jobs:
               sha,
               state: "pending",
               context: "UI Regression Audit",
-              description: "Running mature Level 2-7 gameplay gates",
+              description: "Running Level 1-10 release gameplay gates",
               target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
             });
 
@@ -79,7 +79,7 @@ jobs:
           set -o pipefail
           node scripts/capture-level-briefings.mjs 2>&1 | tee level-briefing-audit.log
 
-      - name: Level 1 guided drag diagnostics
+      - name: Level 1 guided delivery gate
         id: guided
         continue-on-error: true
         run: |
@@ -128,6 +128,27 @@ jobs:
           set -o pipefail
           node scripts/capture-checkout-patience.mjs 2>&1 | tee checkout-patience-audit.log
 
+      - name: Level 8 full cleaning gate
+        id: level8
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          node scripts/capture-level-eight-clean.mjs 2>&1 | tee level-8-audit.log
+
+      - name: Level 9 full order-hunt gate
+        id: level9
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          node scripts/capture-level-nine-order-hunt.mjs 2>&1 | tee level-9-audit.log
+
+      - name: Level 10 finale gate
+        id: level10
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          node scripts/capture-level-ten-finale.mjs 2>&1 | tee level-10-audit.log
+
       - name: Upload CrazyGames release package
         if: always()
         uses: actions/upload-artifact@v4
@@ -153,6 +174,9 @@ jobs:
             golden-order-hunt-audit.log
             cart-capacity-audit.log
             checkout-patience-audit.log
+            level-8-audit.log
+            level-9-audit.log
+            level-10-audit.log
             build.log
             release-check.log
             release-payload.log
@@ -163,24 +187,32 @@ jobs:
         if: always()
         uses: actions/github-script@v7
         env:
+          GUIDED: ${{ steps.guided.outcome }}
           MEMORY: ${{ steps.memory.outcome }}
           CHECKOUT: ${{ steps.checkout.outcome }}
           CLEAN: ${{ steps.clean.outcome }}
           ORDER: ${{ steps.order.outcome }}
           CAPACITY: ${{ steps.capacity.outcome }}
           PATIENCE: ${{ steps.patience.outcome }}
+          LEVEL8: ${{ steps.level8.outcome }}
+          LEVEL9: ${{ steps.level9.outcome }}
+          LEVEL10: ${{ steps.level10.outcome }}
         with:
           script: |
             const sha = context.eventName === "pull_request"
               ? context.payload.pull_request.head.sha
               : context.sha;
             const outcomes = {
+              L1: process.env.GUIDED,
               L2: process.env.MEMORY,
               L3: process.env.CHECKOUT,
               L4: process.env.CLEAN,
               L5: process.env.ORDER,
               L6: process.env.CAPACITY,
-              L7: process.env.PATIENCE
+              L7: process.env.PATIENCE,
+              L8: process.env.LEVEL8,
+              L9: process.env.LEVEL9,
+              L10: process.env.LEVEL10
             };
             const failed = Object.entries(outcomes)
               .filter(([, value]) => value !== "success")
@@ -193,17 +225,21 @@ jobs:
               state: passed ? "success" : "failure",
               context: "UI Regression Audit",
               description: passed
-                ? "Mature Level 2-7 gameplay gates passed"
-                : `Mature gates failed: ${failed.join(", ")}`,
+                ? "Level 1-10 release gameplay gates passed"
+                : `Release gates failed: ${failed.join(", ")}`,
               target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
             });
 
-      - name: Enforce mature Level 2-7 gates
+      - name: Enforce Level 1-10 release gameplay gates
         if: always()
         run: |
+          test "${{ steps.guided.outcome }}" = "success"
           test "${{ steps.memory.outcome }}" = "success"
           test "${{ steps.checkout.outcome }}" = "success"
           test "${{ steps.clean.outcome }}" = "success"
           test "${{ steps.order.outcome }}" = "success"
           test "${{ steps.capacity.outcome }}" = "success"
           test "${{ steps.patience.outcome }}" = "success"
+          test "${{ steps.level8.outcome }}" = "success"
+          test "${{ steps.level9.outcome }}" = "success"
+          test "${{ steps.level10.outcome }}" = "success"
