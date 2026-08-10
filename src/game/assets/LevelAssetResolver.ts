@@ -79,6 +79,7 @@ const CLEAN_SPILL_ASSET_KEYS = Object.freeze([
   "spill-juice-large",
   "spill-dirt-smear-large"
 ]);
+const FIRST_DELIVERY_LEVEL_ID = "starter-level-001";
 
 const resolveDescriptors = (
   registry: RuntimeAssetRegistry,
@@ -98,17 +99,15 @@ const baseAssets = (
   ]) as readonly [AssetDescriptor, AssetDescriptor]
 });
 
-export function resolveRestockLevelAssets(
-  registry: RuntimeAssetRegistry,
+const restockPreloadKeys = (
   level: RestockLevelDefinition,
+  pack: RestockGlobalAssetPack,
+  environmentAssetKey: string,
+  caseAssets: { readonly closedAssetKey: string; readonly openAssetKey: string },
   runtime: RestockShiftRuntimeContent
-): ResolvedRestockLevelAssets {
-  const pack = resolveGlobalAssetPack(level.presentation.assetPackId, "restock");
-  const environmentAssetKey = resolveLevelEnvironmentAssetKey(level.id, pack.environmentAssetKey);
-  const caseAssets = restockCaseAssetsFor(pack, runtime.product.id);
-  const preload = resolveDescriptors(registry, [
+): readonly string[] => {
+  const gameplayKeys = [
     environmentAssetKey,
-    ...pack.sharedStoreAssetKeys,
     ...pack.workerWalkAssetKeys,
     pack.workerIdleAssetKey,
     pack.workerPushAssetKey,
@@ -119,10 +118,34 @@ export function resolveRestockLevelAssets(
     pack.cartLoadedAssetKey,
     caseAssets.closedAssetKey,
     caseAssets.openAssetKey,
+    runtime.product.assetKey
+  ];
+
+  // Level 1 deliberately uses the authored background as-is. Do not make the
+  // first playable frame wait for decorative fixtures, the HD cooler overlay,
+  // a duplicate cooler fixture, or ambient products that are not rendered.
+  if (level.id === FIRST_DELIVERY_LEVEL_ID) return Object.freeze(gameplayKeys);
+
+  return Object.freeze([
+    ...gameplayKeys,
+    ...pack.sharedStoreAssetKeys,
     runtime.fixture.assetKey,
-    runtime.product.assetKey,
     ...pack.ambientProductAssetKeys
   ]);
+};
+
+export function resolveRestockLevelAssets(
+  registry: RuntimeAssetRegistry,
+  level: RestockLevelDefinition,
+  runtime: RestockShiftRuntimeContent
+): ResolvedRestockLevelAssets {
+  const pack = resolveGlobalAssetPack(level.presentation.assetPackId, "restock");
+  const environmentAssetKey = resolveLevelEnvironmentAssetKey(level.id, pack.environmentAssetKey);
+  const caseAssets = restockCaseAssetsFor(pack, runtime.product.id);
+  const preload = resolveDescriptors(
+    registry,
+    restockPreloadKeys(level, pack, environmentAssetKey, caseAssets, runtime)
+  );
   return Object.freeze({
     ...baseAssets(registry, pack, environmentAssetKey),
     preload,
