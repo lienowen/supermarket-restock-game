@@ -8,6 +8,7 @@ import "./game/presentation/actors/installLevelOneWorkerMatteCleanup";
 import "./game/presentation/actors/installLevelTwoPolish";
 import "./game/presentation/actors/installLevelTwoCartInventoryVisual";
 import "./game/presentation/actors/installLevelTwoMemoryFeedback";
+import "./game/presentation/actors/installLevelTwoClarity";
 import "./game/presentation/actors/installLevelOneCompletionPolish";
 import "./game/presentation/ui/installMatureRestockHud";
 import { bootstrapGame } from "./game/bootstrap";
