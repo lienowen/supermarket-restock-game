@@ -17,6 +17,10 @@ interface FocusGuide {
   readonly label: Phaser.GameObjects.Text;
 }
 
+interface VisibilityPort {
+  setVisible(visible: boolean): unknown;
+}
+
 const guideByScene = new WeakMap<StarterMarketScene, FocusGuide>();
 
 const isLevelTwo = (): boolean => document.body.dataset.activeLevel === LEVEL_TWO_ID;
@@ -47,15 +51,19 @@ function applyLevelTwoClarity(scene: StarterMarketScene): void {
     "ambient-checkout",
     "ambient-customer-a",
     "ambient-customer-b"
-  ].forEach((name) => scene.children.getByName(name)?.setVisible(false));
+  ].forEach((name) => setObjectVisible(scene.children.getByName(name), false));
 
-  const rule = scene.children.getByName("restock-cooler-shelf-rule");
-  rule?.setVisible(false);
+  setObjectVisible(scene.children.getByName("restock-cooler-shelf-rule"), false);
 
   compactPlaceControl(scene);
   syncFocusGuide(scene, view, snapshot);
 
   document.body.dataset.levelTwoVisualHierarchy = "single-focus-v1";
+}
+
+function setObjectVisible(object: Phaser.GameObjects.GameObject | null, visible: boolean): void {
+  const candidate = object as unknown as Partial<VisibilityPort> | null;
+  candidate?.setVisible?.(visible);
 }
 
 function compactPlaceControl(scene: StarterMarketScene): void {
@@ -103,8 +111,8 @@ function targetFor(
     case "collect":
       return { x: world.backroomBox.x, y: world.backroomBox.y, label: "PICK BOX", color: 0xffd95e };
     case "load":
-    case "push":
       return { x: world.cartStart.x, y: world.cartStart.y, label: "LOAD CART", color: 0xffd95e };
+    case "push":
     case "park":
     case "open":
       return { x: world.cartCooler.x, y: world.cartCooler.y, label: "TO COOLER", color: 0x9be7ff };
