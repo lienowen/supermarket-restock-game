@@ -6,16 +6,16 @@ export interface VirtualJoystickVector {
   readonly active: boolean;
 }
 
-const BASE_X = 150;
-const BASE_Y = 748;
-const BASE_RADIUS = 76;
-const KNOB_RADIUS = 34;
-const MAX_TRAVEL = 46;
-const DEAD_ZONE = 0.12;
+const BASE_X = 158;
+const BASE_Y = 742;
+const BASE_RADIUS = 92;
+const KNOB_RADIUS = 40;
+const MAX_TRAVEL = 62;
+const DEAD_ZONE = 0.07;
 
 /**
- * Screen-space movement control for touch devices. It emits only a normalized
- * movement vector; world navigation remains owned by PlayerNavigationController.
+ * Screen-space movement control for touch devices. It emits a normalized
+ * analog movement vector; world navigation remains owned by PlayerNavigationController.
  */
 export class VirtualJoystick {
   private readonly enabledForDevice: boolean;
@@ -30,26 +30,26 @@ export class VirtualJoystick {
     this.enabledForDevice = this.shouldShow();
     if (!this.enabledForDevice) return;
 
-    const outer = scene.add.circle(0, 0, BASE_RADIUS, 0x08110d, 0.48)
-      .setStrokeStyle(3, 0xffffff, 0.22);
-    const inner = scene.add.circle(0, 0, BASE_RADIUS - 15, 0xffffff, 0.035)
-      .setStrokeStyle(1, 0xffffff, 0.12);
-    this.knob = scene.add.circle(0, 0, KNOB_RADIUS, 0x66bd65, 0.94)
-      .setStrokeStyle(4, 0xc6efb9, 0.76);
+    const outer = scene.add.circle(0, 0, BASE_RADIUS, 0x08110d, 0.5)
+      .setStrokeStyle(3, 0xffffff, 0.24);
+    const inner = scene.add.circle(0, 0, BASE_RADIUS - 17, 0xffffff, 0.04)
+      .setStrokeStyle(1, 0xffffff, 0.14);
+    this.knob = scene.add.circle(0, 0, KNOB_RADIUS, 0x66bd65, 0.96)
+      .setStrokeStyle(4, 0xc6efb9, 0.8);
 
-    const up = scene.add.text(0, -57, "▲", controlTextStyle()).setOrigin(0.5);
-    const down = scene.add.text(0, 57, "▼", controlTextStyle()).setOrigin(0.5);
-    const left = scene.add.text(-59, 0, "◀", controlTextStyle()).setOrigin(0.5);
-    const right = scene.add.text(59, 0, "▶", controlTextStyle()).setOrigin(0.5);
+    const up = scene.add.text(0, -69, "▲", controlTextStyle()).setOrigin(0.5);
+    const down = scene.add.text(0, 69, "▼", controlTextStyle()).setOrigin(0.5);
+    const left = scene.add.text(-71, 0, "◀", controlTextStyle()).setOrigin(0.5);
+    const right = scene.add.text(71, 0, "▶", controlTextStyle()).setOrigin(0.5);
 
     this.root = scene.add.container(BASE_X, BASE_Y, [outer, inner, up, down, left, right, this.knob])
       .setDepth(225)
       .setScrollFactor(0)
       .setName("virtual-movement-joystick");
 
-    outer.setInteractive(new Phaser.Geom.Circle(0, 0, BASE_RADIUS), Phaser.Geom.Circle.Contains);
-    inner.setInteractive(new Phaser.Geom.Circle(0, 0, BASE_RADIUS - 10), Phaser.Geom.Circle.Contains);
-    this.knob.setInteractive(new Phaser.Geom.Circle(0, 0, KNOB_RADIUS + 18), Phaser.Geom.Circle.Contains);
+    outer.setInteractive(new Phaser.Geom.Circle(0, 0, BASE_RADIUS + 14), Phaser.Geom.Circle.Contains);
+    inner.setInteractive(new Phaser.Geom.Circle(0, 0, BASE_RADIUS - 4), Phaser.Geom.Circle.Contains);
+    this.knob.setInteractive(new Phaser.Geom.Circle(0, 0, KNOB_RADIUS + 26), Phaser.Geom.Circle.Contains);
 
     [outer, inner, this.knob].forEach((target) => {
       target.on("pointerdown", this.handlePointerDown, this);
@@ -87,12 +87,14 @@ export class VirtualJoystick {
 
   private shouldShow(): boolean {
     const coarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches ?? false;
-    return navigator.maxTouchPoints > 0 || coarsePointer;
+    const compactViewport = Math.min(window.innerWidth, window.innerHeight) <= 820;
+    return navigator.maxTouchPoints > 0 || coarsePointer || compactViewport;
   }
 
   private handlePointerDown(pointer: Phaser.Input.Pointer): void {
     if (!this.enabled || this.pointerId !== undefined) return;
     this.pointerId = pointer.id;
+    this.root?.setScale(1.035);
     this.updateFromPointer(pointer);
   }
 
@@ -122,12 +124,18 @@ export class VirtualJoystick {
     const ny = dy / distance;
     this.knob?.setPosition(nx * limitedDistance, ny * limitedDistance);
 
-    const strength = Phaser.Math.Clamp(distance / MAX_TRAVEL, 0, 1);
-    if (strength < DEAD_ZONE) {
+    const rawStrength = Phaser.Math.Clamp(distance / MAX_TRAVEL, 0, 1);
+    if (rawStrength < DEAD_ZONE) {
       this.axisX = 0;
       this.axisY = 0;
       return;
     }
+
+    const strength = Phaser.Math.Clamp(
+      (rawStrength - DEAD_ZONE) / (1 - DEAD_ZONE),
+      0,
+      1
+    );
     this.axisX = nx * strength;
     this.axisY = ny * strength;
   }
@@ -137,6 +145,7 @@ export class VirtualJoystick {
     this.axisX = 0;
     this.axisY = 0;
     this.knob?.setPosition(0, 0);
+    this.root?.setScale(1);
   }
 }
 
