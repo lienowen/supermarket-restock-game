@@ -33,14 +33,18 @@ const report = {
     focusedSceneDressing: false,
     ambientClutterAbsent: false,
     shelfRuleHidden: false,
+    legacyControlsHidden: false,
     singleFocusGuideActive: false,
     compactMemoryCard: false,
     maxSixCartBatchIcons: false,
     noLegacyCartBottleStrip: false,
+    onePrimaryPromptWhileCarrying: false,
+    onePrimaryPromptAtPlace: false,
     noRuntimeIssues: false
   },
   initial: null,
   restock: null,
+  placeReady: null,
   consoleErrors: [],
   pageErrors: [],
   failedRequests: [],
@@ -65,14 +69,18 @@ try {
   await page.goto(`${ORIGIN}/?test=1&briefing=0&guided=0&level=${LEVEL_ID}`, { waitUntil: "networkidle", timeout: 90000 });
   await page.waitForSelector(CANVAS, { state: "visible", timeout: 45000 });
   await page.waitForFunction((levelId) => document.body.dataset.activeLevel === levelId, LEVEL_ID, { timeout: 30000 });
-  await page.waitForFunction(() => document.body.dataset.levelTwoVisualHierarchy === "single-focus-v1", null, { timeout: 10000 });
+  await page.waitForFunction(() => document.body.dataset.levelTwoVisualHierarchy === "single-focus-v2", null, { timeout: 10000 });
 
   report.initial = await readClarityState(page);
   report.assertions.focusedSceneDressing = report.initial.sceneDressing === "level-two-focused";
   report.assertions.ambientClutterAbsent = report.initial.visibleAmbientNames.length === 0;
   report.assertions.shelfRuleHidden = report.initial.shelfRuleVisible === false;
+  report.assertions.legacyControlsHidden = !report.initial.oldTargetVisible && !report.initial.oldHudActionVisible;
   report.assertions.singleFocusGuideActive = Boolean(
-    report.initial.focusGuideVisible && report.initial.focusLabel === "PICK BOX"
+    report.initial.focusGuideVisible &&
+    report.initial.focusLabel === "PICK BOX" &&
+    !report.initial.placeControlVisible &&
+    report.initial.primaryPrompt === "focus-guide"
   );
   await page.screenshot({ path: join(OUTPUT_DIR, "level-2-focused-start.png"), fullPage: true });
 
@@ -117,8 +125,30 @@ try {
     report.restock.cartInventoryVisual === "six-three-bottle-batches"
   );
   report.assertions.noLegacyCartBottleStrip = report.restock.visibleLegacyCartBottles === 0;
-  report.assertions.noRuntimeIssues = report.consoleErrors.length === 0 && report.pageErrors.length === 0 && report.failedRequests.length === 0;
+  report.assertions.onePrimaryPromptWhileCarrying = Boolean(
+    report.restock.focusGuideVisible &&
+    report.restock.focusLabel === "PLACE 3" &&
+    !report.restock.placeControlVisible &&
+    report.restock.primaryPrompt === "focus-guide"
+  );
   await page.screenshot({ path: join(OUTPUT_DIR, "level-2-focused-restock.png"), fullPage: true });
+
+  await page.evaluate((sceneKey) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+    const point = { x: scene.context.world.beverageCooler.x, y: scene.context.world.cartCooler.y - 8 };
+    scene?.actors?.setDestination?.(point);
+  }, SCENE_KEY);
+  await page.waitForFunction(() => document.body.dataset.levelTwoContextAction === "place-ready", null, { timeout: 8000 });
+  await page.waitForTimeout(100);
+
+  report.placeReady = await readClarityState(page);
+  report.assertions.onePrimaryPromptAtPlace = Boolean(
+    !report.placeReady.focusGuideVisible &&
+    report.placeReady.placeControlVisible &&
+    report.placeReady.primaryPrompt === "place-control"
+  );
+  report.assertions.noRuntimeIssues = report.consoleErrors.length === 0 && report.pageErrors.length === 0 && report.failedRequests.length === 0;
+  await page.screenshot({ path: join(OUTPUT_DIR, "level-2-place-single-prompt.png"), fullPage: true });
 
   const failed = Object.entries(report.assertions).filter(([, ok]) => !ok).map(([key]) => key);
   if (failed.length) throw new Error(`Level 2 clarity gate failed: ${failed.join(", ")}`);
@@ -144,6 +174,9 @@ async function readClarityState(page) {
     const focus = scene?.children?.getByName?.("level-two-focus-guide");
     const focusLabel = focus?.list?.find?.((entry) => entry?.constructor?.name === "Text" && entry?.text)?.text ?? null;
     const shelfRule = scene?.children?.getByName?.("restock-cooler-shelf-rule");
+    const placeControl = scene?.children?.getByName?.("level-two-context-place-control");
+    const oldTarget = scene?.children?.getByName?.("starter-market-interaction-target");
+    const oldHudAction = scene?.children?.getByName?.("shift-hud-action");
     const ambientNames = [
       "ambient-produce-display", "ambient-backroom-rack", "ambient-shopping-cart",
       "ambient-dairy-aisle", "ambient-cleaning-aisle", "ambient-checkout",
@@ -151,11 +184,15 @@ async function readClarityState(page) {
     ];
     return {
       sceneDressing: document.body.dataset.sceneDressing ?? null,
+      primaryPrompt: document.body.dataset.levelTwoPrimaryPrompt ?? null,
       cartInventoryVisual: document.body.dataset.levelTwoCartInventoryVisual ?? null,
       visibleAmbientNames: ambientNames.filter((name) => scene?.children?.getByName?.(name)?.visible === true),
       shelfRuleVisible: shelfRule?.visible === true,
       focusGuideVisible: focus?.visible === true,
       focusLabel,
+      placeControlVisible: placeControl?.visible === true,
+      oldTargetVisible: oldTarget?.visible === true,
+      oldHudActionVisible: oldHudAction?.visible === true,
       visibleBatchIcons: list.filter((entry) => (
         typeof entry?.name === "string" && entry.name.startsWith("level-two-cart-batch-") && entry.visible === true
       )).length,
@@ -179,7 +216,7 @@ async function moveToContextPoint(page, key) {
 
 function attachListeners(page, audit) {
   page.on("console", (message) => { if (message.type() === "error") audit.consoleErrors.push(message.text()); });
-  page.on("pageerror", (error) => audit.pageErrors.push(error.message));
+  page.on("pageerror", (error) => audit.pageErrors.push(error.message);
   page.on("requestfailed", (request) => {
     const error = request.failure()?.errorText ?? "unknown";
     if (!error.includes("ERR_ABORTED")) audit.failedRequests.push({ url: request.url(), error });
