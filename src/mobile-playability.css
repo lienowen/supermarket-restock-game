@@ -1,0 +1,102 @@
+/* Mobile playability overrides.
+   Landscape remains the preferred presentation, but portrait must never block play. */
+
+@media (max-width: 760px) and (orientation: portrait) {
+  #app {
+    padding:
+      max(6px, env(safe-area-inset-top))
+      max(4px, env(safe-area-inset-right))
+      max(6px, env(safe-area-inset-bottom))
+      max(4px, env(safe-area-inset-left));
+  }
+
+  canvas {
+    opacity: 1 !important;
+    filter: none !important;
+    pointer-events: auto !important;
+    width: calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right)) !important;
+    height: auto !important;
+    max-width: none !important;
+    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom)) !important;
+    box-shadow: none !important;
+  }
+
+  /* Keep the rotate recommendation visible without turning it into a blocker. */
+  #mobile-orientation-hint {
+    inset: auto max(8px, env(safe-area-inset-right)) auto max(8px, env(safe-area-inset-left)) !important;
+    top: max(8px, env(safe-area-inset-top)) !important;
+    display: flex !important;
+    min-height: 36px;
+    flex-direction: row !important;
+    justify-content: center !important;
+    gap: 7px !important;
+    padding: 7px 10px !important;
+    border: 1px solid rgb(255 215 90 / 38%);
+    border-radius: 10px;
+    background: rgb(7 19 21 / 72%) !important;
+    color: #ffffff;
+    box-sizing: border-box;
+    backdrop-filter: blur(7px);
+  }
+
+  #mobile-orientation-hint::before {
+    content: "↻" !important;
+    margin: 0 !important;
+    font: 800 22px/1 Arial, sans-serif !important;
+    color: #ffd75a !important;
+  }
+
+  #mobile-orientation-hint strong {
+    font: 900 11px/1 Arial, sans-serif !important;
+    letter-spacing: 0.7px !important;
+  }
+
+  #mobile-orientation-hint span {
+    max-width: none !important;
+    font: 700 10px/1.15 Arial, sans-serif !important;
+  }
+
+  /* These overlays contain the Start / tutorial actions. Never hide them on phones. */
+  #level-checklist,
+  #level-briefing-overlay,
+  #guided-drag-action {
+    visibility: visible !important;
+  }
+
+  #level-checklist {
+    top: max(54px, calc(env(safe-area-inset-top) + 48px)) !important;
+    left: max(6px, env(safe-area-inset-left)) !important;
+    width: min(238px, calc(100vw - 12px)) !important;
+    transform: scale(0.84);
+    transform-origin: top left;
+  }
+
+  #level-briefing-overlay,
+  #guided-drag-action {
+    padding:
+      max(50px, calc(env(safe-area-inset-top) + 44px))
+      max(8px, env(safe-area-inset-right))
+      max(8px, env(safe-area-inset-bottom))
+      max(8px, env(safe-area-inset-left)) !important;
+  }
+
+  #level-briefing-overlay > div,
+  #guided-drag-action > div {
+    width: min(430px, 100%) !important;
+    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 60px) !important;
+  }
+
+  #level-briefing-overlay button,
+  #guided-drag-action button {
+    min-height: 48px !important;
+    touch-action: manipulation;
+  }
+}
+
+@media (hover: none), (pointer: coarse) {
+  button,
+  [role="button"] {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
