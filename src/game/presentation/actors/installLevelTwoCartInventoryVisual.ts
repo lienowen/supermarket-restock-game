@@ -9,12 +9,11 @@ const LEGACY_CART_BOTTLE_NAMES = Object.freeze([
   "restock-level-two-water-b",
   "restock-level-two-water-c"
 ]);
-const TOTAL_WATER_UNITS = 18;
-const CART_COLUMNS = 6;
-const CART_BOTTLE_WIDTH = 18;
-const CART_BOTTLE_HEIGHT = 48;
-const CART_COLUMN_GAP = 27;
-const CART_ROW_GAP = 18;
+const TOTAL_BATCHES = 6;
+const UNITS_PER_BATCH = 3;
+const CART_BOTTLE_WIDTH = 22;
+const CART_BOTTLE_HEIGHT = 56;
+const CART_COLUMN_GAP = 31;
 
 interface RestockActorInternals {
   readonly scene: Phaser.Scene;
@@ -25,7 +24,7 @@ interface RestockActorInternals {
 }
 
 const isLevelTwo = (): boolean => document.body.dataset.activeLevel === LEVEL_TWO_ID;
-const stockName = (index: number): string => `level-two-cart-water-${index}`;
+const stockName = (index: number): string => `level-two-cart-batch-${index}`;
 
 const originalSync = RestockActorView.prototype.sync;
 RestockActorView.prototype.sync = function syncLevelTwoCartInventory(
@@ -52,44 +51,50 @@ function renderCartInventory(
   view: RestockActorInternals,
   snapshot: RestockSceneSnapshot
 ): void {
+  // Remove the older three-bottle decorative strip. The cart now communicates
+  // inventory as six compact 3-bottle batches, matching the six shelf tasks.
   LEGACY_CART_BOTTLE_NAMES.forEach((name) => {
     const legacy = view.scene.children.getByName(name);
     if (legacy instanceof Phaser.GameObjects.Image) legacy.setVisible(false);
   });
+  for (let index = TOTAL_BATCHES; index < 18; index += 1) {
+    const legacy = view.scene.children.getByName(`level-two-cart-water-${index}`);
+    if (legacy instanceof Phaser.GameObjects.Image) legacy.setVisible(false);
+  }
 
   const show = snapshot.step === "restock";
   const carryingBatch = document.body.dataset.levelTwoBatch === "carrying-3";
-  const remaining = show
-    ? Math.max(0, TOTAL_WATER_UNITS - snapshot.stockedRows * 3 - (carryingBatch ? 3 : 0))
+  const remainingUnits = show
+    ? Math.max(0, TOTAL_BATCHES * UNITS_PER_BATCH - snapshot.stockedRows * UNITS_PER_BATCH - (carryingBatch ? UNITS_PER_BATCH : 0))
     : 0;
+  const remainingBatches = Math.ceil(remainingUnits / UNITS_PER_BATCH);
   const textureKey = view.scene.textures.exists(NORMALIZED_WATER_KEY)
     ? NORMALIZED_WATER_KEY
     : "restock-cola-bottle-hd-v2";
   const centreX = view.config.cartDestination.x;
-  const baselineY = view.config.cartDestination.y - 82;
+  const baselineY = view.config.cartDestination.y - 79;
 
-  for (let index = 0; index < TOTAL_WATER_UNITS; index += 1) {
+  for (let index = 0; index < TOTAL_BATCHES; index += 1) {
     const bottle = getOrCreateBottle(view.scene, index, textureKey);
-    if (index >= remaining) {
+    if (index >= remainingBatches) {
       bottle.setVisible(false);
       continue;
     }
 
-    const column = index % CART_COLUMNS;
-    const row = Math.floor(index / CART_COLUMNS);
     bottle
       .setTexture(textureKey)
       .setOrigin(0.5, 1)
       .setPosition(
-        centreX + (column - (CART_COLUMNS - 1) / 2) * CART_COLUMN_GAP,
-        baselineY - row * CART_ROW_GAP
+        centreX + (index - (TOTAL_BATCHES - 1) / 2) * CART_COLUMN_GAP,
+        baselineY + Math.abs(index - (TOTAL_BATCHES - 1) / 2) * 1.5
       )
       .setDisplaySize(CART_BOTTLE_WIDTH, CART_BOTTLE_HEIGHT)
-      .setDepth(25.12 - row * 0.015 + column * 0.001)
+      .setDepth(25.12 + index * 0.002)
       .setVisible(true);
   }
 
-  document.body.dataset.levelTwoCartInventory = String(remaining);
+  document.body.dataset.levelTwoCartInventory = String(remainingUnits);
+  document.body.dataset.levelTwoCartInventoryVisual = "six-three-bottle-batches";
 }
 
 function getOrCreateBottle(
