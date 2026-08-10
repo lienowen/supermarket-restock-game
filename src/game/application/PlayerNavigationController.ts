@@ -72,7 +72,8 @@ export class PlayerNavigationController {
     if (magnitude <= 0) return false;
 
     this.destination = undefined;
-    const distance = this.config.speed * (deltaMs / 1000);
+    const inputStrength = clamp(magnitude, 0, 1);
+    const distance = this.config.speed * inputStrength * (deltaMs / 1000);
     const next = this.clampPoint({
       x: this.x + (directionX / magnitude) * distance,
       y: this.y + (directionY / magnitude) * distance
