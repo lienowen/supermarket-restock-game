@@ -5,6 +5,7 @@ import {
   type NavigationPoint,
   type PlayerNavigationSnapshot
 } from "../../application/PlayerNavigationController";
+import { VirtualJoystick } from "../ui/VirtualJoystick";
 import { createOpaqueCutoutTexture } from "../visual/OpaqueCutoutTexture";
 
 export interface PlayerNavigationViewConfig {
@@ -49,6 +50,7 @@ export class PlayerNavigationView {
   private readonly walkArea: Phaser.GameObjects.Rectangle;
   private readonly shadow: Phaser.GameObjects.Ellipse;
   private readonly actor: Phaser.GameObjects.Image;
+  private readonly joystick: VirtualJoystick;
   private readonly keys?: NavigationKeys;
   private readonly idlePoseKey: string;
   private readonly walkPoseKeys?: readonly [string, string];
@@ -128,15 +130,19 @@ export class PlayerNavigationView {
       }) as NavigationKeys;
     }
 
+    this.joystick = new VirtualJoystick(scene);
     this.syncVisual(true);
   }
 
   update(deltaMs: number): void {
     if (!this.enabled) return;
     const frameDelta = Phaser.Math.Clamp(deltaMs, 0, MAX_MOVEMENT_DELTA_MS);
+    const joystick = this.joystick.vector();
+    const keyboardHorizontal = this.axis(this.keys?.left, this.keys?.a, this.keys?.right, this.keys?.d);
+    const keyboardVertical = this.axis(this.keys?.up, this.keys?.w, this.keys?.down, this.keys?.s);
+    const horizontal = joystick.active ? joystick.x : keyboardHorizontal;
+    const vertical = joystick.active ? joystick.y : keyboardVertical;
 
-    const horizontal = this.axis(this.keys?.left, this.keys?.a, this.keys?.right, this.keys?.d);
-    const vertical = this.axis(this.keys?.up, this.keys?.w, this.keys?.down, this.keys?.s);
     if (horizontal !== 0 || vertical !== 0) {
       if (!this.moving || this.destinationTween) this.config.onManualNavigation?.();
       this.cancelDestinationMovement();
@@ -246,6 +252,7 @@ export class PlayerNavigationView {
 
   setEnabled(enabled: boolean): void {
     this.enabled = enabled;
+    this.joystick.setEnabled(enabled);
     if (!enabled) {
       this.cancelDestinationMovement();
       this.setMoving(false);
@@ -256,6 +263,7 @@ export class PlayerNavigationView {
     this.cancelDestinationMovement();
     this.walkArea.off("pointerdown", this.handleWalkAreaPointerDown, this);
     this.walkArea.destroy();
+    this.joystick.destroy();
     this.actor.destroy();
     this.shadow.destroy();
   }
