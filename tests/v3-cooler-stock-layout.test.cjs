@@ -41,7 +41,7 @@ test("Cooler stock keeps six logical slots and eighteen real products", () => {
   assert.equal(COOLER_STOCK_TARGET_HEIGHT, 74);
 });
 
-test("Restock mode stocks directly into the cooler already in the project supermarket background", () => {
+test("Restock mode stocks directly into the cooler baked into the project background", () => {
   const environment = read("src/game/presentation/world/StarterMarketEnvironmentView.ts");
   const assetPacks = read("src/game/assets/GlobalAssetPackRegistry.ts");
   const wrapper = read("src/game/presentation/fixtures/BeverageCoolerView.ts");
@@ -50,11 +50,12 @@ test("Restock mode stocks directly into the cooler already in the project superm
   assert.equal(environment.includes('setName("beverage-cooler-stock-occluder")'), false);
   assert.equal(environment.includes('setName("beverage-cooler-empty-shell")'), false);
   assert.equal(environment.includes('setName("beverage-cooler-glass-overlay")'), false);
+  assert.equal(environment.includes("createStoreComposition"), false);
   assert.equal(assetPacks.includes('environmentAssetKey: "environment-project-restock-v2"'), true);
   assert.equal(environment.includes('environmentKey.startsWith("environment-project-")'), true);
   assert.equal(environment.includes('? "project-v2"'), true);
   assert.equal(
-    environment.includes('document.body.dataset.restockCoolerAsset = "world-integrated-layered"'),
+    environment.includes('document.body.dataset.restockCoolerAsset = "background-integrated-gameplay-only"'),
     true
   );
   assert.equal(wrapper.includes("closeupBackdrop"), false);
