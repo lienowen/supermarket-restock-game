@@ -77,15 +77,18 @@ try {
 
   const initial = await readState(page);
   report.initial = initial;
-  report.assertions.hdEnvironmentActive = initial.environmentKey === "environment-starter-market-restock-hd-v3";
+  report.assertions.hdEnvironmentActive = initial.environmentKey === "environment-project-cleaning-v2";
   report.assertions.solidWorkerActive = Boolean(initial.worker?.texture?.includes("--opaque-cutout"));
   report.assertions.matureCleanPresentationActive = (
     initial.presentation === "mature-clean-v2-scrub" && initial.spillArtMode === "water-juice-dirt-production"
   );
   report.assertions.threeProductionSpillsRegistered = (
-    initial.spills.length === 3 &&
-    initial.spills.map((spill) => spill.sourceKey).join("|") === "spill-water-large|spill-juice-large|spill-dirt-smear-large" &&
-    initial.spills.every((spill) => spill.artTexture?.includes("--clean-spill"))
+    initial.spills.length === initial.spotPositions.length &&
+    new Set(initial.spills.map((spill) => spill.sourceKey)).size === 3 &&
+    initial.spills.every((spill) =>
+      ["spill-water-large", "spill-juice-large", "spill-dirt-smear-large"].includes(spill.sourceKey) &&
+      spill.artTexture?.includes("--clean-spill")
+    )
   );
 
   const workerStart = initial.worker;
@@ -105,9 +108,9 @@ try {
   report.assertions.mopPoseIsSolid = Boolean(
     afterTools.worker?.texture?.includes("worker-a-mop-floor") && afterTools.worker?.texture?.includes("--opaque-cutout")
   );
-  report.assertions.spillSequenceUsesWaterJuiceDirt = (
-    afterTools.spills.map((spill) => spill.sourceKey).join("|") === "spill-water-large|spill-juice-large|spill-dirt-smear-large"
-  );
+  report.assertions.spillSequenceUsesWaterJuiceDirt = afterTools.spills.every((spill, index) => (
+    spill.sourceKey === ["spill-water-large", "spill-juice-large", "spill-dirt-smear-large"][index % 3]
+  ));
   report.assertions.legacyHoldOverlayHidden = await page.evaluate(() => {
     const overlay = document.getElementById("hold-work-overlay");
     return !overlay || getComputedStyle(overlay).display === "none";
@@ -186,7 +189,9 @@ async function readState(page) {
   return page.evaluate((sceneKey) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
     const worker = scene?.children?.getByName?.("clean-worker");
-    const spills = [1, 2, 3].map((index) => {
+    const spotPositions = [...(scene?.context?.runtime?.spotPositions ?? [])];
+    const spills = spotPositions.map((_, zeroIndex) => {
+      const index = zeroIndex + 1;
       const spill = scene?.children?.getByName?.(`clean-spill-${index}`);
       const art = spill?.list?.find?.((entry) => entry?.name === `clean-spill-art-${index}`);
       return spill ? {
@@ -205,7 +210,7 @@ async function readState(page) {
       scrubProgress: Number(document.body.dataset.cleanScrubProgress ?? "0"),
       controller: scene?.controller?.snapshot?.() ?? null,
       toolPoint: scene?.context?.runtime?.toolPoint ?? null,
-      spotPositions: [...(scene?.context?.runtime?.spotPositions ?? [])],
+      spotPositions,
       worker: worker ? {
         x: worker.x, y: worker.y,
         texture: worker.texture?.key ?? null,
