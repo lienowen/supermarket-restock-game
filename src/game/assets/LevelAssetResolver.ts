@@ -80,7 +80,6 @@ const CLEAN_SPILL_ASSET_KEYS = Object.freeze([
   "spill-dirt-smear-large"
 ]);
 const FIRST_DELIVERY_LEVEL_ID = "starter-level-001";
-const PROMOTION_RESTOCK_LEVEL_ID = "starter-level-002";
 
 const resolveDescriptors = (
   registry: RuntimeAssetRegistry,
@@ -121,32 +120,18 @@ const restockPreloadKeys = (
   ];
 
   // First Delivery can render and begin movement without the HD stock bottle or
-  // the open-case art. Both are needed only after pickup/load/push, so loading
-  // them in the blocking Phaser preload needlessly delays the first frame on
-  // mobile. Level 1's polish installer starts the required late art in the
-  // background immediately after the scene is created.
+  // the open-case art. Both load after the first frame.
   if (level.id === FIRST_DELIVERY_LEVEL_ID) {
     return Object.freeze(criticalGameplayKeys);
   }
 
-  const gameplayKeys = [
+  // All later restock levels use the cooler/department architecture already
+  // baked into their authored background. Only changing gameplay art blocks
+  // entry; ambient departments and generic store dressing are not downloaded.
+  return Object.freeze([
     ...criticalGameplayKeys,
     caseAssets.openAssetKey,
     runtime.product.assetKey
-  ];
-
-  // L2 now uses the dedicated authored promotion background without reusable
-  // department/customer dressing. Do not download those hidden assets either;
-  // the only blocking art is what the player actually sees or interacts with.
-  if (level.id === PROMOTION_RESTOCK_LEVEL_ID) {
-    return Object.freeze(gameplayKeys);
-  }
-
-  return Object.freeze([
-    ...gameplayKeys,
-    ...pack.sharedStoreAssetKeys,
-    runtime.fixture.assetKey,
-    ...pack.ambientProductAssetKeys
   ]);
 };
 
@@ -189,10 +174,11 @@ export function resolveCheckoutLevelAssets(
   const environmentAssetKey = resolveLevelEnvironmentAssetKey(level.id, pack.environmentAssetKey);
   const preload = resolveDescriptors(registry, [
     environmentAssetKey,
-    ...pack.sharedStoreAssetKeys,
     ...pack.workerWalkAssetKeys,
     pack.workerIdleAssetKey,
     pack.workerScanAssetKey,
+    // Kept for compatibility while the checkout contract still exposes a
+    // fixture descriptor; the visual counter itself is now baked into the plate.
     runtime.fixture.assetKey,
     ...pack.customerAssetKeys,
     ...pack.equipmentAssetKeys,
@@ -219,7 +205,6 @@ export function resolveCleanLevelAssets(
   const environmentAssetKey = resolveLevelEnvironmentAssetKey(level.id, pack.environmentAssetKey);
   const preload = resolveDescriptors(registry, [
     environmentAssetKey,
-    ...pack.sharedStoreAssetKeys,
     ...pack.workerWalkAssetKeys,
     pack.workerIdleAssetKey,
     pack.workerMopAssetKey,
@@ -250,11 +235,12 @@ export function resolveFindItemsLevelAssets(
   const environmentAssetKey = resolveLevelEnvironmentAssetKey(level.id, pack.environmentAssetKey);
   const preload = resolveDescriptors(registry, [
     environmentAssetKey,
-    ...pack.sharedStoreAssetKeys,
     ...pack.workerWalkAssetKeys,
     pack.workerIdleAssetKey,
     pack.workerThinkingAssetKey,
     pack.basketAssetKey,
+    // Level 5 still creates then removes its legacy static fixture layer during
+    // migration. Keep the descriptor loaded until that creation path is deleted.
     runtime.fixture.assetKey,
     ...productAssetKeys
   ]);
