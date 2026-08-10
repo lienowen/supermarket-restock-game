@@ -21,6 +21,7 @@ import { mountGuidedLevelBriefingDomOverlay } from "../../presentation/ui/Guided
 import { mountHoldWorkDom } from "../../presentation/ui/HoldWorkDom";
 import { mountLevelBriefingDomOverlay } from "../../presentation/ui/LevelBriefingDomOverlay";
 import { BrowserCampaignSessionStore } from "../browser/BrowserCampaignSessionStore";
+import { requestMobileLandscapeMode } from "../browser/MobileLandscapeController";
 import { createGameplayScene } from "./GameplaySceneRegistry";
 import { installSafeInteractiveGuard } from "./SafeInteractiveGuard";
 
@@ -292,6 +293,7 @@ export async function createPhaserGame(
     };
 
     const onStart = (): void => {
+      void requestMobileLandscapeMode();
       startRequested = true;
       resumeShift();
     };
