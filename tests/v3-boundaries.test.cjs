@@ -57,14 +57,17 @@ test("Renderer stays antialiased and requests the high-performance GPU path", ()
   assert.equal(source.includes('powerPreference: "high-performance"'), true);
 });
 
-test("Every mode builds the store from layered assets instead of a stretched backdrop", () => {
+test("Every mode keeps static store architecture in the authored background", () => {
   const source = read("src/game/presentation/world/StarterMarketEnvironmentView.ts");
-  assert.equal(source.includes("restock-aisle-v2-background"), false);
-  assert.equal(source.includes("createRestockAisle"), false);
   assert.equal(source.includes("this.createBase()"), true);
-  assert.equal(source.includes("this.createFloor()"), true);
-  assert.equal(source.includes("fixture-backroom-rack-a"), true);
-  assert.equal(source.includes("fixture-produce-display-a"), true);
+  assert.equal(source.includes("createGameplayCalmWash"), true);
+  assert.equal(source.includes('"background-only"'), true);
+  assert.equal(source.includes('"campaign-background-led"'), true);
+  assert.equal(source.includes("createStoreComposition"), false);
+  assert.equal(source.includes("createAmbientLife"), false);
+  assert.equal(source.includes("createFloor"), false);
+  assert.equal(source.includes("fixture-backroom-rack-a"), false);
+  assert.equal(source.includes("fixture-produce-display-a"), false);
 });
 
 test("Restock actor presentation composes the shared navigation view", () => {
