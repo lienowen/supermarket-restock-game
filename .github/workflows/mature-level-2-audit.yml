@@ -10,7 +10,9 @@ on:
       - "src/game/presentation/fixtures/**"
       - "src/game/presentation/ui/**"
       - "src/game/presentation/visual/**"
+      - "src/game/world/starterMarketLayout.ts"
       - "scripts/capture-promotion-memory.mjs"
+      - "scripts/capture-level-two-contextual.mjs"
       - ".github/workflows/mature-level-2-audit.yml"
   pull_request:
     branches:
@@ -21,7 +23,9 @@ on:
       - "src/game/presentation/fixtures/**"
       - "src/game/presentation/ui/**"
       - "src/game/presentation/visual/**"
+      - "src/game/world/starterMarketLayout.ts"
       - "scripts/capture-promotion-memory.mjs"
+      - "scripts/capture-level-two-contextual.mjs"
       - ".github/workflows/mature-level-2-audit.yml"
   workflow_dispatch:
 
@@ -30,7 +34,7 @@ permissions:
   statuses: write
 
 jobs:
-  mature-memory:
+  contextual-restock:
     runs-on: ubuntu-latest
     timeout-minutes: 12
 
@@ -55,10 +59,10 @@ jobs:
       - name: Build production bundle
         run: npm run build
 
-      - name: Verify routed Level 2 memory flow
+      - name: Verify Level 2 contextual restock flow
         id: audit
         continue-on-error: true
-        run: node scripts/capture-promotion-memory.mjs
+        run: node scripts/capture-level-two-contextual.mjs
 
       - name: Upload Level 2 evidence
         if: always()
@@ -77,10 +81,10 @@ jobs:
         run: |
           if [ "$AUDIT_OUTCOME" = "success" ]; then
             STATE=success
-            DESC="routed carry/push + memory challenge passed"
+            DESC="V2 background + proximity pickup + contextual PLACE passed"
           else
             STATE=failure
-            DESC="mature Level 2 browser audit failed"
+            DESC="mature Level 2 contextual browser audit failed"
           fi
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state="$STATE" \
