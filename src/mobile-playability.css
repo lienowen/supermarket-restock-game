@@ -1,105 +1,86 @@
-/* Mobile playability rules.
-   Mobile gameplay is landscape-only. Browsers that support runtime orientation
-   locking enter landscape automatically after a user gesture; others show a
-   clear rotate gate instead of running a compromised portrait layout. */
-
-#landscape-lock-gate {
-  position: fixed;
-  inset: 0;
-  z-index: 30000;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  padding:
-    max(24px, env(safe-area-inset-top))
-    max(20px, env(safe-area-inset-right))
-    max(24px, env(safe-area-inset-bottom))
-    max(20px, env(safe-area-inset-left));
-  box-sizing: border-box;
-  background:
-    radial-gradient(circle at 50% 42%, rgb(40 79 58 / 34%), transparent 52%),
-    rgb(5 16 17 / 97%);
-  color: #ffffff;
-  text-align: center;
-  backdrop-filter: blur(12px);
-}
-
-#landscape-lock-gate[data-visible="true"] {
-  display: flex;
-}
-
-.landscape-lock-card {
-  width: min(460px, 100%);
-  padding: 26px 24px 22px;
-  border: 2px solid rgb(255 215 90 / 62%);
-  border-radius: 22px;
-  background: linear-gradient(150deg, rgb(10 31 27 / 98%), rgb(18 51 39 / 98%));
-  box-shadow:
-    0 28px 80px rgb(0 0 0 / 54%),
-    inset 0 1px 0 rgb(255 255 255 / 7%);
-}
-
-.landscape-lock-icon {
-  margin-bottom: 10px;
-  color: #ffd75a;
-  font: 900 70px/0.9 Arial, sans-serif;
-}
-
-.landscape-lock-card strong,
-.landscape-lock-card p,
-.landscape-lock-card span {
-  display: block;
-}
-
-.landscape-lock-card strong {
-  color: #fff6cd;
-  font: 900 25px/1 Arial, sans-serif;
-  letter-spacing: 2px;
-}
-
-.landscape-lock-card p {
-  margin: 13px 0 17px;
-  color: #e3eee9;
-  font: 800 15px/1.45 Arial, sans-serif;
-}
-
-#landscape-lock-action {
-  width: 100%;
-  min-height: 54px;
-  padding: 12px 16px;
-  border: 2px solid #ffe378;
-  border-radius: 14px;
-  background: #4e8d55;
-  color: #ffffff;
-  font: 900 14px/1 Arial, sans-serif;
-  letter-spacing: 1px;
-  box-shadow: 0 12px 30px rgb(0 0 0 / 28%);
-  touch-action: manipulation;
-}
-
-#landscape-lock-action:active {
-  transform: translateY(1px) scale(0.99);
-}
-
-#landscape-lock-action:disabled {
-  opacity: 0.72;
-}
-
-.landscape-lock-card span {
-  margin-top: 12px;
-  color: #b9ccc4;
-  font: 700 12px/1.4 Arial, sans-serif;
-}
+/* Mobile landscape policy.
+   The game automatically requests landscape on load. There is no dedicated
+   orientation button or gate. Portrait is only a transient fallback while the
+   browser decides whether it can honor the landscape request. */
 
 @media (max-width: 760px) and (orientation: portrait) {
   canvas {
-    opacity: 0.12 !important;
-    filter: blur(3px) !important;
+    opacity: 0.34 !important;
+    filter: blur(1.5px) !important;
+    pointer-events: auto !important;
+  }
+
+  /* Keep the existing game Start flow usable. The Start action also retries
+     orientation locking from a valid user gesture, without adding another tap. */
+  #level-briefing-overlay,
+  #guided-drag-action {
+    visibility: visible !important;
+    pointer-events: auto !important;
+    z-index: 24000 !important;
+  }
+
+  #level-briefing-overlay {
+    padding:
+      max(48px, calc(env(safe-area-inset-top) + 42px))
+      max(10px, env(safe-area-inset-right))
+      max(10px, env(safe-area-inset-bottom))
+      max(10px, env(safe-area-inset-left)) !important;
+  }
+
+  #level-briefing-overlay > div,
+  #guided-drag-action > div {
+    width: min(430px, 100%) !important;
+    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 60px) !important;
+    overflow: auto;
+  }
+
+  #level-briefing-overlay button,
+  #guided-drag-action button {
+    min-height: 50px !important;
+    touch-action: manipulation;
+  }
+
+  #level-checklist {
+    visibility: hidden !important;
     pointer-events: none !important;
   }
 
-  /* The new landscape gate owns portrait guidance. */
-  #mobile-orientation-hint,
+  /* This is status only, never an input blocker. */
+  #mobile-orientation-hint {
+    inset: auto max(8px, env(safe-area-inset-right)) auto max(8px, env(safe-area-inset-left)) !important;
+    top: max(8px, env(safe-area-inset-top)) !important;
+    display: flex !important;
+    min-height: 34px;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 7px !important;
+    padding: 6px 10px !important;
+    border: 1px solid rgb(255 215 90 / 34%);
+    border-radius: 10px;
+    background: rgb(7 19 21 / 72%) !important;
+    box-sizing: border-box;
+    backdrop-filter: blur(7px);
+    pointer-events: none !important;
+  }
+
+  #mobile-orientation-hint::before {
+    content: "↻" !important;
+    margin: 0 !important;
+    font: 800 20px/1 Arial, sans-serif !important;
+    color: #ffd75a !important;
+  }
+
+  #mobile-orientation-hint strong {
+    font: 900 10px/1 Arial, sans-serif !important;
+    letter-spacing: 0.7px !important;
+  }
+
+  #mobile-orientation-hint span {
+    max-width: none !important;
+    font: 700 9px/1.1 Arial, sans-serif !important;
+  }
+
   #mobile-fullscreen-button,
   #mobile-game-hud,
   #mobile-game-task,
@@ -107,17 +88,10 @@
   #mobile-storefront-close {
     display: none !important;
   }
-
-  #level-checklist,
-  #level-briefing-overlay,
-  #guided-drag-action {
-    visibility: hidden !important;
-    pointer-events: none !important;
-  }
 }
 
 @media (orientation: landscape) and (max-height: 760px) {
-  #landscape-lock-gate {
+  #mobile-orientation-hint {
     display: none !important;
   }
 }
