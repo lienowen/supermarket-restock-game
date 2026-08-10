@@ -23,11 +23,31 @@ interface PrimaryActionScenePort {
   };
 }
 
+interface DragPoint {
+  readonly x: number;
+  readonly y: number;
+}
+
 const applyStyles = (element: HTMLElement, styles: Partial<CSSStyleDeclaration>): void => {
   Object.assign(element.style, styles);
 };
 
 const assetUrl = (path: string): string => `/${path.replace(/^\/+/, "")}`;
+const softwareLandscapeActive = (): boolean => (
+  document.body.dataset.softwareLandscape === "true"
+);
+const coarsePointerActive = (): boolean => (
+  window.matchMedia?.("(pointer: coarse)")?.matches ?? false
+);
+
+/** Convert viewport PointerEvent coordinates into the local axes of the stage.
+ * The portrait fallback rotates body +90deg, so local landscape X follows
+ * viewport Y and local landscape Y follows negative viewport X. */
+const dragPoint = (event: PointerEvent): DragPoint => (
+  softwareLandscapeActive()
+    ? { x: event.clientY, y: window.innerWidth - event.clientX }
+    : { x: event.clientX, y: event.clientY }
+);
 
 export function mountGuidedDragActionDom(
   config: GuidedDragActionDomConfig
@@ -115,7 +135,7 @@ export function mountGuidedDragActionDom(
     cursor: "grab",
     userSelect: "none",
     touchAction: "none",
-    transition: "border-color 120ms ease, background 120ms ease, transform 120ms ease"
+    transition: "border-color 120ms ease, background 120ms ease"
   });
 
   const sourceImage = document.createElement("img");
@@ -246,6 +266,32 @@ export function mountGuidedDragActionDom(
 
   const isReady = (): boolean => Boolean(scenePort()?.isInteractionReady?.());
 
+  const dropTolerance = (): number => (
+    softwareLandscapeActive() || coarsePointerActive() ? 56 : 10
+  );
+
+  const sourceCentreInsideTarget = (): boolean => {
+    const sourceRect = source.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    const tolerance = dropTolerance();
+    const centreX = sourceRect.left + sourceRect.width / 2;
+    const centreY = sourceRect.top + sourceRect.height / 2;
+    return (
+      centreX >= targetRect.left - tolerance &&
+      centreX <= targetRect.right + tolerance &&
+      centreY >= targetRect.top - tolerance &&
+      centreY <= targetRect.bottom + tolerance
+    );
+  };
+
+  const updateTargetFeedback = (): void => {
+    const overTarget = sourceCentreInsideTarget();
+    target.style.transform = overTarget ? "scale(1.035)" : "scale(1)";
+    target.style.background = overTarget
+      ? "rgba(90, 145, 79, 0.34)"
+      : "rgba(90, 145, 79, 0.12)";
+  };
+
   const resetSource = (): void => {
     dragging = false;
     keyboardPicked = false;
@@ -259,6 +305,7 @@ export function mountGuidedDragActionDom(
     target.style.borderColor = "rgba(255, 217, 94, 0.6)";
     target.style.background = "rgba(90, 145, 79, 0.12)";
     target.style.transform = "scale(1)";
+    document.body.dataset.mobileGuidedDrag = "ready";
   };
 
   const hide = (state: "complete" | "closed"): void => {
@@ -306,19 +353,6 @@ export function mountGuidedDragActionDom(
     action.emit("pointerdown");
   };
 
-  const sourceCentreInsideTarget = (): boolean => {
-    const sourceRect = source.getBoundingClientRect();
-    const targetRect = target.getBoundingClientRect();
-    const centreX = sourceRect.left + sourceRect.width / 2;
-    const centreY = sourceRect.top + sourceRect.height / 2;
-    return (
-      centreX >= targetRect.left &&
-      centreX <= targetRect.right &&
-      centreY >= targetRect.top &&
-      centreY <= targetRect.bottom
-    );
-  };
-
   const blockUnderlyingPointer = (event: Event): void => {
     event.stopPropagation();
   };
@@ -332,51 +366,74 @@ export function mountGuidedDragActionDom(
     event.stopPropagation();
   });
 
+  const removeWindowDragListeners = (): void => {
+    window.removeEventListener("pointermove", handleWindowPointerMove, true);
+    window.removeEventListener("pointerup", handleWindowPointerUp, true);
+    window.removeEventListener("pointercancel", handleWindowPointerCancel, true);
+  };
+
+  function handleWindowPointerMove(event: PointerEvent): void {
+    if (!dragging || pointerId !== event.pointerId) return;
+    event.preventDefault();
+    const point = dragPoint(event);
+    translateX = point.x - startX;
+    translateY = point.y - startY;
+    source.style.transform = `translate3d(${translateX}px, ${translateY}px, 0)`;
+    updateTargetFeedback();
+  }
+
+  function handleWindowPointerUp(event: PointerEvent): void {
+    if (!dragging || pointerId !== event.pointerId) return;
+    event.preventDefault();
+    const point = dragPoint(event);
+    translateX = point.x - startX;
+    translateY = point.y - startY;
+    source.style.transform = `translate3d(${translateX}px, ${translateY}px, 0)`;
+    const accepted = sourceCentreInsideTarget();
+    if (source.hasPointerCapture(event.pointerId)) {
+      try { source.releasePointerCapture(event.pointerId); } catch { /* browser already released */ }
+    }
+    dragging = false;
+    pointerId = undefined;
+    removeWindowDragListeners();
+    if (accepted) {
+      document.body.dataset.mobileGuidedDrag = "accepted";
+      confirmPrimaryAction();
+    } else {
+      feedback.textContent = "Drag the case onto the cart";
+      feedback.style.color = "#ffba9b";
+      resetSource();
+    }
+  }
+
+  function handleWindowPointerCancel(event: PointerEvent): void {
+    if (pointerId !== event.pointerId) return;
+    removeWindowDragListeners();
+    resetSource();
+  }
+
   source.addEventListener("pointerdown", (event) => {
-    if (!visible || completed) return;
+    if (!visible || completed || dragging) return;
     event.preventDefault();
     event.stopPropagation();
+    const point = dragPoint(event);
     dragging = true;
     pointerId = event.pointerId;
-    startX = event.clientX - translateX;
-    startY = event.clientY - translateY;
-    source.setPointerCapture(event.pointerId);
+    startX = point.x - translateX;
+    startY = point.y - translateY;
+    try { source.setPointerCapture(event.pointerId); } catch { /* window capture listeners are the fallback */ }
     source.style.zIndex = "2";
     source.style.cursor = "grabbing";
     source.style.borderColor = "#ffd95e";
     feedback.textContent = "Keep dragging into the cart";
+    feedback.style.color = "#ffd95e";
+    document.body.dataset.mobileGuidedDrag = softwareLandscapeActive()
+      ? "dragging-software-landscape"
+      : "dragging";
+    window.addEventListener("pointermove", handleWindowPointerMove, { capture: true, passive: false });
+    window.addEventListener("pointerup", handleWindowPointerUp, { capture: true, passive: false });
+    window.addEventListener("pointercancel", handleWindowPointerCancel, { capture: true, passive: false });
   });
-
-  source.addEventListener("pointermove", (event) => {
-    if (!dragging || pointerId !== event.pointerId) return;
-    event.preventDefault();
-    event.stopPropagation();
-    translateX = event.clientX - startX;
-    translateY = event.clientY - startY;
-    source.style.transform = `translate(${translateX}px, ${translateY}px)`;
-    const overTarget = sourceCentreInsideTarget();
-    target.style.transform = overTarget ? "scale(1.025)" : "scale(1)";
-    target.style.background = overTarget
-      ? "rgba(90, 145, 79, 0.3)"
-      : "rgba(90, 145, 79, 0.12)";
-  });
-
-  source.addEventListener("pointerup", (event) => {
-    if (!dragging || pointerId !== event.pointerId) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const accepted = sourceCentreInsideTarget();
-    if (source.hasPointerCapture(event.pointerId)) source.releasePointerCapture(event.pointerId);
-    if (accepted) {
-      confirmPrimaryAction();
-    } else {
-      feedback.textContent = "Drop the whole case inside the cart area";
-      feedback.style.color = "#ffba9b";
-      resetSource();
-    }
-  });
-
-  source.addEventListener("pointercancel", () => resetSource());
 
   source.addEventListener("keydown", (event) => {
     if (event.key !== "Enter" && event.key !== " ") return;
@@ -416,6 +473,7 @@ export function mountGuidedDragActionDom(
 
   return Object.freeze({
     destroy: () => {
+      removeWindowDragListeners();
       if (readinessTimer !== undefined) window.clearInterval(readinessTimer);
       disposers.forEach((dispose) => dispose());
       setSceneInputEnabled(true);
