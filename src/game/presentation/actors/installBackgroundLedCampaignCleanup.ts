@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { createTrimmedTexture } from "../visual/TrimmedTexture";
 import { GoldenOrderHuntScene } from "../scenes/GoldenOrderHuntScene";
 import { UtilityTaskScene } from "../scenes/UtilityTaskScene";
 
@@ -45,6 +46,24 @@ const moveNamedProducts = (
   });
 };
 
+const trimSimpleOrderProducts = (scene: Phaser.Scene): void => {
+  Object.keys(SIMPLE_ORDER_PRODUCT_POSITIONS).forEach((name) => {
+    const object = scene.children.getByName(name);
+    if (!(object instanceof Phaser.GameObjects.Image)) return;
+    const width = object.displayWidth;
+    const height = object.displayHeight;
+    const sourceKey = object.texture.key;
+    const trimmedKey = createTrimmedTexture(scene, sourceKey, {
+      alphaThreshold: 10,
+      suffix: "--priority-order-trimmed",
+      padding: 1
+    });
+    object
+      .setTexture(trimmedKey)
+      .setDisplaySize(width, height);
+  });
+};
+
 /**
  * A simple three-item order has no decoys. Its products still belong on the
  * authored Produce/Grocery/Dairy shelves rather than floating in the aisle.
@@ -66,8 +85,10 @@ UtilityTaskScene.prototype.create = function createBackgroundLedUtility(
   ));
   if (requested.length !== 3 || decoys.length !== 0) return;
 
+  trimSimpleOrderProducts(this);
   moveNamedProducts(this, SIMPLE_ORDER_PRODUCT_POSITIONS);
   document.body.dataset.findItemsProductPlacement = "baked-departments-v2";
+  document.body.dataset.findItemsProductCut = "trimmed-v2";
 };
 
 /**
