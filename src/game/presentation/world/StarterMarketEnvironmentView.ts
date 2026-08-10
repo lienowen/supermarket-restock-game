@@ -1,27 +1,17 @@
 import Phaser from "phaser";
 import type { StarterMarketPresentationContext } from "../context/StarterMarketPresentationContext";
 
-const PURE_BACKGROUND_LEVEL_IDS = new Set(["starter-level-001"]);
-const BACKGROUND_LED_LEVEL_IDS = new Set([
-  "starter-level-002",
-  "starter-level-003",
-  "starter-level-004",
-  "starter-level-005",
-  "starter-level-006",
-  "starter-level-007",
-  "starter-level-008",
-  "starter-level-009",
-  "starter-level-010"
-]);
-
 /**
  * The authored level plate owns the supermarket environment.
  *
  * Runtime layers are reserved for gameplay state only: worker/customer actors,
  * products, cases, carts, spills, tools and interaction feedback. Static store
  * dressing is intentionally not composed here because the project backgrounds
- * already contain the shelves, checkout lanes and coolers in one coherent
+ * already contain shelves, checkout lanes and coolers in one coherent
  * perspective/lighting pass.
+ *
+ * Scene emphasis is driven by gameplay configuration rather than concrete level
+ * IDs, so future campaign levels inherit the same visual contract automatically.
  */
 export class StarterMarketEnvironmentView {
   constructor(
@@ -32,22 +22,28 @@ export class StarterMarketEnvironmentView {
   create(): void {
     this.createBase();
 
-    const levelId = this.context.campaignLevel.level.id;
-    if (PURE_BACKGROUND_LEVEL_IDS.has(levelId)) {
+    if (this.isGuidedRestock()) {
+      // First-time guided restock gets no non-gameplay overlay at all.
       document.body.dataset.sceneDressing = "background-only";
-    } else if (BACKGROUND_LED_LEVEL_IDS.has(levelId)) {
-      document.body.dataset.sceneDressing = levelId === "starter-level-002"
-        ? "level-two-focused"
-        : "campaign-background-led";
-      this.createGameplayCalmWash();
+    } else if (this.isMemoryRestock()) {
+      document.body.dataset.sceneDressing = "level-two-focused";
+      this.createGameplayCalmWash(true);
     } else {
-      // Future campaign levels default to the same safe rule instead of silently
-      // reintroducing decorative runtime shelves/customers.
       document.body.dataset.sceneDressing = "campaign-background-led";
-      this.createGameplayCalmWash();
+      this.createGameplayCalmWash(false);
     }
 
     this.registerRestockCoolerPresentation();
+  }
+
+  private isGuidedRestock(): boolean {
+    return this.context.mode === "restock" &&
+      this.context.campaignLevel.level.tuning.rush?.timeoutEnabled === false;
+  }
+
+  private isMemoryRestock(): boolean {
+    return this.context.mode === "restock" &&
+      this.context.campaignLevel.level.tuning.rush?.memoryPreview !== undefined;
   }
 
   private createBase(): void {
@@ -69,22 +65,21 @@ export class StarterMarketEnvironmentView {
       .setName("commercial-supermarket-salesfloor");
   }
 
-  private createGameplayCalmWash(): void {
+  private createGameplayCalmWash(memoryRestock: boolean): void {
     const { scene, context } = this;
-    const isLevelTwo = context.campaignLevel.level.id === "starter-level-002";
 
-    // A neutral wash is the only non-gameplay layer. L2 remains slightly calmer
-    // because its memory task needs the strongest single-focus hierarchy.
+    // This neutral wash is the only non-gameplay environment layer. Memory
+    // restock is slightly calmer because memorization needs the strongest focus.
     scene.add.rectangle(
       context.world.width / 2,
       context.world.height / 2,
       context.world.width,
       context.world.height,
       0x07110e,
-      isLevelTwo ? 0.06 : 0.025
+      memoryRestock ? 0.06 : 0.025
     )
       .setDepth(4)
-      .setName(isLevelTwo ? "level-two-background-calm-wash" : "campaign-background-calm-wash");
+      .setName(memoryRestock ? "level-two-background-calm-wash" : "campaign-background-calm-wash");
   }
 
   private registerRestockCoolerPresentation(): void {
