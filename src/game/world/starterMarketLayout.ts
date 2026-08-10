@@ -1,9 +1,10 @@
 import type { StoreWorldLayout } from "./WorldLayout";
 
 /**
- * Shared 1600x900 market composition. The supermarket background remains the
- * primary scene: the baked cooler lives on the right, while the employee, cart
- * and open case occupy the left foreground during restocking.
+ * Shared 1600x900 market composition. Restock gameplay is aligned to the V2
+ * project background: backroom access on the left, cart in the open foreground,
+ * and the beverage coolers on the right. Dynamic props stay on the walkable
+ * floor instead of inheriting coordinates from the retired salesfloor plate.
  */
 export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
   id: "starter-market-layout",
@@ -23,13 +24,13 @@ export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
       id: "staff-backroom",
       kind: "backroom",
       label: "Staff Only",
-      bounds: { x: 545, y: 170, width: 430, height: 500 }
+      bounds: { x: 245, y: 245, width: 360, height: 655 }
     },
     {
       id: "beverage-zone",
       kind: "beverage",
       label: "Beverages",
-      bounds: { x: 740, y: 120, width: 760, height: 780 }
+      bounds: { x: 650, y: 180, width: 950, height: 720 }
     },
     {
       id: "checkout-zone",
@@ -47,7 +48,7 @@ export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
     },
     {
       fixtureId: "backroom-rack-a",
-      position: { x: 760, y: 470 },
+      position: { x: 455, y: 565 },
       anchor: [0.5, 0.92],
       depth: 18
     },
@@ -69,22 +70,22 @@ export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
       id: "cola-case-pickup-point",
       targetId: "cola-case-a",
       actionGroup: "case",
-      position: { x: 1240, y: 790 },
-      radius: 110
+      position: { x: 470, y: 790 },
+      radius: 130
     },
     {
       id: "restock-cart-load-point",
       targetId: "restock-cart-a",
       actionGroup: "cart",
-      position: { x: 1070, y: 805 },
-      radius: 120
+      position: { x: 610, y: 800 },
+      radius: 145
     },
     {
       id: "beverage-restock-zone",
       targetId: "beverage-cooler-a",
       actionGroup: "parking-zone",
-      position: { x: 720, y: 760 },
-      radius: 150
+      position: { x: 830, y: 800 },
+      radius: 175
     },
     {
       id: "checkout-service-point",
@@ -98,7 +99,7 @@ export const STARTER_MARKET_LAYOUT: StoreWorldLayout = {
     {
       id: "worker-a-spawn",
       actorType: "worker",
-      position: { x: 920, y: 790 },
+      position: { x: 760, y: 790 },
       facing: "back-right"
     },
     {
