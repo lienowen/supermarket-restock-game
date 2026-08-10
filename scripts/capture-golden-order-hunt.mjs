@@ -131,8 +131,8 @@ try {
 
   report.assertions.goldenSceneActive = presentation.goldenLevel === "level-5-mature-pass-v1";
   report.assertions.hdEnvironmentActive = Boolean(
-    presentation.goldenEnvironment === "environment-starter-market-restock-hd-v3" &&
-    presentation.environment?.textureKey === "environment-starter-market-restock-hd-v3" &&
+    presentation.goldenEnvironment === "environment-project-order-hunt-v2" &&
+    presentation.environment?.textureKey === "environment-project-order-hunt-v2" &&
     presentation.environment.sourceWidth >= 1600 && presentation.environment.sourceHeight >= 900 &&
     presentation.goldenWorldScale === "trimmed-v3"
   );
