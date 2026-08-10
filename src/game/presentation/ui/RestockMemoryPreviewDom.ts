@@ -12,6 +12,10 @@ const applyStyles = (element: HTMLElement, styles: Partial<CSSStyleDeclaration>)
   Object.assign(element.style, styles);
 };
 
+/**
+ * Compact memorization card for the promotion restock. The gameplay scene stays
+ * visible behind it and the player has exactly one thing to read: shelf order.
+ */
 export function mountRestockMemoryPreviewDom(
   config: RestockMemoryPreviewDomConfig
 ): RestockMemoryPreviewDomHandle {
@@ -24,6 +28,11 @@ export function mountRestockMemoryPreviewDom(
 
   let active = true;
   let completed = false;
+  let frameId = 0;
+  let timerId = 0;
+  let exitTimerId = 0;
+  const pulseTimerIds: number[] = [];
+
   const overlay = document.createElement("section");
   overlay.id = "restock-memory-preview";
   overlay.setAttribute("role", "dialog");
@@ -33,11 +42,11 @@ export function mountRestockMemoryPreviewDom(
     inset: "0",
     zIndex: "9400",
     display: "grid",
-    placeItems: "center",
-    padding: "18px",
+    placeItems: "start center",
+    padding: "38px 14px 14px",
     boxSizing: "border-box",
-    background: "rgba(4, 10, 7, 0.64)",
-    backdropFilter: "blur(5px)",
+    background: "rgba(4, 10, 7, 0.32)",
+    backdropFilter: "blur(2px)",
     fontFamily: "Arial, sans-serif",
     color: "#ffffff",
     pointerEvents: "all",
@@ -46,76 +55,54 @@ export function mountRestockMemoryPreviewDom(
 
   const panel = document.createElement("div");
   applyStyles(panel, {
-    width: "min(620px, 100%)",
-    padding: "22px",
+    width: "min(440px, 100%)",
+    padding: "14px 16px 12px",
     boxSizing: "border-box",
-    border: "1px solid rgba(255, 217, 94, 0.55)",
-    borderRadius: "22px",
-    background: "linear-gradient(145deg, rgba(10, 31, 21, 0.98), rgba(18, 48, 33, 0.98))",
-    boxShadow: "0 24px 70px rgba(0, 0, 0, 0.5)"
+    border: "1px solid rgba(255, 217, 94, 0.58)",
+    borderRadius: "16px",
+    background: "rgba(9, 27, 18, 0.96)",
+    boxShadow: "0 16px 42px rgba(0, 0, 0, 0.42)"
   });
 
-  const eyebrow = document.createElement("div");
-  eyebrow.textContent = "PROMOTION PLAN";
-  applyStyles(eyebrow, {
-    color: "#ffd95e",
-    fontSize: "10px",
-    fontWeight: "900",
-    letterSpacing: "1.8px",
-    textAlign: "center"
-  });
-
-  const title = document.createElement("h2");
-  title.textContent = "Memorize the shelf order";
+  const title = document.createElement("div");
+  title.textContent = "MEMORIZE · 1 → 6";
   applyStyles(title, {
-    margin: "6px 0 5px",
     textAlign: "center",
-    fontSize: "clamp(24px, 5vw, 36px)",
-    lineHeight: "1.05"
-  });
-
-  const instruction = document.createElement("p");
-  instruction.textContent = "Watch the glow from 1 to 6. The numbers disappear when stocking begins.";
-  applyStyles(instruction, {
-    margin: "0 auto 10px",
-    maxWidth: "500px",
-    textAlign: "center",
-    color: "#d6e7db",
-    fontSize: "14px",
-    lineHeight: "1.45"
-  });
-
-  const sequenceCue = document.createElement("div");
-  sequenceCue.id = "restock-memory-sequence-cue";
-  sequenceCue.textContent = "WATCH THE GLOW · 1 → 6";
-  applyStyles(sequenceCue, {
-    marginBottom: "12px",
-    textAlign: "center",
-    color: "#9be7ff",
-    fontSize: "12px",
+    color: "#ffe078",
+    fontSize: "18px",
     fontWeight: "900",
     letterSpacing: "1px"
+  });
+
+  const instruction = document.createElement("div");
+  instruction.textContent = "Remember the shelf positions.";
+  applyStyles(instruction, {
+    margin: "4px 0 10px",
+    textAlign: "center",
+    color: "#cfe1d4",
+    fontSize: "11px",
+    fontWeight: "700"
   });
 
   const cooler = document.createElement("div");
   cooler.id = "restock-memory-grid";
   applyStyles(cooler, {
     display: "grid",
-    gridTemplateColumns: "repeat(2, minmax(120px, 1fr))",
-    gridTemplateRows: "repeat(3, 70px)",
-    gap: "10px 16px",
-    maxWidth: "390px",
+    gridTemplateColumns: "repeat(2, minmax(100px, 1fr))",
+    gridTemplateRows: "repeat(3, 52px)",
+    gap: "7px 10px",
+    maxWidth: "300px",
     margin: "0 auto",
-    padding: "14px",
-    border: "5px solid #203b30",
-    borderRadius: "16px",
-    background: "rgba(2, 14, 11, 0.8)",
-    boxShadow: "inset 0 0 0 2px rgba(173, 203, 190, 0.18)"
+    padding: "9px",
+    border: "3px solid #294739",
+    borderRadius: "12px",
+    background: "rgba(2, 14, 11, 0.72)"
   });
 
   const orderBySlot = new Map<number, number>();
   config.sequence.forEach((slotIndex, orderIndex) => orderBySlot.set(slotIndex, orderIndex + 1));
   const cellsByOrder: HTMLElement[] = [];
+
   [0, 3, 1, 4, 2, 5].forEach((slotIndex) => {
     const order = orderBySlot.get(slotIndex) ?? 0;
     const cell = document.createElement("div");
@@ -125,22 +112,21 @@ export function mountRestockMemoryPreviewDom(
       position: "relative",
       display: "grid",
       placeItems: "center",
-      border: "2px solid rgba(183, 213, 199, 0.26)",
-      borderRadius: "10px",
-      background: "linear-gradient(180deg, rgba(59, 92, 78, 0.5), rgba(13, 36, 28, 0.65))",
-      overflow: "hidden",
-      transformOrigin: "center"
+      border: "1px solid rgba(183, 213, 199, 0.25)",
+      borderRadius: "8px",
+      background: "rgba(48, 78, 65, 0.48)",
+      overflow: "hidden"
     });
 
     const shelf = document.createElement("div");
     applyStyles(shelf, {
       position: "absolute",
-      left: "8px",
-      right: "8px",
-      bottom: "8px",
-      height: "4px",
-      borderRadius: "3px",
-      background: "rgba(216, 231, 224, 0.5)"
+      left: "7px",
+      right: "7px",
+      bottom: "6px",
+      height: "3px",
+      borderRadius: "2px",
+      background: "rgba(216, 231, 224, 0.44)"
     });
 
     const number = document.createElement("span");
@@ -148,36 +134,45 @@ export function mountRestockMemoryPreviewDom(
     applyStyles(number, {
       display: "grid",
       placeItems: "center",
-      width: "42px",
-      height: "42px",
+      width: "30px",
+      height: "30px",
       borderRadius: "50%",
       background: "#dcb53f",
       color: "#182319",
-      fontSize: "22px",
+      fontSize: "16px",
       fontWeight: "900",
-      boxShadow: "0 6px 14px rgba(0, 0, 0, 0.28)",
-      transformOrigin: "center"
+      boxShadow: "0 4px 10px rgba(0,0,0,0.24)"
     });
+
     cell.append(shelf, number);
     cooler.appendChild(cell);
     if (order > 0) cellsByOrder[order - 1] = cell;
   });
 
+  const footer = document.createElement("div");
+  applyStyles(footer, {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "10px",
+    marginTop: "9px"
+  });
+
   const countdown = document.createElement("div");
   countdown.id = "restock-memory-countdown";
   applyStyles(countdown, {
-    marginTop: "14px",
+    minWidth: "126px",
     textAlign: "center",
-    color: "#ffd95e",
-    fontSize: "13px",
-    fontWeight: "800",
-    letterSpacing: "0.6px"
+    color: "#ffe078",
+    fontSize: "11px",
+    fontWeight: "900",
+    letterSpacing: "0.4px"
   });
 
   const progress = document.createElement("div");
   applyStyles(progress, {
-    height: "5px",
-    marginTop: "10px",
+    width: "110px",
+    height: "3px",
     borderRadius: "999px",
     background: "rgba(255,255,255,0.1)",
     overflow: "hidden"
@@ -187,26 +182,23 @@ export function mountRestockMemoryPreviewDom(
     width: "100%",
     height: "100%",
     borderRadius: "999px",
-    background: "linear-gradient(90deg, #ffd95e, #9be7ff)",
+    background: "#ffe078",
     transformOrigin: "left center"
   });
   progress.appendChild(fill);
+  footer.append(countdown, progress);
 
-  panel.append(eyebrow, title, instruction, sequenceCue, cooler, countdown, progress);
+  panel.append(title, instruction, cooler, footer);
   overlay.appendChild(panel);
   document.body.appendChild(overlay);
   document.body.dataset.restockMemory = "preview";
-  document.body.dataset.levelTwoMemoryPreview = "sequential-glow";
+  document.body.dataset.levelTwoMemoryPreview = "compact-six-slot";
 
   const startedAt = performance.now();
-  let frameId = 0;
-  let timerId = 0;
-  let exitTimerId = 0;
-  const pulseTimerIds: number[] = [];
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const pulseStepMs = Math.max(
     90,
-    Math.min(420, Math.floor(Math.max(540, config.durationMs - 560) / config.sequence.length))
+    Math.min(390, Math.floor(Math.max(540, config.durationMs - 520) / config.sequence.length))
   );
 
   const clearPulseTimers = (): void => {
@@ -217,26 +209,20 @@ export function mountRestockMemoryPreviewDom(
     cellsByOrder.forEach((cell, index) => {
       const pulseTimerId = window.setTimeout(() => {
         if (!active) return;
-        sequenceCue.textContent = `NOW WATCH ${index + 1} OF ${cellsByOrder.length}`;
-        cell.style.borderColor = "rgba(155, 231, 255, 0.94)";
+        cell.style.borderColor = "rgba(155, 231, 255, 0.9)";
         const number = cell.querySelector("span");
-        cell.animate(
-          [
-            { transform: "scale(1)", boxShadow: "0 0 0 rgba(155, 231, 255, 0)" },
-            { transform: "scale(1.09)", boxShadow: "0 0 28px rgba(155, 231, 255, 0.72)" },
-            { transform: "scale(1)", boxShadow: "0 0 8px rgba(155, 231, 255, 0.3)" }
-          ],
-          { duration: 360, easing: "cubic-bezier(.2,.8,.2,1)" }
-        );
         number?.animate(
           [
             { transform: "scale(1)", background: "#dcb53f" },
-            { transform: "scale(1.22)", background: "#9be7ff" },
+            { transform: "scale(1.16)", background: "#9be7ff" },
             { transform: "scale(1)", background: "#dcb53f" }
           ],
-          { duration: 360, easing: "cubic-bezier(.2,.8,.2,1)" }
+          { duration: 300, easing: "ease-out" }
         );
-      }, 180 + index * pulseStepMs);
+        window.setTimeout(() => {
+          cell.style.borderColor = "rgba(183, 213, 199, 0.25)";
+        }, 320);
+      }, 140 + index * pulseStepMs);
       pulseTimerIds.push(pulseTimerId);
     });
   }
@@ -255,41 +241,32 @@ export function mountRestockMemoryPreviewDom(
     cancelAnimationFrame(frameId);
     window.clearTimeout(timerId);
     clearPulseTimers();
-    countdown.textContent = "GO! STOCK FROM MEMORY";
-    countdown.style.color = "#9be7ff";
-    countdown.style.fontSize = "18px";
-    sequenceCue.textContent = "NUMBERS HIDDEN · TRUST YOUR MEMORY";
-    sequenceCue.style.color = "#ffd95e";
+    title.textContent = "GO · PICK 3 → PLACE";
+    instruction.textContent = "Follow the single highlighted shelf.";
+    countdown.textContent = "START";
     fill.style.transform = "scaleX(0)";
 
-    panel.animate(
-      [
-        { transform: "scale(1)", boxShadow: "0 24px 70px rgba(0, 0, 0, 0.5)" },
-        { transform: "scale(1.025)", boxShadow: "0 24px 85px rgba(155, 231, 255, 0.32)" },
-        { transform: "scale(1)", boxShadow: "0 24px 70px rgba(0, 0, 0, 0.5)" }
-      ],
-      { duration: 340, easing: "ease-out" }
-    );
-
     exitTimerId = window.setTimeout(() => {
-      overlay.animate(
+      const animation = overlay.animate(
         [
-          { opacity: 1, transform: "scale(1)" },
-          { opacity: 0, transform: "scale(1.015)" }
+          { opacity: 1, transform: "translateY(0)" },
+          { opacity: 0, transform: "translateY(-8px)" }
         ],
-        { duration: 180, easing: "ease-out", fill: "forwards" }
-      ).finished.finally(completeOverlay);
-    }, reducedMotion ? 80 : 360);
+        { duration: 150, easing: "ease-out", fill: "forwards" }
+      );
+      animation.finished.finally(completeOverlay);
+    }, reducedMotion ? 40 : 180);
   };
 
   const update = (): void => {
     if (!active) return;
     const elapsed = performance.now() - startedAt;
     const remaining = Math.max(0, config.durationMs - elapsed);
-    countdown.textContent = `Stocking starts in ${Math.max(1, Math.ceil(remaining / 1000))}`;
+    countdown.textContent = `${Math.max(1, Math.ceil(remaining / 1000))}s`;
     fill.style.transform = `scaleX(${Math.max(0, remaining / config.durationMs)})`;
     if (remaining > 0) frameId = requestAnimationFrame(update);
   };
+
   update();
   timerId = window.setTimeout(finish, config.durationMs);
 
