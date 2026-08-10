@@ -106,7 +106,7 @@ const restockPreloadKeys = (
   caseAssets: { readonly closedAssetKey: string; readonly openAssetKey: string },
   runtime: RestockShiftRuntimeContent
 ): readonly string[] => {
-  const gameplayKeys = [
+  const criticalGameplayKeys = [
     environmentAssetKey,
     ...pack.workerWalkAssetKeys,
     pack.workerIdleAssetKey,
@@ -116,15 +116,23 @@ const restockPreloadKeys = (
     pack.workerStockAssetKey,
     pack.cartEmptyAssetKey,
     pack.cartLoadedAssetKey,
-    caseAssets.closedAssetKey,
+    caseAssets.closedAssetKey
+  ];
+
+  // First Delivery can render and begin movement without the HD stock bottle or
+  // the open-case art. Both are needed only after pickup/load/push, so loading
+  // them in the blocking Phaser preload needlessly delays the first frame on
+  // mobile. Level 1's polish installer starts the required late art in the
+  // background immediately after the scene is created.
+  if (level.id === FIRST_DELIVERY_LEVEL_ID) {
+    return Object.freeze(criticalGameplayKeys);
+  }
+
+  const gameplayKeys = [
+    ...criticalGameplayKeys,
     caseAssets.openAssetKey,
     runtime.product.assetKey
   ];
-
-  // Level 1 deliberately uses the authored background as-is. Do not make the
-  // first playable frame wait for decorative fixtures, the HD cooler overlay,
-  // a duplicate cooler fixture, or ambient products that are not rendered.
-  if (level.id === FIRST_DELIVERY_LEVEL_ID) return Object.freeze(gameplayKeys);
 
   return Object.freeze([
     ...gameplayKeys,
