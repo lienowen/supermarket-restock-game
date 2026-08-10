@@ -30,6 +30,7 @@ export class RestockRushMeter {
     const isWorldRestockMeter = config.y > 600;
     this.anchorX = isWorldRestockMeter ? 1390 : Phaser.Math.Clamp(config.x, 155, 1445);
     const anchorY = isWorldRestockMeter ? 154 : config.y;
+    const memoryMode = document.body.dataset.restockChallenge === "memory";
 
     const shadow = scene.add.graphics();
     shadow.fillStyle(0x06110d, 0.35);
@@ -43,7 +44,7 @@ export class RestockRushMeter {
     panel.fillStyle(0xffffff, 0.04);
     panel.fillRoundedRect(-147, -42, 288, 24, 14);
 
-    const title = scene.add.text(-130, -36, config.title ?? "RESTOCK RUSH", {
+    const title = scene.add.text(-130, -36, memoryMode ? "RESTOCK GUIDE" : (config.title ?? "RESTOCK RUSH"), {
       fontFamily: "Arial",
       fontSize: "12px",
       color: "#cfe7d8",
@@ -70,7 +71,7 @@ export class RestockRushMeter {
       fontSize: "10px",
       color: "#ffffff",
       fontStyle: "bold",
-      letterSpacing: 0.3,
+      letterSpacing: 0.2,
       align: "center",
       fixedWidth: 270
     }).setOrigin(0.5);
@@ -173,12 +174,13 @@ export class RestockRushMeter {
 
   private renderStatus(snapshot: RestockRushSnapshot): void {
     if (this.isMemoryMode()) {
-      this.statusText
-        .setText(
-          `CURRENT SHELF ${snapshot.activeRowItemCount}/${snapshot.itemsPerRow} · ` +
-          "TAP THE NEXT SHELF FROM MEMORY"
-        )
-        .setColor("#ffffff");
+      const contextualAction = document.body.dataset.levelTwoContextAction;
+      const instruction = contextualAction === "place-ready"
+        ? "PLACE 3 WATER BOTTLES AT THE HIGHLIGHT"
+        : contextualAction === "move-to-cooler"
+          ? "TAKE THE BATCH TO THE HIGHLIGHTED SHELF"
+          : "GO TO THE CART · AUTO-PICKUP 3 WATER";
+      this.statusText.setText(instruction).setColor("#ffffff");
       return;
     }
     const instruction = snapshot.itemsPerRow === 1 && snapshot.unitsPerInteraction === 3
