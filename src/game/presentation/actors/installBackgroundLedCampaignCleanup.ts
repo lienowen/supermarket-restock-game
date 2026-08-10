@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { GoldenOrderHuntScene } from "../scenes/GoldenOrderHuntScene";
+import { UtilityTaskScene } from "../scenes/UtilityTaskScene";
 
 const DUPLICATE_GOLDEN_FIXTURE_NAMES = Object.freeze([
   "golden-order-breakfast-fixture",
@@ -25,29 +26,67 @@ const BAKED_DEPARTMENT_PRODUCT_POSITIONS = Object.freeze({
   "find-decoy-yogurt": Object.freeze({ x: 1325, y: 350 })
 });
 
-/**
- * Static departments are already authored into the order-hunt background.
- * Level 5 used to add another breakfast/produce fixture layer on top and then
- * placed products in the open aisle. Keep only live products/actors and anchor
- * the products to the real Fresh Produce, Grocery and Dairy shelves in the plate.
- */
-const originalCreate = GoldenOrderHuntScene.prototype.create;
-GoldenOrderHuntScene.prototype.create = function createBackgroundLedOrderHunt(
-  this: GoldenOrderHuntScene
-): void {
-  originalCreate.call(this);
+const SIMPLE_ORDER_PRODUCT_POSITIONS = Object.freeze({
+  "find-item-apple": BAKED_DEPARTMENT_PRODUCT_POSITIONS["find-item-apple"],
+  "find-item-cereal-box": BAKED_DEPARTMENT_PRODUCT_POSITIONS["find-item-cereal-box"],
+  "find-item-milk-bottle": BAKED_DEPARTMENT_PRODUCT_POSITIONS["find-item-milk-bottle"]
+});
 
-  DUPLICATE_GOLDEN_FIXTURE_NAMES.forEach((name) => {
-    this.children.getByName(name)?.destroy();
-  });
-
-  Object.entries(BAKED_DEPARTMENT_PRODUCT_POSITIONS).forEach(([name, point]) => {
-    const object = this.children.getByName(name);
+const moveNamedProducts = (
+  scene: Phaser.Scene,
+  positions: Readonly<Record<string, { readonly x: number; readonly y: number }>>
+): void => {
+  Object.entries(positions).forEach(([name, point]) => {
+    const object = scene.children.getByName(name);
     if (!(object instanceof Phaser.GameObjects.Image)) return;
     object
       .setPosition(point.x, point.y)
       .setDepth(12 + point.y / 1000);
   });
+};
+
+/**
+ * A simple three-item order has no decoys. Its products still belong on the
+ * authored Produce/Grocery/Dairy shelves rather than floating in the aisle.
+ * This is derived from the live scene shape instead of branching on a level ID.
+ */
+const originalUtilityCreate = UtilityTaskScene.prototype.create;
+UtilityTaskScene.prototype.create = function createBackgroundLedUtility(
+  this: UtilityTaskScene
+): void {
+  originalUtilityCreate.call(this);
+  if (document.body.dataset.activeMode !== "find-items") return;
+
+  const children = this.children.getChildren();
+  const requested = children.filter((object) => (
+    typeof object.name === "string" && object.name.startsWith("find-item-")
+  ));
+  const decoys = children.filter((object) => (
+    typeof object.name === "string" && object.name.startsWith("find-decoy-")
+  ));
+  if (requested.length !== 3 || decoys.length !== 0) return;
+
+  moveNamedProducts(this, SIMPLE_ORDER_PRODUCT_POSITIONS);
+  document.body.dataset.findItemsProductPlacement = "baked-departments-v2";
+};
+
+/**
+ * Static departments are already authored into the order-hunt background.
+ * The golden search scene used to add another breakfast/produce fixture layer
+ * and then place products in the open aisle. Keep only live products/actors and
+ * anchor products to the real Fresh Produce, Grocery and Dairy shelves.
+ */
+const originalGoldenCreate = GoldenOrderHuntScene.prototype.create;
+GoldenOrderHuntScene.prototype.create = function createBackgroundLedOrderHunt(
+  this: GoldenOrderHuntScene
+): void {
+  originalGoldenCreate.call(this);
+
+  DUPLICATE_GOLDEN_FIXTURE_NAMES.forEach((name) => {
+    this.children.getByName(name)?.destroy();
+  });
+
+  moveNamedProducts(this, BAKED_DEPARTMENT_PRODUCT_POSITIONS);
 
   document.body.dataset.goldenStaticFixtures = "background-baked";
   document.body.dataset.goldenSceneComposition = "baked-departments-live-products";
@@ -55,13 +94,13 @@ GoldenOrderHuntScene.prototype.create = function createBackgroundLedOrderHunt(
 };
 
 // Defensive cleanup for hot reload / cached scene instances.
-const originalUpdate = GoldenOrderHuntScene.prototype.update;
+const originalGoldenUpdate = GoldenOrderHuntScene.prototype.update;
 GoldenOrderHuntScene.prototype.update = function updateBackgroundLedOrderHunt(
   this: GoldenOrderHuntScene,
   time: number,
   delta: number
 ): void {
-  originalUpdate.call(this, time, delta);
+  originalGoldenUpdate.call(this, time, delta);
   DUPLICATE_GOLDEN_FIXTURE_NAMES.forEach((name) => {
     const object = this.children.getByName(name);
     if (object instanceof Phaser.GameObjects.Image) object.setVisible(false);
