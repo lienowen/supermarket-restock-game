@@ -24,6 +24,7 @@ import { BrowserCampaignSessionStore } from "../browser/BrowserCampaignSessionSt
 import { requestMobileLandscapeMode } from "../browser/MobileLandscapeController";
 import { createGameplayScene } from "./GameplaySceneRegistry";
 import { installSafeInteractiveGuard } from "./SafeInteractiveGuard";
+import { installSoftwareLandscapeInput } from "./SoftwareLandscapeInput";
 
 export interface PhaserGameFactoryOptions {
   readonly parent?: string;
@@ -127,6 +128,7 @@ export async function createPhaserGame(
     },
     scene: [activeScene]
   });
+  installSoftwareLandscapeInput(game, presentation.world.width, presentation.world.height);
   game.registry.set("campaignSession", session);
   game.registry.set("levelExperience", experience);
 
