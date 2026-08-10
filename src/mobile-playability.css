@@ -26,12 +26,12 @@ body[data-software-landscape="true"] #app {
   min-height: 0 !important;
   padding: 0 !important;
   overflow: hidden !important;
+  pointer-events: auto !important;
 }
 
 /* Override the older viewport-specific canvas placement. The canvas keeps its
-   native 16:9 aspect and fits inside the software-landscape stage, leaving only
-   the small side bars required by extra-wide phones instead of huge top/bottom
-   bars in portrait. */
+   native 16:9 aspect and fits inside the software-landscape stage. Phaser input
+   receives an inverse-rotation mapping in SoftwareLandscapeInput.ts. */
 body[data-software-landscape="true"] #app canvas {
   position: absolute !important;
   left: 50% !important;
@@ -46,29 +46,38 @@ body[data-software-landscape="true"] #app canvas {
   transform: translate(-50%, -50%) !important;
   box-shadow: none !important;
   pointer-events: auto !important;
+  touch-action: none !important;
 }
 
-/* DOM gameplay overlays are descendants of the transformed body, so briefing,
-   tutorial, task panels and storefront controls rotate with the game instead of
-   remaining in portrait. */
-body[data-software-landscape="true"] #level-briefing-overlay,
-body[data-software-landscape="true"] #guided-drag-action,
-body[data-software-landscape="true"] #level-checklist {
-  visibility: visible !important;
-}
-
+/* DOM gameplay overlays rotate with the body. Explicit pointer ownership keeps
+   Start/tutorial/action controls clickable while the scene is paused beneath. */
 body[data-software-landscape="true"] #level-briefing-overlay,
 body[data-software-landscape="true"] #guided-drag-action {
+  visibility: visible !important;
   width: 100% !important;
   height: 100% !important;
   max-width: none !important;
   max-height: none !important;
+  z-index: 24000 !important;
+  pointer-events: auto !important;
 }
 
-body[data-software-landscape="true"] #mobile-orientation-hint {
-  display: none !important;
+body[data-software-landscape="true"] #level-checklist {
+  visibility: visible !important;
+  pointer-events: none !important;
 }
 
+body[data-software-landscape="true"] #level-briefing-overlay > div,
+body[data-software-landscape="true"] #guided-drag-action > div,
+body[data-software-landscape="true"] #level-briefing-overlay button,
+body[data-software-landscape="true"] #guided-drag-action button,
+body[data-software-landscape="true"] button,
+body[data-software-landscape="true"] [role="button"] {
+  pointer-events: auto !important;
+  touch-action: manipulation !important;
+}
+
+body[data-software-landscape="true"] #mobile-orientation-hint,
 body[data-software-landscape="true"] #mobile-fullscreen-button {
   display: none !important;
 }
