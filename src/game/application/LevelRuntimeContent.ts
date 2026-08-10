@@ -206,9 +206,10 @@ export function validateLevelCampaignRuntime(
             if (!Number.isFinite(rush.memoryPreview.durationMs) || rush.memoryPreview.durationMs < 1000) {
               errors.push(`Level ${level.id} memory preview duration must be at least 1000ms`);
             }
-            if (!rush.memoryPreview.hideActiveTarget) {
-              errors.push(`Level ${level.id} memory challenge must hide the active shelf target`);
-            }
+            // A memory preview may transition into either hidden-target recall or
+            // a guided contextual placement phase. The latter is used by mature
+            // proximity + PLACE controls where the player should never hunt for
+            // a tiny invisible interaction point after memorizing the sequence.
             if (!rush.memoryPreview.keepTargetOnFailure) {
               errors.push(`Level ${level.id} memory challenge must keep its answer stable after failure`);
             }
