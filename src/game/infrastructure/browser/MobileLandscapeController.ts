@@ -7,13 +7,13 @@ interface LockableScreenOrientation {
 
 export interface MobileLandscapeRequestResult {
   readonly mobileLike: boolean;
-  readonly fullscreen: boolean;
   readonly orientationLocked: boolean;
 }
 
-const GATE_ID = "landscape-lock-gate";
-const GATE_BUTTON_ID = "landscape-lock-action";
-const GATE_MESSAGE_ID = "landscape-lock-message";
+const RETRY_DELAYS_MS = [0, 120, 420, 1200] as const;
+let retryTimer: number | undefined;
+let installing = false;
+let attemptSerial = 0;
 
 const isMobileLike = (): boolean => {
   const coarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches ?? false;
@@ -30,37 +30,31 @@ const lockableOrientation = (): LockableScreenOrientation | undefined => (
   screen.orientation as unknown as LockableScreenOrientation | undefined
 );
 
-const updateOrientationDatasets = (result?: MobileLandscapeRequestResult): void => {
-  document.body.dataset.mobileLandscape = isMobileLike() ? "required" : "not-required";
-  document.body.dataset.screenOrientation = isPortrait() ? "portrait" : "landscape";
-  if (!result) return;
-  document.body.dataset.fullscreenRequest = result.fullscreen ? "active" : "unavailable";
-  document.body.dataset.orientationLock = result.orientationLocked ? "locked" : "fallback";
+const updateOrientationDatasets = (orientationLocked?: boolean): void => {
+  const mobileLike = isMobileLike();
+  const portrait = isPortrait();
+  document.body.dataset.mobileLandscape = mobileLike ? "required" : "not-required";
+  document.body.dataset.screenOrientation = portrait ? "portrait" : "landscape";
+  document.body.dataset.orientationLock = orientationLocked
+    ? "locked"
+    : mobileLike && portrait
+      ? "auto-requested"
+      : "not-needed";
 };
 
 /**
- * Must be called from a user gesture when possible. Browsers may require
- * fullscreen before Screen Orientation locking is accepted.
+ * Best-effort landscape request with no user gate. Installed/PWA experiences
+ * can honor the manifest orientation immediately, and browsers that expose
+ * Screen Orientation locking may accept this request directly. Browsers that
+ * require a user activation or fullscreen can reject it; the game never blocks
+ * on that rejection and will retry automatically as the viewport changes.
  */
 export async function requestMobileLandscapeMode(): Promise<MobileLandscapeRequestResult> {
-  if (!isMobileLike()) {
-    const result = Object.freeze({
-      mobileLike: false,
-      fullscreen: Boolean(document.fullscreenElement),
-      orientationLocked: false
-    });
-    updateOrientationDatasets(result);
+  const mobileLike = isMobileLike();
+  if (!mobileLike || !isPortrait()) {
+    const result = Object.freeze({ mobileLike, orientationLocked: false });
+    updateOrientationDatasets(false);
     return result;
-  }
-
-  let fullscreen = Boolean(document.fullscreenElement);
-  if (!fullscreen && document.documentElement.requestFullscreen) {
-    try {
-      await document.documentElement.requestFullscreen({ navigationUI: "hide" });
-      fullscreen = Boolean(document.fullscreenElement);
-    } catch {
-      fullscreen = false;
-    }
   }
 
   let orientationLocked = false;
@@ -74,68 +68,48 @@ export async function requestMobileLandscapeMode(): Promise<MobileLandscapeReque
     }
   }
 
-  const result = Object.freeze({
-    mobileLike: true,
-    fullscreen,
-    orientationLocked
-  });
-  updateOrientationDatasets(result);
-  return result;
+  updateOrientationDatasets(orientationLocked);
+  return Object.freeze({ mobileLike: true, orientationLocked });
 }
 
-export function installMobileLandscapeController(): void {
-  if (document.getElementById(GATE_ID)) return;
+const scheduleAutomaticAttempts = (): void => {
+  attemptSerial += 1;
+  const serial = attemptSerial;
+  if (retryTimer !== undefined) window.clearTimeout(retryTimer);
 
-  const gate = document.createElement("div");
-  gate.id = GATE_ID;
-  gate.dataset.visible = "false";
-  gate.innerHTML = `
-    <div class="landscape-lock-card" role="dialog" aria-modal="true" aria-label="Landscape mode required">
-      <div class="landscape-lock-icon" aria-hidden="true">↻</div>
-      <strong>LANDSCAPE MODE</strong>
-      <p id="${GATE_MESSAGE_ID}">For smoother controls, this game plays in landscape.</p>
-      <button id="${GATE_BUTTON_ID}" type="button">TAP TO ENTER LANDSCAPE</button>
-      <span>If it does not rotate automatically, turn your phone sideways.</span>
-    </div>
-  `;
-  document.body.appendChild(gate);
-
-  const button = document.getElementById(GATE_BUTTON_ID) as HTMLButtonElement | null;
-  const message = document.getElementById(GATE_MESSAGE_ID);
-
-  const syncGate = (): void => {
-    updateOrientationDatasets();
-    const visible = isMobileLike() && isPortrait();
-    gate.dataset.visible = visible ? "true" : "false";
-    gate.setAttribute("aria-hidden", visible ? "false" : "true");
-    if (!visible) {
-      gate.dataset.state = "ready";
-      if (button) button.textContent = "TAP TO ENTER LANDSCAPE";
-      if (message) message.textContent = "For smoother controls, this game plays in landscape.";
+  const attempt = (index: number): void => {
+    if (serial !== attemptSerial || !isMobileLike() || !isPortrait()) {
+      updateOrientationDatasets(false);
+      return;
     }
+
+    void requestMobileLandscapeMode().finally(() => {
+      if (serial !== attemptSerial || !isPortrait()) return;
+      const nextIndex = index + 1;
+      const delay = RETRY_DELAYS_MS[nextIndex];
+      if (delay === undefined) return;
+      retryTimer = window.setTimeout(() => attempt(nextIndex), delay);
+    });
   };
 
-  button?.addEventListener("click", () => {
-    gate.dataset.state = "requesting";
-    button.disabled = true;
-    button.textContent = "ENTERING LANDSCAPE…";
+  attempt(0);
+};
 
-    void requestMobileLandscapeMode().then((result) => {
-      button.disabled = false;
-      window.setTimeout(syncGate, 80);
-      if (!isPortrait()) return;
+export function installMobileLandscapeController(): void {
+  if (installing) return;
+  installing = true;
 
-      gate.dataset.state = "rotate";
-      button.textContent = result.orientationLocked ? "LANDSCAPE LOCKED" : "TRY LANDSCAPE AGAIN";
-      if (message) {
-        message.textContent = "Automatic rotation is not available here. Rotate your phone to continue.";
-      }
-    });
+  const resync = (): void => {
+    updateOrientationDatasets(false);
+    if (isMobileLike() && isPortrait()) scheduleAutomaticAttempts();
+  };
+
+  window.addEventListener("resize", resync, { passive: true });
+  window.addEventListener("orientationchange", resync, { passive: true });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") resync();
   });
+  screen.orientation?.addEventListener?.("change", resync);
 
-  window.addEventListener("resize", syncGate, { passive: true });
-  window.addEventListener("orientationchange", syncGate, { passive: true });
-  document.addEventListener("fullscreenchange", syncGate);
-  screen.orientation?.addEventListener?.("change", syncGate);
-  syncGate();
+  resync();
 }
