@@ -80,6 +80,7 @@ const CLEAN_SPILL_ASSET_KEYS = Object.freeze([
   "spill-dirt-smear-large"
 ]);
 const FIRST_DELIVERY_LEVEL_ID = "starter-level-001";
+const PROMOTION_RESTOCK_LEVEL_ID = "starter-level-002";
 
 const resolveDescriptors = (
   registry: RuntimeAssetRegistry,
@@ -133,6 +134,13 @@ const restockPreloadKeys = (
     caseAssets.openAssetKey,
     runtime.product.assetKey
   ];
+
+  // L2 now uses the dedicated authored promotion background without reusable
+  // department/customer dressing. Do not download those hidden assets either;
+  // the only blocking art is what the player actually sees or interacts with.
+  if (level.id === PROMOTION_RESTOCK_LEVEL_ID) {
+    return Object.freeze(gameplayKeys);
+  }
 
   return Object.freeze([
     ...gameplayKeys,
