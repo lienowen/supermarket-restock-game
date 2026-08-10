@@ -33,8 +33,6 @@ export class StarterMarketEnvironmentView {
     } else if (this.isFocusedGameplayLevel()) {
       document.body.dataset.sceneDressing = "level-two-focused";
       this.createFocusedGameplayBackdrop();
-      this.createModeFocus();
-      this.createAtmosphere();
     } else {
       document.body.dataset.sceneDressing = "layered-solid";
       this.createFloor();
@@ -78,28 +76,19 @@ export class StarterMarketEnvironmentView {
   private createFocusedGameplayBackdrop(): void {
     const { scene, context } = this;
 
-    // Suppress detail in the authored plate just enough that the interactive
-    // worker/cart/box/cooler layers read first. This sits behind all gameplay.
+    // L2 gets only one neutral calming layer over the authored background.
+    // No generic floor strip, ambient glow or vignette competes with the live
+    // objective guide. All stronger emphasis belongs to the current task.
     scene.add.rectangle(
       context.world.width / 2,
       context.world.height / 2,
       context.world.width,
       context.world.height,
       0x07110e,
-      0.085
+      0.06
     )
       .setDepth(4)
       .setName("level-two-background-calm-wash");
-
-    // Keep the floor readable without adding another decorative object layer.
-    scene.add.rectangle(
-      context.world.width / 2,
-      context.world.height - 28,
-      context.world.width,
-      56,
-      0x10201b,
-      0.07
-    ).setDepth(5);
   }
 
   private createFloor(): void {
@@ -316,7 +305,7 @@ export class StarterMarketEnvironmentView {
       focusSize.width * 0.72,
       focusSize.height * 0.34,
       accent,
-      this.isFocusedGameplayLevel() ? 0.045 : this.context.mode === "restock" ? 0.026 : 0.035
+      this.context.mode === "restock" ? 0.026 : 0.035
     ).setDepth(7);
     glow.setBlendMode(Phaser.BlendModes.ADD);
   }
