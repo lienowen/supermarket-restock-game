@@ -146,19 +146,20 @@ try {
     afterDrag.boxLoaded === true
   );
 
-  await waitForSnapshot(page, { step: "restock", boxLoaded: true, boxOpened: true }, 25000);
-  const checklistState = await page.evaluate(() => ({
-    state: document.body.dataset.levelChecklist,
-    rows: [...document.querySelectorAll("#level-checklist [data-step-id]")].map((row) => ({
-      id: row.getAttribute("data-step-id"),
-      text: row.textContent?.trim() ?? ""
-    }))
-  }));
-  report.assertions.deliveryContinues = (
-    checklistState.rows.find((row) => row.id === "pickup")?.text.startsWith("✓") === true &&
-    checklistState.rows.find((row) => row.id === "load")?.text.startsWith("✓") === true &&
-    checklistState.rows.find((row) => row.id === "deliver")?.text.startsWith("✓") === true &&
-    checklistState.rows.find((row) => row.id === "open")?.text.startsWith("✓") === true
+  const restockState = await waitForSnapshot(
+    page,
+    { step: "restock", boxLoaded: true, boxOpened: true },
+    25000
+  );
+  // The compact checklist intentionally hands off once shelf stocking begins.
+  // Runtime progression is the source of truth: reaching restock proves the
+  // pickup -> load -> deliver -> open chain continued without a player bypass.
+  report.assertions.deliveryContinues = Boolean(
+    restockState?.step === "restock" &&
+    restockState?.boxCollected === true &&
+    restockState?.boxLoaded === true &&
+    restockState?.cartAtDestination === true &&
+    restockState?.boxOpened === true
   );
   await page.screenshot({
     path: join(OUTPUT_DIR, "guided-delivery-after-drag.png"),
