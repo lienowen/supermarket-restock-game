@@ -1,6 +1,11 @@
 import Phaser from "phaser";
-import type { RestockSceneSnapshot } from "../../application/RestockSceneController";
+import type {
+  RestockSceneAction,
+  RestockSceneSnapshot
+} from "../../application/RestockSceneController";
+import type { RestockStarterMarketPresentationContext } from "../context/StarterMarketPresentationContext";
 import { IntegratedBeverageCoolerView } from "../fixtures/IntegratedBeverageCoolerView";
+import { StarterMarketScene } from "../scenes/StarterMarketScene";
 import type { VisualPoint } from "../visual/StarterMarketVisualSpec";
 import { RestockActorView } from "./RestockActorView";
 
@@ -14,6 +19,11 @@ const WATER_BOTTLE_NAMES = Object.freeze([
   "restock-level-two-water-b",
   "restock-level-two-water-c"
 ]);
+const AUTO_COLLECT_RADIUS = 132;
+const AUTO_LOAD_RADIUS = 148;
+const AUTO_PARK_RADIUS = 170;
+const CART_BATCH_RADIUS = 108;
+const COOLER_PLACE_RADIUS = 138;
 
 interface RestockActorInternals {
   readonly scene: Phaser.Scene;
@@ -37,6 +47,47 @@ interface CoolerPrototypeInternals {
     animate: boolean
   ): Phaser.GameObjects.Image;
 }
+
+interface LevelTwoSceneInternals {
+  readonly context: RestockStarterMarketPresentationContext;
+  readonly controller: {
+    snapshot(): RestockSceneSnapshot;
+  };
+  readonly actors?: RestockActorView;
+  readonly target?: {
+    sync(bounds: undefined, enabled: boolean): void;
+  };
+  readonly hud?: {
+    setActionEnabled(enabled: boolean): void;
+  };
+  readonly interactionGate: {
+    isReady(): boolean;
+  };
+  readonly rush: {
+    snapshot(now: number): {
+      readonly activeRowIndex?: number;
+      readonly complete: boolean;
+    };
+  };
+  readonly memoryPreviewActive: boolean;
+  dispatchSceneAction(action: RestockSceneAction, feedback?: boolean): boolean;
+  selectRushRow(rowIndex: number): void;
+}
+
+interface LevelTwoContextState {
+  carryingBatch: boolean;
+  restockStarted: boolean;
+  lastAutoAction?: RestockSceneAction;
+}
+
+interface PlaceControl {
+  readonly root: Phaser.GameObjects.Container;
+  readonly button: Phaser.GameObjects.Arc;
+  readonly label: Phaser.GameObjects.Text;
+}
+
+const contextStateByScene = new WeakMap<StarterMarketScene, LevelTwoContextState>();
+const placeControlByScene = new WeakMap<StarterMarketScene, PlaceControl>();
 
 const isPromotionLevel = (): boolean => (
   document.body.dataset.activeLevel === PROMOTION_LEVEL_ID
@@ -108,9 +159,9 @@ const ensureNormalizedWaterTexture = (scene: Phaser.Scene): string => {
 };
 
 /**
- * Level 2 keeps only product-specific art here. Movement, proximity and action
- * sequencing remain owned by RestockActorView and StarterMarketScene so the
- * memory challenge runs on top of the same real carry/push/open chain as L1.
+ * Level 2 keeps product-specific water art and adds the mature contextual work
+ * loop: walk into a work zone, auto-pick the batch, then use one PLACE action
+ * at the cooler. The shared controller still owns stock counts and rewards.
  */
 const originalSync = RestockActorView.prototype.sync;
 RestockActorView.prototype.sync = function syncLevelTwoWaterVisual(
@@ -128,7 +179,7 @@ RestockActorView.prototype.sync = function syncLevelTwoWaterVisual(
       .setDisplaySize(CART_WATER_BOTTLE_SIZE.width, CART_WATER_BOTTLE_SIZE.height);
   }
   syncPromotionCartWater(view, snapshot);
-  document.body.dataset.levelTwoActorControl = "routed-memory-restock";
+  document.body.dataset.levelTwoActorControl = "contextual-walk-auto-pickup-place";
   document.body.dataset.levelTwoProductVisual = "normalized-water-bottle-only";
 };
 
@@ -165,14 +216,247 @@ coolerPrototype.createStockBottle = function createLevelTwoWaterStock(
   const waterTexture = ensureNormalizedWaterTexture(view.scene);
   if (!view.scene.textures.exists(waterTexture)) return bottle;
 
-  // Important: the shared restock animation tweens scale back to 1. The texture
-  // itself therefore has to be normalized to shelf size, otherwise the original
-  // production PNG dimensions reappear at the end of the tween.
+  // The shared restock animation tweens scale back to 1. The texture itself is
+  // therefore normalized to shelf size so it can never grow back to source PNG size.
   bottle
     .setTexture(waterTexture)
     .setDisplaySize(WATER_BOTTLE_SIZE.width, WATER_BOTTLE_SIZE.height);
   return bottle;
 };
+
+const originalSceneUpdate = StarterMarketScene.prototype.update;
+StarterMarketScene.prototype.update = function updateLevelTwoContextualWork(
+  this: StarterMarketScene,
+  time: number,
+  delta: number
+): void {
+  originalSceneUpdate.call(this, time, delta);
+  if (!isPromotionLevel()) return;
+  syncLevelTwoContextualWork(this);
+};
+
+function syncLevelTwoContextualWork(scene: StarterMarketScene): void {
+  const view = scene as unknown as LevelTwoSceneInternals;
+  const actors = view.actors;
+  if (!actors) return;
+
+  const state = contextState(scene);
+  const snapshot = view.controller.snapshot();
+
+  // L2 is controlled by movement + proximity + one contextual PLACE button.
+  // Retire the old clickable target/HUD action so two control languages do not compete.
+  view.target?.sync(undefined, false);
+  view.hud?.setActionEnabled(false);
+
+  if (snapshot.step !== "restock") {
+    state.carryingBatch = false;
+    state.restockStarted = false;
+    setPlaceControlVisible(scene, false);
+
+    if (!view.interactionGate.isReady()) return;
+    switch (snapshot.step) {
+      case "collect":
+        if (actors.isNear(view.context.world.backroomBox, AUTO_COLLECT_RADIUS)) {
+          autoDispatch(scene, view, state, "PICK_BOX");
+        }
+        return;
+      case "load":
+        if (actors.isNear(view.context.world.cartStart, AUTO_LOAD_RADIUS)) {
+          if (autoDispatch(scene, view, state, "LOAD_CART")) {
+            autoDispatch(scene, view, state, "PUSH_CART", false);
+          }
+        }
+        return;
+      case "push":
+        if (actors.isNear(view.context.world.cartStart, AUTO_LOAD_RADIUS)) {
+          autoDispatch(scene, view, state, "PUSH_CART", false);
+        }
+        return;
+      case "park":
+        if (actors.isNear(view.context.world.cartCooler, AUTO_PARK_RADIUS)) {
+          if (autoDispatch(scene, view, state, "PARK_CART")) {
+            autoDispatch(scene, view, state, "OPEN_BOX", false);
+          }
+        }
+        return;
+      case "open":
+        if (actors.isNear(view.context.world.cartCooler, AUTO_PARK_RADIUS)) {
+          autoDispatch(scene, view, state, "OPEN_BOX");
+        }
+        return;
+      case "complete":
+        return;
+    }
+  }
+
+  state.restockStarted = true;
+  const actorView = actors as unknown as RestockActorInternals;
+  if (view.memoryPreviewActive || !view.interactionGate.isReady()) {
+    actorView.handProduct.setVisible(state.carryingBatch && !view.memoryPreviewActive);
+    setPlaceControlVisible(scene, false);
+    return;
+  }
+
+  const player = actors.position();
+  const cartPickupPoint = {
+    x: view.context.world.cartCooler.x + 42,
+    y: view.context.world.cartCooler.y - 6
+  };
+  const coolerPlacePoint = {
+    x: view.context.world.beverageCooler.x,
+    y: view.context.world.cartCooler.y - 8
+  };
+
+  if (!state.carryingBatch && distance(player, cartPickupPoint) <= CART_BATCH_RADIUS) {
+    state.carryingBatch = true;
+    actorView.handProduct.setVisible(true);
+    showAutoPickupFeedback(scene, cartPickupPoint);
+    document.body.dataset.levelTwoBatch = "carrying-3";
+  }
+
+  actorView.handProduct.setVisible(state.carryingBatch);
+  const rushSnapshot = view.rush.snapshot(scene.time.now);
+  const placeReady = Boolean(
+    state.carryingBatch &&
+    rushSnapshot.activeRowIndex !== undefined &&
+    !rushSnapshot.complete &&
+    distance(player, coolerPlacePoint) <= COOLER_PLACE_RADIUS
+  );
+  setPlaceControlVisible(scene, placeReady);
+  document.body.dataset.levelTwoContextAction = placeReady ? "place-ready" : (
+    state.carryingBatch ? "move-to-cooler" : "move-to-cart"
+  );
+}
+
+function contextState(scene: StarterMarketScene): LevelTwoContextState {
+  const existing = contextStateByScene.get(scene);
+  if (existing) return existing;
+  const created: LevelTwoContextState = {
+    carryingBatch: false,
+    restockStarted: false
+  };
+  contextStateByScene.set(scene, created);
+  return created;
+}
+
+function autoDispatch(
+  scene: StarterMarketScene,
+  view: LevelTwoSceneInternals,
+  state: LevelTwoContextState,
+  action: RestockSceneAction,
+  feedback = true
+): boolean {
+  if (state.lastAutoAction === action && !view.interactionGate.isReady()) return false;
+  const accepted = view.dispatchSceneAction(action, feedback);
+  if (!accepted) return false;
+  state.lastAutoAction = action;
+  document.body.dataset.levelTwoAutoAction = action.toLowerCase();
+  return true;
+}
+
+function ensurePlaceControl(scene: StarterMarketScene): PlaceControl {
+  const existing = placeControlByScene.get(scene);
+  if (existing) return existing;
+
+  const halo = scene.add.circle(0, 0, 72, 0x73d27b, 0.13)
+    .setStrokeStyle(3, 0xcdf5c9, 0.5);
+  const button = scene.add.circle(0, 0, 58, 0x4f9a52, 0.98)
+    .setStrokeStyle(4, 0xbfe8a8, 0.95)
+    .setName("level-two-place-action");
+  const hand = scene.add.text(0, -10, "✋", {
+    fontFamily: "Arial",
+    fontSize: "42px",
+    color: "#ffffff"
+  }).setOrigin(0.5);
+  const label = scene.add.text(0, 48, "PLACE", {
+    fontFamily: "Arial",
+    fontSize: "17px",
+    color: "#ffffff",
+    fontStyle: "bold",
+    stroke: "#102516",
+    strokeThickness: 5
+  }).setOrigin(0.5);
+  const keyHint = scene.add.text(0, 76, "E / SPACE", {
+    fontFamily: "Arial",
+    fontSize: "10px",
+    color: "#d8f0d3",
+    fontStyle: "bold"
+  }).setOrigin(0.5);
+
+  const root = scene.add.container(1480, 690, [halo, button, hand, label, keyHint])
+    .setDepth(220)
+    .setScrollFactor(0)
+    .setVisible(false)
+    .setName("level-two-context-place-control");
+
+  const activate = (): void => activatePlace(scene);
+  button.on("pointerdown", activate);
+  scene.input.keyboard?.on("keydown-E", activate);
+  scene.input.keyboard?.on("keydown-SPACE", activate);
+
+  const control = { root, button, label };
+  placeControlByScene.set(scene, control);
+  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+    scene.input.keyboard?.off("keydown-E", activate);
+    scene.input.keyboard?.off("keydown-SPACE", activate);
+    root.destroy(true);
+    placeControlByScene.delete(scene);
+    contextStateByScene.delete(scene);
+  });
+  return control;
+}
+
+function setPlaceControlVisible(scene: StarterMarketScene, visible: boolean): void {
+  const control = ensurePlaceControl(scene);
+  control.root.setVisible(visible);
+  control.button.disableInteractive();
+  if (visible) control.button.setInteractive({ useHandCursor: true });
+}
+
+function activatePlace(scene: StarterMarketScene): void {
+  if (!isPromotionLevel()) return;
+  const view = scene as unknown as LevelTwoSceneInternals;
+  const state = contextState(scene);
+  if (!state.carryingBatch || view.memoryPreviewActive || !view.interactionGate.isReady()) return;
+
+  const rushSnapshot = view.rush.snapshot(scene.time.now);
+  const rowIndex = rushSnapshot.activeRowIndex;
+  if (rowIndex === undefined || rushSnapshot.complete) return;
+
+  const before = view.controller.snapshot().stockedRows;
+  view.selectRushRow(rowIndex);
+  const after = view.controller.snapshot().stockedRows;
+  if (after <= before) return;
+
+  state.carryingBatch = false;
+  const actors = view.actors as unknown as RestockActorInternals | undefined;
+  actors?.handProduct.setVisible(false);
+  document.body.dataset.levelTwoBatch = "empty";
+  setPlaceControlVisible(scene, false);
+}
+
+function showAutoPickupFeedback(scene: StarterMarketScene, point: VisualPoint): void {
+  const label = scene.add.text(point.x, point.y - 110, "AUTO PICKUP · 3 WATER", {
+    fontFamily: "Arial",
+    fontSize: "14px",
+    color: "#efffea",
+    fontStyle: "bold",
+    backgroundColor: "#173d22",
+    padding: { x: 10, y: 6 }
+  }).setOrigin(0.5).setDepth(215);
+  scene.tweens.add({
+    targets: label,
+    y: label.y - 18,
+    alpha: 0,
+    duration: 760,
+    ease: "Sine.Out",
+    onComplete: () => label.destroy()
+  });
+}
+
+function distance(a: VisualPoint, b: VisualPoint): number {
+  return Math.hypot(a.x - b.x, a.y - b.y);
+}
 
 function syncPromotionCartWater(
   view: RestockActorInternals,
