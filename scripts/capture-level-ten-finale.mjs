@@ -33,9 +33,11 @@ const report = {
   generatedAt: new Date().toISOString(),
   assertions: {
     correctFinalLevelLoads: false,
+    backgroundLedComposition: false,
     caseCollected: false,
     cartLoaded: false,
     deliveredAndOpened: false,
+    openWaterCaseVisual: false,
     allShelvesStockedByCanvas: false,
     finaleCompletes: false,
     replayActionPresented: false,
@@ -64,6 +66,7 @@ try {
     initial.environmentKey === "environment-starter-market-restock-hd-v3" &&
     initial.snapshot?.step === "collect"
   );
+  report.assertions.backgroundLedComposition = initial.sceneDressing === "campaign-background-led";
 
   await emitAction(page);
   await page.waitForFunction((sceneKey) => {
@@ -85,6 +88,14 @@ try {
     return state?.step === "restock" && state?.cartAtDestination === true && state?.boxOpened === true;
   }, SCENE_KEY, { timeout: 18000 });
   report.assertions.deliveredAndOpened = true;
+
+  await page.waitForFunction(() => document.body.dataset.waterCaseOpenVisual === "layered-open-v1", null, { timeout: 5000 });
+  report.assertions.openWaterCaseVisual = await page.evaluate((sceneKey) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+    const openCase = scene?.children?.getByName?.("water-case-open-composition");
+    return Boolean(openCase?.visible && openCase?.list?.length >= 4);
+  }, SCENE_KEY);
+  await page.screenshot({ path: join(OUTPUT_DIR, "level-10-open-water-case.png"), fullPage: true });
 
   for (let attempt = 0; attempt < 80; attempt += 1) {
     const state = await readState(page);
@@ -135,6 +146,7 @@ async function readState(page) {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
     return {
       environmentKey: scene?.context?.levelAssets?.environment?.key ?? null,
+      sceneDressing: document.body.dataset.sceneDressing ?? null,
       snapshot: scene?.controller?.snapshot?.() ?? null,
       rush: scene?.rush?.snapshot?.(scene?.time?.now ?? 0) ?? null
     };
