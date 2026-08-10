@@ -33,21 +33,22 @@ const lockableOrientation = (): LockableScreenOrientation | undefined => (
 const updateOrientationDatasets = (orientationLocked?: boolean): void => {
   const mobileLike = isMobileLike();
   const portrait = isPortrait();
+  const softwareLandscape = mobileLike && portrait;
+
   document.body.dataset.mobileLandscape = mobileLike ? "required" : "not-required";
   document.body.dataset.screenOrientation = portrait ? "portrait" : "landscape";
+  document.body.dataset.softwareLandscape = softwareLandscape ? "true" : "false";
   document.body.dataset.orientationLock = orientationLocked
     ? "locked"
-    : mobileLike && portrait
-      ? "auto-requested"
+    : softwareLandscape
+      ? "software-fallback"
       : "not-needed";
 };
 
 /**
- * Best-effort landscape request with no user gate. Installed/PWA experiences
- * can honor the manifest orientation immediately, and browsers that expose
- * Screen Orientation locking may accept this request directly. Browsers that
- * require a user activation or fullscreen can reject it; the game never blocks
- * on that rejection and will retry automatically as the viewport changes.
+ * Best-effort physical landscape request with no dedicated user gate.
+ * When the browser refuses to rotate the physical viewport, CSS switches the
+ * complete game stage into a software-landscape presentation automatically.
  */
 export async function requestMobileLandscapeMode(): Promise<MobileLandscapeRequestResult> {
   const mobileLike = isMobileLike();
