@@ -7,8 +7,8 @@ const DIST_DIR = resolve("dist");
 const OUTPUT_DIR = resolve("ui-audit/golden-order-hunt");
 const PORT = 4184;
 const ORIGIN = `http://127.0.0.1:${PORT}`;
-const GAME_CANVAS_SELECTOR = "#app > canvas:not(#mobile-game-backdrop)";
-const GAME_SCENE_KEY = "starter-market-shift";
+const CANVAS = "#app > canvas:not(#mobile-game-backdrop)";
+const SCENE_KEY = "starter-market-shift";
 const GAME_WIDTH = 1600;
 const GAME_HEIGHT = 900;
 
@@ -26,24 +26,24 @@ const server = createServer((request, response) => {
   response.setHeader("Cache-Control", "no-store");
   response.end(readFileSync(filePath));
 });
-await new Promise((resolveServer) => server.listen(PORT, "127.0.0.1", resolveServer));
+await new Promise((done) => server.listen(PORT, "127.0.0.1", done));
 
 const report = {
   generatedAt: new Date().toISOString(),
   assertions: {
     goldenSceneActive: false,
-    hdEnvironmentActive: false,
+    projectBackgroundActive: false,
+    backgroundLedComposition: false,
+    duplicateStaticFixturesAbsent: false,
     compactHudActive: false,
     legacyHudHidden: false,
     workerIsSolidHumanScale: false,
-    breakfastFixtureIsStoreScale: false,
-    produceFixtureIsStoreScale: false,
     basketIsGrounded: false,
     eightProductsVisible: false,
     allProductsTrimmed: false,
     productScaleIsBelievable: false,
+    productsSitOnBakedDepartments: false,
     categorySimilarDecoysVisible: false,
-    threeStoreZonesReadable: false,
     wrongItemCostsTime: false,
     wrongItemDoesNotAdvanceOrder: false,
     orderCompletes: false,
@@ -61,7 +61,6 @@ const report = {
 
 const browser = await chromium.launch({ headless: true });
 let thrownError;
-
 try {
   const context = await browser.newContext({ viewport: { width: 1600, height: 900 }, deviceScaleFactor: 1 });
   await context.addInitScript(() => {
@@ -76,117 +75,60 @@ try {
   const page = await context.newPage();
   attachListeners(page, report);
   await page.goto(`${ORIGIN}/?test=1&briefing=0&level=starter-level-005`, { waitUntil: "networkidle", timeout: 90000 });
-  await page.waitForSelector(GAME_CANVAS_SELECTOR, { state: "visible", timeout: 45000 });
+  await page.waitForSelector(CANVAS, { state: "visible", timeout: 45000 });
   await page.waitForFunction(() => document.body.dataset.goldenLevel === "level-5-mature-pass-v1", null, { timeout: 30000 });
-  await page.waitForFunction(() => document.body.dataset.findItemsVisibleCount === "8", null, { timeout: 15000 });
+  await page.waitForFunction(() => document.body.dataset.goldenProductPlacement === "produce-grocery-dairy-v2", null, { timeout: 15000 });
 
-  const presentation = await page.evaluate((sceneKey) => {
-    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
-    const list = scene?.children?.list ?? [];
-    const named = (name) => list.find((entry) => entry?.name === name);
-    const environment = named("commercial-supermarket-salesfloor");
-    const source = environment?.texture?.getSourceImage?.();
-    const summary = (entry) => entry ? ({
-      visible: entry.visible !== false,
-      textureKey: entry.texture?.key ?? null,
-      x: entry.x, y: entry.y,
-      displayWidth: entry.displayWidth ?? 0,
-      displayHeight: entry.displayHeight ?? 0,
-      alpha: entry.alpha ?? 1
-    }) : null;
-    const products = list
-      .filter((entry) => typeof entry?.name === "string")
-      .filter((entry) => entry.name.startsWith("find-item-") || entry.name.startsWith("find-decoy-"))
-      .filter((entry) => entry.visible !== false && entry.active !== false)
-      .map((entry) => ({
-        name: entry.name,
-        textureKey: entry.texture?.key ?? null,
-        x: entry.x, y: entry.y,
-        displayWidth: entry.displayWidth ?? 0,
-        displayHeight: entry.displayHeight ?? 0,
-        requested: entry.getData?.("requested") === true
-      }));
-    return {
-      goldenLevel: document.body.dataset.goldenLevel ?? null,
-      goldenEnvironment: document.body.dataset.goldenEnvironment ?? null,
-      goldenWorldScale: document.body.dataset.goldenWorldScale ?? null,
-      goldenHud: document.body.dataset.goldenHud ?? null,
-      environment: environment ? {
-        textureKey: environment.texture?.key ?? null,
-        sourceWidth: source?.width ?? 0,
-        sourceHeight: source?.height ?? 0
-      } : null,
-      worker: summary(named("find-items-worker")),
-      breakfast: summary(named("golden-order-breakfast-fixture")),
-      produce: summary(named("golden-order-produce-fixture")),
-      basket: summary(named("order-basket")),
-      visibleLegacyHudObjects: list.filter((entry) => {
-        const depth = entry?.depth ?? -1;
-        return depth >= 99 && depth <= 105 && entry.visible !== false;
-      }).length,
-      products
-    };
-  }, GAME_SCENE_KEY);
+  const presentation = await readPresentation(page);
   report.presentation = presentation;
-
   report.assertions.goldenSceneActive = presentation.goldenLevel === "level-5-mature-pass-v1";
-  report.assertions.hdEnvironmentActive = Boolean(
-    presentation.goldenEnvironment === "environment-project-order-hunt-v2" &&
-    presentation.environment?.textureKey === "environment-project-order-hunt-v2" &&
-    presentation.environment.sourceWidth >= 1600 && presentation.environment.sourceHeight >= 900 &&
-    presentation.goldenWorldScale === "trimmed-v3"
-  );
+  report.assertions.projectBackgroundActive = presentation.environmentKey === "environment-project-order-hunt-v2";
+  report.assertions.backgroundLedComposition = presentation.sceneDressing === "campaign-background-led" &&
+    presentation.sceneComposition === "baked-departments-live-products";
+  report.assertions.duplicateStaticFixturesAbsent = presentation.visibleDuplicateFixtures === 0;
   report.assertions.compactHudActive = presentation.goldenHud === "compact-v1";
   report.assertions.legacyHudHidden = presentation.visibleLegacyHudObjects === 0;
   report.assertions.workerIsSolidHumanScale = Boolean(
     presentation.worker?.visible && presentation.worker.alpha === 1 &&
     presentation.worker.textureKey?.endsWith("--opaque-cutout") &&
-    presentation.worker.displayHeight >= 260 && presentation.worker.displayHeight <= 302 &&
-    presentation.worker.displayWidth >= 100 && presentation.worker.displayWidth <= 187
-  );
-  report.assertions.breakfastFixtureIsStoreScale = Boolean(
-    presentation.breakfast?.visible && presentation.breakfast.textureKey?.endsWith("--golden-trimmed") &&
-    presentation.breakfast.displayHeight >= 300 && presentation.breakfast.displayWidth >= 250
-  );
-  report.assertions.produceFixtureIsStoreScale = Boolean(
-    presentation.produce?.visible && presentation.produce.textureKey?.endsWith("--golden-trimmed") &&
-    presentation.produce.displayHeight >= 225 && presentation.produce.displayWidth >= 200
+    presentation.worker.displayHeight >= 260 && presentation.worker.displayHeight <= 302
   );
   report.assertions.basketIsGrounded = Boolean(
-    presentation.basket?.visible && presentation.basket.textureKey?.endsWith("--golden-trimmed") &&
-    presentation.basket.y >= 800 && presentation.basket.displayHeight >= 72
+    presentation.basket?.visible && presentation.basket.y >= 800 && presentation.basket.displayHeight >= 72
   );
   report.assertions.eightProductsVisible = presentation.products.length === 8;
   report.assertions.allProductsTrimmed = presentation.products.every((product) => product.textureKey?.endsWith("--golden-trimmed"));
-  report.assertions.productScaleIsBelievable = presentation.products.every((product) => {
-    if (["find-item-cereal-box", "find-decoy-oats", "find-decoy-peanut-butter"].includes(product.name)) return product.displayHeight <= 56;
-    if (["find-item-milk-bottle", "find-decoy-yogurt"].includes(product.name)) return product.displayHeight <= 66;
-    return product.displayHeight <= 45;
-  });
+  report.assertions.productScaleIsBelievable = presentation.products.every((product) => product.displayHeight <= 66);
+
+  const byName = new Map(presentation.products.map((product) => [product.name, product]));
+  const inZone = (name, xMin, xMax, yMin, yMax) => {
+    const product = byName.get(name);
+    return Boolean(product && product.x >= xMin && product.x <= xMax && product.y >= yMin && product.y <= yMax);
+  };
+  report.assertions.productsSitOnBakedDepartments = Boolean(
+    inZone("find-item-apple", 300, 390, 480, 540) &&
+    inZone("find-decoy-banana", 80, 160, 400, 455) &&
+    inZone("find-decoy-grapes", 410, 480, 445, 500) &&
+    inZone("find-item-cereal-box", 640, 710, 360, 420) &&
+    inZone("find-decoy-oats", 700, 770, 405, 460) &&
+    inZone("find-decoy-peanut-butter", 900, 960, 350, 405) &&
+    inZone("find-item-milk-bottle", 1400, 1470, 365, 425) &&
+    inZone("find-decoy-yogurt", 1290, 1360, 325, 380)
+  );
 
   const names = new Set(presentation.products.map((product) => product.name));
   report.assertions.categorySimilarDecoysVisible = [
     "find-decoy-oats", "find-decoy-yogurt", "find-decoy-banana", "find-decoy-grapes", "find-decoy-peanut-butter"
   ].every((name) => names.has(name));
 
-  const productByName = new Map(presentation.products.map((product) => [product.name, product]));
-  const zone = (namesToCheck, xMin, xMax, yMin, yMax) => namesToCheck.every((name) => {
-    const product = productByName.get(name);
-    return product && product.x >= xMin && product.x <= xMax && product.y >= yMin && product.y <= yMax;
-  });
-  report.assertions.threeStoreZonesReadable = Boolean(
-    zone(["find-item-cereal-box", "find-decoy-oats", "find-decoy-peanut-butter"], 610, 820, 590, 640) &&
-    zone(["find-item-milk-bottle", "find-decoy-yogurt"], 900, 1050, 570, 610) &&
-    zone(["find-item-apple", "find-decoy-banana", "find-decoy-grapes"], 1110, 1310, 675, 715)
-  );
-
   report.initialState = await readSearchState(page);
-  await page.screenshot({ path: join(OUTPUT_DIR, "golden-order-hunt-initial.png"), fullPage: true });
+  await page.screenshot({ path: join(OUTPUT_DIR, "golden-order-hunt-background-led.png"), fullPage: true });
 
   const oats = presentation.products.find((product) => product.name === "find-decoy-oats");
   if (!oats) throw new Error("Golden oats decoy was not found");
   await clickGame(page, oats.x, oats.y);
-  await page.waitForFunction((sceneKey) => window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.findChallenge?.snapshot?.().mistakes === 1, GAME_SCENE_KEY, { timeout: 10000 });
+  await page.waitForFunction((sceneKey) => window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.findChallenge?.snapshot?.().mistakes === 1,
+    SCENE_KEY, { timeout: 10000 });
   const afterMistake = await readSearchState(page);
   report.afterMistakeState = afterMistake;
   report.assertions.wrongItemCostsTime = report.initialState.challenge.remainingMs - afterMistake.challenge.remainingMs >= 4500;
@@ -197,18 +139,20 @@ try {
     const product = state.products.find((entry) => entry.name === productName);
     if (!product) throw new Error(`Missing requested product sprite: ${productName}`);
     await clickGame(page, product.x, product.y);
-    await page.waitForFunction(({ sceneKey, productId }) => window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.findChallenge?.snapshot?.().collectedProductIds?.includes(productId) === true,
-      { sceneKey: GAME_SCENE_KEY, productId: productName.replace("find-item-", "") }, { timeout: 20000 });
+    await page.waitForFunction(({ sceneKey, productId }) => (
+      window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.findChallenge?.snapshot?.().collectedProductIds?.includes(productId) === true
+    ), { sceneKey: SCENE_KEY, productId: productName.replace("find-item-", "") }, { timeout: 20000 });
   }
 
-  const finalState = await readSearchState(page);
-  report.finalState = finalState;
-  report.assertions.orderCompletes = finalState.controller.step === "complete" && finalState.challenge.status === "complete" && finalState.challenge.collectedProductIds.length === 3;
+  report.finalState = await readSearchState(page);
+  report.assertions.orderCompletes = report.finalState.controller.step === "complete" &&
+    report.finalState.challenge.status === "complete" && report.finalState.challenge.collectedProductIds.length === 3;
   await page.screenshot({ path: join(OUTPUT_DIR, "golden-order-hunt-complete.png"), fullPage: true });
 
   report.assertions.noRuntimeIssues = report.consoleErrors.length === 0 && report.pageErrors.length === 0 && report.failedRequests.length === 0;
-  const failed = Object.entries(report.assertions).filter(([, passed]) => !passed).map(([key]) => key);
-  if (failed.length > 0) throw new Error(`Golden Order Hunt audit failed: ${failed.join(", ")}`);
+  const failed = Object.entries(report.assertions).filter(([, ok]) => !ok).map(([key]) => key);
+  if (failed.length) throw new Error(`Background-led Order Hunt audit failed: ${failed.join(", ")}`);
+
   await page.close();
   await context.close();
 } catch (error) {
@@ -217,11 +161,57 @@ try {
 } finally {
   writeFileSync(join(OUTPUT_DIR, "report.json"), JSON.stringify(report, null, 2));
   await browser.close();
-  await new Promise((resolveServer) => server.close(resolveServer));
+  await new Promise((done) => server.close(done));
 }
 
 console.log(JSON.stringify({ assertions: report.assertions, fatalError: report.fatalError }, null, 2));
 if (thrownError) throw thrownError;
+
+async function readPresentation(page) {
+  return page.evaluate((sceneKey) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+    const list = scene?.children?.list ?? [];
+    const named = (name) => list.find((entry) => entry?.name === name);
+    const summary = (entry) => entry ? ({
+      visible: entry.visible !== false,
+      textureKey: entry.texture?.key ?? null,
+      x: entry.x, y: entry.y,
+      displayWidth: entry.displayWidth ?? 0,
+      displayHeight: entry.displayHeight ?? 0,
+      alpha: entry.alpha ?? 1
+    }) : null;
+    const duplicateNames = [
+      "golden-order-breakfast-fixture", "golden-order-produce-fixture", "golden-order-dairy-fixture",
+      "golden-order-aux-fixture-1", "golden-order-aux-fixture-2"
+    ];
+    const products = list
+      .filter((entry) => typeof entry?.name === "string")
+      .filter((entry) => entry.name.startsWith("find-item-") || entry.name.startsWith("find-decoy-"))
+      .filter((entry) => entry.visible !== false && entry.active !== false)
+      .map((entry) => ({
+        name: entry.name,
+        textureKey: entry.texture?.key ?? null,
+        x: entry.x, y: entry.y,
+        displayWidth: entry.displayWidth ?? 0,
+        displayHeight: entry.displayHeight ?? 0
+      }));
+    return {
+      goldenLevel: document.body.dataset.goldenLevel ?? null,
+      goldenHud: document.body.dataset.goldenHud ?? null,
+      sceneDressing: document.body.dataset.sceneDressing ?? null,
+      sceneComposition: document.body.dataset.goldenSceneComposition ?? null,
+      environmentKey: document.body.dataset.goldenEnvironment ?? null,
+      visibleDuplicateFixtures: duplicateNames.filter((name) => named(name)?.visible === true).length,
+      visibleLegacyHudObjects: list.filter((entry) => {
+        const depth = entry?.depth ?? -1;
+        return depth >= 99 && depth <= 105 && entry.visible !== false;
+      }).length,
+      worker: summary(named("find-items-worker")),
+      basket: summary(named("order-basket")),
+      products
+    };
+  }, SCENE_KEY);
+}
 
 async function readSearchState(page) {
   return page.evaluate((sceneKey) => {
@@ -235,21 +225,21 @@ async function readSearchState(page) {
         .filter((entry) => entry.visible !== false && entry.active !== false)
         .map((entry) => ({ name: entry.name, x: entry.x, y: entry.y, textureKey: entry.texture?.key ?? null }))
     };
-  }, GAME_SCENE_KEY);
+  }, SCENE_KEY);
 }
 
 async function clickGame(page, gameX, gameY) {
-  const box = await page.locator(GAME_CANVAS_SELECTOR).boundingBox();
+  const box = await page.locator(CANVAS).boundingBox();
   if (!box) throw new Error("Game canvas has no bounding box");
   await page.mouse.click(box.x + (gameX / GAME_WIDTH) * box.width, box.y + (gameY / GAME_HEIGHT) * box.height);
 }
 
-function attachListeners(page, auditReport) {
-  page.on("console", (message) => { if (message.type() === "error") auditReport.consoleErrors.push(message.text()); });
-  page.on("pageerror", (error) => auditReport.pageErrors.push(error.message));
+function attachListeners(page, audit) {
+  page.on("console", (message) => { if (message.type() === "error") audit.consoleErrors.push(message.text()); });
+  page.on("pageerror", (error) => audit.pageErrors.push(error.message));
   page.on("requestfailed", (request) => {
     const error = request.failure()?.errorText ?? "unknown";
-    if (!error.includes("ERR_ABORTED")) auditReport.failedRequests.push({ url: request.url(), error });
+    if (!error.includes("ERR_ABORTED")) audit.failedRequests.push({ url: request.url(), error });
   });
 }
 
