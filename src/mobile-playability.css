@@ -1,96 +1,89 @@
 /* Mobile landscape policy.
-   The game automatically requests landscape on load. There is no dedicated
-   orientation button or gate. Portrait is only a transient fallback while the
-   browser decides whether it can honor the landscape request. */
+   The game always targets landscape. We first request physical landscape. If a
+   browser or device emulator keeps a portrait viewport, the complete game stage
+   rotates automatically so the player still sees a proper landscape game.
+   There is no separate orientation button or blocking gate. */
 
-@media (max-width: 760px) and (orientation: portrait) {
-  canvas {
-    opacity: 0.34 !important;
-    filter: blur(1.5px) !important;
-    pointer-events: auto !important;
-  }
-
-  /* Keep the existing game Start flow usable. The Start action also retries
-     orientation locking from a valid user gesture, without adding another tap. */
-  #level-briefing-overlay,
-  #guided-drag-action {
-    visibility: visible !important;
-    pointer-events: auto !important;
-    z-index: 24000 !important;
-  }
-
-  #level-briefing-overlay {
-    padding:
-      max(48px, calc(env(safe-area-inset-top) + 42px))
-      max(10px, env(safe-area-inset-right))
-      max(10px, env(safe-area-inset-bottom))
-      max(10px, env(safe-area-inset-left)) !important;
-  }
-
-  #level-briefing-overlay > div,
-  #guided-drag-action > div {
-    width: min(430px, 100%) !important;
-    max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 60px) !important;
-    overflow: auto;
-  }
-
-  #level-briefing-overlay button,
-  #guided-drag-action button {
-    min-height: 50px !important;
-    touch-action: manipulation;
-  }
-
-  #level-checklist {
-    visibility: hidden !important;
-    pointer-events: none !important;
-  }
-
-  /* This is status only, never an input blocker. */
-  #mobile-orientation-hint {
-    inset: auto max(8px, env(safe-area-inset-right)) auto max(8px, env(safe-area-inset-left)) !important;
-    top: max(8px, env(safe-area-inset-top)) !important;
-    display: flex !important;
-    min-height: 34px;
-    flex-direction: row !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 7px !important;
-    padding: 6px 10px !important;
-    border: 1px solid rgb(255 215 90 / 34%);
-    border-radius: 10px;
-    background: rgb(7 19 21 / 72%) !important;
-    box-sizing: border-box;
-    backdrop-filter: blur(7px);
-    pointer-events: none !important;
-  }
-
-  #mobile-orientation-hint::before {
-    content: "↻" !important;
-    margin: 0 !important;
-    font: 800 20px/1 Arial, sans-serif !important;
-    color: #ffd75a !important;
-  }
-
-  #mobile-orientation-hint strong {
-    font: 900 10px/1 Arial, sans-serif !important;
-    letter-spacing: 0.7px !important;
-  }
-
-  #mobile-orientation-hint span {
-    max-width: none !important;
-    font: 700 9px/1.1 Arial, sans-serif !important;
-  }
-
-  #mobile-fullscreen-button,
-  #mobile-game-hud,
-  #mobile-game-task,
-  #mobile-storefront-actions,
-  #mobile-storefront-close {
-    display: none !important;
-  }
+body[data-software-landscape="true"] {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100dvh !important;
+  height: 100dvw !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  transform: rotate(90deg) translateY(-100%);
+  transform-origin: 0 0;
+  background: #0d1415;
 }
 
-@media (orientation: landscape) and (max-height: 760px) {
+body[data-software-landscape="true"] #app {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Override the older viewport-specific canvas placement. The canvas keeps its
+   native 16:9 aspect and fits inside the software-landscape stage, leaving only
+   the small side bars required by extra-wide phones instead of huge top/bottom
+   bars in portrait. */
+body[data-software-landscape="true"] #app canvas {
+  position: absolute !important;
+  left: 50% !important;
+  top: 50% !important;
+  width: auto !important;
+  height: auto !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  margin: 0 !important;
+  opacity: 1 !important;
+  filter: none !important;
+  transform: translate(-50%, -50%) !important;
+  box-shadow: none !important;
+  pointer-events: auto !important;
+}
+
+/* DOM gameplay overlays are descendants of the transformed body, so briefing,
+   tutorial, task panels and storefront controls rotate with the game instead of
+   remaining in portrait. */
+body[data-software-landscape="true"] #level-briefing-overlay,
+body[data-software-landscape="true"] #guided-drag-action,
+body[data-software-landscape="true"] #level-checklist {
+  visibility: visible !important;
+}
+
+body[data-software-landscape="true"] #level-briefing-overlay,
+body[data-software-landscape="true"] #guided-drag-action {
+  width: 100% !important;
+  height: 100% !important;
+  max-width: none !important;
+  max-height: none !important;
+}
+
+body[data-software-landscape="true"] #mobile-orientation-hint {
+  display: none !important;
+}
+
+body[data-software-landscape="true"] #mobile-fullscreen-button {
+  display: none !important;
+}
+
+/* In true physical landscape the software transform is removed immediately and
+   the normal mobile-landscape rules in styles.css take over. */
+@media (orientation: landscape) {
+  body[data-software-landscape="true"] {
+    position: static !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 100dvh !important;
+    transform: none !important;
+  }
+
   #mobile-orientation-hint {
     display: none !important;
   }
