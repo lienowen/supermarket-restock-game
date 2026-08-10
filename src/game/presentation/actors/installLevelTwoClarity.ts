@@ -58,7 +58,7 @@ function applyLevelTwoClarity(scene: StarterMarketScene): void {
   compactPlaceControl(scene);
   syncFocusGuide(scene, view, snapshot);
 
-  document.body.dataset.levelTwoVisualHierarchy = "single-focus-v1";
+  document.body.dataset.levelTwoVisualHierarchy = "single-focus-v2";
 }
 
 function setObjectVisible(object: Phaser.GameObjects.GameObject | null, visible: boolean): void {
@@ -70,12 +70,12 @@ function compactPlaceControl(scene: StarterMarketScene): void {
   const root = scene.children.getByName("level-two-context-place-control");
   if (!(root instanceof Phaser.GameObjects.Container)) return;
 
-  root.setScale(0.8).setPosition(1490, 710);
+  root.setScale(0.74).setPosition(1492, 712);
   root.list.forEach((child) => {
     if (!(child instanceof Phaser.GameObjects.Text)) return;
     if (child.text === "✋") child.setVisible(false);
-    if (child.text === "E / SPACE") {
-      child.setText("E / TAP").setFontSize(9).setY(70);
+    if (child.text === "E / SPACE" || child.text === "E / TAP") {
+      child.setText("TAP").setFontSize(9).setY(67);
     }
   });
 }
@@ -86,20 +86,33 @@ function syncFocusGuide(
   snapshot: RestockSceneSnapshot
 ): void {
   const guide = ensureGuide(scene);
-  if (snapshot.step === "complete" || view.memoryPreviewActive) {
+  const contextualAction = document.body.dataset.levelTwoContextAction;
+
+  // Once the PLACE control is actionable it becomes the one primary prompt.
+  // Do not show a second world-space PLACE label at the same time.
+  if (
+    snapshot.step === "complete" ||
+    view.memoryPreviewActive ||
+    contextualAction === "place-ready"
+  ) {
     guide.root.setVisible(false);
+    document.body.dataset.levelTwoPrimaryPrompt = contextualAction === "place-ready"
+      ? "place-control"
+      : "none";
     return;
   }
 
   const target = targetFor(view, snapshot);
   if (!target) {
     guide.root.setVisible(false);
+    document.body.dataset.levelTwoPrimaryPrompt = "none";
     return;
   }
 
   guide.root.setPosition(target.x, target.y).setVisible(true);
   guide.label.setText(target.label);
-  guide.ring.setStrokeStyle(3, target.color, 0.92).setFillStyle(target.color, 0.045);
+  guide.ring.setStrokeStyle(3, target.color, 0.88).setFillStyle(target.color, 0.035);
+  document.body.dataset.levelTwoPrimaryPrompt = "focus-guide";
 }
 
 function targetFor(
@@ -142,23 +155,23 @@ function ensureGuide(scene: StarterMarketScene): FocusGuide {
   const existing = guideByScene.get(scene);
   if (existing) return existing;
 
-  const ring = scene.add.circle(0, 0, 46, 0xffd95e, 0.045)
-    .setStrokeStyle(3, 0xffd95e, 0.92);
-  const arrow = scene.add.text(0, -66, "▼", {
+  const ring = scene.add.circle(0, 0, 38, 0xffd95e, 0.035)
+    .setStrokeStyle(3, 0xffd95e, 0.88);
+  const arrow = scene.add.text(0, -55, "▼", {
     fontFamily: "Arial, sans-serif",
-    fontSize: "24px",
+    fontSize: "20px",
     color: "#ffe27a",
     fontStyle: "bold",
     stroke: "#112319",
-    strokeThickness: 4
+    strokeThickness: 3
   }).setOrigin(0.5);
-  const label = scene.add.text(0, -92, "", {
+  const label = scene.add.text(0, -77, "", {
     fontFamily: "Arial, sans-serif",
-    fontSize: "13px",
+    fontSize: "12px",
     color: "#ffffff",
     fontStyle: "bold",
     backgroundColor: "#143321",
-    padding: { x: 9, y: 5 }
+    padding: { x: 8, y: 4 }
   }).setOrigin(0.5);
 
   const root = scene.add.container(0, 0, [ring, arrow, label])
@@ -167,9 +180,9 @@ function ensureGuide(scene: StarterMarketScene): FocusGuide {
 
   scene.tweens.add({
     targets: [ring, arrow],
-    y: "+=6",
-    alpha: { from: 0.72, to: 1 },
-    duration: 620,
+    y: "+=5",
+    alpha: { from: 0.76, to: 1 },
+    duration: 680,
     ease: "Sine.InOut",
     yoyo: true,
     repeat: -1
