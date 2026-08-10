@@ -4,9 +4,10 @@ import { resolveLevelVisualPreset } from "../visual/LevelVisualPresetResolver";
 import type { MarketLevelVisualPreset } from "../visual/MarketLevelVisualPreset";
 
 /**
- * Owns the fixed supermarket shell only. Gameplay fixtures, actors and targets
- * are layered by their dedicated views so the environment remains one coherent
- * place instead of a collage of oversized departments.
+ * Owns the supermarket shell and non-gameplay scene dressing. The authored
+ * environment image is deliberately only the base plate; fixtures, props and
+ * ambient customers are reusable layers so each level can be composed without
+ * baking every visible object into one background image.
  */
 export class StarterMarketEnvironmentView {
   private readonly visualPreset: MarketLevelVisualPreset;
@@ -21,6 +22,8 @@ export class StarterMarketEnvironmentView {
   create(): void {
     this.createBase();
     this.createFloor();
+    this.createStoreComposition();
+    this.createAmbientLife();
     this.registerRestockCoolerPresentation();
     this.registerSharedFixtureAvailability();
     this.createModeFocus();
@@ -58,6 +61,164 @@ export class StarterMarketEnvironmentView {
     ).setDepth(-29);
   }
 
+  private createStoreComposition(): void {
+    this.addSceneAsset(
+      "fixture-produce-display-a",
+      185,
+      700,
+      320,
+      300,
+      10,
+      "ambient-produce-display"
+    );
+    this.addSceneAsset(
+      "fixture-backroom-rack-a",
+      430,
+      570,
+      300,
+      315,
+      9,
+      "ambient-backroom-rack"
+    );
+    this.addSceneAsset(
+      "equipment-shopping-cart",
+      305,
+      810,
+      132,
+      136,
+      21,
+      "ambient-shopping-cart"
+    );
+
+    if (this.context.mode !== "restock") return;
+
+    this.addSceneAsset(
+      "fixture-dairy-breakfast-a",
+      720,
+      465,
+      300,
+      310,
+      9,
+      "ambient-dairy-aisle"
+    );
+    this.addSceneAsset(
+      "fixture-cleaning-supplies-a",
+      1435,
+      480,
+      270,
+      290,
+      9,
+      "ambient-cleaning-aisle",
+      true
+    );
+    this.addSceneAsset(
+      "fixture-checkout-a",
+      1390,
+      725,
+      310,
+      260,
+      12,
+      "ambient-checkout"
+    );
+  }
+
+  private createAmbientLife(): void {
+    const first = this.addAmbientCustomer(
+      "customer-a-idle",
+      565,
+      748,
+      142,
+      235,
+      "ambient-customer-a"
+    );
+    const second = this.addAmbientCustomer(
+      "customer-b-idle",
+      1490,
+      770,
+      148,
+      240,
+      "ambient-customer-b",
+      true
+    );
+
+    if (first) {
+      this.scene.tweens.add({
+        targets: first,
+        x: 655,
+        y: 756,
+        duration: 6800,
+        ease: "Sine.InOut",
+        yoyo: true,
+        repeat: -1,
+        hold: 700,
+        repeatDelay: 500
+      });
+    }
+
+    if (second) {
+      this.scene.tweens.add({
+        targets: second,
+        x: 1395,
+        y: 764,
+        duration: 7600,
+        ease: "Sine.InOut",
+        yoyo: true,
+        repeat: -1,
+        hold: 950,
+        repeatDelay: 650
+      });
+    }
+  }
+
+  private addSceneAsset(
+    key: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    depth: number,
+    name: string,
+    flipX = false
+  ): Phaser.GameObjects.Image | undefined {
+    if (!this.scene.textures.exists(key)) return undefined;
+    return this.scene.add.image(x, y, key)
+      .setOrigin(0.5, 0.96)
+      .setDisplaySize(width, height)
+      .setFlipX(flipX)
+      .setDepth(depth + y / 1000)
+      .setName(name);
+  }
+
+  private addAmbientCustomer(
+    key: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    name: string,
+    flipX = false
+  ): Phaser.GameObjects.Container | undefined {
+    if (!this.scene.textures.exists(key)) return undefined;
+
+    const shadow = this.scene.add.ellipse(
+      0,
+      3,
+      Math.max(62, width * 0.48),
+      Math.max(18, height * 0.085),
+      0x102018,
+      0.2
+    );
+    const customer = this.scene.add.image(0, 0, key)
+      .setOrigin(0.5, 0.96)
+      .setDisplaySize(width, height)
+      .setFlipX(flipX)
+      .setAlpha(0.94);
+
+    return this.scene.add.container(x, y, [shadow, customer])
+      .setDepth(18 + y / 1000)
+      .setName(name);
+  }
+
   private registerRestockCoolerPresentation(): void {
     if (this.context.mode !== "restock") {
       document.body.dataset.restockCoolerBackground = "not-applicable";
@@ -76,7 +237,13 @@ export class StarterMarketEnvironmentView {
       "fixture-backroom-rack-a",
       "fixture-produce-display-a",
       "fixture-beverage-cooler-a",
-      "fixture-beverage-cooler-glass-hd-v3"
+      "fixture-beverage-cooler-glass-hd-v3",
+      "fixture-dairy-breakfast-a",
+      "fixture-cleaning-supplies-a",
+      "fixture-checkout-a",
+      "equipment-shopping-cart",
+      "customer-a-idle",
+      "customer-b-idle"
     ].forEach((key) => {
       this.scene.textures.exists(key);
     });
