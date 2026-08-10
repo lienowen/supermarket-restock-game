@@ -26,24 +26,64 @@ interface RestockActorInternals {
   readonly caseBox: Phaser.GameObjects.Image;
 }
 
+interface FirstDeliverySceneInternals {
+  readonly context?: {
+    readonly campaignLevel?: { readonly level?: { readonly id?: string } };
+    readonly levelAssets?: {
+      readonly product?: { readonly key: string; readonly path: string };
+    };
+  };
+}
+
 const isFirstDelivery = (): boolean => (
   document.body.dataset.activeLevel === FIRST_DELIVERY_LEVEL_ID
 );
 
+const isFirstDeliveryScene = (scene: StarterMarketScene): boolean => (
+  (scene as unknown as FirstDeliverySceneInternals)
+    .context?.campaignLevel?.level?.id === FIRST_DELIVERY_LEVEL_ID
+);
+
 /**
  * Level 1 originally used this installer as both an art patch and a gameplay
- * override. Mature pass keeps only the art responsibility here. Navigation,
- * proximity and action sequencing remain owned by StarterMarketScene and
- * RestockActorView so the worker can genuinely traverse the store.
+ * override. Mature pass keeps only the art responsibility here. The final open
+ * cart composite and HD stock bottle are late-stage art, so they now begin
+ * loading after the first playable frame instead of blocking initial preload.
  */
-const originalPreload = StarterMarketScene.prototype.preload;
-StarterMarketScene.prototype.preload = function preloadWithOpenCartCombo(
+const originalCreate = StarterMarketScene.prototype.create;
+StarterMarketScene.prototype.create = function createWithDeferredFirstDeliveryArt(
   this: StarterMarketScene
 ): void {
-  originalPreload.call(this);
+  originalCreate.call(this);
+  if (!isFirstDeliveryScene(this)) return;
+
+  const context = (this as unknown as FirstDeliverySceneInternals).context;
+  const product = context?.levelAssets?.product;
+  let queued = false;
+
+  if (product && !this.textures.exists(product.key)) {
+    this.load.image(product.key, product.path);
+    queued = true;
+  }
   if (!this.textures.exists(CART_OPEN_COMBO_SOURCE_KEY)) {
     this.load.image(CART_OPEN_COMBO_SOURCE_KEY, CART_OPEN_COMBO_SOURCE_PATH);
+    queued = true;
   }
+
+  if (!queued) {
+    document.body.dataset.levelOneDeferredArt = "ready";
+    return;
+  }
+
+  document.body.dataset.levelOneDeferredArt = "loading";
+  this.load.once(Phaser.Loader.Events.COMPLETE, () => {
+    if (!this.sys.isActive()) return;
+    document.body.dataset.levelOneDeferredArt = "ready";
+  });
+  this.load.once(Phaser.Loader.Events.LOAD_ERROR, () => {
+    document.body.dataset.levelOneDeferredArt = "error";
+  });
+  this.load.start();
 };
 
 const originalSync = RestockActorView.prototype.sync;
