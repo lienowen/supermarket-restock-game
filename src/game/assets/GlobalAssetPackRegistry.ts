@@ -62,19 +62,24 @@ export type GlobalAssetPack =
   | FindItemsGlobalAssetPack;
 
 /**
- * Only assets that are present in the repository and verified by the release
- * pipeline belong in the shared preload list. Planned global assets remain in
- * the catalogue for future production work, but must not be requested by the
- * browser until their real files are delivered.
+ * Shared scene-building assets are independent from the authored background.
+ * This keeps the environment plate as a base layer while allowing every level
+ * to feel like a populated supermarket through reusable fixtures and ambience.
  */
 const SHARED_STORE_ASSET_KEYS = Object.freeze([
   "fixture-produce-display-a",
-  "fixture-backroom-rack-a"
+  "fixture-backroom-rack-a",
+  "equipment-shopping-cart",
+  "customer-a-idle",
+  "customer-b-idle"
 ]);
 
 const RESTOCK_SHARED_STORE_ASSET_KEYS = Object.freeze([
   ...SHARED_STORE_ASSET_KEYS,
-  "fixture-beverage-cooler-glass-hd-v3"
+  "fixture-beverage-cooler-glass-hd-v3",
+  "fixture-dairy-breakfast-a",
+  "fixture-cleaning-supplies-a",
+  "fixture-checkout-a"
 ]);
 
 const SHARED_WORKER_WALK_KEYS = Object.freeze([
