@@ -10,6 +10,12 @@ const FIRST_DELIVERY_NAVIGATION = Object.freeze({
 
 const NO_RULE_OVERRIDES = Object.freeze([]);
 
+const ORDER_HUNT_STAND_POINTS = Object.freeze({
+  produce: Object.freeze({ x: 350, y: 690 }),
+  grocery: Object.freeze({ x: 700, y: 675 }),
+  dairy: Object.freeze({ x: 1360, y: 675 })
+});
+
 /**
  * Pure level data. A level never owns methods or asset paths.
  * Repeated modes must select a distinct interaction profile or challenge rule;
@@ -152,12 +158,11 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
       initialCoins: 490,
       timeLimitSeconds: 60,
       mistakePenaltySeconds: 5,
-      // Navigation targets are floor stand points in front of the fixture.
-      // Product sprite positions remain owned by the Golden visual preset.
+      // Player stand points match the baked Produce, Grocery and Dairy departments.
       itemTargets: [
-        { productId: "milk-bottle", x: 940, y: 780 },
-        { productId: "apple", x: 1220, y: 810 },
-        { productId: "cereal-box", x: 720, y: 780 }
+        { productId: "milk-bottle", ...ORDER_HUNT_STAND_POINTS.dairy },
+        { productId: "apple", ...ORDER_HUNT_STAND_POINTS.produce },
+        { productId: "cereal-box", ...ORDER_HUNT_STAND_POINTS.grocery }
       ]
     }
   },
@@ -260,9 +265,9 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
       timeLimitSeconds: 40,
       mistakePenaltySeconds: 7,
       itemTargets: [
-        { productId: "cereal-box", x: 820, y: 650 },
-        { productId: "milk-bottle", x: 520, y: 700 },
-        { productId: "apple", x: 1180, y: 720 }
+        { productId: "cereal-box", ...ORDER_HUNT_STAND_POINTS.grocery },
+        { productId: "milk-bottle", ...ORDER_HUNT_STAND_POINTS.dairy },
+        { productId: "apple", ...ORDER_HUNT_STAND_POINTS.produce }
       ]
     }
   },
