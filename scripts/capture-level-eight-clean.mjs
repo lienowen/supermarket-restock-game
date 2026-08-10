@@ -167,7 +167,7 @@ async function scrub(page, index) {
 
 function attachListeners(page, audit) {
   page.on("console", (message) => { if (message.type() === "error") audit.consoleErrors.push(message.text()); });
-  page.on("pageerror", (error) => audit.pageErrors.push(error.message);
+  page.on("pageerror", (error) => audit.pageErrors.push(error.message));
   page.on("requestfailed", (request) => {
     const error = request.failure()?.errorText ?? "unknown";
     if (!error.includes("ERR_ABORTED")) audit.failedRequests.push({ url: request.url(), error });
