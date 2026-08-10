@@ -7,6 +7,7 @@ import {
   type FindItemsGlobalAssetPack,
   type RestockGlobalAssetPack
 } from "./GlobalAssetPackRegistry";
+import { resolveLevelEnvironmentAssetKey } from "./LevelEnvironmentRegistry";
 import type { RuntimeAssetRegistry } from "./RuntimeAssetRegistry";
 import type { CheckoutLevelRuntimeContent } from "../application/CheckoutLevelRuntimeContent";
 import type { RestockShiftRuntimeContent } from "../application/ShiftRuntimeContent";
@@ -68,7 +69,6 @@ export interface ResolvedFindItemsLevelAssets extends BaseResolvedLevelAssets {
   readonly items: readonly AssetDescriptor[];
 }
 
-const HD_ENVIRONMENT_KEY = "environment-starter-market-restock-hd-v3";
 const CHECKOUT_PRODUCT_ASSET_KEYS = Object.freeze([
   "product-apple",
   "product-milk-bottle",
@@ -87,10 +87,11 @@ const resolveDescriptors = (
 
 const baseAssets = (
   registry: RuntimeAssetRegistry,
-  pack: RestockGlobalAssetPack | CheckoutGlobalAssetPack | CleanGlobalAssetPack | FindItemsGlobalAssetPack
+  pack: RestockGlobalAssetPack | CheckoutGlobalAssetPack | CleanGlobalAssetPack | FindItemsGlobalAssetPack,
+  environmentAssetKey: string
 ): BaseResolvedLevelAssets => ({
   preload: Object.freeze([]),
-  environment: registry.require(pack.environmentAssetKey),
+  environment: registry.require(environmentAssetKey),
   workerWalk: Object.freeze([
     registry.require(pack.workerWalkAssetKeys[0]),
     registry.require(pack.workerWalkAssetKeys[1])
@@ -103,9 +104,10 @@ export function resolveRestockLevelAssets(
   runtime: RestockShiftRuntimeContent
 ): ResolvedRestockLevelAssets {
   const pack = resolveGlobalAssetPack(level.presentation.assetPackId, "restock");
+  const environmentAssetKey = resolveLevelEnvironmentAssetKey(level.id, pack.environmentAssetKey);
   const caseAssets = restockCaseAssetsFor(pack, runtime.product.id);
   const preload = resolveDescriptors(registry, [
-    pack.environmentAssetKey,
+    environmentAssetKey,
     ...pack.sharedStoreAssetKeys,
     ...pack.workerWalkAssetKeys,
     pack.workerIdleAssetKey,
@@ -122,7 +124,7 @@ export function resolveRestockLevelAssets(
     ...pack.ambientProductAssetKeys
   ]);
   return Object.freeze({
-    ...baseAssets(registry, pack),
+    ...baseAssets(registry, pack, environmentAssetKey),
     preload,
     fixture: registry.require(runtime.fixture.assetKey),
     workerIdle: registry.require(pack.workerIdleAssetKey),
@@ -145,8 +147,9 @@ export function resolveCheckoutLevelAssets(
   runtime: CheckoutLevelRuntimeContent
 ): ResolvedCheckoutLevelAssets {
   const pack = resolveGlobalAssetPack(level.presentation.assetPackId, "checkout");
+  const environmentAssetKey = resolveLevelEnvironmentAssetKey(level.id, pack.environmentAssetKey);
   const preload = resolveDescriptors(registry, [
-    HD_ENVIRONMENT_KEY,
+    environmentAssetKey,
     ...pack.sharedStoreAssetKeys,
     ...pack.workerWalkAssetKeys,
     pack.workerIdleAssetKey,
@@ -157,9 +160,8 @@ export function resolveCheckoutLevelAssets(
     ...CHECKOUT_PRODUCT_ASSET_KEYS
   ]);
   return Object.freeze({
-    ...baseAssets(registry, pack),
+    ...baseAssets(registry, pack, environmentAssetKey),
     preload,
-    environment: registry.require(HD_ENVIRONMENT_KEY),
     fixture: registry.require(runtime.fixture.assetKey),
     worker: registry.require(pack.workerIdleAssetKey),
     workerScan: registry.require(pack.workerScanAssetKey),
@@ -175,8 +177,9 @@ export function resolveCleanLevelAssets(
   _runtime: CleanLevelRuntimeContent
 ): ResolvedCleanLevelAssets {
   const pack = resolveGlobalAssetPack(level.presentation.assetPackId, "clean");
+  const environmentAssetKey = resolveLevelEnvironmentAssetKey(level.id, pack.environmentAssetKey);
   const preload = resolveDescriptors(registry, [
-    HD_ENVIRONMENT_KEY,
+    environmentAssetKey,
     ...pack.sharedStoreAssetKeys,
     ...pack.workerWalkAssetKeys,
     pack.workerIdleAssetKey,
@@ -187,9 +190,8 @@ export function resolveCleanLevelAssets(
     ...CLEAN_SPILL_ASSET_KEYS
   ]);
   return Object.freeze({
-    ...baseAssets(registry, pack),
+    ...baseAssets(registry, pack, environmentAssetKey),
     preload,
-    environment: registry.require(HD_ENVIRONMENT_KEY),
     worker: registry.require(pack.workerIdleAssetKey),
     workerMop: registry.require(pack.workerMopAssetKey),
     cleaningFixture: registry.require(pack.cleaningFixtureAssetKey),
@@ -206,9 +208,7 @@ export function resolveFindItemsLevelAssets(
 ): ResolvedFindItemsLevelAssets {
   const pack = resolveGlobalAssetPack(level.presentation.assetPackId, "find-items");
   const productAssetKeys = runtime.products.map((product) => product.assetKey);
-  const environmentAssetKey = level.presentation.visualPresetId === "find-items-golden-standard-v1"
-    ? HD_ENVIRONMENT_KEY
-    : pack.environmentAssetKey;
+  const environmentAssetKey = resolveLevelEnvironmentAssetKey(level.id, pack.environmentAssetKey);
   const preload = resolveDescriptors(registry, [
     environmentAssetKey,
     ...pack.sharedStoreAssetKeys,
@@ -220,9 +220,8 @@ export function resolveFindItemsLevelAssets(
     ...productAssetKeys
   ]);
   return Object.freeze({
-    ...baseAssets(registry, pack),
+    ...baseAssets(registry, pack, environmentAssetKey),
     preload,
-    environment: registry.require(environmentAssetKey),
     worker: registry.require(pack.workerIdleAssetKey),
     workerThinking: registry.require(pack.workerThinkingAssetKey),
     fixture: registry.require(runtime.fixture.assetKey),
