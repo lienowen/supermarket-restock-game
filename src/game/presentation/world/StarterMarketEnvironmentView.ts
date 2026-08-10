@@ -5,13 +5,15 @@ import { resolveLevelVisualPreset } from "../visual/LevelVisualPresetResolver";
 import type { MarketLevelVisualPreset } from "../visual/MarketLevelVisualPreset";
 
 const PURE_BACKGROUND_LEVEL_IDS = new Set(["starter-level-001"]);
+const FOCUSED_GAMEPLAY_LEVEL_IDS = new Set(["starter-level-002"]);
 
 /**
- * Owns the supermarket shell and non-gameplay scene dressing. Level 1 is kept
- * deliberately clean: its authored background is used as-is and only gameplay
- * actors / props are layered by their dedicated views. Later levels may add
- * reusable dressing, but every layered fixture is normalized to an opaque
- * cutout so it never reads as a translucent "ghost" over the background.
+ * Owns the supermarket shell and non-gameplay scene dressing.
+ *
+ * Level 1 stays background-only. Level 2 is deliberately gameplay-focused:
+ * its authored cold-display background already supplies enough supermarket
+ * context, so adding reusable departments/customers on top makes the route and
+ * cooler unreadable. Other levels can still use the richer layered dressing.
  */
 export class StarterMarketEnvironmentView {
   private readonly visualPreset: MarketLevelVisualPreset;
@@ -28,6 +30,11 @@ export class StarterMarketEnvironmentView {
 
     if (this.isPureBackgroundLevel()) {
       document.body.dataset.sceneDressing = "background-only";
+    } else if (this.isFocusedGameplayLevel()) {
+      document.body.dataset.sceneDressing = "level-two-focused";
+      this.createFocusedGameplayBackdrop();
+      this.createModeFocus();
+      this.createAtmosphere();
     } else {
       document.body.dataset.sceneDressing = "layered-solid";
       this.createFloor();
@@ -43,6 +50,10 @@ export class StarterMarketEnvironmentView {
 
   private isPureBackgroundLevel(): boolean {
     return PURE_BACKGROUND_LEVEL_IDS.has(this.context.campaignLevel.level.id);
+  }
+
+  private isFocusedGameplayLevel(): boolean {
+    return FOCUSED_GAMEPLAY_LEVEL_IDS.has(this.context.campaignLevel.level.id);
   }
 
   private createBase(): void {
@@ -62,6 +73,33 @@ export class StarterMarketEnvironmentView {
       .setFlipX(context.mode === "restock" && !keepsAuthoredOrientation)
       .setDepth(-30)
       .setName("commercial-supermarket-salesfloor");
+  }
+
+  private createFocusedGameplayBackdrop(): void {
+    const { scene, context } = this;
+
+    // Suppress detail in the authored plate just enough that the interactive
+    // worker/cart/box/cooler layers read first. This sits behind all gameplay.
+    scene.add.rectangle(
+      context.world.width / 2,
+      context.world.height / 2,
+      context.world.width,
+      context.world.height,
+      0x07110e,
+      0.085
+    )
+      .setDepth(4)
+      .setName("level-two-background-calm-wash");
+
+    // Keep the floor readable without adding another decorative object layer.
+    scene.add.rectangle(
+      context.world.width / 2,
+      context.world.height - 28,
+      context.world.width,
+      56,
+      0x10201b,
+      0.07
+    ).setDepth(5);
   }
 
   private createFloor(): void {
@@ -278,7 +316,7 @@ export class StarterMarketEnvironmentView {
       focusSize.width * 0.72,
       focusSize.height * 0.34,
       accent,
-      this.context.mode === "restock" ? 0.026 : 0.035
+      this.isFocusedGameplayLevel() ? 0.045 : this.context.mode === "restock" ? 0.026 : 0.035
     ).setDepth(7);
     glow.setBlendMode(Phaser.BlendModes.ADD);
   }
