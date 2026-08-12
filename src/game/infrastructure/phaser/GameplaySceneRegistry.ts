@@ -37,7 +37,7 @@ const GAMEPLAY_SCENE_FACTORIES: Readonly<Record<LevelDefinition["mode"], Gamepla
       presentation,
       "restock"
     ) as RestockStarterMarketPresentationContext;
-    return context.campaignLevel.level.presentation.visualPresetId === "restock-water-authored-v1"
+    return context.levelAssets.environment.key === "environment-restock-water-l2-v1"
       ? new LevelTwoRestockScene(context, session)
       : new StarterMarketScene(context, session);
   },
