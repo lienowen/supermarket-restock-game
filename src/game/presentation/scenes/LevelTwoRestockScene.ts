@@ -1,4 +1,3 @@
-import Phaser from "phaser";
 import type { RestockStarterMarketPresentationContext } from "../context/StarterMarketPresentationContext";
 import {
   StarterMarketScene,
@@ -42,6 +41,12 @@ const levelTwoContext = (
   })
 });
 
+interface MovableGameObject {
+  readonly x: number;
+  readonly y: number;
+  setPosition(x: number, y: number): unknown;
+}
+
 /**
  * L2 keeps the shared restock controller and all L1 actor/cart/product art.
  * Only the authored scene coordinates differ. This prevents Level 2 layout
@@ -82,20 +87,13 @@ export class LevelTwoRestockScene extends StarterMarketScene {
   }
 
   private moveNamedObject(name: string, dx: number, dy: number): void {
-    const object = this.children.getByName(name);
-    if (!(object instanceof Phaser.GameObjects.Components.TransformMatrix) && object) {
-      const transform = object as Phaser.GameObjects.GameObject & {
-        x?: number;
-        y?: number;
-        setPosition?: (x: number, y: number) => unknown;
-      };
-      if (
-        typeof transform.x === "number" &&
-        typeof transform.y === "number" &&
-        typeof transform.setPosition === "function"
-      ) {
-        transform.setPosition(transform.x + dx, transform.y + dy);
-      }
-    }
+    const object = this.children.getByName(name) as unknown as Partial<MovableGameObject> | null;
+    if (
+      !object ||
+      typeof object.x !== "number" ||
+      typeof object.y !== "number" ||
+      typeof object.setPosition !== "function"
+    ) return;
+    object.setPosition(object.x + dx, object.y + dy);
   }
 }
