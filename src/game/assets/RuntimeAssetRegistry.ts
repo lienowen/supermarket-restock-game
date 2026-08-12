@@ -1,5 +1,6 @@
 import type { AssetCatalogue, AssetDescriptor } from "./AssetDescriptor";
 import { GLOBAL_PROJECT_ASSET_CATALOGUE } from "./GlobalProjectAssetCatalogue";
+import { LEVEL_TWO_ASSET_CATALOGUE } from "./LevelTwoAssetCatalogue";
 import { MATURE_PASS_ASSET_CATALOGUE } from "./MaturePassAssetCatalogue";
 import { STARTER_ASSET_CATALOGUE } from "./starterAssetCatalogue";
 
@@ -54,7 +55,8 @@ const STARTER_PROJECT_ASSET_CATALOGUE: AssetCatalogue = Object.freeze({
   assets: Object.freeze([
     ...STARTER_ASSET_CATALOGUE.assets,
     ...GLOBAL_PROJECT_ASSET_CATALOGUE.assets,
-    ...MATURE_PASS_ASSET_CATALOGUE.assets
+    ...MATURE_PASS_ASSET_CATALOGUE.assets,
+    ...LEVEL_TWO_ASSET_CATALOGUE.assets
   ])
 });
 
