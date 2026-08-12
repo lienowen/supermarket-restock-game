@@ -10,6 +10,7 @@ const LEGACY_CART_BOTTLE_NAMES = Object.freeze([
   "restock-level-two-water-c"
 ]);
 const TOTAL_BATCHES = 6;
+const UNITS_PER_BATCH = 3;
 const BATCH_COLUMNS = 3;
 const BATCH_BOTTLE_WIDTH = 22;
 const BATCH_BOTTLE_HEIGHT = 58;
@@ -94,7 +95,8 @@ function renderCartInventory(
       .setVisible(true);
   }
 
-  document.body.dataset.levelTwoCartInventory = String(remainingBatches);
+  document.body.dataset.levelTwoCartInventory = String(remainingBatches * UNITS_PER_BATCH);
+  document.body.dataset.levelTwoCartInventoryBatches = String(remainingBatches);
   document.body.dataset.levelTwoCartInventoryUnit = "three-bottle-batch";
 }
 
