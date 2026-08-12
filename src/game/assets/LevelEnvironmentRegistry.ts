@@ -1,21 +1,18 @@
 const LEVEL_ENVIRONMENT_ASSET_KEYS: Readonly<Record<string, string>> = Object.freeze({
-  // L1 was already visually mature: keep the richer supermarket floor.
+  // L1 remains the mature visual reference.
   "starter-level-001": "environment-starter-market-restock-hd-v3",
 
-  // L2 uses the dedicated cold-display plate submitted for the contextual water-restock flow.
-  "starter-level-002": "environment-project-restock-v2",
+  // L2 has its own authored water-restock plate while sharing L1 actor/prop art.
+  "starter-level-002": "environment-restock-water-l2-v1",
 
   // Service/utility levels use their scene-specific project plates.
   "starter-level-003": "environment-project-checkout-v2",
   "starter-level-004": "environment-project-cleaning-v2",
   "starter-level-005": "environment-project-order-hunt-v2",
 
-  // Do not force the sparse L2 cold-display plate onto later restock missions.
-  // L6 keeps the richer market until a dedicated delivery/capacity scene is approved.
+  // Later restock missions keep their current plates until individually reviewed.
   "starter-level-006": "environment-starter-market-restock-hd-v3",
   "starter-level-007": "environment-project-checkout-v2",
-
-  // Later levels remain explicitly scene-bound instead of inheriting by gameplay mode.
   "starter-level-008": "environment-project-cleaning-v2",
   "starter-level-009": "environment-project-order-hunt-v2",
   "starter-level-010": "environment-starter-market-restock-hd-v3"
