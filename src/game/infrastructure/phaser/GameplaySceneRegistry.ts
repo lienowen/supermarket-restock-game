@@ -9,6 +9,7 @@ import type {
 } from "../../presentation/context/StarterMarketPresentationContext";
 import { CheckoutMarketScene } from "../../presentation/scenes/CheckoutMarketScene";
 import { GoldenOrderHuntScene } from "../../presentation/scenes/GoldenOrderHuntScene";
+import { LevelTwoRestockScene } from "../../presentation/scenes/LevelTwoRestockScene";
 import {
   StarterMarketScene,
   type SceneCampaignSessionContext
@@ -31,10 +32,15 @@ const requireMode = <T extends StarterMarketPresentationContext["mode"]>(
 };
 
 const GAMEPLAY_SCENE_FACTORIES: Readonly<Record<LevelDefinition["mode"], GameplaySceneFactory>> = Object.freeze({
-  restock: (presentation, session) => new StarterMarketScene(
-    requireMode(presentation, "restock") as RestockStarterMarketPresentationContext,
-    session
-  ),
+  restock: (presentation, session) => {
+    const context = requireMode(
+      presentation,
+      "restock"
+    ) as RestockStarterMarketPresentationContext;
+    return context.campaignLevel.level.id === "starter-level-002"
+      ? new LevelTwoRestockScene(context, session)
+      : new StarterMarketScene(context, session);
+  },
   checkout: (presentation, session) => new CheckoutMarketScene(
     requireMode(presentation, "checkout") as CheckoutStarterMarketPresentationContext,
     session
