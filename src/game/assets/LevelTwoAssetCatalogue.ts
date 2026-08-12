@@ -16,16 +16,15 @@ const openCasePath = new URL(
 const asset = (descriptor: AssetDescriptor): AssetDescriptor => descriptor;
 
 /**
- * L2 adds only the art that does not already exist in the shared L1 production
+ * L2 adds only art that does not already exist in the shared L1 production
  * pack. Worker poses, cart art and the water bottle remain shared assets.
- *
- * The environment key intentionally overrides the old L2 project background
- * inside RuntimeAssetRegistry; only Level 2 currently resolves that key.
+ * Water-case states use reusable production keys so later water-restock levels
+ * can share them without overriding legacy catalogue entries.
  */
 export const LEVEL_TWO_ASSET_CATALOGUE: AssetCatalogue = Object.freeze({
   assets: Object.freeze([
     asset({
-      key: "environment-project-restock-v2",
+      key: "environment-restock-water-l2-v1",
       path: backgroundPath,
       category: "environment",
       canvasSize: [1672, 941],
@@ -39,7 +38,7 @@ export const LEVEL_TWO_ASSET_CATALOGUE: AssetCatalogue = Object.freeze({
       status: "production"
     }),
     asset({
-      key: "prop-water-case-closed",
+      key: "prop-water-case-closed-v2",
       path: closedCasePath,
       category: "prop",
       canvasSize: [1536, 1024],
@@ -53,7 +52,7 @@ export const LEVEL_TWO_ASSET_CATALOGUE: AssetCatalogue = Object.freeze({
       status: "production"
     }),
     asset({
-      key: "prop-water-case-open",
+      key: "prop-water-case-open-v2",
       path: openCasePath,
       category: "prop",
       canvasSize: [1536, 1024],
