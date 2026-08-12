@@ -1,9 +1,13 @@
 /* Final mobile game-stage sizing guard.
    Phaser's logical world is 16:9. On short landscape phones, forcing the
    canvas to 100vw makes its CSS height exceed the viewport and crops gameplay.
-   Fit against both axes instead so the whole stage remains visible. */
+   Fit against both axes instead so the whole stage remains visible.
+
+   Do not depend on the legacy viewport-mode bucket here: short landscape phones
+   may be classified as either compact or mobile-landscape. The stable signals
+   are that the device is mobile-like and an actual level is active. */
 @media (orientation: landscape) and (max-height: 760px) {
-  body[data-viewport-mode="mobile-landscape"][data-game-scene="game"] #app {
+  body[data-mobile-landscape="required"][data-active-level] #app {
     width: 100vw !important;
     height: 100dvh !important;
     min-height: 0 !important;
@@ -11,7 +15,7 @@
     overflow: hidden !important;
   }
 
-  body[data-viewport-mode="mobile-landscape"][data-game-scene="game"] canvas {
+  body[data-mobile-landscape="required"][data-active-level] #app > canvas:not(#mobile-game-backdrop) {
     position: absolute !important;
     left: 50% !important;
     top: 50% !important;
