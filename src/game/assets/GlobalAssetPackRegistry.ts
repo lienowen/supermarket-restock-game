@@ -112,7 +112,7 @@ export const MARKET_RESTOCK_ASSET_PACK: RestockGlobalAssetPack = Object.freeze({
     }),
     "water-bottle": Object.freeze({
       closedAssetKey: "prop-water-case-closed",
-      openAssetKey: "prop-water-case-closed"
+      openAssetKey: "prop-water-case-open"
     }),
     "milk-bottle": Object.freeze({
       closedAssetKey: "prop-milk-case-closed",
