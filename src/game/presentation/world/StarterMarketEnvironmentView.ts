@@ -4,21 +4,16 @@ import { createOpaqueCutoutTexture } from "../visual/OpaqueCutoutTexture";
 import { resolveLevelVisualPreset } from "../visual/LevelVisualPresetResolver";
 import type { MarketLevelVisualPreset } from "../visual/MarketLevelVisualPreset";
 
-const PURE_BACKGROUND_LEVEL_IDS = new Set([
-  "starter-level-001",
-  "starter-level-002"
-]);
 const AUTHORED_RESTOCK_ENVIRONMENT_KEYS = new Set([
   "environment-starter-market-restock-hd-v3",
   "environment-restock-water-l2-v1"
 ]);
 
 /**
- * Owns the supermarket shell and non-gameplay scene dressing. Levels 1 and 2
- * use authored backgrounds as-is: only gameplay actors / props are layered by
- * their dedicated views. Later levels may add reusable dressing, but every
- * layered fixture is normalized to an opaque cutout so it never reads as a
- * translucent "ghost" over the background.
+ * Owns the supermarket shell and non-gameplay scene dressing. Authored early
+ * restock scenes stay clean: only gameplay actors / props are layered over the
+ * background. Later challenge scenes may add reusable dressing, with every
+ * layered fixture normalized to an opaque cutout.
  */
 export class StarterMarketEnvironmentView {
   private readonly visualPreset: MarketLevelVisualPreset;
@@ -49,7 +44,13 @@ export class StarterMarketEnvironmentView {
   }
 
   private isPureBackgroundLevel(): boolean {
-    return PURE_BACKGROUND_LEVEL_IDS.has(this.context.campaignLevel.level.id);
+    const level = this.context.campaignLevel.level;
+    if (level.mode !== "restock") return false;
+
+    const isGuidedFirstDelivery = level.tuning.rush?.timeoutEnabled === false;
+    const usesAuthoredWaterRestockPlate =
+      this.context.levelAssets.environment.key === "environment-restock-water-l2-v1";
+    return isGuidedFirstDelivery || usesAuthoredWaterRestockPlate;
   }
 
   private createBase(): void {
