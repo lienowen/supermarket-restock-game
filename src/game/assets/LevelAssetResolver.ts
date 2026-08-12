@@ -79,7 +79,10 @@ const CLEAN_SPILL_ASSET_KEYS = Object.freeze([
   "spill-juice-large",
   "spill-dirt-smear-large"
 ]);
-const FIRST_DELIVERY_LEVEL_ID = "starter-level-001";
+const BACKGROUND_ONLY_RESTOCK_LEVEL_IDS = new Set([
+  "starter-level-001",
+  "starter-level-002"
+]);
 
 const resolveDescriptors = (
   registry: RuntimeAssetRegistry,
@@ -121,10 +124,12 @@ const restockPreloadKeys = (
     runtime.product.assetKey
   ];
 
-  // Level 1 deliberately uses the authored background as-is. Do not make the
-  // first playable frame wait for decorative fixtures, the HD cooler overlay,
-  // a duplicate cooler fixture, or ambient products that are not rendered.
-  if (level.id === FIRST_DELIVERY_LEVEL_ID) return Object.freeze(gameplayKeys);
+  // L1 and L2 use authored environment plates. Their static store furniture is
+  // already in the background, so loading duplicate fixtures/customers only
+  // wastes mobile bandwidth and risks reintroducing the old layered look.
+  if (BACKGROUND_ONLY_RESTOCK_LEVEL_IDS.has(level.id)) {
+    return Object.freeze(gameplayKeys);
+  }
 
   return Object.freeze([
     ...gameplayKeys,
