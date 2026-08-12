@@ -4,14 +4,17 @@ import { createOpaqueCutoutTexture } from "../visual/OpaqueCutoutTexture";
 import { resolveLevelVisualPreset } from "../visual/LevelVisualPresetResolver";
 import type { MarketLevelVisualPreset } from "../visual/MarketLevelVisualPreset";
 
-const PURE_BACKGROUND_LEVEL_IDS = new Set(["starter-level-001"]);
+const PURE_BACKGROUND_LEVEL_IDS = new Set([
+  "starter-level-001",
+  "starter-level-002"
+]);
 
 /**
- * Owns the supermarket shell and non-gameplay scene dressing. Level 1 is kept
- * deliberately clean: its authored background is used as-is and only gameplay
- * actors / props are layered by their dedicated views. Later levels may add
- * reusable dressing, but every layered fixture is normalized to an opaque
- * cutout so it never reads as a translucent "ghost" over the background.
+ * Owns the supermarket shell and non-gameplay scene dressing. Levels 1 and 2
+ * use authored backgrounds as-is: only gameplay actors / props are layered by
+ * their dedicated views. Later levels may add reusable dressing, but every
+ * layered fixture is normalized to an opaque cutout so it never reads as a
+ * translucent "ghost" over the background.
  */
 export class StarterMarketEnvironmentView {
   private readonly visualPreset: MarketLevelVisualPreset;
