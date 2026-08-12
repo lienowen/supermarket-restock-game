@@ -30,9 +30,9 @@ const levelTwoContext = (
   ...context,
   world: Object.freeze({
     ...context.world,
-    // Left staging pad -> centre aisle -> right cooler. These are gameplay
-    // coordinates only; the static supermarket structure remains in the background.
-    backroomBox: Object.freeze({ x: 190, y: 700 }),
+    // Left staging pad -> centre aisle -> right cooler. The case remains on
+    // the authored staging pad while leaving room for the L1 worker stand offset.
+    backroomBox: Object.freeze({ x: 300, y: 700 }),
     cartStart: Object.freeze({ x: 520, y: 790 }),
     cartCooler: Object.freeze({ x: 930, y: 790 }),
     workerStart: Object.freeze({ x: 650, y: 790 }),
