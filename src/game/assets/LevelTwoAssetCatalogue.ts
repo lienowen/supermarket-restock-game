@@ -1,31 +1,19 @@
 import type { AssetCatalogue, AssetDescriptor } from "./AssetDescriptor";
 
-const backgroundPath = new URL(
-  "../../../asset-source/L2_restock_assets/bg-restock-water-l2.png",
-  import.meta.url
-).href;
-const closedCasePath = new URL(
-  "../../../asset-source/L2_restock_assets/water-case-closed.png",
-  import.meta.url
-).href;
-const openCasePath = new URL(
-  "../../../asset-source/L2_restock_assets/water-case-open.png",
-  import.meta.url
-).href;
-
+const LEVEL_TWO_ASSET_ROOT = "assets/game/production-v5/restock-water-l2";
 const asset = (descriptor: AssetDescriptor): AssetDescriptor => descriptor;
 
 /**
  * L2 adds only art that does not already exist in the shared L1 production
  * pack. Worker poses, cart art and the water bottle remain shared assets.
- * Water-case states use reusable production keys so later water-restock levels
- * can share them without overriding legacy catalogue entries.
+ * Source PNGs are materialized into public/ during prebuild so Phaser receives
+ * stable browser paths instead of Vite module URLs.
  */
 export const LEVEL_TWO_ASSET_CATALOGUE: AssetCatalogue = Object.freeze({
   assets: Object.freeze([
     asset({
       key: "environment-restock-water-l2-v1",
-      path: backgroundPath,
+      path: `${LEVEL_TWO_ASSET_ROOT}/bg-restock-water-l2.png`,
       category: "environment",
       canvasSize: [1672, 941],
       anchor: [0.5, 0.5],
@@ -39,7 +27,7 @@ export const LEVEL_TWO_ASSET_CATALOGUE: AssetCatalogue = Object.freeze({
     }),
     asset({
       key: "prop-water-case-closed-v2",
-      path: closedCasePath,
+      path: `${LEVEL_TWO_ASSET_ROOT}/water-case-closed.png`,
       category: "prop",
       canvasSize: [1536, 1024],
       anchor: [0.5, 0.96],
@@ -53,7 +41,7 @@ export const LEVEL_TWO_ASSET_CATALOGUE: AssetCatalogue = Object.freeze({
     }),
     asset({
       key: "prop-water-case-open-v2",
-      path: openCasePath,
+      path: `${LEVEL_TWO_ASSET_ROOT}/water-case-open.png`,
       category: "prop",
       canvasSize: [1536, 1024],
       anchor: [0.5, 0.96],
