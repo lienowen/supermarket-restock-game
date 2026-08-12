@@ -8,6 +8,10 @@ const PURE_BACKGROUND_LEVEL_IDS = new Set([
   "starter-level-001",
   "starter-level-002"
 ]);
+const AUTHORED_RESTOCK_ENVIRONMENT_KEYS = new Set([
+  "environment-starter-market-restock-hd-v3",
+  "environment-restock-water-l2-v1"
+]);
 
 /**
  * Owns the supermarket shell and non-gameplay scene dressing. Levels 1 and 2
@@ -52,7 +56,7 @@ export class StarterMarketEnvironmentView {
     const { scene, context } = this;
     const environmentKey = context.levelAssets.environment.key;
     const keepsAuthoredOrientation =
-      environmentKey === "environment-starter-market-restock-hd-v3" ||
+      AUTHORED_RESTOCK_ENVIRONMENT_KEYS.has(environmentKey) ||
       environmentKey.startsWith("environment-project-");
 
     scene.add.image(
@@ -247,9 +251,12 @@ export class StarterMarketEnvironmentView {
       return;
     }
 
-    document.body.dataset.restockCoolerBackground = this.context.levelAssets.environment.key === "environment-project-restock-v2"
-      ? "project-v2"
-      : "production-v3-hd";
+    const environmentKey = this.context.levelAssets.environment.key;
+    document.body.dataset.restockCoolerBackground = environmentKey === "environment-restock-water-l2-v1"
+      ? "water-l2-v1"
+      : environmentKey === "environment-project-restock-v2"
+        ? "project-v2"
+        : "production-v3-hd";
     document.body.dataset.restockCoolerAsset = "world-integrated-layered";
   }
 
