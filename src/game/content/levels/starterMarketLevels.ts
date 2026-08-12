@@ -60,7 +60,7 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     navigation: { moveSpeed: 560, interactionRadius: 155 },
     presentation: {
       assetPackId: "market-restock-v1",
-      visualPresetId: "restock-water-authored-v1"
+      visualPresetId: "restock-golden-standard-v1"
     },
     rules: NO_RULE_OVERRIDES,
     tuning: {
