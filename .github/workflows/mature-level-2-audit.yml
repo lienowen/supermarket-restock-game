@@ -19,6 +19,7 @@ on:
       - "src/main.ts"
       - "scripts/capture-promotion-memory.mjs"
       - "scripts/capture-level-two-contextual.mjs"
+      - "scripts/capture-level-two-mobile.mjs"
       - ".github/workflows/mature-level-2-audit.yml"
   pull_request:
     branches:
@@ -38,6 +39,7 @@ on:
       - "src/main.ts"
       - "scripts/capture-promotion-memory.mjs"
       - "scripts/capture-level-two-contextual.mjs"
+      - "scripts/capture-level-two-mobile.mjs"
       - ".github/workflows/mature-level-2-audit.yml"
   workflow_dispatch:
 
@@ -48,7 +50,7 @@ permissions:
 jobs:
   contextual-restock:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 14
 
     steps:
       - name: Checkout repository
@@ -76,12 +78,19 @@ jobs:
         continue-on-error: true
         run: node scripts/capture-level-two-contextual.mjs
 
+      - name: Verify Level 2 mobile landscape flow
+        id: mobile
+        continue-on-error: true
+        run: node scripts/capture-level-two-mobile.mjs
+
       - name: Upload Level 2 evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: mature-level-2-audit
-          path: ui-audit/mature-level-2
+          path: |
+            ui-audit/mature-level-2
+            ui-audit/mature-level-2-mobile
           if-no-files-found: warn
           retention-days: 14
 
@@ -90,13 +99,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           AUDIT_OUTCOME: ${{ steps.audit.outcome }}
+          MOBILE_OUTCOME: ${{ steps.mobile.outcome }}
         run: |
-          if [ "$AUDIT_OUTCOME" = "success" ]; then
+          if [ "$AUDIT_OUTCOME" = "success" ] && [ "$MOBILE_OUTCOME" = "success" ]; then
             STATE=success
-            DESC="authored L2 background + contextual water restock passed"
+            DESC="L2 desktop + mobile landscape contextual restock passed"
           else
             STATE=failure
-            DESC="mature Level 2 contextual browser audit failed"
+            DESC="mature Level 2 desktop/mobile browser audit failed"
           fi
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state="$STATE" \
@@ -106,4 +116,6 @@ jobs:
 
       - name: Enforce Level 2 result
         if: always()
-        run: test "${{ steps.audit.outcome }}" = "success"
+        run: |
+          test "${{ steps.audit.outcome }}" = "success"
+          test "${{ steps.mobile.outcome }}" = "success"
