@@ -47,6 +47,10 @@ interface MovableGameObject {
   setPosition(x: number, y: number): unknown;
 }
 
+interface VisibleGameObject {
+  setVisible(visible: boolean): unknown;
+}
+
 /**
  * L2 keeps the shared restock controller and all L1 actor/cart/product art.
  * Only the authored scene coordinates differ. This prevents Level 2 layout
@@ -81,8 +85,8 @@ export class LevelTwoRestockScene extends StarterMarketScene {
 
     // The new L2 plate already contains the refrigerator shelves and trim.
     // Keep only dynamic bottles / targets above it so no second cooler is drawn.
-    this.children.getByName("restock-cooler-shelf-foreground")?.setVisible(false);
-    this.children.getByName("restock-cooler-shelf-rule")?.setVisible(false);
+    this.setNamedVisibility("restock-cooler-shelf-foreground", false);
+    this.setNamedVisibility("restock-cooler-shelf-rule", false);
     document.body.dataset.levelTwoCooler = "background-integrated";
   }
 
@@ -95,5 +99,11 @@ export class LevelTwoRestockScene extends StarterMarketScene {
       typeof object.setPosition !== "function"
     ) return;
     object.setPosition(object.x + dx, object.y + dy);
+  }
+
+  private setNamedVisibility(name: string, visible: boolean): void {
+    const object = this.children.getByName(name) as unknown as Partial<VisibleGameObject> | null;
+    if (!object || typeof object.setVisible !== "function") return;
+    object.setVisible(visible);
   }
 }
