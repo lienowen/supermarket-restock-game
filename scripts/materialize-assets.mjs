@@ -108,3 +108,27 @@ PROJECT_BACKGROUNDS.forEach(({ source: sourceName, output: outputName }) => {
     `Materialized project background ${outputName} (${statSync(output).size} bytes).\n`
   );
 });
+
+const LEVEL_TWO_SOURCE_DIRECTORY = resolve(ROOT, "asset-source/L2_restock_assets");
+const LEVEL_TWO_OUTPUT_DIRECTORY = resolve(
+  ROOT,
+  "public/assets/game/production-v5/restock-water-l2"
+);
+const LEVEL_TWO_ASSETS = Object.freeze([
+  "bg-restock-water-l2.png",
+  "water-case-closed.png",
+  "water-case-open.png"
+]);
+
+mkdirSync(LEVEL_TWO_OUTPUT_DIRECTORY, { recursive: true });
+LEVEL_TWO_ASSETS.forEach((fileName) => {
+  const source = resolve(LEVEL_TWO_SOURCE_DIRECTORY, fileName);
+  const output = resolve(LEVEL_TWO_OUTPUT_DIRECTORY, fileName);
+  if (!existsSync(source) || !statSync(source).isFile()) {
+    throw new Error(`Missing Level 2 restock source asset: ${fileName}`);
+  }
+  copyFileSync(source, output);
+  process.stdout.write(
+    `Materialized Level 2 restock asset ${fileName} (${statSync(output).size} bytes).\n`
+  );
+});
