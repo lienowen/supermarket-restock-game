@@ -5,12 +5,18 @@ on:
     branches:
       - main
     paths:
+      - "asset-source/L2_restock_assets/**"
+      - "src/game/assets/**"
       - "src/game/content/levels/starterMarketLevels.ts"
+      - "src/game/infrastructure/phaser/GameplaySceneRegistry.ts"
       - "src/game/presentation/actors/**"
       - "src/game/presentation/fixtures/**"
+      - "src/game/presentation/scenes/LevelTwoRestockScene.ts"
       - "src/game/presentation/ui/**"
       - "src/game/presentation/visual/**"
+      - "src/game/presentation/world/StarterMarketEnvironmentView.ts"
       - "src/game/world/starterMarketLayout.ts"
+      - "src/main.ts"
       - "scripts/capture-promotion-memory.mjs"
       - "scripts/capture-level-two-contextual.mjs"
       - ".github/workflows/mature-level-2-audit.yml"
@@ -18,12 +24,18 @@ on:
     branches:
       - main
     paths:
+      - "asset-source/L2_restock_assets/**"
+      - "src/game/assets/**"
       - "src/game/content/levels/starterMarketLevels.ts"
+      - "src/game/infrastructure/phaser/GameplaySceneRegistry.ts"
       - "src/game/presentation/actors/**"
       - "src/game/presentation/fixtures/**"
+      - "src/game/presentation/scenes/LevelTwoRestockScene.ts"
       - "src/game/presentation/ui/**"
       - "src/game/presentation/visual/**"
+      - "src/game/presentation/world/StarterMarketEnvironmentView.ts"
       - "src/game/world/starterMarketLayout.ts"
+      - "src/main.ts"
       - "scripts/capture-promotion-memory.mjs"
       - "scripts/capture-level-two-contextual.mjs"
       - ".github/workflows/mature-level-2-audit.yml"
@@ -81,7 +93,7 @@ jobs:
         run: |
           if [ "$AUDIT_OUTCOME" = "success" ]; then
             STATE=success
-            DESC="V2 background + proximity pickup + contextual PLACE passed"
+            DESC="authored L2 background + contextual water restock passed"
           else
             STATE=failure
             DESC="mature Level 2 contextual browser audit failed"
