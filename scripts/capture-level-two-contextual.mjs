@@ -11,6 +11,24 @@ const CANVAS_SELECTOR = "#app > canvas:not(#mobile-game-backdrop)";
 const SCENE_KEY = "starter-market-shift";
 const GAME_WIDTH = 1600;
 const GAME_HEIGHT = 900;
+const EXPECTED_COOLER_TARGETS = Object.freeze([
+  Object.freeze({ x: 1090, y: 355 }),
+  Object.freeze({ x: 1090, y: 445 }),
+  Object.freeze({ x: 1090, y: 535 }),
+  Object.freeze({ x: 1365, y: 355 }),
+  Object.freeze({ x: 1365, y: 445 }),
+  Object.freeze({ x: 1365, y: 535 })
+]);
+const AMBIENT_DRESSING_NAMES = Object.freeze([
+  "ambient-produce-display",
+  "ambient-backroom-rack",
+  "ambient-shopping-cart",
+  "ambient-dairy-aisle",
+  "ambient-cleaning-aisle",
+  "ambient-checkout",
+  "ambient-customer-a",
+  "ambient-customer-b"
+]);
 
 if (!existsSync(join(DIST_DIR, "index.html"))) {
   throw new Error("dist/index.html is missing. Run npm run build first.");
@@ -33,7 +51,11 @@ await new Promise((done) => server.listen(PORT, "127.0.0.1", done));
 const report = {
   generatedAt: new Date().toISOString(),
   assertions: {
-    v2RestockBackgroundActive: false,
+    authoredRestockBackgroundActive: false,
+    backgroundOnlyScene: false,
+    noAmbientDressing: false,
+    realWaterCaseStates: false,
+    coolerTargetsAligned: false,
     contextualControlActive: false,
     oldActionButtonRetired: false,
     autoPickupBox: false,
@@ -94,9 +116,22 @@ try {
   await page.waitForTimeout(300);
 
   const initial = await readState(page);
-  report.assertions.v2RestockBackgroundActive = initial.environmentKey === "environment-project-restock-v2";
+  report.assertions.authoredRestockBackgroundActive = (
+    initial.environmentKey === "environment-restock-water-l2-v1" &&
+    initial.layout === "authored-background-v1" &&
+    initial.coolerBackground === "water-l2-v1"
+  );
+  report.assertions.backgroundOnlyScene = initial.sceneDressing === "background-only";
+  report.assertions.noAmbientDressing = initial.ambientDressingCount === 0;
+  report.assertions.realWaterCaseStates = (
+    initial.caseClosedKey === "prop-water-case-closed-v2" &&
+    initial.caseOpenKey === "prop-water-case-open-v2" &&
+    initial.caseClosedKey !== initial.caseOpenKey
+  );
+  report.assertions.coolerTargetsAligned = initial.coolerTargetsAligned;
   report.assertions.contextualControlActive = initial.actorControl === "contextual-walk-auto-pickup-place";
   report.assertions.oldActionButtonRetired = !initial.placeVisible && !initial.oldTargetVisible;
+  await page.screenshot({ path: join(OUTPUT_DIR, "level-2-authored-initial.png"), fullPage: true });
 
   await moveToContextPoint(page, "backroomBox");
   await waitForStep(page, ["load"], 10000);
@@ -150,7 +185,8 @@ try {
   report.assertions.autoPickupThreeWater = (
     carrying.batch === "carrying-3" &&
     carrying.handProductVisible &&
-    carrying.cartInventory === 15
+    carrying.cartInventory === 15 &&
+    carrying.cartInventoryBatches === 5
   );
   report.assertions.placeAppearsOnlyNearCooler = !carrying.placeVisible;
 
@@ -173,7 +209,8 @@ try {
   report.assertions.onePlaceCompletesThreeBottles = (
     report.firstPlacement.snapshot?.stockedRows === beforeFirst + 1 &&
     report.firstPlacement.batch === "empty" &&
-    report.firstPlacement.cartInventory === 15
+    report.firstPlacement.cartInventory === 15 &&
+    report.firstPlacement.cartInventoryBatches === 5
   );
   report.assertions.waterBottleScaleSane = await waterBottleScaleIsSane(page);
 
@@ -300,21 +337,49 @@ async function waitForStep(page, steps, timeout) {
 }
 
 async function readState(page) {
-  return page.evaluate((sceneKey) => {
+  return page.evaluate(({ sceneKey, expectedTargets, ambientNames }) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+    const actualTargets = expectedTargets.map((_expected, index) => {
+      const target = scene?.children?.getByName?.(`beverage-cooler-row-target-${index}`);
+      return target ? { x: target.x, y: target.y } : null;
+    });
+    const coolerTargetsAligned = actualTargets.every((actual, index) => {
+      const expected = expectedTargets[index];
+      return Boolean(
+        actual && expected &&
+        Math.abs(actual.x - expected.x) <= 2 &&
+        Math.abs(actual.y - expected.y) <= 2
+      );
+    });
+    const ambientDressingCount = ambientNames.filter((name) => (
+      Boolean(scene?.children?.getByName?.(name))
+    )).length;
+
     return {
       environmentKey: scene?.context?.levelAssets?.environment?.key ?? null,
+      caseClosedKey: scene?.context?.levelAssets?.case?.key ?? null,
+      caseOpenKey: scene?.context?.levelAssets?.caseOpen?.key ?? null,
+      sceneDressing: document.body.dataset.sceneDressing ?? null,
+      layout: document.body.dataset.levelTwoLayout ?? null,
+      coolerBackground: document.body.dataset.restockCoolerBackground ?? null,
       actorControl: document.body.dataset.levelTwoActorControl ?? null,
       contextAction: document.body.dataset.levelTwoContextAction ?? null,
       batch: document.body.dataset.levelTwoBatch ?? null,
       cartInventory: Number(document.body.dataset.levelTwoCartInventory ?? "0"),
+      cartInventoryBatches: Number(document.body.dataset.levelTwoCartInventoryBatches ?? "0"),
+      ambientDressingCount,
+      coolerTargetsAligned,
       placeVisible: scene?.children?.getByName?.("level-two-context-place-control")?.visible === true,
       oldTargetVisible: scene?.children?.getByName?.("starter-market-interaction-target")?.visible === true,
       handProductVisible: scene?.children?.getByName?.("restock-worker-hand-product")?.visible === true,
       player: scene?.actors?.position?.() ?? null,
       snapshot: scene?.controller?.snapshot?.() ?? null
     };
-  }, SCENE_KEY);
+  }, {
+    sceneKey: SCENE_KEY,
+    expectedTargets: EXPECTED_COOLER_TARGETS,
+    ambientNames: AMBIENT_DRESSING_NAMES
+  });
 }
 
 async function waterBottleScaleIsSane(page) {
