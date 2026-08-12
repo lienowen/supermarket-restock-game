@@ -11,6 +11,7 @@ const LEVEL_TWO_SLOTS = Object.freeze([
   Object.freeze({ x: 1365, y: 445 }),
   Object.freeze({ x: 1365, y: 535 })
 ]);
+const LEVEL_TWO_LOCAL_BASELINES = Object.freeze([22, 30, 35]);
 
 const isLevelTwo = (): boolean => document.body.dataset.activeLevel === LEVEL_TWO_ID;
 
@@ -49,9 +50,11 @@ prototype.createStockBottle = function levelTwoBackgroundAlignedBottle(
   }
 
   // The row containers are moved onto the authored L2 cooler after scene create.
-  // Creating directly inside the holder avoids the old-background world target
-  // and keeps the final bottle position stable on mobile and desktop.
+  // Create inside the holder, then align the bottle bottom to the photographed
+  // shelf lip instead of inheriting the old cooler's internal Y offset.
   const bottle = previousCreateStockBottle.call(this, rowIndex, itemIndex, false);
+  const shelfIndex = rowIndex % 3;
+  bottle.y = LEVEL_TWO_LOCAL_BASELINES[shelfIndex] ?? bottle.y;
   if (!animate) return bottle;
 
   const targetScaleX = bottle.scaleX;
