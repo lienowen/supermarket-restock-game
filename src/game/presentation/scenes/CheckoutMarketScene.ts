@@ -234,10 +234,15 @@ export class CheckoutMarketScene extends Phaser.Scene {
     });
 
     if (action === "SCAN_CUSTOMER") {
+      const actorSize = authoredCheckoutScale(this.visualPreset).actor.idleSize;
       this.player?.setTexture(this.workerScanTextureKey ?? this.context.levelAssets.workerScan.key);
+      this.player?.setDisplaySize(actorSize.width, actorSize.height);
       this.time.delayedCall(
         Math.max(220, tuning.scanDurationMs),
-        () => this.player?.setTexture(this.workerIdleTextureKey ?? this.context.levelAssets.worker.key)
+        () => {
+          this.player?.setTexture(this.workerIdleTextureKey ?? this.context.levelAssets.worker.key);
+          this.player?.setDisplaySize(actorSize.width, actorSize.height);
+        }
       );
     }
 
