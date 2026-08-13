@@ -11,6 +11,7 @@ import { resolveLevelProgression } from "../../application/LevelProgression";
 import { gameDomainEvents } from "../../events/GameDomainEvents";
 import { navigateToLevel } from "../../infrastructure/browser/BrowserLevelNavigator";
 import { PlayerNavigationView } from "../actors/PlayerNavigationView";
+import { prepareCheckoutActorTexture } from "../checkout/CheckoutMatteTexture";
 import { CheckoutStationView } from "../checkout/CheckoutStationView";
 import type { CheckoutStarterMarketPresentationContext } from "../context/StarterMarketPresentationContext";
 import { playActionFeedback } from "../effects/ActionFeedback";
@@ -31,16 +32,16 @@ const authoredCheckoutScale = (
   ...visual,
   actor: Object.freeze({
     ...visual.actor,
-    idleSize: Object.freeze({ width: 240, height: 270 })
+    idleSize: Object.freeze({ width: 210, height: 245 })
   }),
   station: Object.freeze({
     ...visual.station,
-    counterSize: Object.freeze({ width: 350, height: 305 }),
-    shadowSize: Object.freeze({ width: 245, height: 34 }),
-    registerOffset: Object.freeze({ x: 38, y: -62 }),
-    laneLightOffset: Object.freeze({ x: -59, y: -51 }),
-    scanBeamOffset: Object.freeze({ x: -32, y: -29 }),
-    scanBeamSize: Object.freeze({ width: 63, height: 5 })
+    counterSize: Object.freeze({ width: 310, height: 270 }),
+    shadowSize: Object.freeze({ width: 220, height: 28 }),
+    registerOffset: Object.freeze({ x: 34, y: -55 }),
+    laneLightOffset: Object.freeze({ x: -52, y: -45 }),
+    scanBeamOffset: Object.freeze({ x: -28, y: -26 }),
+    scanBeamSize: Object.freeze({ width: 56, height: 5 })
   })
 });
 
@@ -56,6 +57,8 @@ export class CheckoutMarketScene extends Phaser.Scene {
   private player?: PlayerNavigationView;
   private target?: InteractionTargetView;
   private completionOverlay?: LevelCompleteOverlay;
+  private workerIdleTextureKey?: string;
+  private workerScanTextureKey?: string;
   private previousStep?: CheckoutSceneStep;
   private previousProgress = -1;
 
@@ -100,6 +103,22 @@ export class CheckoutMarketScene extends Phaser.Scene {
     document.body.dataset.checkoutEnvironment = context.levelAssets.environment.key;
     this.cameras.main.setBackgroundColor("#171712");
 
+    const workerIdleTexture = prepareCheckoutActorTexture(
+      this,
+      context.levelAssets.worker.key,
+      "worker-idle"
+    );
+    const workerWalkTextures = context.levelAssets.workerWalk.map((asset, index) => (
+      prepareCheckoutActorTexture(this, asset.key, `worker-walk-${index + 1}`)
+    ));
+    const workerScanTexture = prepareCheckoutActorTexture(
+      this,
+      context.levelAssets.workerScan.key,
+      "worker-scan"
+    );
+    this.workerIdleTextureKey = workerIdleTexture;
+    this.workerScanTextureKey = workerScanTexture;
+
     new StarterMarketEnvironmentView(this, context).create();
     this.station = new CheckoutStationView(this, {
       checkoutPosition: context.world.checkout,
@@ -123,16 +142,13 @@ export class CheckoutMarketScene extends Phaser.Scene {
       },
       bounds: context.visual.actor.navigationBounds,
       speed: context.campaignLevel.level.navigation.moveSpeed,
-      assetKey: context.levelAssets.worker.key,
-      walkAssetKeys: [
-        context.levelAssets.workerWalk[0].key,
-        context.levelAssets.workerWalk[1].key
-      ],
+      assetKey: workerIdleTexture,
+      walkAssetKeys: workerWalkTextures,
       displaySize: visual.actor.idleSize,
       shadowOffset: visual.actor.shadowOffset,
       name: "checkout-worker",
       baseDepth: 24,
-      solidCutout: true
+      solidCutout: false
     });
     this.target = new InteractionTargetView(
       this,
@@ -190,10 +206,10 @@ export class CheckoutMarketScene extends Phaser.Scene {
 
   private compactCheckoutCustomer(): void {
     const customer = this.children.getByName("checkout-active-customer") as Phaser.GameObjects.Image | null;
-    customer?.setDisplaySize(160, 260);
+    customer?.setDisplaySize(140, 230);
     const shadow = this.children.getByName("checkout-customer-shadow") as Phaser.GameObjects.Ellipse | null;
-    shadow?.setDisplaySize(96, 22);
-    document.body.dataset.checkoutScale = "authored-background-compact-v2";
+    shadow?.setDisplaySize(86, 18);
+    document.body.dataset.checkoutScale = "authored-background-compact-v3";
   }
 
   private performCurrentAction(): void {
@@ -217,10 +233,10 @@ export class CheckoutMarketScene extends Phaser.Scene {
     });
 
     if (action === "SCAN_CUSTOMER") {
-      this.player?.setTexture(this.context.levelAssets.workerScan.key);
+      this.player?.setTexture(this.workerScanTextureKey ?? this.context.levelAssets.workerScan.key);
       this.time.delayedCall(
         Math.max(220, tuning.scanDurationMs),
-        () => this.player?.setTexture(this.context.levelAssets.worker.key)
+        () => this.player?.setTexture(this.workerIdleTextureKey ?? this.context.levelAssets.worker.key)
       );
     }
 
