@@ -35,14 +35,17 @@ const report = {
   assertions: {
     checkoutEnvironmentActive: false,
     matureStationActive: false,
-    solidWorkerActive: false,
-    solidCustomerActive: false,
+    matteCleanWorkerActive: false,
+    matteCleanCustomerActive: false,
+    matteCleanCounterActive: false,
+    groundedActorScale: false,
+    groundedStationScale: false,
     threeRealProductsOnBelt: false,
     workerWalksToRegister: false,
     registerOpens: false,
     firstOrderServed: false,
     customerAdvances: false,
-    scanPoseUsesSolidCutout: false,
+    scanPoseUsesMatteCleanTexture: false,
     fullCheckoutCompletes: false,
     noRuntimeIssues: false
   },
@@ -78,16 +81,38 @@ try {
   });
   await page.waitForSelector(CANVAS_SELECTOR, { state: "visible", timeout: 45000 });
   await page.waitForFunction(() => document.body.dataset.activeLevel === "starter-level-003", null, { timeout: 30000 });
-  await page.waitForFunction(() => document.body.dataset.checkoutPresentation === "mature-station-v1", null, { timeout: 15000 });
+  await page.waitForFunction(() => document.body.dataset.checkoutPresentation === "mature-station-v2", null, { timeout: 15000 });
 
   const initial = await readState(page);
   report.initial = initial;
   report.assertions.checkoutEnvironmentActive = initial.environmentKey === "environment-project-checkout-v2";
-  report.assertions.matureStationActive = initial.presentation === "mature-station-v1" && initial.productMode === "real-product-sprites";
-  report.assertions.solidWorkerActive = Boolean(initial.worker?.texture?.includes("--opaque-cutout"));
-  report.assertions.solidCustomerActive = Boolean(
-    initial.customer?.visible && initial.customer?.texture?.includes("--opaque-cutout") &&
-    initial.customer.displayWidth >= 150 && initial.customer.displayHeight >= 260
+  report.assertions.matureStationActive = (
+    initial.presentation === "mature-station-v2" &&
+    initial.productMode === "real-product-sprites" &&
+    initial.matteMode === "connected-edge-clean-v3"
+  );
+  report.assertions.matteCleanWorkerActive = Boolean(
+    initial.worker?.texture?.includes("--checkout-worker-idle-matte-clean-v3")
+  );
+  report.assertions.matteCleanCustomerActive = Boolean(
+    initial.customer?.visible &&
+    initial.customer?.texture?.includes("--checkout-customer-") &&
+    initial.customer?.texture?.includes("-matte-clean-v3")
+  );
+  report.assertions.matteCleanCounterActive = Boolean(
+    initial.counter?.texture?.includes("--checkout-counter-matte-clean-v3")
+  );
+  report.assertions.groundedActorScale = Boolean(
+    initial.worker && initial.customer &&
+    initial.worker.displayWidth >= 195 && initial.worker.displayWidth <= 215 &&
+    initial.worker.displayHeight >= 235 && initial.worker.displayHeight <= 250 &&
+    initial.customer.displayWidth >= 132 && initial.customer.displayWidth <= 145 &&
+    initial.customer.displayHeight >= 220 && initial.customer.displayHeight <= 235
+  );
+  report.assertions.groundedStationScale = Boolean(
+    initial.counter &&
+    initial.counter.displayWidth >= 300 && initial.counter.displayWidth <= 315 &&
+    initial.counter.displayHeight >= 260 && initial.counter.displayHeight <= 275
   );
   report.assertions.threeRealProductsOnBelt = (
     initial.productMode === "real-product-sprites" &&
@@ -131,10 +156,9 @@ try {
 
   await page.waitForFunction((sceneKey) => {
     const worker = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.children?.getByName?.("checkout-worker");
-    return String(worker?.texture?.key ?? "").includes("worker-a-scan-register") &&
-      String(worker?.texture?.key ?? "").includes("--opaque-cutout");
+    return String(worker?.texture?.key ?? "").includes("--checkout-worker-scan-matte-clean-v3");
   }, SCENE_KEY, { timeout: 2000 });
-  report.assertions.scanPoseUsesSolidCutout = true;
+  report.assertions.scanPoseUsesMatteCleanTexture = true;
 
   await page.waitForTimeout(700);
   const firstServe = await readState(page);
@@ -185,6 +209,7 @@ async function readState(page) {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
     const worker = scene?.children?.getByName?.("checkout-worker");
     const customer = scene?.children?.getByName?.("checkout-active-customer");
+    const counter = scene?.children?.getByName?.("checkout-counter-production");
     const products = [1, 2, 3].map((index) => scene?.children?.getByName?.(`checkout-belt-product-${index}`))
       .filter(Boolean)
       .map((product) => ({
@@ -198,6 +223,8 @@ async function readState(page) {
       presentation: document.body.dataset.checkoutPresentation ?? null,
       productMode: document.body.dataset.checkoutProducts ?? null,
       customerMode: document.body.dataset.checkoutCustomer ?? null,
+      matteMode: document.body.dataset.checkoutMatte ?? null,
+      scaleMode: document.body.dataset.checkoutScale ?? null,
       controller: scene?.controller?.snapshot?.() ?? null,
       worker: worker ? {
         x: worker.x, y: worker.y, texture: worker.texture?.key ?? null,
@@ -207,6 +234,11 @@ async function readState(page) {
         x: customer.x, y: customer.y, texture: customer.texture?.key ?? null,
         displayWidth: customer.displayWidth ?? 0, displayHeight: customer.displayHeight ?? 0,
         visible: customer.visible ?? false
+      } : null,
+      counter: counter ? {
+        x: counter.x, y: counter.y, texture: counter.texture?.key ?? null,
+        displayWidth: counter.displayWidth ?? 0, displayHeight: counter.displayHeight ?? 0,
+        visible: counter.visible ?? false
       } : null,
       products
     };
