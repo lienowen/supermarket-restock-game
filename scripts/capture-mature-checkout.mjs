@@ -33,7 +33,7 @@ await new Promise((resolveServer) => server.listen(PORT, "127.0.0.1", resolveSer
 const report = {
   generatedAt: new Date().toISOString(),
   assertions: {
-    hdEnvironmentActive: false,
+    checkoutEnvironmentActive: false,
     matureStationActive: false,
     solidWorkerActive: false,
     solidCustomerActive: false,
@@ -82,7 +82,7 @@ try {
 
   const initial = await readState(page);
   report.initial = initial;
-  report.assertions.hdEnvironmentActive = initial.environmentKey === "environment-starter-market-restock-hd-v3";
+  report.assertions.checkoutEnvironmentActive = initial.environmentKey === "environment-project-checkout-v2";
   report.assertions.matureStationActive = initial.presentation === "mature-station-v1" && initial.productMode === "real-product-sprites";
   report.assertions.solidWorkerActive = Boolean(initial.worker?.texture?.includes("--opaque-cutout"));
   report.assertions.solidCustomerActive = Boolean(
@@ -90,8 +90,14 @@ try {
     initial.customer.displayWidth >= 150 && initial.customer.displayHeight >= 260
   );
   report.assertions.threeRealProductsOnBelt = (
+    initial.productMode === "real-product-sprites" &&
     initial.products.length === 3 &&
-    initial.products.every((product) => product.kind === "Image" && product.texture?.includes("--checkout-product"))
+    initial.products.every((product) => (
+      product.visible === true &&
+      product.displayWidth > 0 &&
+      product.displayHeight > 0 &&
+      product.texture?.includes("--checkout-product")
+    ))
   );
 
   const start = initial.worker;
@@ -123,7 +129,6 @@ try {
     (window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.controller?.snapshot?.().customersServed ?? 0) >= 1
   ), SCENE_KEY, { timeout: 5000 });
 
-  // Capture the scan pose while the configured scan timer is still active.
   await page.waitForFunction((sceneKey) => {
     const worker = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.children?.getByName?.("checkout-worker");
     return String(worker?.texture?.key ?? "").includes("worker-a-scan-register") &&
@@ -183,7 +188,6 @@ async function readState(page) {
     const products = [1, 2, 3].map((index) => scene?.children?.getByName?.(`checkout-belt-product-${index}`))
       .filter(Boolean)
       .map((product) => ({
-        kind: product.constructor?.name ?? null,
         texture: product.texture?.key ?? null,
         displayWidth: product.displayWidth ?? 0,
         displayHeight: product.displayHeight ?? 0,
