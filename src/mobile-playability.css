@@ -77,6 +77,24 @@ body[data-software-landscape="true"] [role="button"] {
   touch-action: manipulation !important;
 }
 
+/* Guided drag is not a tap control. The generic [role=button] rule above would
+   otherwise let Android/browser shells claim the swipe as native panning and
+   cancel the drag sequence. Keep the entire guided surface gesture-exclusive. */
+body[data-software-landscape="true"] #guided-drag-action,
+body[data-software-landscape="true"] #guided-drag-action > div,
+body[data-software-landscape="true"] #guided-drag-source,
+body[data-software-landscape="true"] #guided-drag-target {
+  touch-action: none !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
+
+body[data-software-landscape="true"] #guided-drag-source,
+body[data-software-landscape="true"] #guided-drag-target {
+  pointer-events: auto !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
 body[data-software-landscape="true"] #mobile-orientation-hint,
 body[data-software-landscape="true"] #mobile-fullscreen-button {
   display: none !important;
