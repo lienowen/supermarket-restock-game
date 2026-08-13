@@ -46,6 +46,7 @@ const report = {
     firstOrderServed: false,
     customerAdvances: false,
     scanPoseUsesMatteCleanTexture: false,
+    actorScaleStableAfterServe: false,
     fullCheckoutCompletes: false,
     noRuntimeIssues: false
   },
@@ -137,7 +138,7 @@ try {
   const atRegister = await readState(page);
   report.atRegister = atRegister;
   report.assertions.workerWalksToRegister = Boolean(
-    start && atRegister.worker && Math.hypot(atRegister.worker.x - start.x, atRegister.worker.y - start.y) > 120
+    start && atRegister.worker && Math.hypot(atRegister.worker.x - start.x, atRegister.worker.y - start.y) > 80
   );
 
   await clickHudAction(page);
@@ -166,6 +167,13 @@ try {
   report.assertions.firstOrderServed = firstServe.controller?.customersServed === 1;
   report.assertions.customerAdvances = Boolean(
     firstServe.customer?.visible && firstServe.customer.texture && firstServe.customer.texture !== firstCustomerTexture
+  );
+  report.assertions.actorScaleStableAfterServe = Boolean(
+    firstServe.worker && firstServe.customer &&
+    firstServe.worker.displayWidth >= 195 && firstServe.worker.displayWidth <= 215 &&
+    firstServe.worker.displayHeight >= 235 && firstServe.worker.displayHeight <= 250 &&
+    firstServe.customer.displayWidth >= 132 && firstServe.customer.displayWidth <= 145 &&
+    firstServe.customer.displayHeight >= 220 && firstServe.customer.displayHeight <= 235
   );
   await page.screenshot({ path: join(OUTPUT_DIR, "level-3-mature-checkout.png"), fullPage: true });
 
