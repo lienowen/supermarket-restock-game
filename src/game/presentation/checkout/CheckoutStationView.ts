@@ -25,13 +25,8 @@ const PRODUCT_BOXES = Object.freeze([
   Object.freeze({ width: 40, height: 62 }),
   Object.freeze({ width: 42, height: 64 })
 ]);
+const CUSTOMER_SIZE = Object.freeze({ width: 140, height: 230 });
 
-/**
- * Mature checkout presentation keeps the register grounded in the store world:
- * real product art sits on the belt, one matte-clean customer stands at the
- * counter, and each served order visibly advances the customer instead of only
- * changing a number in the HUD.
- */
 export class CheckoutStationView {
   private readonly objects: Phaser.GameObjects.GameObject[] = [];
   private readonly queueBaskets: Phaser.GameObjects.Image[] = [];
@@ -168,7 +163,7 @@ export class CheckoutStationView {
         this.customerTextureKeys[0]
       )
         .setOrigin(0.5, 0.96)
-        .setDisplaySize(140, 230)
+        .setDisplaySize(CUSTOMER_SIZE.width, CUSTOMER_SIZE.height)
         .setDepth(24.6)
         .setName("checkout-active-customer");
       const customerShadow = scene.add.ellipse(
@@ -367,7 +362,11 @@ export class CheckoutStationView {
         }
         const texture = this.customerTextureKeys[served % this.customerTextureKeys.length];
         if (texture) customer.setTexture(texture);
-        customer.setPosition(startX - 38, this.config.checkoutPosition.y + 16).setAlpha(0).setVisible(true);
+        customer
+          .setDisplaySize(CUSTOMER_SIZE.width, CUSTOMER_SIZE.height)
+          .setPosition(startX - 38, this.config.checkoutPosition.y + 16)
+          .setAlpha(0)
+          .setVisible(true);
         this.scene.tweens.add({
           targets: customer,
           x: startX,
