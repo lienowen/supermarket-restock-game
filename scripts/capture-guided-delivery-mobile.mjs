@@ -91,20 +91,21 @@ try {
   );
   report.assertions.softwareLandscapeActive = true;
 
-  // Movement/navigation has its own mobile gates. Move the actor using the scene
-  // navigation port so this audit isolates the real Android touch drag itself.
+  // The desktop audit enters the guided step through the primary action control.
+  // Invoke that same gameplay action so this gate isolates the real Android
+  // touch drag rather than mixing in a separate navigation test.
   await page.evaluate((sceneKey) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
-    const point = scene?.context?.world?.backroomBox;
-    if (!scene?.actors?.setDestination || !point) throw new Error("Missing Level 1 pickup navigation target");
-    scene.actors.setDestination(point);
+    const action = scene?.children?.getByName?.("shift-hud-action");
+    if (!action) throw new Error("Missing Level 1 primary action control");
+    action.emit("pointerdown");
   }, GAME_SCENE_KEY);
 
   await page.waitForFunction((sceneKey) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
     const state = scene?.controller?.snapshot?.();
     return state?.step === "load" && state?.boxCollected === true;
-  }, GAME_SCENE_KEY, { timeout: 15000 });
+  }, GAME_SCENE_KEY, { timeout: 10000 });
   await page.waitForFunction(
     () => document.body.dataset.guidedDrag === "active",
     null,
