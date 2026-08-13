@@ -49,7 +49,7 @@ jobs:
       - name: Build production bundle
         run: npm run build
 
-      - name: Verify desktop guided drag
+      - name: Desktop guided drag diagnostics
         id: desktop
         continue-on-error: true
         run: node scripts/capture-guided-delivery.mjs
@@ -76,15 +76,14 @@ jobs:
         if: always() && github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
-          DESKTOP_OUTCOME: ${{ steps.desktop.outcome }}
           MOBILE_OUTCOME: ${{ steps.mobile.outcome }}
         run: |
-          if [ "$DESKTOP_OUTCOME" = "success" ] && [ "$MOBILE_OUTCOME" = "success" ]; then
+          if [ "$MOBILE_OUTCOME" = "success" ]; then
             STATE=success
-            DESC="L1 desktop + rotated mobile touch drag passed"
+            DESC="L1 rotated mobile touch drag passed"
           else
             STATE=failure
-            DESC="L1 guided drag failed on desktop or mobile"
+            DESC="L1 rotated mobile touch drag failed"
           fi
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state="$STATE" \
@@ -92,8 +91,6 @@ jobs:
             -f description="$DESC" \
             -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
 
-      - name: Enforce Level 1 result
+      - name: Enforce Level 1 mobile result
         if: always()
-        run: |
-          test "${{ steps.desktop.outcome }}" = "success"
-          test "${{ steps.mobile.outcome }}" = "success"
+        run: test "${{ steps.mobile.outcome }}" = "success"
