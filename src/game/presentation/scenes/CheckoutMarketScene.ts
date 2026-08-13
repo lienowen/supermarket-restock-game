@@ -108,9 +108,10 @@ export class CheckoutMarketScene extends Phaser.Scene {
       context.levelAssets.worker.key,
       "worker-idle"
     );
-    const workerWalkTextures = context.levelAssets.workerWalk.map((asset, index) => (
-      prepareCheckoutActorTexture(this, asset.key, `worker-walk-${index + 1}`)
-    ));
+    const workerWalkTextures: readonly [string, string] = [
+      prepareCheckoutActorTexture(this, context.levelAssets.workerWalk[0].key, "worker-walk-1"),
+      prepareCheckoutActorTexture(this, context.levelAssets.workerWalk[1].key, "worker-walk-2")
+    ];
     const workerScanTexture = prepareCheckoutActorTexture(
       this,
       context.levelAssets.workerScan.key,
