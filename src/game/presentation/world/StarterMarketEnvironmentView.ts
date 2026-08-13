@@ -10,9 +10,9 @@ const AUTHORED_RESTOCK_ENVIRONMENT_KEYS = new Set([
 ]);
 
 /**
- * Owns the supermarket shell and non-gameplay scene dressing. Authored early
- * restock scenes stay clean: only gameplay actors / props are layered over the
- * background. Later challenge scenes may add reusable dressing, with every
+ * Owns the supermarket shell and non-gameplay scene dressing. Authored scene
+ * plates stay clean: only task-essential actors / props are layered over the
+ * background. Generic challenge scenes may add reusable dressing, with every
  * layered fixture normalized to an opaque cutout.
  */
 export class StarterMarketEnvironmentView {
@@ -45,11 +45,19 @@ export class StarterMarketEnvironmentView {
 
   private isPureBackgroundLevel(): boolean {
     const level = this.context.campaignLevel.level;
+    const environmentKey = this.context.levelAssets.environment.key;
+
+    if (
+      level.mode === "checkout" &&
+      environmentKey.startsWith("environment-project-checkout")
+    ) {
+      return true;
+    }
+
     if (level.mode !== "restock") return false;
 
     const isGuidedFirstDelivery = level.tuning.rush?.timeoutEnabled === false;
-    const usesAuthoredWaterRestockPlate =
-      this.context.levelAssets.environment.key === "environment-restock-water-l2-v1";
+    const usesAuthoredWaterRestockPlate = environmentKey === "environment-restock-water-l2-v1";
     return isGuidedFirstDelivery || usesAuthoredWaterRestockPlate;
   }
 
