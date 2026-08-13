@@ -48,9 +48,12 @@ installMobileLandscapeController();
 
 void (async () => {
   try {
-    await installPresentationPatches(requestedLevel());
-    const { bootstrapGame } = await import("./game/bootstrap");
-    await bootstrapGame();
+    const levelId = requestedLevel();
+    const [bootstrapModule] = await Promise.all([
+      import("./game/bootstrap"),
+      installPresentationPatches(levelId)
+    ]);
+    await bootstrapModule.bootstrapGame();
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     document.body.dataset.bootstrapError = message;
