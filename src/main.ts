@@ -13,9 +13,11 @@ import "./game/presentation/actors/installLevelTwoMemoryFeedback";
 import "./game/presentation/actors/installLevelOneCompletionPolish";
 import "./game/presentation/ui/installMatureRestockHud";
 import { bootstrapGame } from "./game/bootstrap";
+import { installCheckoutSoftwareLandscapeDrag } from "./game/infrastructure/browser/CheckoutSoftwareLandscapeDrag";
 import { installMobileLandscapeController } from "./game/infrastructure/browser/MobileLandscapeController";
 
 installMobileLandscapeController();
+installCheckoutSoftwareLandscapeDrag();
 
 void bootstrapGame().catch((error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);
