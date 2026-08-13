@@ -176,9 +176,10 @@ export function resolveCheckoutLevelAssets(
 ): ResolvedCheckoutLevelAssets {
   const pack = resolveGlobalAssetPack(level.presentation.assetPackId, "checkout");
   const environmentAssetKey = resolveLevelEnvironmentAssetKey(level.id, pack.environmentAssetKey);
+  const authoredCheckoutPlate = environmentAssetKey.startsWith("environment-project-checkout");
   const preload = resolveDescriptors(registry, [
     environmentAssetKey,
-    ...pack.sharedStoreAssetKeys,
+    ...(authoredCheckoutPlate ? [] : pack.sharedStoreAssetKeys),
     ...pack.workerWalkAssetKeys,
     pack.workerIdleAssetKey,
     pack.workerScanAssetKey,
