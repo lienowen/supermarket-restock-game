@@ -25,6 +25,25 @@ import type { CheckoutLevelVisualPreset } from "../visual/MarketLevelVisualPrese
 import { StarterMarketEnvironmentView } from "../world/StarterMarketEnvironmentView";
 import type { SceneCampaignSessionContext } from "./StarterMarketScene";
 
+const authoredCheckoutScale = (
+  visual: CheckoutLevelVisualPreset
+): CheckoutLevelVisualPreset => Object.freeze({
+  ...visual,
+  actor: Object.freeze({
+    ...visual.actor,
+    idleSize: Object.freeze({ width: 240, height: 270 })
+  }),
+  station: Object.freeze({
+    ...visual.station,
+    counterSize: Object.freeze({ width: 350, height: 305 }),
+    shadowSize: Object.freeze({ width: 245, height: 34 }),
+    registerOffset: Object.freeze({ x: 38, y: -62 }),
+    laneLightOffset: Object.freeze({ x: -59, y: -51 }),
+    scanBeamOffset: Object.freeze({ x: -32, y: -29 }),
+    scanBeamSize: Object.freeze({ width: 63, height: 5 })
+  })
+});
+
 export class CheckoutMarketScene extends Phaser.Scene {
   readonly controller: CheckoutSceneController;
 
@@ -66,7 +85,7 @@ export class CheckoutMarketScene extends Phaser.Scene {
 
   create(): void {
     const context = this.context;
-    const visual = this.visualPreset;
+    const visual = authoredCheckoutScale(this.visualPreset);
     const basketAsset = context.levelAssets.equipment.find(
       (asset) => asset.key === "equipment-shopping-basket"
     );
@@ -96,6 +115,7 @@ export class CheckoutMarketScene extends Phaser.Scene {
       accentColor: context.palette.gold,
       visual
     });
+    this.compactCheckoutCustomer();
     this.player = new PlayerNavigationView(this, {
       start: {
         x: context.world.checkout.x + visual.workerStartOffset.x,
@@ -166,6 +186,14 @@ export class CheckoutMarketScene extends Phaser.Scene {
 
   playerPosition(): NavigationPoint | undefined {
     return this.player?.position();
+  }
+
+  private compactCheckoutCustomer(): void {
+    const customer = this.children.getByName("checkout-active-customer") as Phaser.GameObjects.Image | null;
+    customer?.setDisplaySize(160, 260);
+    const shadow = this.children.getByName("checkout-customer-shadow") as Phaser.GameObjects.Ellipse | null;
+    shadow?.setDisplaySize(96, 22);
+    document.body.dataset.checkoutScale = "authored-background-compact-v2";
   }
 
   private performCurrentAction(): void {
