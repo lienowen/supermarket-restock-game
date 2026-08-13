@@ -267,29 +267,38 @@ export function mountGuidedDragActionDom(
   const isReady = (): boolean => Boolean(scenePort()?.isInteractionReady?.());
 
   const dropTolerance = (): number => (
-    softwareLandscapeActive() || coarsePointerActive() ? 56 : 10
+    softwareLandscapeActive() || coarsePointerActive() ? 64 : 10
   );
 
-  const sourceCentreInsideTarget = (): boolean => {
-    const sourceRect = source.getBoundingClientRect();
+  const viewportPointInsideTarget = (clientX: number, clientY: number): boolean => {
     const targetRect = target.getBoundingClientRect();
     const tolerance = dropTolerance();
-    const centreX = sourceRect.left + sourceRect.width / 2;
-    const centreY = sourceRect.top + sourceRect.height / 2;
     return (
-      centreX >= targetRect.left - tolerance &&
-      centreX <= targetRect.right + tolerance &&
-      centreY >= targetRect.top - tolerance &&
-      centreY <= targetRect.bottom + tolerance
+      clientX >= targetRect.left - tolerance &&
+      clientX <= targetRect.right + tolerance &&
+      clientY >= targetRect.top - tolerance &&
+      clientY <= targetRect.bottom + tolerance
     );
   };
 
-  const updateTargetFeedback = (): void => {
-    const overTarget = sourceCentreInsideTarget();
+  const sourceCentreInsideTarget = (): boolean => {
+    const sourceRect = source.getBoundingClientRect();
+    return viewportPointInsideTarget(
+      sourceRect.left + sourceRect.width / 2,
+      sourceRect.top + sourceRect.height / 2
+    );
+  };
+
+  const updateTargetFeedback = (clientX?: number, clientY?: number): void => {
+    const overTarget = clientX !== undefined && clientY !== undefined
+      ? viewportPointInsideTarget(clientX, clientY)
+      : sourceCentreInsideTarget();
     target.style.transform = overTarget ? "scale(1.035)" : "scale(1)";
     target.style.background = overTarget
       ? "rgba(90, 145, 79, 0.34)"
       : "rgba(90, 145, 79, 0.12)";
+    target.style.borderColor = overTarget ? "#ffd95e" : "rgba(255, 217, 94, 0.6)";
+    document.body.dataset.mobileGuidedDragTarget = overTarget ? "inside" : "outside";
   };
 
   const resetSource = (): void => {
@@ -306,6 +315,7 @@ export function mountGuidedDragActionDom(
     target.style.background = "rgba(90, 145, 79, 0.12)";
     target.style.transform = "scale(1)";
     document.body.dataset.mobileGuidedDrag = "ready";
+    document.body.dataset.mobileGuidedDragTarget = "outside";
   };
 
   const hide = (state: "complete" | "closed"): void => {
@@ -321,6 +331,7 @@ export function mountGuidedDragActionDom(
     overlay.style.display = "flex";
     setSceneInputEnabled(false);
     document.body.dataset.guidedDrag = "active";
+    document.body.dataset.mobileGuidedDragTarget = "outside";
     requestAnimationFrame(() => source.focus());
   };
 
@@ -379,7 +390,7 @@ export function mountGuidedDragActionDom(
     translateX = point.x - startX;
     translateY = point.y - startY;
     source.style.transform = `translate3d(${translateX}px, ${translateY}px, 0)`;
-    updateTargetFeedback();
+    updateTargetFeedback(event.clientX, event.clientY);
   }
 
   function handleWindowPointerUp(event: PointerEvent): void {
@@ -389,7 +400,7 @@ export function mountGuidedDragActionDom(
     translateX = point.x - startX;
     translateY = point.y - startY;
     source.style.transform = `translate3d(${translateX}px, ${translateY}px, 0)`;
-    const accepted = sourceCentreInsideTarget();
+    const accepted = viewportPointInsideTarget(event.clientX, event.clientY);
     if (source.hasPointerCapture(event.pointerId)) {
       try { source.releasePointerCapture(event.pointerId); } catch { /* browser already released */ }
     }
@@ -398,6 +409,7 @@ export function mountGuidedDragActionDom(
     removeWindowDragListeners();
     if (accepted) {
       document.body.dataset.mobileGuidedDrag = "accepted";
+      document.body.dataset.mobileGuidedDragTarget = "inside";
       confirmPrimaryAction();
     } else {
       feedback.textContent = "Drag the case onto the cart";
@@ -430,6 +442,7 @@ export function mountGuidedDragActionDom(
     document.body.dataset.mobileGuidedDrag = softwareLandscapeActive()
       ? "dragging-software-landscape"
       : "dragging";
+    updateTargetFeedback(event.clientX, event.clientY);
     window.addEventListener("pointermove", handleWindowPointerMove, { capture: true, passive: false });
     window.addEventListener("pointerup", handleWindowPointerUp, { capture: true, passive: false });
     window.addEventListener("pointercancel", handleWindowPointerCancel, { capture: true, passive: false });
@@ -479,6 +492,8 @@ export function mountGuidedDragActionDom(
       setSceneInputEnabled(true);
       overlay.remove();
       delete document.body.dataset.guidedDrag;
+      delete document.body.dataset.mobileGuidedDrag;
+      delete document.body.dataset.mobileGuidedDragTarget;
     }
   });
 }
