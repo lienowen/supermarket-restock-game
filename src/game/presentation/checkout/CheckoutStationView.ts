@@ -2,8 +2,8 @@ import Phaser from "phaser";
 import type { CheckoutSceneSnapshot } from "../../application/CheckoutSceneController";
 import type { PresentationPoint } from "../context/StarterMarketPresentationContext";
 import type { CheckoutLevelVisualPreset } from "../visual/MarketLevelVisualPreset";
-import { createOpaqueCutoutTexture } from "../visual/OpaqueCutoutTexture";
 import { createTrimmedTexture, fitImageIntoBox } from "../visual/TrimmedTexture";
+import { prepareCheckoutActorTexture, prepareCheckoutCounterTexture } from "./CheckoutMatteTexture";
 
 export interface CheckoutStationViewConfig {
   readonly checkoutPosition: PresentationPoint;
@@ -28,9 +28,9 @@ const PRODUCT_BOXES = Object.freeze([
 
 /**
  * Mature checkout presentation keeps the register grounded in the store world:
- * real product art sits on the belt, one solid customer stands at the counter,
- * and each served order visibly advances the customer instead of only changing
- * a number in the HUD.
+ * real product art sits on the belt, one matte-clean customer stands at the
+ * counter, and each served order visibly advances the customer instead of only
+ * changing a number in the HUD.
  */
 export class CheckoutStationView {
   private readonly objects: Phaser.GameObjects.GameObject[] = [];
@@ -54,32 +54,30 @@ export class CheckoutStationView {
   ) {
     const { checkoutPosition, visual } = config;
     this.customerTextureKeys = Object.freeze(
-      config.customerAssetKeys.map((assetKey) => createOpaqueCutoutTexture(scene, assetKey))
+      config.customerAssetKeys.map((assetKey, index) => (
+        prepareCheckoutActorTexture(scene, assetKey, `customer-${index + 1}`)
+      ))
     );
 
     this.serviceHalo = scene.add.ellipse(
       checkoutPosition.x - 34,
       checkoutPosition.y - 6,
-      270,
-      102,
+      248,
+      88,
       config.accentColor,
-      0.04
-    ).setStrokeStyle(2, config.accentColor, 0.18).setDepth(18);
+      0.035
+    ).setStrokeStyle(2, config.accentColor, 0.14).setDepth(18);
 
     const shadow = scene.add.ellipse(
       checkoutPosition.x + 8,
-      checkoutPosition.y + 25,
+      checkoutPosition.y + 22,
       visual.station.shadowSize.width,
       visual.station.shadowSize.height,
       0x1b2c26,
-      0.22
+      0.18
     ).setDepth(19);
 
-    const counterTexture = createTrimmedTexture(scene, config.checkoutAssetKey, {
-      alphaThreshold: 10,
-      suffix: "--checkout-trimmed",
-      padding: 2
-    });
+    const counterTexture = prepareCheckoutCounterTexture(scene, config.checkoutAssetKey);
     const counter = scene.add.image(
       checkoutPosition.x,
       checkoutPosition.y + visual.station.counterOffsetY,
@@ -91,10 +89,10 @@ export class CheckoutStationView {
       .setName("checkout-counter-production");
 
     const beltSurface = scene.add.graphics().setDepth(29);
-    beltSurface.fillStyle(0x192824, 0.76);
-    beltSurface.fillRoundedRect(checkoutPosition.x - 146, checkoutPosition.y - 88, 170, 46, 14);
-    beltSurface.lineStyle(2, 0xffffff, 0.1);
-    beltSurface.strokeRoundedRect(checkoutPosition.x - 146, checkoutPosition.y - 88, 170, 46, 14);
+    beltSurface.fillStyle(0x192824, 0.68);
+    beltSurface.fillRoundedRect(checkoutPosition.x - 138, checkoutPosition.y - 84, 160, 42, 13);
+    beltSurface.lineStyle(1, 0xffffff, 0.08);
+    beltSurface.strokeRoundedRect(checkoutPosition.x - 138, checkoutPosition.y - 84, 160, 42, 13);
 
     const basketTexture = createTrimmedTexture(scene, config.basketAssetKey, {
       alphaThreshold: 10,
@@ -102,12 +100,12 @@ export class CheckoutStationView {
       padding: 2
     });
     this.beltBasket = scene.add.image(
-      checkoutPosition.x - 110,
-      checkoutPosition.y - 43,
+      checkoutPosition.x - 105,
+      checkoutPosition.y - 42,
       basketTexture
     )
       .setOrigin(0.5, 0.96)
-      .setDisplaySize(88, 62)
+      .setDisplaySize(80, 56)
       .setDepth(30)
       .setName("checkout-active-basket");
 
@@ -118,8 +116,8 @@ export class CheckoutStationView {
         padding: 1
       });
       const item = scene.add.image(
-        checkoutPosition.x - 116 + index * 42,
-        checkoutPosition.y - 67,
+        checkoutPosition.x - 110 + index * 39,
+        checkoutPosition.y - 65,
         texture
       )
         .setOrigin(0.5, 0.96)
@@ -146,40 +144,40 @@ export class CheckoutStationView {
       "CLOSED",
       {
         fontFamily: "Arial",
-        fontSize: "14px",
+        fontSize: "13px",
         color: "#ffd95e",
         fontStyle: "bold",
         align: "center",
         backgroundColor: "#10211d",
-        padding: { x: 9, y: 5 }
+        padding: { x: 8, y: 4 }
       }
     ).setOrigin(0.5).setDepth(32);
 
     this.laneLight = scene.add.circle(
       checkoutPosition.x + visual.station.laneLightOffset.x,
       checkoutPosition.y + visual.station.laneLightOffset.y,
-      10,
+      9,
       0xc95b4f,
       1
-    ).setStrokeStyle(2, 0xffffff, 0.4).setDepth(32);
+    ).setStrokeStyle(2, 0xffffff, 0.32).setDepth(32);
 
     if (this.customerTextureKeys[0]) {
       this.activeCustomer = scene.add.image(
-        checkoutPosition.x + 195,
-        checkoutPosition.y + 18,
+        checkoutPosition.x + 182,
+        checkoutPosition.y + 16,
         this.customerTextureKeys[0]
       )
         .setOrigin(0.5, 0.96)
-        .setDisplaySize(184, 292)
+        .setDisplaySize(140, 230)
         .setDepth(24.6)
         .setName("checkout-active-customer");
       const customerShadow = scene.add.ellipse(
-        checkoutPosition.x + 195,
-        checkoutPosition.y + 23,
-        112,
-        26,
+        checkoutPosition.x + 182,
+        checkoutPosition.y + 20,
+        86,
+        18,
         0x18261f,
-        0.2
+        0.18
       ).setDepth(24.5).setName("checkout-customer-shadow");
       this.objects.push(customerShadow, this.activeCustomer);
     }
@@ -258,9 +256,10 @@ export class CheckoutStationView {
       this.waitingText,
       this.queueOverflowText
     );
-    document.body.dataset.checkoutPresentation = "mature-station-v1";
+    document.body.dataset.checkoutPresentation = "mature-station-v2";
     document.body.dataset.checkoutProducts = "real-product-sprites";
-    document.body.dataset.checkoutCustomer = this.activeCustomer ? "solid-active-customer" : "unavailable";
+    document.body.dataset.checkoutCustomer = this.activeCustomer ? "matte-clean-active-customer" : "unavailable";
+    document.body.dataset.checkoutMatte = "connected-edge-clean-v3";
   }
 
   sync(snapshot: CheckoutSceneSnapshot): void {
@@ -314,28 +313,28 @@ export class CheckoutStationView {
       ease: "Cubic.Out"
     });
 
-    const startX = this.config.checkoutPosition.x - 110;
-    this.beltBasket.setPosition(startX, this.config.checkoutPosition.y - 43).setAlpha(1).setScale(1);
+    const startX = this.config.checkoutPosition.x - 105;
+    this.beltBasket.setPosition(startX, this.config.checkoutPosition.y - 42).setAlpha(1).setScale(1);
     this.scene.tweens.add({
       targets: this.beltBasket,
-      x: startX + 105,
+      x: startX + 98,
       alpha: 0.16,
       scaleX: 0.82,
       scaleY: 0.82,
       duration: Math.max(240, this.config.queueAdvanceDurationMs),
       ease: "Cubic.In",
       onComplete: () => this.beltBasket
-        .setPosition(startX, this.config.checkoutPosition.y - 43)
+        .setPosition(startX, this.config.checkoutPosition.y - 42)
         .setAlpha(1)
         .setScale(1)
     });
 
     this.beltItems.forEach((item, index) => {
-      const originalX = this.config.checkoutPosition.x - 116 + index * 42;
+      const originalX = this.config.checkoutPosition.x - 110 + index * 39;
       item.setAlpha(1).setScale(1);
       this.scene.tweens.add({
         targets: item,
-        x: originalX + 58,
+        x: originalX + 54,
         alpha: 0.18,
         scaleX: 0.72,
         scaleY: 0.72,
@@ -343,7 +342,7 @@ export class CheckoutStationView {
         delay: index * 55,
         ease: "Cubic.In",
         onComplete: () => item
-          .setPosition(originalX, this.config.checkoutPosition.y - 67)
+          .setPosition(originalX, this.config.checkoutPosition.y - 65)
           .setAlpha(1)
           .setScale(1)
       });
@@ -353,11 +352,11 @@ export class CheckoutStationView {
   private playCustomerAdvance(served: number, remaining: number): void {
     const customer = this.activeCustomer;
     if (!customer) return;
-    const startX = this.config.checkoutPosition.x + 195;
+    const startX = this.config.checkoutPosition.x + 182;
     this.scene.tweens.killTweensOf(customer);
     this.scene.tweens.add({
       targets: customer,
-      x: startX + 95,
+      x: startX + 82,
       alpha: 0,
       duration: Math.max(220, this.config.queueAdvanceDurationMs),
       ease: "Cubic.In",
@@ -368,7 +367,7 @@ export class CheckoutStationView {
         }
         const texture = this.customerTextureKeys[served % this.customerTextureKeys.length];
         if (texture) customer.setTexture(texture);
-        customer.setPosition(startX - 45, this.config.checkoutPosition.y + 18).setAlpha(0).setVisible(true);
+        customer.setPosition(startX - 38, this.config.checkoutPosition.y + 16).setAlpha(0).setVisible(true);
         this.scene.tweens.add({
           targets: customer,
           x: startX,
