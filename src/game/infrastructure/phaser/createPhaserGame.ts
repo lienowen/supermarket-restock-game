@@ -12,13 +12,9 @@ import {
 } from "../../presentation/context/StarterMarketPresentationContext";
 import { applyMarketUpgradesToPresentation } from "../../presentation/context/MarketUpgradePresentation";
 import type { SceneCampaignSessionContext } from "../../presentation/scenes/StarterMarketScene";
-import { mountCartCapacityLoadDom } from "../../presentation/ui/CartCapacityLoadDom";
-import { mountCheckoutPatienceDom } from "../../presentation/ui/CheckoutPatienceDom";
-import { mountCheckoutScanDom } from "../../presentation/ui/CheckoutScanDom";
 import { mountCompactLevelChecklistDom } from "../../presentation/ui/CompactLevelChecklistDom";
 import { mountGuidedDragActionDom } from "../../presentation/ui/GuidedDragActionDom";
 import { mountGuidedLevelBriefingDomOverlay } from "../../presentation/ui/GuidedLevelBriefingDomOverlay";
-import { mountHoldWorkDom } from "../../presentation/ui/HoldWorkDom";
 import { mountLevelBriefingDomOverlay } from "../../presentation/ui/LevelBriefingDomOverlay";
 import { BrowserCampaignSessionStore } from "../browser/BrowserCampaignSessionStore";
 import { requestMobileLandscapeMode } from "../browser/MobileLandscapeController";
@@ -105,7 +101,7 @@ export async function createPhaserGame(
   document.body.dataset.activeMode = presentation.mode;
   document.body.dataset.levelExperience = experience.modeLabel;
 
-  const activeScene = createGameplayScene(presentation, campaignSession);
+  const activeScene = await createGameplayScene(presentation, campaignSession);
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: options.parent ?? "app",
@@ -166,6 +162,7 @@ export async function createPhaserGame(
     !skipCartCapacity &&
     "cart" in presentation.levelAssets
   ) {
+    const { mountCartCapacityLoadDom } = await import("../../presentation/ui/CartCapacityLoadDom");
     mountCartCapacityLoadDom({
       game,
       sceneKey: presentation.scene.key,
@@ -202,6 +199,7 @@ export async function createPhaserGame(
     "customerCount" in presentation.runtime &&
     checkoutEquipment
   ) {
+    const { mountCheckoutScanDom } = await import("../../presentation/ui/CheckoutScanDom");
     mountCheckoutScanDom({
       game,
       sceneKey: presentation.scene.key,
@@ -225,6 +223,7 @@ export async function createPhaserGame(
     "customerCount" in presentation.runtime &&
     checkoutEquipment
   ) {
+    const { mountCheckoutPatienceDom } = await import("../../presentation/ui/CheckoutPatienceDom");
     mountCheckoutPatienceDom({
       game,
       sceneKey: presentation.scene.key,
@@ -259,6 +258,7 @@ export async function createPhaserGame(
     !skipHoldWork &&
     "workerMop" in presentation.levelAssets
   ) {
+    const { mountHoldWorkDom } = await import("../../presentation/ui/HoldWorkDom");
     mountHoldWorkDom({
       game,
       sceneKey: presentation.scene.key,
