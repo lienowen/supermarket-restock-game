@@ -18,6 +18,12 @@ const resolveMatureCleanPreset = (level: CleanLevelDefinition): CleanLevelVisual
   const preset = resolveMarketLevelVisualPreset(level.presentation.visualPresetId, "clean");
   return Object.freeze({
     ...preset,
+    actor: Object.freeze({
+      ...preset.actor,
+      // Cleaning shares the same worker language as the mature restock levels.
+      // Keep the character at an in-store scale instead of dominating the aisle.
+      idleSize: Object.freeze({ width: 205, height: 300 })
+    }),
     // Once the player has collected the cleaning cart/tools, the cart should
     // leave the world instead of lingering as a translucent ghost over the cooler.
     collectedToolsAlpha: 0
