@@ -14,7 +14,7 @@ const GOLDEN_PICKUP_WORKER_KEY = "worker-a-place-middle";
 const MOBILE_TOUCH_MOVE_SPEED = 690;
 
 const GOLDEN_ZONE_LAYOUT = Object.freeze({
-  basket: Object.freeze({ x: 825, y: 820, maxWidth: 112, maxHeight: 80 }),
+  basket: Object.freeze({ maxWidth: 84, maxHeight: 58, offsetX: 66, offsetY: -22 }),
   worker: Object.freeze({ maxWidth: 178, maxHeight: 286 })
 });
 
@@ -25,14 +25,14 @@ const GOLDEN_NAVIGATION_POINTS: Readonly<Record<string, { readonly x: number; re
 });
 
 const GOLDEN_PRODUCT_LAYOUT = Object.freeze([
-  Object.freeze({ sourceName: "find-decoy-decoy-chips", name: "find-decoy-banana", interactionId: "decoy-chips", assetKey: "product-banana-bunch", x: 120, y: 515, maxWidth: 68, maxHeight: 50, requested: false }),
-  Object.freeze({ sourceName: "find-item-apple", name: "find-item-apple", interactionId: "apple", assetKey: "product-apple", x: 220, y: 515, maxWidth: 58, maxHeight: 58, requested: true }),
-  Object.freeze({ sourceName: "find-decoy-decoy-detergent", name: "find-decoy-grapes", interactionId: "decoy-detergent", assetKey: "product-grapes-pack", x: 320, y: 515, maxWidth: 62, maxHeight: 50, requested: false }),
-  Object.freeze({ sourceName: "find-item-cereal-box", name: "find-item-cereal-box", interactionId: "cereal-box", assetKey: "product-cereal-box", x: 620, y: 390, maxWidth: 50, maxHeight: 70, requested: true }),
-  Object.freeze({ sourceName: "find-decoy-decoy-oats", name: "find-decoy-oats", interactionId: "decoy-oats", assetKey: "product-oats-canister", x: 720, y: 390, maxWidth: 48, maxHeight: 66, requested: false }),
-  Object.freeze({ sourceName: "find-decoy-decoy-paper-towels", name: "find-decoy-peanut-butter", interactionId: "decoy-paper-towels", assetKey: "product-peanut-butter", x: 820, y: 390, maxWidth: 48, maxHeight: 64, requested: false }),
-  Object.freeze({ sourceName: "find-item-milk-bottle", name: "find-item-milk-bottle", interactionId: "milk-bottle", assetKey: "product-milk-bottle", x: 1290, y: 405, maxWidth: 50, maxHeight: 82, requested: true }),
-  Object.freeze({ sourceName: "find-decoy-decoy-yogurt", name: "find-decoy-yogurt", interactionId: "decoy-yogurt", assetKey: "product-yogurt-cup", x: 1400, y: 405, maxWidth: 54, maxHeight: 58, requested: false })
+  Object.freeze({ sourceName: "find-decoy-decoy-chips", name: "find-decoy-banana", interactionId: "decoy-chips", assetKey: "product-banana-bunch", x: 120, y: 515, maxWidth: 58, maxHeight: 44, requested: false }),
+  Object.freeze({ sourceName: "find-item-apple", name: "find-item-apple", interactionId: "apple", assetKey: "product-apple", x: 220, y: 515, maxWidth: 48, maxHeight: 48, requested: true }),
+  Object.freeze({ sourceName: "find-decoy-decoy-detergent", name: "find-decoy-grapes", interactionId: "decoy-detergent", assetKey: "product-grapes-pack", x: 320, y: 515, maxWidth: 52, maxHeight: 44, requested: false }),
+  Object.freeze({ sourceName: "find-item-cereal-box", name: "find-item-cereal-box", interactionId: "cereal-box", assetKey: "product-cereal-box", x: 620, y: 390, maxWidth: 42, maxHeight: 58, requested: true }),
+  Object.freeze({ sourceName: "find-decoy-decoy-oats", name: "find-decoy-oats", interactionId: "decoy-oats", assetKey: "product-oats-canister", x: 720, y: 390, maxWidth: 40, maxHeight: 56, requested: false }),
+  Object.freeze({ sourceName: "find-decoy-decoy-paper-towels", name: "find-decoy-peanut-butter", interactionId: "decoy-paper-towels", assetKey: "product-peanut-butter", x: 820, y: 390, maxWidth: 40, maxHeight: 54, requested: false }),
+  Object.freeze({ sourceName: "find-item-milk-bottle", name: "find-item-milk-bottle", interactionId: "milk-bottle", assetKey: "product-milk-bottle", x: 1290, y: 405, maxWidth: 42, maxHeight: 66, requested: true }),
+  Object.freeze({ sourceName: "find-decoy-decoy-yogurt", name: "find-decoy-yogurt", interactionId: "decoy-yogurt", assetKey: "product-yogurt-cup", x: 1400, y: 405, maxWidth: 44, maxHeight: 48, requested: false })
 ]);
 
 const WALK_FRAME_MS = 140;
@@ -109,18 +109,19 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
     document.body.dataset.goldenLevel = "level-5-three-zone-v2";
     document.body.dataset.goldenEnvironment = this.goldenContext.levelAssets.environment.key;
     document.body.dataset.goldenWorldScale = "background-zones-v2";
-    document.body.dataset.goldenHud = "compact-v2";
+    document.body.dataset.goldenHud = "order-ticket-only-v3";
     document.body.dataset.goldenWorkerMotion = "idle";
     document.body.dataset.goldenWorkerWalkObserved = "false";
     document.body.dataset.goldenPickupObserved = "false";
     document.body.dataset.goldenBasketCount = "0";
+    document.body.dataset.goldenBasketMode = "worker-side-v1";
     document.body.dataset.goldenSceneDressing = document.body.dataset.sceneDressing ?? "unknown";
     this.hideLegacyHudChrome();
-    this.createCompactHeader();
     this.reframeProducts();
     this.reframeBasket();
     this.installMobileProductAssist();
     this.syncWorkerMotion(0, true);
+    this.syncBasketWithWorker();
   }
 
   override update(time: number, delta: number): void {
@@ -129,6 +130,7 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
     this.syncBasketFeedback();
     this.syncPickupIntent();
     this.syncWorkerMotion(delta, false);
+    this.syncBasketWithWorker();
   }
 
   override attemptFindProduct(productId: string): void {
@@ -156,27 +158,6 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
       displayObject.setVisible?.(false);
       displayObject.disableInteractive?.();
     });
-  }
-
-  private createCompactHeader(): void {
-    const panel = this.add.graphics().setDepth(110).setScrollFactor(0);
-    panel.fillStyle(0x101b16, 0.88);
-    panel.fillRoundedRect(24, 22, 258, 56, 16);
-    panel.lineStyle(1, 0xffffff, 0.12);
-    panel.strokeRoundedRect(24, 22, 258, 56, 16);
-
-    this.add.text(44, 34, "ORDER HUNT", {
-      fontFamily: "Arial",
-      fontSize: "15px",
-      color: "#ffffff",
-      fontStyle: "bold",
-      letterSpacing: 1.2
-    }).setDepth(111).setScrollFactor(0);
-    this.add.text(44, 55, "Tap an item · worker picks it", {
-      fontFamily: "Arial",
-      fontSize: "12px",
-      color: "#b9d9c5"
-    }).setDepth(111).setScrollFactor(0);
   }
 
   private reframeProducts(): void {
@@ -209,9 +190,9 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
     });
     basket
       .setTexture(trimmedTexture)
-      .setPosition(GOLDEN_ZONE_LAYOUT.basket.x, GOLDEN_ZONE_LAYOUT.basket.y)
       .setOrigin(0.5, 0.98)
-      .setDepth(20);
+      .setDepth(21)
+      .setAlpha(1);
     fitImageIntoBox(basket, GOLDEN_ZONE_LAYOUT.basket.maxWidth, GOLDEN_ZONE_LAYOUT.basket.maxHeight);
   }
 
@@ -353,6 +334,19 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
       ease: "Cubic.Out",
       onComplete: () => plusOne.destroy()
     });
+  }
+
+  private syncBasketWithWorker(): void {
+    const basket = this.children.getByName("order-basket");
+    const actor = this.children.getByName("find-items-worker");
+    if (!(basket instanceof Phaser.GameObjects.Image) || !(actor instanceof Phaser.GameObjects.Image)) return;
+
+    basket
+      .setPosition(
+        actor.x + GOLDEN_ZONE_LAYOUT.basket.offsetX,
+        actor.y + GOLDEN_ZONE_LAYOUT.basket.offsetY
+      )
+      .setDepth(actor.depth + 0.25);
   }
 
   private syncWorkerMotion(delta: number, initialize: boolean): void {
