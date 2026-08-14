@@ -13,23 +13,33 @@ const GOLDEN_EXTRA_PRODUCT_KEYS = Object.freeze([
   "product-peanut-butter"
 ]);
 const GOLDEN_PICKUP_WORKER_KEY = "worker-a-place-middle";
+const MOBILE_TOUCH_MOVE_SPEED = 690;
 
 const GOLDEN_ZONE_LAYOUT = Object.freeze({
-  breakfastFixture: Object.freeze({ x: 700, y: 706, maxWidth: 470, maxHeight: 320 }),
-  produceFixture: Object.freeze({ x: 1220, y: 752, maxWidth: 360, maxHeight: 250 }),
-  basket: Object.freeze({ x: 855, y: 816, maxWidth: 118, maxHeight: 82 }),
-  worker: Object.freeze({ maxWidth: 185, maxHeight: 300 })
+  basket: Object.freeze({ x: 825, y: 820, maxWidth: 112, maxHeight: 80 }),
+  worker: Object.freeze({ maxWidth: 178, maxHeight: 286 })
+});
+
+const GOLDEN_NAVIGATION_POINTS: Readonly<Record<string, { readonly x: number; readonly y: number }>> = Object.freeze({
+  "apple": Object.freeze({ x: 255, y: 770 }),
+  "cereal-box": Object.freeze({ x: 720, y: 742 }),
+  "milk-bottle": Object.freeze({ x: 1320, y: 758 })
 });
 
 const GOLDEN_PRODUCT_LAYOUT = Object.freeze([
-  Object.freeze({ sourceName: "find-item-milk-bottle", name: "find-item-milk-bottle", assetKey: "product-milk-bottle", x: 940, y: 590, maxWidth: 40, maxHeight: 64, requested: true }),
-  Object.freeze({ sourceName: "find-decoy-decoy-yogurt", name: "find-decoy-yogurt", assetKey: "product-yogurt-cup", x: 1015, y: 590, maxWidth: 40, maxHeight: 46, requested: false }),
-  Object.freeze({ sourceName: "find-item-cereal-box", name: "find-item-cereal-box", assetKey: "product-cereal-box", x: 720, y: 620, maxWidth: 38, maxHeight: 54, requested: true }),
-  Object.freeze({ sourceName: "find-decoy-decoy-oats", name: "find-decoy-oats", assetKey: "product-oats-canister", x: 650, y: 620, maxWidth: 38, maxHeight: 50, requested: false }),
-  Object.freeze({ sourceName: "find-decoy-decoy-paper-towels", name: "find-decoy-peanut-butter", assetKey: "product-peanut-butter", x: 790, y: 620, maxWidth: 36, maxHeight: 50, requested: false }),
-  Object.freeze({ sourceName: "find-item-apple", name: "find-item-apple", assetKey: "product-apple", x: 1220, y: 697, maxWidth: 42, maxHeight: 42, requested: true }),
-  Object.freeze({ sourceName: "find-decoy-decoy-chips", name: "find-decoy-banana", assetKey: "product-banana-bunch", x: 1155, y: 700, maxWidth: 56, maxHeight: 42, requested: false }),
-  Object.freeze({ sourceName: "find-decoy-decoy-detergent", name: "find-decoy-grapes", assetKey: "product-grapes-pack", x: 1285, y: 700, maxWidth: 48, maxHeight: 40, requested: false })
+  // Produce zone — authored into the left side of the L5 background.
+  Object.freeze({ sourceName: "find-decoy-decoy-chips", name: "find-decoy-banana", interactionId: "decoy-chips", assetKey: "product-banana-bunch", x: 120, y: 515, maxWidth: 68, maxHeight: 50, requested: false }),
+  Object.freeze({ sourceName: "find-item-apple", name: "find-item-apple", interactionId: "apple", assetKey: "product-apple", x: 220, y: 515, maxWidth: 58, maxHeight: 58, requested: true }),
+  Object.freeze({ sourceName: "find-decoy-decoy-detergent", name: "find-decoy-grapes", interactionId: "decoy-detergent", assetKey: "product-grapes-pack", x: 320, y: 515, maxWidth: 62, maxHeight: 50, requested: false }),
+
+  // Grocery / breakfast zone — centre shelving in the authored background.
+  Object.freeze({ sourceName: "find-item-cereal-box", name: "find-item-cereal-box", interactionId: "cereal-box", assetKey: "product-cereal-box", x: 620, y: 390, maxWidth: 50, maxHeight: 70, requested: true }),
+  Object.freeze({ sourceName: "find-decoy-decoy-oats", name: "find-decoy-oats", interactionId: "decoy-oats", assetKey: "product-oats-canister", x: 720, y: 390, maxWidth: 48, maxHeight: 66, requested: false }),
+  Object.freeze({ sourceName: "find-decoy-decoy-paper-towels", name: "find-decoy-peanut-butter", interactionId: "decoy-paper-towels", assetKey: "product-peanut-butter", x: 820, y: 390, maxWidth: 48, maxHeight: 64, requested: false }),
+
+  // Dairy zone — right refrigerated wall in the authored background.
+  Object.freeze({ sourceName: "find-item-milk-bottle", name: "find-item-milk-bottle", interactionId: "milk-bottle", assetKey: "product-milk-bottle", x: 1290, y: 405, maxWidth: 50, maxHeight: 82, requested: true }),
+  Object.freeze({ sourceName: "find-decoy-decoy-yogurt", name: "find-decoy-yogurt", interactionId: "decoy-yogurt", assetKey: "product-yogurt-cup", x: 1400, y: 405, maxWidth: 54, maxHeight: 58, requested: false })
 ]);
 
 const GOLDEN_REQUESTED_NAMES = Object.freeze([
@@ -41,10 +51,49 @@ const WALK_FRAME_MS = 140;
 const WALK_EPSILON = 0.35;
 const PICKUP_HOLD_MS = 440;
 
-/** Level 5 mature-pass golden presentation over the proven Order Hunt controller. */
+const touchDeviceActive = (): boolean => {
+  const coarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches ?? false;
+  const compactViewport = Math.min(window.innerWidth, window.innerHeight) <= 820;
+  return navigator.maxTouchPoints > 0 || coarsePointer || compactViewport;
+};
+
+const levelFiveContext = (
+  context: FindItemsStarterMarketPresentationContext
+): FindItemsStarterMarketPresentationContext => {
+  const runtime = Object.freeze({
+    ...context.runtime,
+    itemTargets: Object.freeze(context.runtime.itemTargets.map((target) => {
+      const standPoint = GOLDEN_NAVIGATION_POINTS[target.productId];
+      return Object.freeze(standPoint ? { ...target, ...standPoint } : { ...target });
+    }))
+  });
+  const level = touchDeviceActive()
+    ? Object.freeze({
+        ...context.campaignLevel.level,
+        navigation: Object.freeze({
+          ...context.campaignLevel.level.navigation,
+          moveSpeed: MOBILE_TOUCH_MOVE_SPEED
+        })
+      })
+    : context.campaignLevel.level;
+  const campaignLevel = Object.freeze({
+    ...context.campaignLevel,
+    level,
+    runtime
+  });
+  return Object.freeze({
+    ...context,
+    campaignLevel,
+    runtime
+  });
+};
+
+/** Level 5: one clean authored store plate, three search zones, tap-to-pick on mobile. */
 export class GoldenOrderHuntScene extends UtilityTaskScene {
+  private readonly goldenContext: FindItemsStarterMarketPresentationContext;
   private readonly goldenVisual: FindItemsLevelVisualPreset;
   private readonly basketFeedbackSeen = new Set<string>();
+  private readonly mobileTouchZones: Phaser.GameObjects.Zone[] = [];
   private previousWorkerPosition?: { readonly x: number; readonly y: number };
   private walkFrameElapsedMs = 0;
   private walkFrameIndex = 0;
@@ -52,11 +101,13 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
   private pickupVisualUntil = 0;
 
   constructor(
-    private readonly goldenContext: FindItemsStarterMarketPresentationContext,
+    context: FindItemsStarterMarketPresentationContext,
     campaignSession?: SceneCampaignSessionContext
   ) {
-    super(goldenContext, campaignSession);
-    this.goldenVisual = resolveLevelVisualPreset(goldenContext.campaignLevel.level) as FindItemsLevelVisualPreset;
+    const presentation = levelFiveContext(context);
+    super(presentation, campaignSession);
+    this.goldenContext = presentation;
+    this.goldenVisual = resolveLevelVisualPreset(presentation.campaignLevel.level) as FindItemsLevelVisualPreset;
   }
 
   override preload(): void {
@@ -69,19 +120,20 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
 
   override create(): void {
     super.create();
-    document.body.dataset.goldenLevel = "level-5-mature-pass-v1";
+    document.body.dataset.goldenLevel = "level-5-three-zone-v2";
     document.body.dataset.goldenEnvironment = this.goldenContext.levelAssets.environment.key;
-    document.body.dataset.goldenWorldScale = "trimmed-v3";
-    document.body.dataset.goldenHud = "compact-v1";
+    document.body.dataset.goldenWorldScale = "background-zones-v2";
+    document.body.dataset.goldenHud = "compact-v2";
     document.body.dataset.goldenWorkerMotion = "idle";
     document.body.dataset.goldenWorkerWalkObserved = "false";
     document.body.dataset.goldenPickupObserved = "false";
     document.body.dataset.goldenBasketCount = "0";
+    document.body.dataset.goldenSceneDressing = document.body.dataset.sceneDressing ?? "unknown";
     this.hideLegacyHudChrome();
     this.createCompactHeader();
-    this.createStoreFixtures();
     this.reframeProducts();
     this.reframeBasket();
+    this.installMobileProductAssist();
     this.syncWorkerMotion(0, true);
   }
 
@@ -123,9 +175,9 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
   private createCompactHeader(): void {
     const panel = this.add.graphics().setDepth(110).setScrollFactor(0);
     panel.fillStyle(0x101b16, 0.88);
-    panel.fillRoundedRect(24, 22, 248, 54, 16);
+    panel.fillRoundedRect(24, 22, 258, 56, 16);
     panel.lineStyle(1, 0xffffff, 0.12);
-    panel.strokeRoundedRect(24, 22, 248, 54, 16);
+    panel.strokeRoundedRect(24, 22, 258, 56, 16);
 
     this.add.text(44, 34, "ORDER HUNT", {
       fontFamily: "Arial",
@@ -134,38 +186,11 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
       fontStyle: "bold",
       letterSpacing: 1.2
     }).setDepth(111).setScrollFactor(0);
-    this.add.text(44, 54, "Find the 3 items on the order card", {
+    this.add.text(44, 55, "Tap an item · worker picks it", {
       fontFamily: "Arial",
       fontSize: "12px",
       color: "#b9d9c5"
     }).setDepth(111).setScrollFactor(0);
-  }
-
-  private createStoreFixtures(): void {
-    const breakfastTexture = createTrimmedTexture(this, this.goldenContext.levelAssets.fixture.key, {
-      suffix: "--golden-trimmed",
-      padding: 2
-    });
-    const breakfast = this.add.image(
-      GOLDEN_ZONE_LAYOUT.breakfastFixture.x,
-      GOLDEN_ZONE_LAYOUT.breakfastFixture.y,
-      breakfastTexture
-    ).setOrigin(0.5, 0.98).setDepth(10).setName("golden-order-breakfast-fixture");
-    fitImageIntoBox(breakfast, GOLDEN_ZONE_LAYOUT.breakfastFixture.maxWidth, GOLDEN_ZONE_LAYOUT.breakfastFixture.maxHeight);
-
-    const produceAssetKey = this.goldenVisual.auxiliaryFixtures[0]?.assetKey;
-    if (!produceAssetKey) throw new Error("Golden Level 5 requires a produce fixture");
-    this.goldenContext.assets.require(produceAssetKey);
-    const produceTexture = createTrimmedTexture(this, produceAssetKey, {
-      suffix: "--golden-trimmed",
-      padding: 2
-    });
-    const produce = this.add.image(
-      GOLDEN_ZONE_LAYOUT.produceFixture.x,
-      GOLDEN_ZONE_LAYOUT.produceFixture.y,
-      produceTexture
-    ).setOrigin(0.5, 0.98).setDepth(10).setName("golden-order-produce-fixture");
-    fitImageIntoBox(produce, GOLDEN_ZONE_LAYOUT.produceFixture.maxWidth, GOLDEN_ZONE_LAYOUT.produceFixture.maxHeight);
   }
 
   private reframeProducts(): void {
@@ -182,7 +207,8 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
         .setPosition(layout.x, layout.y)
         .setOrigin(0.5, 0.96)
         .setDepth(12 + layout.y / 1000)
-        .setData("requested", layout.requested);
+        .setData("requested", layout.requested)
+        .setData("golden-zone", this.zoneFor(layout.x));
       fitImageIntoBox(object, layout.maxWidth, layout.maxHeight);
       object.setInteractive({ useHandCursor: true });
     });
@@ -203,6 +229,84 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
     fitImageIntoBox(basket, GOLDEN_ZONE_LAYOUT.basket.maxWidth, GOLDEN_ZONE_LAYOUT.basket.maxHeight);
   }
 
+  private installMobileProductAssist(): void {
+    if (!touchDeviceActive()) {
+      document.body.dataset.goldenMobileTouch = "desktop-default";
+      return;
+    }
+
+    GOLDEN_PRODUCT_LAYOUT.forEach((layout) => {
+      const zone = this.add.zone(
+        layout.x,
+        layout.y - layout.maxHeight * 0.48,
+        96,
+        108
+      )
+        .setDepth(220)
+        .setName(`golden-touch-${layout.interactionId}`)
+        .setInteractive({ useHandCursor: false });
+      zone.on(
+        "pointerdown",
+        (
+          _pointer: Phaser.Input.Pointer,
+          _localX: number,
+          _localY: number,
+          event: Phaser.Types.Input.EventData
+        ) => {
+          event.stopPropagation();
+          this.playProductTapFeedback(layout.x, layout.y - layout.maxHeight * 0.5, layout.requested);
+          this.attemptFindProduct(layout.interactionId);
+          document.body.dataset.goldenMobileLastProduct = layout.interactionId;
+        }
+      );
+      this.mobileTouchZones.push(zone);
+    });
+
+    document.body.dataset.goldenMobileTouch = "expanded-product-hotspots-v1";
+    document.body.dataset.goldenMobileMoveSpeed = String(MOBILE_TOUCH_MOVE_SPEED);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.mobileTouchZones.splice(0).forEach((zone) => zone.destroy());
+    });
+  }
+
+  private playProductTapFeedback(x: number, y: number, requested: boolean): void {
+    const pulse = this.add.circle(x, y, 28, 0xffd95e, 0.05)
+      .setStrokeStyle(3, 0xffd95e, 0.9)
+      .setDepth(218);
+    this.tweens.add({
+      targets: pulse,
+      scale: 1.55,
+      alpha: 0,
+      duration: 260,
+      ease: "Quad.Out",
+      onComplete: () => pulse.destroy()
+    });
+    if (!requested) return;
+    const label = this.add.text(x, y - 42, "PICKING…", {
+      fontFamily: "Arial",
+      fontSize: "12px",
+      fontStyle: "bold",
+      color: "#f8f1cf",
+      backgroundColor: "rgba(12, 38, 25, 0.88)",
+      padding: { x: 8, y: 4 }
+    }).setOrigin(0.5).setDepth(219);
+    this.tweens.add({
+      targets: label,
+      y: label.y - 12,
+      alpha: 0,
+      duration: 520,
+      delay: 180,
+      ease: "Sine.Out",
+      onComplete: () => label.destroy()
+    });
+  }
+
+  private zoneFor(x: number): "produce" | "grocery" | "dairy" {
+    if (x < 450) return "produce";
+    if (x < 1050) return "grocery";
+    return "dairy";
+  }
+
   private syncPickupIntent(): void {
     if (this.time.now < this.pickupVisualUntil) return;
     const productId = this.pendingGoldenPickupProductId;
@@ -213,10 +317,6 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
       return;
     }
 
-    // The base Order Hunt scene starts the collect tween only after the player
-    // has actually reached the configured stand point and the selection is accepted.
-    // Waiting for alpha to leave 1 ties the pickup pose to that real collect event,
-    // rather than guessing intent from proximity or pointer event ordering.
     if (item.visible && item.alpha >= 0.995) return;
 
     this.pickupVisualUntil = this.time.now + PICKUP_HOLD_MS;
