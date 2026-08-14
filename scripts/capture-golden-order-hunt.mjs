@@ -81,8 +81,9 @@ try {
   report.assertions.compactHudActive = initial.goldenHud === "order-ticket-only-v3";
   report.assertions.eightProductsVisible = initial.products.length === 8;
   report.assertions.productScaleSane = initial.products.every((item) => (
-    item.width >= 35 && item.width <= 110 && item.height >= 45 && item.height <= 130 &&
-    Math.max(item.width, item.height) >= 68
+    item.width >= 45 && item.width <= 120 &&
+    item.height >= 65 && item.height <= 180 &&
+    Math.max(item.width, item.height) >= 80
   ));
 
   const byName = new Map(initial.products.map((item) => [item.name, item]));
