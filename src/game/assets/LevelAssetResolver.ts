@@ -124,9 +124,6 @@ const restockPreloadKeys = (
     runtime.product.assetKey
   ];
 
-  // L1 and L2 use authored environment plates. Their static store furniture is
-  // already in the background, so loading duplicate fixtures/customers only
-  // wastes mobile bandwidth and risks reintroducing the old layered look.
   if (BACKGROUND_ONLY_RESTOCK_LEVEL_IDS.has(level.id)) {
     return Object.freeze(gameplayKeys);
   }
@@ -238,14 +235,15 @@ export function resolveFindItemsLevelAssets(
   const pack = resolveGlobalAssetPack(level.presentation.assetPackId, "find-items");
   const productAssetKeys = runtime.products.map((product) => product.assetKey);
   const environmentAssetKey = resolveLevelEnvironmentAssetKey(level.id, pack.environmentAssetKey);
+  const authoredOrderHuntPlate = environmentAssetKey.startsWith("environment-project-order-hunt");
   const preload = resolveDescriptors(registry, [
     environmentAssetKey,
-    ...pack.sharedStoreAssetKeys,
+    ...(authoredOrderHuntPlate ? [] : pack.sharedStoreAssetKeys),
     ...pack.workerWalkAssetKeys,
     pack.workerIdleAssetKey,
     pack.workerThinkingAssetKey,
     pack.basketAssetKey,
-    runtime.fixture.assetKey,
+    ...(authoredOrderHuntPlate ? [] : [runtime.fixture.assetKey]),
     ...productAssetKeys
   ]);
   return Object.freeze({
