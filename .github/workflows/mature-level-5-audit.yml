@@ -11,11 +11,13 @@ on:
       - "src/game/content/levels/starterMarketLevels.ts"
       - "src/game/infrastructure/phaser/GameplaySceneRegistry.ts"
       - "src/game/presentation/scenes/GoldenOrderHuntScene.ts"
+      - "src/game/presentation/world/StarterMarketEnvironmentView.ts"
       - "src/game/presentation/visual/LevelVisualPresetResolver.ts"
       - "src/game/presentation/visual/MarketLevelVisualPreset.ts"
       - "src/game/presentation/visual/OpaqueCutoutTexture.ts"
       - "src/game/presentation/visual/TrimmedTexture.ts"
       - "scripts/capture-golden-order-hunt.mjs"
+      - "scripts/capture-golden-order-hunt-mobile.mjs"
       - "scripts/capture-golden-worker-motion.mjs"
       - ".github/workflows/mature-level-5-audit.yml"
   pull_request:
@@ -26,11 +28,13 @@ on:
       - "src/game/content/levels/starterMarketLevels.ts"
       - "src/game/infrastructure/phaser/GameplaySceneRegistry.ts"
       - "src/game/presentation/scenes/GoldenOrderHuntScene.ts"
+      - "src/game/presentation/world/StarterMarketEnvironmentView.ts"
       - "src/game/presentation/visual/LevelVisualPresetResolver.ts"
       - "src/game/presentation/visual/MarketLevelVisualPreset.ts"
       - "src/game/presentation/visual/OpaqueCutoutTexture.ts"
       - "src/game/presentation/visual/TrimmedTexture.ts"
       - "scripts/capture-golden-order-hunt.mjs"
+      - "scripts/capture-golden-order-hunt-mobile.mjs"
       - "scripts/capture-golden-worker-motion.mjs"
       - ".github/workflows/mature-level-5-audit.yml"
   workflow_dispatch:
@@ -41,7 +45,7 @@ permissions:
 jobs:
   golden-level:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -58,15 +62,19 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Build production bundle
         run: npm run build
-      - name: Verify mature Level 5
+      - name: Verify Level 5 desktop three-zone flow
         run: node scripts/capture-golden-order-hunt.mjs
-      - name: Verify golden worker movement
+      - name: Verify Level 5 worker movement
         run: node scripts/capture-golden-worker-motion.mjs
-      - name: Upload golden-level evidence
+      - name: Verify Level 5 Android software-landscape touch flow
+        run: node scripts/capture-golden-order-hunt-mobile.mjs
+      - name: Upload Level 5 evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: mature-level-5-audit
-          path: ui-audit/golden-order-hunt
+          path: |
+            ui-audit/golden-order-hunt
+            ui-audit/golden-order-hunt-mobile
           if-no-files-found: error
           retention-days: 14
