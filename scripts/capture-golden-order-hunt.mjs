@@ -69,18 +69,21 @@ try {
   attach(page, report);
   await page.goto(`${ORIGIN}/?test=1&briefing=0&level=starter-level-005`, { waitUntil: "networkidle", timeout: 90000 });
   await page.waitForSelector(CANVAS, { state: "visible", timeout: 45000 });
-  await page.waitForFunction(() => document.body.dataset.goldenLevel === "level-5-three-zone-v2", null, { timeout: 30000 });
+  await page.waitForFunction(() => document.body.dataset.goldenLevel === "level-5-three-zone-v3", null, { timeout: 30000 });
   await page.waitForFunction(() => document.body.dataset.findItemsVisibleCount === "8", null, { timeout: 15000 });
 
   const initial = await readState(page);
   report.initial = initial;
-  report.assertions.rebuiltSceneActive = initial.goldenLevel === "level-5-three-zone-v2";
+  report.assertions.rebuiltSceneActive = initial.goldenLevel === "level-5-three-zone-v3";
   report.assertions.authoredOrderHuntBackground = initial.environmentKey === "environment-project-order-hunt-v2";
   report.assertions.backgroundOnly = initial.sceneDressing === "background-only";
   report.assertions.noAmbientDressing = initial.ambientCount === 0;
   report.assertions.compactHudActive = initial.goldenHud === "order-ticket-only-v3";
   report.assertions.eightProductsVisible = initial.products.length === 8;
-  report.assertions.productScaleSane = initial.products.every((item) => item.width >= 25 && item.width <= 72 && item.height >= 30 && item.height <= 86);
+  report.assertions.productScaleSane = initial.products.every((item) => (
+    item.width >= 35 && item.width <= 110 && item.height >= 45 && item.height <= 130 &&
+    Math.max(item.width, item.height) >= 68
+  ));
 
   const byName = new Map(initial.products.map((item) => [item.name, item]));
   const inside = (name, x1, x2, y1, y2) => {
