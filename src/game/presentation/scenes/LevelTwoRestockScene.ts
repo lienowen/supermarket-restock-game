@@ -25,22 +25,47 @@ const LEVEL_TWO_COOLER_SLOTS = Object.freeze([
   Object.freeze({ x: 1365, y: 535 })
 ]);
 
+const MOBILE_TOUCH_MOVE_SPEED = 760;
+
+const touchDeviceActive = (): boolean => {
+  const coarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches ?? false;
+  const compactViewport = Math.min(window.innerWidth, window.innerHeight) <= 820;
+  return navigator.maxTouchPoints > 0 || coarsePointer || compactViewport;
+};
+
 const levelTwoContext = (
   context: RestockStarterMarketPresentationContext
-): RestockStarterMarketPresentationContext => Object.freeze({
-  ...context,
-  world: Object.freeze({
-    ...context.world,
-    // Left staging pad -> centre aisle -> right cooler. The case remains on
-    // the authored staging pad while leaving room for the L1 worker stand offset.
-    backroomBox: Object.freeze({ x: 300, y: 700 }),
-    cartStart: Object.freeze({ x: 520, y: 790 }),
-    cartCooler: Object.freeze({ x: 930, y: 790 }),
-    workerStart: Object.freeze({ x: 650, y: 790 }),
-    workerCooler: Object.freeze({ x: 1030, y: 790 }),
-    beverageCooler: Object.freeze({ x: 1225, y: 500 })
-  })
-});
+): RestockStarterMarketPresentationContext => {
+  const mobileTouch = touchDeviceActive();
+  const campaignLevel = mobileTouch
+    ? Object.freeze({
+        ...context.campaignLevel,
+        level: Object.freeze({
+          ...context.campaignLevel.level,
+          navigation: Object.freeze({
+            ...context.campaignLevel.level.navigation,
+            moveSpeed: MOBILE_TOUCH_MOVE_SPEED
+          })
+        })
+      })
+    : context.campaignLevel;
+
+  return Object.freeze({
+    ...context,
+    campaignLevel,
+    world: Object.freeze({
+      ...context.world,
+      // Left staging pad -> centre aisle -> right cooler. The case remains on
+      // the authored staging pad while leaving room for the L1 worker stand offset.
+      backroomBox: Object.freeze({ x: 300, y: 700 }),
+      cartStart: Object.freeze({ x: 520, y: 790 }),
+      cartCooler: Object.freeze({ x: 930, y: 790 }),
+      workerStart: Object.freeze({ x: 650, y: 790 }),
+      workerCooler: Object.freeze({ x: 1030, y: 790 }),
+      beverageCooler: Object.freeze({ x: 1225, y: 500 })
+    })
+  });
+};
 
 interface MovableGameObject {
   readonly x: number;
@@ -61,12 +86,6 @@ interface LevelTwoSceneNavigationPort {
 }
 
 type LevelTwoTouchTarget = "case" | "cart-start" | "cart-cooler" | "cooler";
-
-const touchDeviceActive = (): boolean => {
-  const coarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches ?? false;
-  const compactViewport = Math.min(window.innerWidth, window.innerHeight) <= 820;
-  return navigator.maxTouchPoints > 0 || coarsePointer || compactViewport;
-};
 
 /**
  * L2 keeps the shared restock controller and all L1 actor/cart/product art.
@@ -167,6 +186,7 @@ export class LevelTwoRestockScene extends StarterMarketScene {
 
     document.body.dataset.levelTwoMobileTouch = "context-hotspots-v1";
     document.body.dataset.levelTwoMobilePlaceTarget = "expanded-190";
+    document.body.dataset.levelTwoMobileMoveSpeed = String(MOBILE_TOUCH_MOVE_SPEED);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.mobileTouchZones.splice(0).forEach((zone) => zone.destroy());
     });
