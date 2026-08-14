@@ -194,6 +194,7 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
       .setDepth(21)
       .setAlpha(1);
     fitImageIntoBox(basket, GOLDEN_ZONE_LAYOUT.basket.maxWidth, GOLDEN_ZONE_LAYOUT.basket.maxHeight);
+    basket.setCrop(0, 0, basket.width, Math.max(1, Math.floor(basket.height * 0.82)));
   }
 
   private installMobileProductAssist(): void {
