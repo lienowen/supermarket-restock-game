@@ -50,7 +50,7 @@ try {
   attach(page, report);
   await page.goto(`${ORIGIN}/?test=1&briefing=0&level=starter-level-005`, { waitUntil: "networkidle", timeout: 90000 });
   await page.waitForSelector(CANVAS, { state: "visible", timeout: 45000 });
-  await page.waitForFunction(() => document.body.dataset.goldenLevel === "level-5-three-zone-v2", null, { timeout: 30000 });
+  await page.waitForFunction(() => document.body.dataset.goldenLevel === "level-5-three-zone-v3", null, { timeout: 30000 });
   await page.waitForTimeout(400);
 
   const start = await readWorker(page);
