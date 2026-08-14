@@ -13,6 +13,12 @@ const PRODUCT_KEY = "restock-cola-bottle-hd-v2";
 const SLOT_WIDTH = 230;
 const SLOT_HEIGHT = 112;
 const BASE_DEPTH = 20;
+const LEVEL_TWO_PREFETCH_PATHS = Object.freeze([
+  "assets/game/production-v5/restock-water-l2/bg-restock-water-l2.png",
+  "assets/game/production-v5/restock-water-l2/water-case-closed.png",
+  "assets/game/production-v5/restock-water-l2/water-case-open.png"
+]);
+let levelTwoPrefetchScheduled = false;
 
 interface CoolerSlot extends CoolerStockPoint {
   readonly shelfIndex: number;
@@ -46,6 +52,20 @@ const isFirstDelivery = (): boolean => (
   document.body.dataset.activeLevel === FIRST_DELIVERY_LEVEL_ID
 );
 
+const scheduleLevelTwoPrefetch = (): void => {
+  if (levelTwoPrefetchScheduled || !isFirstDelivery()) return;
+  levelTwoPrefetchScheduled = true;
+  window.setTimeout(() => {
+    if (!isFirstDelivery()) return;
+    LEVEL_TWO_PREFETCH_PATHS.forEach((path) => {
+      const image = new Image();
+      image.decoding = "async";
+      image.src = path;
+    });
+    document.body.dataset.levelTwoAssetPrefetch = "started-from-level-one";
+  }, 1100);
+};
+
 const actorSnapshots = new WeakMap<RestockActorView, RestockSceneSnapshot>();
 const originalActorSync = RestockActorView.prototype.sync;
 
@@ -55,6 +75,7 @@ RestockActorView.prototype.sync = function syncWithLevelOneFeedback(
 ): void {
   const previous = actorSnapshots.get(this);
   originalActorSync.call(this, snapshot);
+  scheduleLevelTwoPrefetch();
 
   if (
     isFirstDelivery() &&
