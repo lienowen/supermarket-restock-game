@@ -1,7 +1,5 @@
 import Phaser from "phaser";
 import type { FindItemsStarterMarketPresentationContext } from "../context/StarterMarketPresentationContext";
-import { resolveLevelVisualPreset } from "../visual/LevelVisualPresetResolver";
-import type { FindItemsLevelVisualPreset } from "../visual/MarketLevelVisualPreset";
 import { createOpaqueCutoutTexture } from "../visual/OpaqueCutoutTexture";
 import { createTrimmedTexture, fitImageIntoBox } from "../visual/TrimmedTexture";
 import { UtilityTaskScene } from "./UtilityTaskScene";
@@ -27,26 +25,16 @@ const GOLDEN_NAVIGATION_POINTS: Readonly<Record<string, { readonly x: number; re
 });
 
 const GOLDEN_PRODUCT_LAYOUT = Object.freeze([
-  // Produce zone — authored into the left side of the L5 background.
   Object.freeze({ sourceName: "find-decoy-decoy-chips", name: "find-decoy-banana", interactionId: "decoy-chips", assetKey: "product-banana-bunch", x: 120, y: 515, maxWidth: 68, maxHeight: 50, requested: false }),
   Object.freeze({ sourceName: "find-item-apple", name: "find-item-apple", interactionId: "apple", assetKey: "product-apple", x: 220, y: 515, maxWidth: 58, maxHeight: 58, requested: true }),
   Object.freeze({ sourceName: "find-decoy-decoy-detergent", name: "find-decoy-grapes", interactionId: "decoy-detergent", assetKey: "product-grapes-pack", x: 320, y: 515, maxWidth: 62, maxHeight: 50, requested: false }),
-
-  // Grocery / breakfast zone — centre shelving in the authored background.
   Object.freeze({ sourceName: "find-item-cereal-box", name: "find-item-cereal-box", interactionId: "cereal-box", assetKey: "product-cereal-box", x: 620, y: 390, maxWidth: 50, maxHeight: 70, requested: true }),
   Object.freeze({ sourceName: "find-decoy-decoy-oats", name: "find-decoy-oats", interactionId: "decoy-oats", assetKey: "product-oats-canister", x: 720, y: 390, maxWidth: 48, maxHeight: 66, requested: false }),
   Object.freeze({ sourceName: "find-decoy-decoy-paper-towels", name: "find-decoy-peanut-butter", interactionId: "decoy-paper-towels", assetKey: "product-peanut-butter", x: 820, y: 390, maxWidth: 48, maxHeight: 64, requested: false }),
-
-  // Dairy zone — right refrigerated wall in the authored background.
   Object.freeze({ sourceName: "find-item-milk-bottle", name: "find-item-milk-bottle", interactionId: "milk-bottle", assetKey: "product-milk-bottle", x: 1290, y: 405, maxWidth: 50, maxHeight: 82, requested: true }),
   Object.freeze({ sourceName: "find-decoy-decoy-yogurt", name: "find-decoy-yogurt", interactionId: "decoy-yogurt", assetKey: "product-yogurt-cup", x: 1400, y: 405, maxWidth: 54, maxHeight: 58, requested: false })
 ]);
 
-const GOLDEN_REQUESTED_NAMES = Object.freeze([
-  "find-item-milk-bottle",
-  "find-item-apple",
-  "find-item-cereal-box"
-]);
 const WALK_FRAME_MS = 140;
 const WALK_EPSILON = 0.35;
 const PICKUP_HOLD_MS = 440;
@@ -91,7 +79,6 @@ const levelFiveContext = (
 /** Level 5: one clean authored store plate, three search zones, tap-to-pick on mobile. */
 export class GoldenOrderHuntScene extends UtilityTaskScene {
   private readonly goldenContext: FindItemsStarterMarketPresentationContext;
-  private readonly goldenVisual: FindItemsLevelVisualPreset;
   private readonly basketFeedbackSeen = new Set<string>();
   private readonly mobileTouchZones: Phaser.GameObjects.Zone[] = [];
   private previousWorkerPosition?: { readonly x: number; readonly y: number };
@@ -107,7 +94,6 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
     const presentation = levelFiveContext(context);
     super(presentation, campaignSession);
     this.goldenContext = presentation;
-    this.goldenVisual = resolveLevelVisualPreset(presentation.campaignLevel.level) as FindItemsLevelVisualPreset;
   }
 
   override preload(): void {
@@ -325,13 +311,12 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
   }
 
   private syncBasketFeedback(): void {
-    GOLDEN_REQUESTED_NAMES.forEach((name) => {
-      if (this.basketFeedbackSeen.has(name)) return;
-      const item = this.children.getByName(name);
-      if (!(item instanceof Phaser.GameObjects.Image) || item.visible) return;
-      this.basketFeedbackSeen.add(name);
+    const collected = this.controller.snapshot().progress;
+    while (this.basketFeedbackSeen.size < collected) {
+      const marker = `collected-${this.basketFeedbackSeen.size + 1}`;
+      this.basketFeedbackSeen.add(marker);
       this.playBasketFeedback();
-    });
+    }
     document.body.dataset.goldenBasketCount = String(this.basketFeedbackSeen.size);
   }
 
