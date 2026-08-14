@@ -10,6 +10,8 @@ const ORIGIN = `http://127.0.0.1:${PORT}`;
 const CANVAS_SELECTOR = "#app > canvas:not(#mobile-game-backdrop)";
 const SCENE_KEY = "starter-market-shift";
 const LEVEL_ID = "starter-level-004";
+const LOGICAL_WIDTH = 1600;
+const LOGICAL_HEIGHT = 900;
 
 if (!existsSync(join(DIST_DIR, "index.html"))) throw new Error("dist/index.html is missing. Run npm run build first.");
 mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -30,18 +32,16 @@ await new Promise((done) => server.listen(PORT, "127.0.0.1", done));
 const report = {
   generatedAt: new Date().toISOString(),
   assertions: {
-    hdEnvironmentActive: false,
-    solidWorkerActive: false,
+    cleaningBackgroundActive: false,
     matureCleanPresentationActive: false,
-    threeProductionSpillsRegistered: false,
-    legacyHoldOverlayHidden: false,
-    toolsRequireMovement: false,
-    toolsCollected: false,
-    mopPoseIsSolid: false,
-    firstSpillRequiresMovement: false,
-    spillSequenceUsesWaterJuiceDirt: false,
+    fourProductionSpillsRegistered: false,
+    hudCleanButtonRetired: false,
+    toolTapAutoWalksAndCollects: false,
+    mopPoseActive: false,
+    firstSpillTapAutoWalks: false,
     scrubChangesSpillBeforeCommit: false,
     completedSpillDisappears: false,
+    fourthSpillReachable: false,
     fullCleaningCompletes: false,
     noRuntimeIssues: false
   },
@@ -49,6 +49,7 @@ const report = {
   afterTools: null,
   scrubMidpoint: null,
   afterFirst: null,
+  fourthReady: null,
   final: null,
   consoleErrors: [],
   pageErrors: [],
@@ -73,54 +74,51 @@ try {
   await page.goto(`${ORIGIN}/?test=1&briefing=0&guided=0&hold=1&level=${LEVEL_ID}`, { waitUntil: "networkidle", timeout: 90000 });
   await page.waitForSelector(CANVAS_SELECTOR, { state: "visible", timeout: 45000 });
   await page.waitForFunction(() => document.body.dataset.activeLevel === "starter-level-004", null, { timeout: 30000 });
-  await page.waitForFunction(() => document.body.dataset.cleaningPresentation === "mature-clean-v2-scrub", null, { timeout: 15000 });
+  await page.waitForFunction(() => document.body.dataset.cleaningPresentation === "mature-clean-v3-tap-walk-scrub", null, { timeout: 15000 });
 
   const initial = await readState(page);
   report.initial = initial;
-  report.assertions.hdEnvironmentActive = initial.environmentKey === "environment-starter-market-restock-hd-v3";
-  report.assertions.solidWorkerActive = Boolean(initial.worker?.texture?.includes("--opaque-cutout"));
+  report.assertions.cleaningBackgroundActive = initial.environmentKey === "environment-project-cleaning-v2";
   report.assertions.matureCleanPresentationActive = (
-    initial.presentation === "mature-clean-v2-scrub" && initial.spillArtMode === "water-juice-dirt-production"
+    initial.presentation === "mature-clean-v3-tap-walk-scrub" &&
+    initial.control === "tap-target-auto-walk-then-drag" &&
+    initial.spillArtMode === "water-juice-dirt-production"
   );
-  report.assertions.threeProductionSpillsRegistered = (
-    initial.spills.length === 3 &&
-    initial.spills.map((spill) => spill.sourceKey).join("|") === "spill-water-large|spill-juice-large|spill-dirt-smear-large" &&
-    initial.spills.every((spill) => spill.artTexture?.includes("--clean-spill"))
+  report.assertions.fourProductionSpillsRegistered = (
+    initial.spills.length === 4 &&
+    initial.spills.map((spill) => spill.sourceKey).join("|") ===
+      "spill-water-large|spill-juice-large|spill-dirt-smear-large|spill-water-large" &&
+    initial.spills.every((spill) => spill.artTexture?.includes("--clean-spill")) &&
+    initial.touchZones.length === 4
   );
+  report.assertions.hudCleanButtonRetired = initial.hudActionVisible === false;
+  await page.screenshot({ path: join(OUTPUT_DIR, "level-4-initial.png"), fullPage: true });
 
   const workerStart = initial.worker;
-  await movePlayer(page, initial.toolPoint);
-  await waitForInteractionReady(page);
-  const atTools = await readState(page);
-  report.assertions.toolsRequireMovement = Boolean(
-    workerStart && Math.hypot(atTools.worker.x - workerStart.x, atTools.worker.y - workerStart.y) > 80
-  );
-  await clickHudAction(page);
+  await clickLogical(page, initial.toolPoint.x, initial.toolPoint.y);
   await page.waitForFunction((sceneKey) => (
     window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.controller?.snapshot?.().step === "clean"
-  ), SCENE_KEY, { timeout: 5000 });
+  ), SCENE_KEY, { timeout: 12000 });
   const afterTools = await readState(page);
   report.afterTools = afterTools;
-  report.assertions.toolsCollected = afterTools.controller?.step === "clean";
-  report.assertions.mopPoseIsSolid = Boolean(
-    afterTools.worker?.texture?.includes("worker-a-mop-floor") && afterTools.worker?.texture?.includes("--opaque-cutout")
+  report.assertions.toolTapAutoWalksAndCollects = Boolean(
+    workerStart &&
+    Math.hypot(afterTools.worker.x - workerStart.x, afterTools.worker.y - workerStart.y) > 80 &&
+    afterTools.controller?.step === "clean"
   );
-  report.assertions.spillSequenceUsesWaterJuiceDirt = (
-    afterTools.spills.map((spill) => spill.sourceKey).join("|") === "spill-water-large|spill-juice-large|spill-dirt-smear-large"
-  );
-  report.assertions.legacyHoldOverlayHidden = await page.evaluate(() => {
-    const overlay = document.getElementById("hold-work-overlay");
-    return !overlay || getComputedStyle(overlay).display === "none";
-  });
-  await page.screenshot({ path: join(OUTPUT_DIR, "level-4-real-spills.png"), fullPage: true });
+  report.assertions.mopPoseActive = Boolean(afterTools.worker?.texture?.includes("worker-a-mop-floor"));
+  report.assertions.hudCleanButtonRetired = report.assertions.hudCleanButtonRetired && afterTools.hudActionVisible === false;
+  await page.screenshot({ path: join(OUTPUT_DIR, "level-4-tools-collected.png"), fullPage: true });
 
   const firstSpot = afterTools.spotPositions[0];
   const beforeFirstPosition = afterTools.worker;
-  await movePlayer(page, firstSpot);
+  await clickLogical(page, firstSpot.x, firstSpot.y);
   await waitForInteractionReady(page);
   const atFirst = await readState(page);
-  report.assertions.firstSpillRequiresMovement = Boolean(
-    beforeFirstPosition && Math.hypot(atFirst.worker.x - beforeFirstPosition.x, atFirst.worker.y - beforeFirstPosition.y) > 80
+  report.assertions.firstSpillTapAutoWalks = Boolean(
+    beforeFirstPosition &&
+    Math.hypot(atFirst.worker.x - beforeFirstPosition.x, atFirst.worker.y - beforeFirstPosition.y) > 80 &&
+    !atFirst.pendingWalk
   );
 
   await scrubSpill(page, 0, { partial: true });
@@ -131,11 +129,11 @@ try {
     scrubMidpoint.scrubProgress > 0 && scrubMidpoint.scrubProgress < 100 &&
     scrubMidpoint.spills[0]?.alpha < 1
   );
+  await page.screenshot({ path: join(OUTPUT_DIR, "level-4-scrub-midpoint.png"), fullPage: true });
+
   await scrubSpill(page, 0, { partial: false });
-  await page.waitForFunction((sceneKey) => (
-    (window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.controller?.snapshot?.().progress ?? 0) >= 1
-  ), SCENE_KEY, { timeout: 5000 });
-  await page.waitForTimeout(420);
+  await waitForProgress(page, 1);
+  await page.waitForTimeout(360);
   const afterFirst = await readState(page);
   report.afterFirst = afterFirst;
   report.assertions.completedSpillDisappears = afterFirst.spills[0]?.visible === false;
@@ -146,20 +144,27 @@ try {
     const index = state.controller.progress;
     const spot = state.spotPositions[index];
     if (!spot) throw new Error(`Missing cleaning spot ${index}`);
-    await movePlayer(page, spot);
+    await clickLogical(page, spot.x, spot.y);
     await waitForInteractionReady(page);
+    if (index === 3) {
+      const fourthReady = await readState(page);
+      report.fourthReady = fourthReady;
+      report.assertions.fourthSpillReachable = Boolean(
+        fourthReady.spills[3]?.visible &&
+        fourthReady.touchZones[3]?.enabled &&
+        fourthReady.controller?.progress === 3
+      );
+      await page.screenshot({ path: join(OUTPUT_DIR, "level-4-fourth-spill-ready.png"), fullPage: true });
+    }
     await scrubSpill(page, index, { partial: false });
-    await page.waitForFunction(({ sceneKey, expected }) => (
-      (window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.controller?.snapshot?.().progress ?? 0) >= expected ||
-      window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.controller?.snapshot?.().step === "complete"
-    ), { sceneKey: SCENE_KEY, expected: index + 1 }, { timeout: 6000 });
-    await page.waitForTimeout(420);
+    await waitForProgress(page, index + 1);
+    await page.waitForTimeout(320);
   }
 
   const final = await readState(page);
   report.final = final;
   report.assertions.fullCleaningCompletes = Boolean(
-    final.controller?.step === "complete" && final.controller.progress === final.controller.total
+    final.controller?.step === "complete" && final.controller.progress === final.controller.total && final.controller.total === 4
   );
   report.assertions.noRuntimeIssues = (
     report.consoleErrors.length === 0 && report.pageErrors.length === 0 && report.failedRequests.length === 0
@@ -186,9 +191,11 @@ async function readState(page) {
   return page.evaluate((sceneKey) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
     const worker = scene?.children?.getByName?.("clean-worker");
-    const spills = [1, 2, 3].map((index) => {
-      const spill = scene?.children?.getByName?.(`clean-spill-${index}`);
-      const art = spill?.list?.find?.((entry) => entry?.name === `clean-spill-art-${index}`);
+    const spotPositions = [...(scene?.context?.runtime?.spotPositions ?? [])];
+    const spills = spotPositions.map((_point, index) => {
+      const number = index + 1;
+      const spill = scene?.children?.getByName?.(`clean-spill-${number}`);
+      const art = spill?.list?.find?.((entry) => entry?.name === `clean-spill-art-${number}`);
       return spill ? {
         visible: spill.visible,
         alpha: spill.alpha,
@@ -198,51 +205,61 @@ async function readState(page) {
         artTexture: art?.texture?.key ?? null
       } : null;
     }).filter(Boolean);
+    const touchZones = spotPositions.map((_point, index) => {
+      const zone = scene?.children?.getByName?.(`clean-spill-touch-${index + 1}`);
+      return zone ? {
+        x: zone.x,
+        y: zone.y,
+        width: zone.width,
+        height: zone.height,
+        enabled: Boolean(zone.input?.enabled)
+      } : null;
+    }).filter(Boolean);
+    const hudAction = scene?.children?.getByName?.("shift-hud-action");
     return {
       environmentKey: scene?.context?.levelAssets?.environment?.key ?? null,
       presentation: document.body.dataset.cleaningPresentation ?? null,
+      control: document.body.dataset.cleaningControl ?? null,
       spillArtMode: document.body.dataset.cleaningSpillArt ?? null,
+      pendingWalk: document.body.dataset.cleaningPendingWalk ?? null,
       scrubProgress: Number(document.body.dataset.cleanScrubProgress ?? "0"),
       controller: scene?.controller?.snapshot?.() ?? null,
       toolPoint: scene?.context?.runtime?.toolPoint ?? null,
-      spotPositions: [...(scene?.context?.runtime?.spotPositions ?? [])],
+      spotPositions,
+      hudActionVisible: Boolean(hudAction?.visible),
       worker: worker ? {
         x: worker.x, y: worker.y,
         texture: worker.texture?.key ?? null,
         displayWidth: worker.displayWidth ?? 0,
         displayHeight: worker.displayHeight ?? 0
       } : null,
-      spills
+      spills,
+      touchZones
     };
   }, SCENE_KEY);
-}
-
-async function movePlayer(page, point) {
-  if (!point) throw new Error("Missing clean movement target");
-  await page.evaluate(({ sceneKey, point }) => {
-    window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.player?.setDestination?.(point);
-  }, { sceneKey: SCENE_KEY, point });
 }
 
 async function waitForInteractionReady(page) {
   await page.waitForFunction((sceneKey) => (
     window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.isInteractionReady?.() === true
   ), SCENE_KEY, { timeout: 15000 });
+  await page.waitForFunction(() => !document.body.dataset.cleaningPendingWalk, null, { timeout: 3000 });
 }
 
-async function clickHudAction(page) {
-  await page.waitForFunction((sceneKey) => {
-    const action = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.children?.getByName?.("shift-hud-action");
-    return Boolean(action?.visible && action?.input?.enabled);
-  }, SCENE_KEY, { timeout: 10000 });
-  const action = await page.evaluate((sceneKey) => {
-    const object = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.children?.getByName?.("shift-hud-action");
-    return object ? { x: object.x, y: object.y } : null;
-  }, SCENE_KEY);
-  if (!action) throw new Error("Clean HUD action is missing");
+async function waitForProgress(page, expected) {
+  await page.waitForFunction(({ sceneKey, expected }) => {
+    const state = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.controller?.snapshot?.();
+    return (state?.progress ?? 0) >= expected || state?.step === "complete";
+  }, { sceneKey: SCENE_KEY, expected }, { timeout: 7000 });
+}
+
+async function clickLogical(page, logicalX, logicalY) {
   const box = await page.locator(CANVAS_SELECTOR).boundingBox();
   if (!box) throw new Error("Game canvas has no bounding box");
-  await page.mouse.click(box.x + (action.x / 1600) * box.width, box.y + (action.y / 900) * box.height);
+  await page.mouse.click(
+    box.x + (logicalX / LOGICAL_WIDTH) * box.width,
+    box.y + (logicalY / LOGICAL_HEIGHT) * box.height
+  );
 }
 
 async function scrubSpill(page, index, { partial }) {
@@ -252,8 +269,8 @@ async function scrubSpill(page, index, { partial }) {
   const box = await page.locator(CANVAS_SELECTOR).boundingBox();
   if (!box) throw new Error("Game canvas has no bounding box");
   const toScreen = (x, y) => ({
-    x: box.x + (x / 1600) * box.width,
-    y: box.y + (y / 900) * box.height
+    x: box.x + (x / LOGICAL_WIDTH) * box.width,
+    y: box.y + (y / LOGICAL_HEIGHT) * box.height
   });
   const centre = toScreen(spill.x, spill.y);
   await page.mouse.move(centre.x, centre.y);
