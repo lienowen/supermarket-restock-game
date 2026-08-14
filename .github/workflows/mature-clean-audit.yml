@@ -9,6 +9,7 @@ on:
       - "scripts/materialize-assets.mjs"
       - "src/game/assets/GlobalProjectAssetCatalogue.ts"
       - "src/game/assets/LevelAssetResolver.ts"
+      - "src/game/content/levels/starterMarketLevels.ts"
       - "src/game/presentation/actors/PlayerNavigationView.ts"
       - "src/game/presentation/cleaning/**"
       - "src/game/presentation/scenes/UtilityTaskScene.ts"
