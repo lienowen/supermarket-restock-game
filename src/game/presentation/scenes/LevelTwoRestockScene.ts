@@ -14,7 +14,7 @@ const OLD_COOLER_SLOTS = Object.freeze([
   Object.freeze({ x: 1195, y: 595 })
 ]);
 
-// Coordinates measured against bg-restock-water-l2.png after it is fitted to
+// Coordinates measured against bg-restock-water-l2 after it is fitted to
 // the 1600x900 logical canvas. The two columns follow the authored cooler bays.
 const LEVEL_TWO_COOLER_SLOTS = Object.freeze([
   Object.freeze({ x: 1090, y: 355 }),
@@ -87,6 +87,13 @@ interface LevelTwoSceneNavigationPort {
 
 type LevelTwoTouchTarget = "case" | "cart-start" | "cart-cooler" | "cooler";
 
+type LevelTwoGuide = {
+  readonly root: Phaser.GameObjects.Container;
+  readonly pulse: Phaser.GameObjects.Arc;
+  readonly label: Phaser.GameObjects.Text;
+  readonly detail: Phaser.GameObjects.Text;
+};
+
 /**
  * L2 keeps the shared restock controller and all L1 actor/cart/product art.
  * Only the authored scene coordinates differ. This prevents Level 2 layout
@@ -95,6 +102,8 @@ type LevelTwoTouchTarget = "case" | "cart-start" | "cart-cooler" | "cooler";
 export class LevelTwoRestockScene extends StarterMarketScene {
   private readonly levelTwoPresentation: RestockStarterMarketPresentationContext;
   private readonly mobileTouchZones: Phaser.GameObjects.Zone[] = [];
+  private routeGuide?: LevelTwoGuide;
+  private previousGuideStep?: string;
 
   constructor(
     context: RestockStarterMarketPresentationContext,
@@ -108,8 +117,15 @@ export class LevelTwoRestockScene extends StarterMarketScene {
   create(): void {
     super.create();
     this.alignInteractiveCoolerToBackground();
+    this.installRouteGuide();
     this.installMobileTouchAssist();
+    this.syncRouteGuide();
     document.body.dataset.levelTwoLayout = "authored-background-v1";
+  }
+
+  update(time: number, delta: number): void {
+    super.update(time, delta);
+    this.syncRouteGuide();
   }
 
   private alignInteractiveCoolerToBackground(): void {
@@ -125,11 +141,143 @@ export class LevelTwoRestockScene extends StarterMarketScene {
       this.moveNamedObject(`beverage-cooler-row-count-${index}`, dx, dy);
     });
 
-    // The new L2 plate already contains the refrigerator shelves and trim.
+    // The L2 plate already contains the refrigerator shelves and trim.
     // Keep only dynamic bottles / targets above it so no second cooler is drawn.
     this.setNamedVisibility("restock-cooler-shelf-foreground", false);
     this.setNamedVisibility("restock-cooler-shelf-rule", false);
     document.body.dataset.levelTwoCooler = "background-integrated";
+  }
+
+  private installRouteGuide(): void {
+    const pulse = this.add.circle(0, 22, 66, 0xffd95e, 0.06)
+      .setStrokeStyle(4, 0xffd95e, 0.9);
+    const arrow = this.add.text(0, -38, "▼", {
+      fontFamily: "Arial, sans-serif",
+      fontSize: "36px",
+      fontStyle: "bold",
+      color: "#ffd95e",
+      stroke: "#122016",
+      strokeThickness: 6
+    }).setOrigin(0.5);
+    const label = this.add.text(0, -86, "TAP COOLER · PUSH CART", {
+      fontFamily: "Arial, sans-serif",
+      fontSize: "20px",
+      fontStyle: "bold",
+      color: "#ffffff",
+      stroke: "#102016",
+      strokeThickness: 7,
+      backgroundColor: "rgba(12, 38, 25, 0.88)",
+      padding: { x: 13, y: 8 }
+    }).setOrigin(0.5);
+    const detail = this.add.text(0, -122, "NEXT: DELIVER THE WATER", {
+      fontFamily: "Arial, sans-serif",
+      fontSize: "11px",
+      fontStyle: "bold",
+      color: "#d7ebdb"
+    }).setOrigin(0.5);
+
+    const root = this.add.container(
+      this.levelTwoPresentation.world.cartCooler.x,
+      this.levelTwoPresentation.world.cartCooler.y - 8,
+      [pulse, arrow, label, detail]
+    )
+      .setDepth(216)
+      .setVisible(false)
+      .setName("level-two-route-guide");
+
+    this.tweens.add({
+      targets: pulse,
+      scale: 1.18,
+      alpha: 0.18,
+      duration: 620,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.InOut"
+    });
+    this.tweens.add({
+      targets: arrow,
+      y: -30,
+      duration: 520,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.InOut"
+    });
+
+    this.routeGuide = { root, pulse, label, detail };
+    document.body.dataset.levelTwoRouteGuide = "installed";
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      root.destroy(true);
+      this.routeGuide = undefined;
+    });
+  }
+
+  private syncRouteGuide(): void {
+    const guide = this.routeGuide;
+    if (!guide) return;
+    const step = this.controller.snapshot().step;
+    const previousStep = this.previousGuideStep;
+
+    if (step === "push" || step === "park") {
+      guide.root
+        .setPosition(
+          this.levelTwoPresentation.world.cartCooler.x,
+          this.levelTwoPresentation.world.cartCooler.y - 12
+        )
+        .setVisible(true);
+      guide.label.setText(touchDeviceActive()
+        ? "TAP HERE · PUSH CART"
+        : "MOVE CART TO COOLER");
+      guide.detail.setText("NEXT: DELIVER THE WATER");
+      document.body.dataset.levelTwoRouteGuide = "deliver-cart";
+    } else if (step === "open") {
+      guide.root
+        .setPosition(
+          this.levelTwoPresentation.world.cartCooler.x,
+          this.levelTwoPresentation.world.cartCooler.y - 12
+        )
+        .setVisible(true);
+      guide.label.setText("ARRIVED · OPENING CASE");
+      guide.detail.setText("GET READY TO MEMORIZE");
+      document.body.dataset.levelTwoRouteGuide = "opening-case";
+    } else {
+      guide.root.setVisible(false);
+      document.body.dataset.levelTwoRouteGuide = step === "restock"
+        ? "stocking"
+        : "hidden";
+    }
+
+    // PARK -> OPEN -> RESTOCK can complete inside one update. Give the player
+    // an immediate acknowledgement so the memory overlay never feels like a stall.
+    if (step === "restock" && previousStep && previousStep !== "restock") {
+      this.playArrivalFeedback();
+    }
+    this.previousGuideStep = step;
+  }
+
+  private playArrivalFeedback(): void {
+    const x = this.levelTwoPresentation.world.cartCooler.x;
+    const y = this.levelTwoPresentation.world.cartCooler.y - 170;
+    const status = this.add.text(x, y, "✓ CART ARRIVED · MEMORIZE NEXT", {
+      fontFamily: "Arial, sans-serif",
+      fontSize: "18px",
+      fontStyle: "bold",
+      color: "#efffea",
+      backgroundColor: "rgba(16, 67, 36, 0.94)",
+      padding: { x: 14, y: 9 },
+      stroke: "#102516",
+      strokeThickness: 4
+    }).setOrigin(0.5).setDepth(230);
+    this.tweens.add({
+      targets: status,
+      y: y - 18,
+      alpha: 0,
+      duration: 880,
+      delay: 280,
+      ease: "Sine.Out",
+      onComplete: () => status.destroy()
+    });
+    this.cameras.main.flash(90, 120, 205, 135);
+    document.body.dataset.levelTwoArrivalFeedback = "shown";
   }
 
   private installMobileTouchAssist(): void {
