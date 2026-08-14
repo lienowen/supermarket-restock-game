@@ -25,14 +25,14 @@ const GOLDEN_NAVIGATION_POINTS: Readonly<Record<string, { readonly x: number; re
 });
 
 const GOLDEN_PRODUCT_LAYOUT = Object.freeze([
-  Object.freeze({ sourceName: "find-decoy-decoy-chips", name: "find-decoy-banana", interactionId: "decoy-chips", assetKey: "product-banana-bunch", x: 120, y: 515, maxWidth: 58, maxHeight: 44, requested: false }),
-  Object.freeze({ sourceName: "find-item-apple", name: "find-item-apple", interactionId: "apple", assetKey: "product-apple", x: 220, y: 515, maxWidth: 48, maxHeight: 48, requested: true }),
-  Object.freeze({ sourceName: "find-decoy-decoy-detergent", name: "find-decoy-grapes", interactionId: "decoy-detergent", assetKey: "product-grapes-pack", x: 320, y: 515, maxWidth: 52, maxHeight: 44, requested: false }),
-  Object.freeze({ sourceName: "find-item-cereal-box", name: "find-item-cereal-box", interactionId: "cereal-box", assetKey: "product-cereal-box", x: 620, y: 390, maxWidth: 42, maxHeight: 58, requested: true }),
-  Object.freeze({ sourceName: "find-decoy-decoy-oats", name: "find-decoy-oats", interactionId: "decoy-oats", assetKey: "product-oats-canister", x: 720, y: 390, maxWidth: 40, maxHeight: 56, requested: false }),
-  Object.freeze({ sourceName: "find-decoy-decoy-paper-towels", name: "find-decoy-peanut-butter", interactionId: "decoy-paper-towels", assetKey: "product-peanut-butter", x: 820, y: 390, maxWidth: 40, maxHeight: 54, requested: false }),
-  Object.freeze({ sourceName: "find-item-milk-bottle", name: "find-item-milk-bottle", interactionId: "milk-bottle", assetKey: "product-milk-bottle", x: 1290, y: 405, maxWidth: 42, maxHeight: 66, requested: true }),
-  Object.freeze({ sourceName: "find-decoy-decoy-yogurt", name: "find-decoy-yogurt", interactionId: "decoy-yogurt", assetKey: "product-yogurt-cup", x: 1400, y: 405, maxWidth: 44, maxHeight: 48, requested: false })
+  Object.freeze({ sourceName: "find-decoy-decoy-chips", name: "find-decoy-banana", interactionId: "decoy-chips", assetKey: "product-banana-bunch", x: 120, y: 515, maxWidth: 96, maxHeight: 72, requested: false }),
+  Object.freeze({ sourceName: "find-item-apple", name: "find-item-apple", interactionId: "apple", assetKey: "product-apple", x: 220, y: 515, maxWidth: 84, maxHeight: 84, requested: true }),
+  Object.freeze({ sourceName: "find-decoy-decoy-detergent", name: "find-decoy-grapes", interactionId: "decoy-detergent", assetKey: "product-grapes-pack", x: 320, y: 515, maxWidth: 92, maxHeight: 72, requested: false }),
+  Object.freeze({ sourceName: "find-item-cereal-box", name: "find-item-cereal-box", interactionId: "cereal-box", assetKey: "product-cereal-box", x: 620, y: 390, maxWidth: 74, maxHeight: 102, requested: true }),
+  Object.freeze({ sourceName: "find-decoy-decoy-oats", name: "find-decoy-oats", interactionId: "decoy-oats", assetKey: "product-oats-canister", x: 720, y: 390, maxWidth: 72, maxHeight: 98, requested: false }),
+  Object.freeze({ sourceName: "find-decoy-decoy-paper-towels", name: "find-decoy-peanut-butter", interactionId: "decoy-paper-towels", assetKey: "product-peanut-butter", x: 820, y: 390, maxWidth: 72, maxHeight: 96, requested: false }),
+  Object.freeze({ sourceName: "find-item-milk-bottle", name: "find-item-milk-bottle", interactionId: "milk-bottle", assetKey: "product-milk-bottle", x: 1290, y: 405, maxWidth: 76, maxHeight: 118, requested: true }),
+  Object.freeze({ sourceName: "find-decoy-decoy-yogurt", name: "find-decoy-yogurt", interactionId: "decoy-yogurt", assetKey: "product-yogurt-cup", x: 1400, y: 405, maxWidth: 78, maxHeight: 84, requested: false })
 ]);
 
 const WALK_FRAME_MS = 140;
@@ -76,7 +76,7 @@ const levelFiveContext = (
   });
 };
 
-/** Level 5: one clean authored store plate, three search zones, tap-to-pick on mobile. */
+/** Level 5: one authored store plate, three readable search zones, tap-to-pick on mobile. */
 export class GoldenOrderHuntScene extends UtilityTaskScene {
   private readonly goldenContext: FindItemsStarterMarketPresentationContext;
   private readonly basketFeedbackSeen = new Set<string>();
@@ -106,9 +106,9 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
 
   override create(): void {
     super.create();
-    document.body.dataset.goldenLevel = "level-5-three-zone-v2";
+    document.body.dataset.goldenLevel = "level-5-three-zone-v3";
     document.body.dataset.goldenEnvironment = this.goldenContext.levelAssets.environment.key;
-    document.body.dataset.goldenWorldScale = "background-zones-v2";
+    document.body.dataset.goldenWorldScale = "background-zones-v3";
     document.body.dataset.goldenHud = "order-ticket-only-v3";
     document.body.dataset.goldenWorkerMotion = "idle";
     document.body.dataset.goldenWorkerWalkObserved = "false";
@@ -117,6 +117,7 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
     document.body.dataset.goldenBasketMode = "worker-side-v1";
     document.body.dataset.goldenSceneDressing = document.body.dataset.sceneDressing ?? "unknown";
     this.hideLegacyHudChrome();
+    this.disableManualMobileNavigation();
     this.reframeProducts();
     this.reframeBasket();
     this.installMobileProductAssist();
@@ -160,6 +161,28 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
     });
   }
 
+  private disableManualMobileNavigation(): void {
+    if (!touchDeviceActive()) {
+      document.body.dataset.goldenManualControl = "desktop-available-v1";
+      return;
+    }
+
+    const joystick = this.children.getByName("virtual-movement-joystick");
+    if (joystick instanceof Phaser.GameObjects.Container) {
+      joystick.setVisible(false);
+    }
+    const joystickHitZone = this.children.getByName("virtual-movement-joystick-hit-zone");
+    if (joystickHitZone instanceof Phaser.GameObjects.Zone) {
+      joystickHitZone.disableInteractive().setVisible(false);
+    }
+    const walkArea = this.children.getByName("find-items-worker-walk-area");
+    if (walkArea instanceof Phaser.GameObjects.Rectangle) {
+      walkArea.disableInteractive();
+    }
+
+    document.body.dataset.goldenManualControl = "product-tap-only-v1";
+  }
+
   private reframeProducts(): void {
     GOLDEN_PRODUCT_LAYOUT.forEach((layout) => {
       const object = this.children.getByName(layout.sourceName);
@@ -179,6 +202,7 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
       fitImageIntoBox(object, layout.maxWidth, layout.maxHeight);
       object.setInteractive({ useHandCursor: true });
     });
+    document.body.dataset.goldenProductScale = "readable-v2";
   }
 
   private reframeBasket(): void {
@@ -208,7 +232,7 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
         layout.x,
         layout.y - layout.maxHeight * 0.48,
         96,
-        108
+        126
       )
         .setDepth(220)
         .setName(`golden-touch-${layout.interactionId}`)
@@ -230,7 +254,7 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
       this.mobileTouchZones.push(zone);
     });
 
-    document.body.dataset.goldenMobileTouch = "expanded-product-hotspots-v1";
+    document.body.dataset.goldenMobileTouch = "expanded-product-hotspots-v2";
     document.body.dataset.goldenMobileMoveSpeed = String(MOBILE_TOUCH_MOVE_SPEED);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.mobileTouchZones.splice(0).forEach((zone) => zone.destroy());
@@ -238,7 +262,7 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
   }
 
   private playProductTapFeedback(x: number, y: number, requested: boolean): void {
-    const pulse = this.add.circle(x, y, 28, 0xffd95e, 0.05)
+    const pulse = this.add.circle(x, y, 32, 0xffd95e, 0.05)
       .setStrokeStyle(3, 0xffd95e, 0.9)
       .setDepth(218);
     this.tweens.add({
@@ -250,9 +274,9 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
       onComplete: () => pulse.destroy()
     });
     if (!requested) return;
-    const label = this.add.text(x, y - 42, "PICKING…", {
+    const label = this.add.text(x, y - 50, "PICKING…", {
       fontFamily: "Arial",
-      fontSize: "12px",
+      fontSize: "13px",
       fontStyle: "bold",
       color: "#f8f1cf",
       backgroundColor: "rgba(12, 38, 25, 0.88)",
