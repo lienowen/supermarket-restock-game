@@ -28,28 +28,42 @@ const SPILL_SIZE_MULTIPLIERS = Object.freeze([
   Object.freeze({ width: 1.12, height: 0.98 }),
   Object.freeze({ width: 1.22, height: 1.02 })
 ]);
-const SCRUB_DISTANCE_REQUIRED = 300;
+const SCRUB_DISTANCE_REQUIRED = 260;
+const MAX_SCRUB_STEP = 46;
+const MOBILE_SPILL_TOUCH_WIDTH = 230;
+const MOBILE_SPILL_TOUCH_HEIGHT = 170;
+
+interface CleanNavigationPort {
+  setDestination(point: NavigationPoint): void;
+}
 
 interface CleanScenePort extends Phaser.Scene {
   isInteractionReady?: () => boolean;
+  readonly player?: CleanNavigationPort;
 }
 
 /**
- * Mature cleaning presentation. The player now scrubs the spill itself instead
- * of holding a detached progress button: pointer travel fades the production
- * spill art and only a completed scrub commits CLEAN_SPOT.
+ * Mature cleaning presentation. The cleaning cart and active spill are direct
+ * world controls: tap either target to walk into working range, then scrub the
+ * spill itself. Pointer travel fades the production spill art and only a fully
+ * cleaned spill commits CLEAN_SPOT.
  */
 export class CleaningTaskView {
   private readonly staticObjects: Phaser.GameObjects.GameObject[] = [];
   private readonly toolObjects: Phaser.GameObjects.Image[] = [];
   private readonly spills: Phaser.GameObjects.Container[] = [];
+  private readonly spillTouchZones: Phaser.GameObjects.Zone[] = [];
   private readonly scrubHint: Phaser.GameObjects.Text;
+  private toolTouchZone?: Phaser.GameObjects.Zone;
   private previousPhase: CleaningTaskViewState["phase"] = "tools";
+  private currentPhase: CleaningTaskViewState["phase"] = "tools";
   private previousCompletedSpills = 0;
   private activeSpillIndex = -1;
   private scrubDistance = 0;
   private scrubPointerId?: number;
   private scrubLastPoint?: { readonly x: number; readonly y: number };
+  private pendingToolWalk = false;
+  private pendingSpillWalkIndex = -1;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -57,14 +71,14 @@ export class CleaningTaskView {
   ) {
     this.scrubHint = scene.add.text(0, 0, "DRAG TO SCRUB", {
       fontFamily: "Arial, sans-serif",
-      fontSize: "12px",
+      fontSize: "13px",
       fontStyle: "bold",
       color: "#e8fff8",
-      backgroundColor: "rgba(11, 31, 25, 0.82)",
-      padding: { x: 9, y: 5 }
+      backgroundColor: "rgba(11, 31, 25, 0.84)",
+      padding: { x: 11, y: 6 }
     })
       .setOrigin(0.5)
-      .setDepth(30)
+      .setDepth(31)
       .setVisible(false)
       .setName("clean-scrub-hint");
   }
@@ -104,7 +118,31 @@ export class CleaningTaskView {
       .setDepth(20)
       .setName("cleaning-cart-tool");
 
-    this.staticObjects.push(cartShadow, cart);
+    const toolTouchWidth = Math.max(220, visual.toolsTargetSize.width * 1.16);
+    const toolTouchHeight = Math.max(170, visual.toolsTargetSize.height * 1.18);
+    this.toolTouchZone = scene.add.zone(
+      config.toolPoint.x,
+      config.toolPoint.y - Math.max(18, visual.cartSize.height * 0.18),
+      toolTouchWidth,
+      toolTouchHeight
+    )
+      .setDepth(29)
+      .setName("cleaning-cart-touch-zone")
+      .setInteractive({ useHandCursor: true })
+      .on(
+        "pointerdown",
+        (
+          _pointer: Phaser.Input.Pointer,
+          _localX: number,
+          _localY: number,
+          event: Phaser.Types.Input.EventData
+        ) => {
+          event.stopPropagation();
+          this.requestToolWalk();
+        }
+      );
+
+    this.staticObjects.push(cartShadow, cart, this.toolTouchZone);
     this.toolObjects.push(cart);
 
     config.spotPositions.forEach((point, index) => {
@@ -113,31 +151,37 @@ export class CleaningTaskView {
     scene.input.on("pointermove", this.handleScrubMove, this);
     scene.input.on("pointerup", this.handleScrubEnd, this);
     scene.input.on("pointerupoutside", this.handleScrubEnd, this);
+    scene.events.on(Phaser.Scenes.Events.UPDATE, this.handleSceneUpdate, this);
 
     this.showToolsPhase(false);
-    document.body.dataset.cleaningPresentation = "mature-clean-v2-scrub";
+    document.body.dataset.cleaningPresentation = "mature-clean-v3-tap-walk-scrub";
     document.body.dataset.cleaningSpillArt = "water-juice-dirt-production";
+    document.body.dataset.cleaningControl = "tap-target-auto-walk-then-drag";
     document.body.dataset.cleanScrubProgress = "0";
     return Object.freeze([...this.spills]);
   }
 
   sync(state: CleaningTaskViewState): void {
+    this.currentPhase = state.phase;
     if (state.phase === "tools") {
       this.showToolsPhase(this.previousPhase !== "tools");
-      this.setHudActionVisible(true);
+      // The cart itself is now the action surface; never require a small HUD button.
+      this.setHudActionVisible(false);
     } else if (state.phase === "spills") {
+      this.pendingToolWalk = false;
       this.showSpillPhase(
         state.completedSpills,
         this.previousPhase !== "spills" || state.completedSpills !== this.previousCompletedSpills
       );
-      // The world spill is the action surface now; do not leave a one-click
-      // MOP FLOOR shortcut on screen.
       this.setHudActionVisible(false);
     } else {
+      this.pendingToolWalk = false;
+      this.pendingSpillWalkIndex = -1;
       this.showCompletePhase();
       this.setHudActionVisible(false);
     }
 
+    this.syncToolInteractivity();
     this.previousPhase = state.phase;
     this.previousCompletedSpills = state.completedSpills;
   }
@@ -146,15 +190,20 @@ export class CleaningTaskView {
     this.scene.input.off("pointermove", this.handleScrubMove, this);
     this.scene.input.off("pointerup", this.handleScrubEnd, this);
     this.scene.input.off("pointerupoutside", this.handleScrubEnd, this);
+    this.scene.events.off(Phaser.Scenes.Events.UPDATE, this.handleSceneUpdate, this);
     this.staticObjects.splice(0).forEach((object) => object.destroy());
     this.toolObjects.length = 0;
     this.spills.splice(0).forEach((spill) => spill.destroy(true));
+    this.spillTouchZones.splice(0).forEach((zone) => zone.destroy());
     this.scrubHint.destroy();
     delete document.body.dataset.cleanScrubProgress;
+    delete document.body.dataset.cleaningControl;
+    delete document.body.dataset.cleaningPendingWalk;
   }
 
   private showToolsPhase(animate: boolean): void {
     this.activeSpillIndex = -1;
+    this.pendingSpillWalkIndex = -1;
     this.resetScrubProgress();
     this.scrubHint.setVisible(false);
     this.syncSpillInteractivity();
@@ -168,9 +217,10 @@ export class CleaningTaskView {
       this.scene.tweens.add({
         targets: tool,
         alpha: 1,
-        scaleX: 1,
-        scaleY: 1,
-        duration: 220,
+        scaleX: 1.035,
+        scaleY: 1.035,
+        yoyo: true,
+        duration: 210,
         ease: "Sine.Out"
       });
     });
@@ -184,6 +234,7 @@ export class CleaningTaskView {
     const { visual } = this.config;
     if (completedSpills !== this.activeSpillIndex) {
       this.activeSpillIndex = completedSpills;
+      this.pendingSpillWalkIndex = -1;
       this.resetScrubProgress();
     }
 
@@ -210,7 +261,7 @@ export class CleaningTaskView {
             alpha: 0,
             scaleX: 0.58,
             scaleY: 0.58,
-            duration: 340,
+            duration: 300,
             ease: "Cubic.In",
             onComplete: () => spill.setVisible(false)
           });
@@ -221,8 +272,8 @@ export class CleaningTaskView {
       }
 
       const active = index === completedSpills;
-      const targetAlpha = active ? 1 : 0.54;
-      const targetScale = active ? 1.04 : 0.94;
+      const targetAlpha = active ? 1 : 0.36;
+      const targetScale = active ? 1.04 : 0.92;
       spill.setVisible(true);
 
       if (!animate) {
@@ -237,8 +288,8 @@ export class CleaningTaskView {
         alpha: targetAlpha,
         scaleX: targetScale,
         scaleY: targetScale,
-        duration: 260,
-        delay: enteringSpillPhase ? Math.max(0, index - completedSpills) * 65 : 0,
+        duration: 240,
+        delay: enteringSpillPhase ? Math.max(0, index - completedSpills) * 55 : 0,
         ease: active ? "Back.Out" : "Sine.Out"
       });
     });
@@ -246,8 +297,8 @@ export class CleaningTaskView {
     const active = this.spills[completedSpills];
     if (active) {
       this.scrubHint
-        .setPosition(active.x, active.y - 68)
-        .setText("DRAG TO SCRUB")
+        .setPosition(active.x, active.y - 76)
+        .setText("TAP · THEN SCRUB")
         .setVisible(true);
     } else {
       this.scrubHint.setVisible(false);
@@ -258,6 +309,7 @@ export class CleaningTaskView {
   private showCompletePhase(): void {
     const { visual } = this.config;
     this.activeSpillIndex = -1;
+    this.pendingSpillWalkIndex = -1;
     this.resetScrubProgress();
     this.scrubHint.setVisible(false);
     this.toolObjects.forEach((tool) => {
@@ -300,41 +352,109 @@ export class CleaningTaskView {
       .setAlpha(0)
       .setScale(0.82)
       .setData("spill-source-key", sourceKey)
-      .setName(`clean-spill-${index + 1}`)
+      .setName(`clean-spill-${index + 1}`);
+
+    const touchWidth = Math.max(MOBILE_SPILL_TOUCH_WIDTH, maxWidth * 1.42);
+    const touchHeight = Math.max(MOBILE_SPILL_TOUCH_HEIGHT, maxHeight * 1.65);
+    const touchZone = scene.add.zone(point.x, point.y, touchWidth, touchHeight)
+      .setDepth(28)
+      .setName(`clean-spill-touch-${index + 1}`)
+      .setData("clean-spill-index", index)
       .setInteractive({ useHandCursor: true })
-      .on("pointerdown", (pointer: Phaser.Input.Pointer) => this.beginScrub(index, pointer));
-    spill.disableInteractive();
+      .on(
+        "pointerdown",
+        (
+          pointer: Phaser.Input.Pointer,
+          _localX: number,
+          _localY: number,
+          event: Phaser.Types.Input.EventData
+        ) => {
+          event.stopPropagation();
+          this.beginScrub(index, pointer);
+        }
+      );
+    touchZone.disableInteractive();
+    this.spillTouchZones.push(touchZone);
     return spill;
   }
 
-  private beginScrub(index: number, pointer: Phaser.Input.Pointer): void {
-    if (index !== this.activeSpillIndex) return;
+  private requestToolWalk(): void {
+    if (this.currentPhase !== "tools") return;
     const scene = this.scene as CleanScenePort;
-    if (scene.isInteractionReady?.() !== true) {
-      this.scrubHint.setText("MOVE CLOSER");
-      this.scene.time.delayedCall(650, () => {
-        if (this.activeSpillIndex === index) this.scrubHint.setText("DRAG TO SCRUB");
-      });
+    if (scene.isInteractionReady?.() === true) {
+      this.commitWorldAction();
       return;
     }
+    scene.player?.setDestination(this.config.toolPoint);
+    this.pendingToolWalk = true;
+    document.body.dataset.cleaningPendingWalk = "tools";
+  }
+
+  private beginScrub(index: number, pointer: Phaser.Input.Pointer): void {
+    if (index !== this.activeSpillIndex || this.currentPhase !== "spills") return;
+    const scene = this.scene as CleanScenePort;
+    if (scene.isInteractionReady?.() !== true) {
+      scene.player?.setDestination(this.config.spotPositions[index] ?? this.config.toolPoint);
+      this.pendingSpillWalkIndex = index;
+      this.scrubHint.setText("MOVING TO SPILL");
+      document.body.dataset.cleaningPendingWalk = `spill-${index + 1}`;
+      return;
+    }
+    this.pendingSpillWalkIndex = -1;
+    delete document.body.dataset.cleaningPendingWalk;
     this.scrubPointerId = pointer.id;
     this.scrubLastPoint = Object.freeze({ x: pointer.worldX, y: pointer.worldY });
+    this.scrubHint.setText("SCRUB 0%");
     document.body.dataset.cleanScrubProgress = String(Math.round(this.scrubRatio() * 100));
   }
+
+  private readonly handleSceneUpdate = (): void => {
+    const scene = this.scene as CleanScenePort;
+    if (scene.isInteractionReady?.() !== true) return;
+
+    if (this.pendingToolWalk && this.currentPhase === "tools") {
+      this.pendingToolWalk = false;
+      delete document.body.dataset.cleaningPendingWalk;
+      this.commitWorldAction();
+      return;
+    }
+
+    if (
+      this.currentPhase === "spills" &&
+      this.pendingSpillWalkIndex === this.activeSpillIndex
+    ) {
+      this.pendingSpillWalkIndex = -1;
+      delete document.body.dataset.cleaningPendingWalk;
+      this.scrubHint.setText("DRAG TO SCRUB");
+      const spill = this.spills[this.activeSpillIndex];
+      if (spill) {
+        this.scene.tweens.killTweensOf(spill);
+        this.scene.tweens.add({
+          targets: spill,
+          scaleX: 1.08,
+          scaleY: 1.08,
+          duration: 120,
+          yoyo: true,
+          ease: "Sine.Out"
+        });
+      }
+    }
+  };
 
   private handleScrubMove(pointer: Phaser.Input.Pointer): void {
     if (this.scrubPointerId !== pointer.id || !pointer.isDown || !this.scrubLastPoint) return;
     const spill = this.spills[this.activeSpillIndex];
     if (!spill) return;
-    const distance = Math.hypot(
+    const rawDistance = Math.hypot(
       pointer.worldX - this.scrubLastPoint.x,
       pointer.worldY - this.scrubLastPoint.y
     );
-    if (distance < 2) return;
+    if (rawDistance < 2) return;
+    const distance = Math.min(MAX_SCRUB_STEP, rawDistance);
     this.scrubDistance = Math.min(SCRUB_DISTANCE_REQUIRED, this.scrubDistance + distance);
     this.scrubLastPoint = Object.freeze({ x: pointer.worldX, y: pointer.worldY });
     const ratio = this.scrubRatio();
-    spill.setAlpha(1 - ratio * 0.66).setScale(1.04 - ratio * 0.12);
+    spill.setAlpha(1 - ratio * 0.78).setScale(1.04 - ratio * 0.1);
     this.scrubHint.setText(`SCRUB ${Math.round(ratio * 100)}%`);
     document.body.dataset.cleanScrubProgress = String(Math.round(ratio * 100));
     if (ratio >= 1) this.commitScrub();
@@ -344,16 +464,50 @@ export class CleaningTaskView {
     if (this.scrubPointerId !== pointer.id) return;
     this.scrubPointerId = undefined;
     this.scrubLastPoint = undefined;
-    if (this.scrubRatio() < 1) this.scrubHint.setText(`KEEP SCRUBBING · ${Math.round(this.scrubRatio() * 100)}%`);
+    if (this.scrubRatio() < 1) {
+      this.scrubHint.setText(`KEEP SCRUBBING · ${Math.round(this.scrubRatio() * 100)}%`);
+    }
   }
 
   private commitScrub(): void {
+    const cleanedIndex = this.activeSpillIndex;
     this.scrubPointerId = undefined;
     this.scrubLastPoint = undefined;
     this.scrubHint.setText("CLEAN!");
     document.body.dataset.cleanScrubProgress = "100";
+    if (cleanedIndex >= 0) this.showCleanFeedback(cleanedIndex);
+    this.commitWorldAction();
+  }
+
+  private commitWorldAction(): void {
     const action = this.scene.children.getByName("shift-hud-action");
     action?.emit("pointerdown");
+  }
+
+  private showCleanFeedback(index: number): void {
+    const spill = this.spills[index];
+    if (!spill) return;
+    const label = this.scene.add.text(
+      spill.x,
+      spill.y - 112,
+      `CLEAN! ${index + 1}/${this.spills.length}`,
+      {
+        fontFamily: "Arial, sans-serif",
+        fontSize: "18px",
+        fontStyle: "bold",
+        color: "#efffea",
+        backgroundColor: "rgba(20, 76, 42, 0.9)",
+        padding: { x: 12, y: 7 }
+      }
+    ).setOrigin(0.5).setDepth(34);
+    this.scene.tweens.add({
+      targets: label,
+      y: label.y - 24,
+      alpha: 0,
+      duration: 620,
+      ease: "Sine.Out",
+      onComplete: () => label.destroy()
+    });
   }
 
   private scrubRatio(): number {
@@ -368,13 +522,29 @@ export class CleaningTaskView {
   }
 
   private syncSpillInteractivity(): void {
-    this.spills.forEach((spill, index) => {
-      if (index === this.activeSpillIndex && spill.visible) {
-        if (!spill.input?.enabled) spill.setInteractive({ useHandCursor: true });
-      } else if (spill.input?.enabled) {
-        spill.disableInteractive();
+    this.spillTouchZones.forEach((zone, index) => {
+      const spill = this.spills[index];
+      const enabled = Boolean(
+        this.currentPhase === "spills" &&
+        index === this.activeSpillIndex &&
+        spill?.visible
+      );
+      if (enabled) {
+        if (!zone.input?.enabled) zone.setInteractive({ useHandCursor: true });
+      } else if (zone.input?.enabled) {
+        zone.disableInteractive();
       }
     });
+  }
+
+  private syncToolInteractivity(): void {
+    const zone = this.toolTouchZone;
+    if (!zone) return;
+    if (this.currentPhase === "tools") {
+      if (!zone.input?.enabled) zone.setInteractive({ useHandCursor: true });
+    } else if (zone.input?.enabled) {
+      zone.disableInteractive();
+    }
   }
 
   private setHudActionVisible(visible: boolean): void {
