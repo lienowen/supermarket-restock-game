@@ -12,6 +12,7 @@ const BASE_RADIUS = 92;
 const KNOB_RADIUS = 40;
 const MAX_TRAVEL = 62;
 const DEAD_ZONE = 0.07;
+const HIT_RADIUS = BASE_RADIUS + 18;
 
 /**
  * Screen-space movement control for touch devices. It emits a normalized
@@ -21,6 +22,7 @@ export class VirtualJoystick {
   private readonly enabledForDevice: boolean;
   private readonly root?: Phaser.GameObjects.Container;
   private readonly knob?: Phaser.GameObjects.Arc;
+  private readonly hitZone?: Phaser.GameObjects.Zone;
   private pointerId?: number;
   private axisX = 0;
   private axisY = 0;
@@ -47,19 +49,24 @@ export class VirtualJoystick {
       .setScrollFactor(0)
       .setName("virtual-movement-joystick");
 
-    outer.setInteractive(new Phaser.Geom.Circle(0, 0, BASE_RADIUS + 14), Phaser.Geom.Circle.Contains);
-    inner.setInteractive(new Phaser.Geom.Circle(0, 0, BASE_RADIUS - 4), Phaser.Geom.Circle.Contains);
-    this.knob.setInteractive(new Phaser.Geom.Circle(0, 0, KNOB_RADIUS + 26), Phaser.Geom.Circle.Contains);
+    // A dedicated top-most input zone prevents product hotspots or walk-area
+    // input from stealing the joystick press on mobile browsers.
+    this.hitZone = scene.add.zone(BASE_X, BASE_Y, HIT_RADIUS * 2, HIT_RADIUS * 2)
+      .setDepth(1000)
+      .setScrollFactor(0)
+      .setName("virtual-movement-joystick-hit-zone")
+      .setInteractive(
+        new Phaser.Geom.Circle(HIT_RADIUS, HIT_RADIUS, HIT_RADIUS),
+        Phaser.Geom.Circle.Contains
+      );
+    this.hitZone.on("pointerdown", this.handlePointerDown, this);
 
-    [outer, inner, this.knob].forEach((target) => {
-      target.on("pointerdown", this.handlePointerDown, this);
-    });
     scene.input.on("pointermove", this.handlePointerMove, this);
     scene.input.on("pointerup", this.handlePointerUp, this);
     scene.input.on("pointerupoutside", this.handlePointerUp, this);
     scene.input.on("gameout", this.reset, this);
 
-    document.body.dataset.mobileMovementControl = "virtual-joystick";
+    document.body.dataset.mobileMovementControl = "virtual-joystick-hit-zone-v2";
   }
 
   vector(): VirtualJoystickVector {
@@ -73,15 +80,22 @@ export class VirtualJoystick {
   setEnabled(enabled: boolean): void {
     this.enabled = enabled;
     this.root?.setAlpha(enabled ? 1 : 0.36);
+    if (enabled) this.hitZone?.setInteractive(
+      new Phaser.Geom.Circle(HIT_RADIUS, HIT_RADIUS, HIT_RADIUS),
+      Phaser.Geom.Circle.Contains
+    );
+    else this.hitZone?.disableInteractive();
     if (!enabled) this.reset();
   }
 
   destroy(): void {
     if (!this.enabledForDevice) return;
+    this.hitZone?.off("pointerdown", this.handlePointerDown, this);
     this.scene.input.off("pointermove", this.handlePointerMove, this);
     this.scene.input.off("pointerup", this.handlePointerUp, this);
     this.scene.input.off("pointerupoutside", this.handlePointerUp, this);
     this.scene.input.off("gameout", this.reset, this);
+    this.hitZone?.destroy();
     this.root?.destroy(true);
   }
 
