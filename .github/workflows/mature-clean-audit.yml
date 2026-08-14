@@ -13,6 +13,7 @@ on:
       - "src/game/presentation/cleaning/**"
       - "src/game/presentation/scenes/UtilityTaskScene.ts"
       - "scripts/capture-mature-clean.mjs"
+      - "scripts/capture-mature-clean-mobile.mjs"
       - ".github/workflows/mature-clean-audit.yml"
   workflow_dispatch:
 
@@ -23,7 +24,7 @@ permissions:
 jobs:
   clean:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 14
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -47,18 +48,26 @@ jobs:
         continue-on-error: true
         run: npm run build
 
-      - name: Verify mature cleaning
+      - name: Verify mature cleaning desktop
         id: audit
         if: steps.build.outcome == 'success'
         continue-on-error: true
         run: node scripts/capture-mature-clean.mjs
+
+      - name: Verify mature cleaning mobile landscape
+        id: mobile
+        if: steps.build.outcome == 'success'
+        continue-on-error: true
+        run: node scripts/capture-mature-clean-mobile.mjs
 
       - name: Upload cleaning evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: mature-clean-audit
-          path: ui-audit/mature-clean
+          path: |
+            ui-audit/mature-clean
+            ui-audit/mature-clean-mobile
           if-no-files-found: warn
           retention-days: 14
 
@@ -68,13 +77,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
           AUDIT_OUTCOME: ${{ steps.audit.outcome }}
+          MOBILE_OUTCOME: ${{ steps.mobile.outcome }}
         run: |
-          if [ "$BUILD_OUTCOME" = "success" ] && [ "$AUDIT_OUTCOME" = "success" ]; then
+          if [ "$BUILD_OUTCOME" = "success" ] && [ "$AUDIT_OUTCOME" = "success" ] && [ "$MOBILE_OUTCOME" = "success" ]; then
             STATE=success
-            DESC="HD clean scene + real spills + routed mop flow passed"
+            DESC="L4 tap-to-walk scrub passed on desktop + mobile"
           else
             STATE=failure
-            DESC="mature cleaning build/browser audit failed"
+            DESC="Level 4 desktop/mobile cleaning audit failed"
           fi
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state="$STATE" \
@@ -87,3 +97,4 @@ jobs:
         run: |
           test "${{ steps.build.outcome }}" = "success"
           test "${{ steps.audit.outcome }}" = "success"
+          test "${{ steps.mobile.outcome }}" = "success"
