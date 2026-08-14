@@ -61,6 +61,13 @@ export class StarterMarketEnvironmentView {
       return true;
     }
 
+    if (
+      level.mode === "find-items" &&
+      environmentKey.startsWith("environment-project-order-hunt")
+    ) {
+      return true;
+    }
+
     if (level.mode !== "restock") return false;
 
     const isGuidedFirstDelivery = level.tuning.rush?.timeoutEnabled === false;
