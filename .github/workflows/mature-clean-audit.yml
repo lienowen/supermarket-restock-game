@@ -13,6 +13,8 @@ on:
       - "src/game/presentation/actors/PlayerNavigationView.ts"
       - "src/game/presentation/cleaning/**"
       - "src/game/presentation/scenes/UtilityTaskScene.ts"
+      - "src/game/presentation/visual/LevelVisualPresetResolver.ts"
+      - "src/game/presentation/world/StarterMarketEnvironmentView.ts"
       - "scripts/capture-mature-clean.mjs"
       - "scripts/capture-mature-clean-mobile.mjs"
       - ".github/workflows/mature-clean-audit.yml"
