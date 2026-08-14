@@ -78,7 +78,7 @@ try {
   report.assertions.authoredOrderHuntBackground = initial.environmentKey === "environment-project-order-hunt-v2";
   report.assertions.backgroundOnly = initial.sceneDressing === "background-only";
   report.assertions.noAmbientDressing = initial.ambientCount === 0;
-  report.assertions.compactHudActive = initial.goldenHud === "compact-v2";
+  report.assertions.compactHudActive = initial.goldenHud === "order-ticket-only-v3";
   report.assertions.eightProductsVisible = initial.products.length === 8;
   report.assertions.productScaleSane = initial.products.every((item) => item.width >= 25 && item.width <= 72 && item.height >= 30 && item.height <= 86);
 
