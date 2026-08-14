@@ -37,6 +37,9 @@ const report = {
     backgroundOnly: false,
     noAmbientDressing: false,
     expandedProductHotspots: false,
+    productTapOnlyControl: false,
+    joystickHidden: false,
+    productsReadable: false,
     mobileMoveSpeed: false,
     wrongTouchCostsTime: false,
     wrongTouchDoesNotAdvance: false,
@@ -80,9 +83,10 @@ try {
   attach(page, report);
   await page.goto(`${ORIGIN}/?test=1&briefing=0&level=starter-level-005`, { waitUntil: "networkidle", timeout: 90000 });
   await page.waitForSelector(CANVAS, { state: "visible", timeout: 45000 });
-  await page.waitForFunction(() => document.body.dataset.goldenLevel === "level-5-three-zone-v2", null, { timeout: 30000 });
+  await page.waitForFunction(() => document.body.dataset.goldenLevel === "level-5-three-zone-v3", null, { timeout: 30000 });
   await page.waitForFunction(() => document.body.dataset.softwareLandscape === "true", null, { timeout: 10000 });
-  await page.waitForFunction(() => document.body.dataset.goldenMobileTouch === "expanded-product-hotspots-v1", null, { timeout: 10000 });
+  await page.waitForFunction(() => document.body.dataset.goldenMobileTouch === "expanded-product-hotspots-v2", null, { timeout: 10000 });
+  await page.waitForFunction(() => document.body.dataset.goldenManualControl === "product-tap-only-v1", null, { timeout: 10000 });
   await page.waitForTimeout(200);
 
   const layout = await page.evaluate((selector) => {
@@ -106,22 +110,27 @@ try {
   report.assertions.authoredBackground = initial.environmentKey === "environment-project-order-hunt-v2";
   report.assertions.backgroundOnly = initial.sceneDressing === "background-only";
   report.assertions.noAmbientDressing = initial.ambientCount === 0;
-  report.assertions.expandedProductHotspots = initial.mobileTouch === "expanded-product-hotspots-v1";
+  report.assertions.expandedProductHotspots = initial.mobileTouch === "expanded-product-hotspots-v2";
+  report.assertions.productTapOnlyControl = initial.manualControl === "product-tap-only-v1";
+  report.assertions.joystickHidden = initial.joystickVisible === false && initial.joystickInteractive === false;
+  report.assertions.productsReadable = initial.products.length === 8 && initial.products.every((item) => (
+    item.width >= 35 && item.height >= 45 && Math.max(item.width, item.height) >= 68
+  ));
   report.assertions.mobileMoveSpeed = initial.mobileMoveSpeed === "690";
   await page.screenshot({ path: join(OUTPUT_DIR, "level-5-mobile-initial.png"), fullPage: true });
 
   const cdp = await context.newCDPSession(page);
   const beforeWrong = initial.challenge;
-  await tapLogical(page, cdp, 720, 358);
+  await tapLogical(page, cdp, 720, 348);
   await page.waitForFunction((key) => window.__IMMERSIVE_GAME__?.scene?.getScene(key)?.findChallenge?.snapshot?.().mistakes === 1, SCENE_KEY, { timeout: 7000 });
   const afterWrong = await readState(page);
   report.assertions.wrongTouchCostsTime = beforeWrong.remainingMs - afterWrong.challenge.remainingMs >= 4500;
   report.assertions.wrongTouchDoesNotAdvance = afterWrong.controller.progress === 0 && afterWrong.challenge.collectedProductIds.length === 0;
 
   for (const product of [
-    { id: "apple", x: 220, y: 487, assertion: "appleTouchPicks" },
-    { id: "cereal-box", x: 620, y: 356, assertion: "cerealTouchPicks" },
-    { id: "milk-bottle", x: 1290, y: 366, assertion: "milkTouchPicks" }
+    { id: "apple", x: 220, y: 475, assertion: "appleTouchPicks" },
+    { id: "cereal-box", x: 620, y: 342, assertion: "cerealTouchPicks" },
+    { id: "milk-bottle", x: 1290, y: 348, assertion: "milkTouchPicks" }
   ]) {
     await tapLogical(page, cdp, product.x, product.y);
     await page.waitForFunction(({ key, id }) => (
@@ -159,17 +168,26 @@ async function readState(page) {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(key);
     const list = scene?.children?.list ?? [];
     const ambientNames = new Set(["ambient-produce-display", "ambient-backroom-rack", "ambient-shopping-cart", "ambient-customer-a", "ambient-customer-b"]);
+    const joystick = scene?.children?.getByName?.("virtual-movement-joystick");
+    const joystickHitZone = scene?.children?.getByName?.("virtual-movement-joystick-hit-zone");
     return {
       environmentKey: document.body.dataset.goldenEnvironment ?? scene?.context?.levelAssets?.environment?.key ?? null,
       sceneDressing: document.body.dataset.sceneDressing ?? null,
       mobileTouch: document.body.dataset.goldenMobileTouch ?? null,
+      manualControl: document.body.dataset.goldenManualControl ?? null,
       mobileMoveSpeed: document.body.dataset.goldenMobileMoveSpeed ?? null,
       controller: scene?.controller?.snapshot?.() ?? null,
       challenge: scene?.findChallenge?.snapshot?.() ?? null,
       walkObserved: document.body.dataset.goldenWorkerWalkObserved ?? null,
       pickupObserved: document.body.dataset.goldenPickupObserved ?? null,
       basketCount: document.body.dataset.goldenBasketCount ?? null,
-      ambientCount: list.filter((entry) => ambientNames.has(entry?.name)).length
+      joystickVisible: joystick?.visible ?? false,
+      joystickInteractive: Boolean(joystickHitZone?.input?.enabled),
+      ambientCount: list.filter((entry) => ambientNames.has(entry?.name)).length,
+      products: list.filter((entry) => typeof entry?.name === "string")
+        .filter((entry) => entry.name.startsWith("find-item-") || entry.name.startsWith("find-decoy-"))
+        .filter((entry) => entry.visible !== false && entry.active !== false)
+        .map((entry) => ({ name: entry.name, width: entry.displayWidth ?? 0, height: entry.displayHeight ?? 0 }))
     };
   }, SCENE_KEY);
 }
