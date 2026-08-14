@@ -116,7 +116,7 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     missionId: "clean-store-floor",
     title: "Spill Patrol",
     randomSeed: "starter-level-004-v1",
-    navigation: { moveSpeed: 455, interactionRadius: 150 },
+    navigation: { moveSpeed: 650, interactionRadius: 175 },
     presentation: {
       assetPackId: "market-clean-v1",
       visualPresetId: "clean-standard-v1"
