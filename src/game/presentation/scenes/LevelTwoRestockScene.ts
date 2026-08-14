@@ -232,9 +232,17 @@ export class LevelTwoRestockScene extends StarterMarketScene {
 
   private activateExpandedPlaceTouch(): void {
     const root = this.children.getByName("level-two-context-place-control") as Phaser.GameObjects.Container | null;
-    if (!root?.visible) return;
-    const button = this.children.getByName("level-two-place-action") as Phaser.GameObjects.Arc | null;
-    if (!button) return;
+    if (!root?.visible) {
+      document.body.dataset.levelTwoMobilePlaceTap = "control-hidden";
+      return;
+    }
+    // The PLACE arc lives inside the container, not on the Scene display list.
+    // Querying Scene.children cannot find nested container children.
+    const button = root.getByName("level-two-place-action") as Phaser.GameObjects.Arc | null;
+    if (!button) {
+      document.body.dataset.levelTwoMobilePlaceTap = "button-missing";
+      return;
+    }
     button.emit("pointerdown");
     document.body.dataset.levelTwoMobilePlaceTap = "accepted";
   }
