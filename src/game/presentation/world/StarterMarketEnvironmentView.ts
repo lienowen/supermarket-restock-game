@@ -54,6 +54,13 @@ export class StarterMarketEnvironmentView {
       return true;
     }
 
+    if (
+      level.mode === "clean" &&
+      environmentKey.startsWith("environment-project-cleaning")
+    ) {
+      return true;
+    }
+
     if (level.mode !== "restock") return false;
 
     const isGuidedFirstDelivery = level.tuning.rush?.timeoutEnabled === false;
