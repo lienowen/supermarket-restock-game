@@ -8,6 +8,8 @@ export interface TrimmedTextureOptions {
 }
 
 const DEFAULT_ALPHA_THRESHOLD = 10;
+const GOLDEN_REQUESTED_ITEM_SCALE = 1.42;
+const GOLDEN_DECOY_ITEM_SCALE = 1.18;
 
 const fitSize = (
   width: number,
@@ -138,6 +140,12 @@ export function fitImageIntoBox(
   const source = image.texture.getSourceImage() as HTMLImageElement | HTMLCanvasElement;
   const width = source.width || 1;
   const height = source.height || 1;
-  const scale = Math.min(maxWidth / width, maxHeight / height);
+  const baseScale = Math.min(maxWidth / width, maxHeight / height);
+  const goldenZone = image.getData("golden-zone");
+  const goldenRequested = image.getData("requested");
+  const visibilityScale = goldenZone
+    ? (goldenRequested ? GOLDEN_REQUESTED_ITEM_SCALE : GOLDEN_DECOY_ITEM_SCALE)
+    : 1;
+  const scale = baseScale * visibilityScale;
   image.setDisplaySize(width * scale, height * scale);
 }
