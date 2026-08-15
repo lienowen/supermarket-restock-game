@@ -9,7 +9,10 @@ on:
       - "src/game/content/experience/CartCapacityExperienceSpec.ts"
       - "src/game/infrastructure/phaser/createPhaserGame.ts"
       - "src/game/presentation/ui/CartCapacityLoadDom.ts"
+      - "src/game/presentation/world/StarterMarketEnvironmentView.ts"
+      - "src/mobile-playability.css"
       - "scripts/capture-cart-capacity.mjs"
+      - "scripts/capture-cart-capacity-mobile.mjs"
       - ".github/workflows/mature-level-6-audit.yml"
   workflow_dispatch:
 
@@ -20,7 +23,7 @@ permissions:
 jobs:
   level6:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 14
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -44,11 +47,17 @@ jobs:
         continue-on-error: true
         run: npm run build
 
-      - name: Verify mature Level 6 capacity flow
-        id: audit
+      - name: Verify Level 6 desktop six-space flow
+        id: desktop
         if: steps.build.outcome == 'success'
         continue-on-error: true
         run: node scripts/capture-cart-capacity.mjs
+
+      - name: Verify Level 6 Android software-landscape touch flow
+        id: mobile
+        if: steps.build.outcome == 'success' && steps.desktop.outcome == 'success'
+        continue-on-error: true
+        run: node scripts/capture-cart-capacity-mobile.mjs
 
       - name: Upload Level 6 evidence
         if: always()
@@ -56,11 +65,8 @@ jobs:
         with:
           name: mature-level-6-audit
           path: |
-            ui-audit/cart-capacity-audit.json
-            ui-audit/cart-capacity-active.png
-            ui-audit/cart-capacity-wrong-size.png
-            ui-audit/cart-capacity-first-load-full.png
-            ui-audit/cart-capacity-delivery-continues.png
+            ui-audit/cart-capacity
+            ui-audit/cart-capacity-mobile
           if-no-files-found: warn
           retention-days: 14
 
@@ -69,14 +75,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
-          AUDIT_OUTCOME: ${{ steps.audit.outcome }}
+          DESKTOP_OUTCOME: ${{ steps.desktop.outcome }}
+          MOBILE_OUTCOME: ${{ steps.mobile.outcome }}
         run: |
-          if [ "$BUILD_OUTCOME" = "success" ] && [ "$AUDIT_OUTCOME" = "success" ]; then
+          if [ "$BUILD_OUTCOME" = "success" ] && [ "$DESKTOP_OUTCOME" = "success" ] && [ "$MOBILE_OUTCOME" = "success" ]; then
             STATE=success
-            DESC="two-load small/medium/large capacity puzzle passed"
+            DESC="two-trip six-space capacity puzzle passed desktop + Android"
           else
             STATE=failure
-            DESC="mature Level 6 build/browser audit failed"
+            DESC="mature Level 6 build/browser/touch audit failed"
           fi
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state="$STATE" \
@@ -88,4 +95,5 @@ jobs:
         if: always()
         run: |
           test "${{ steps.build.outcome }}" = "success"
-          test "${{ steps.audit.outcome }}" = "success"
+          test "${{ steps.desktop.outcome }}" = "success"
+          test "${{ steps.mobile.outcome }}" = "success"
