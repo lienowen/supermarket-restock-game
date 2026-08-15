@@ -95,6 +95,38 @@ body[data-software-landscape="true"] #guided-drag-target {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Level 6 owns the player's attention while the cart-capacity puzzle is open.
+   Dim the old restock HUD underneath and cover the centre objective strip so the
+   player never sees two competing tasks at the same time. */
+#cart-capacity-load {
+  background: linear-gradient(
+    180deg,
+    rgba(3, 9, 6, 0.42) 0%,
+    rgba(3, 9, 6, 0.46) 48%,
+    rgba(3, 9, 6, 0.68) 100%
+  ) !important;
+}
+
+#cart-capacity-load::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: min(940px, 76%);
+  height: 150px;
+  transform: translateX(-50%);
+  border-radius: 0 0 24px 24px;
+  background: linear-gradient(180deg, rgba(5, 14, 9, 0.97), rgba(5, 14, 9, 0.88));
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.26);
+  pointer-events: none;
+  z-index: 0;
+}
+
+#cart-capacity-panel {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
 /* Level 6 case cards support both tap and drag. They must win over the generic
    button manipulation rule or Android can cancel a drag before it reaches the cart. */
 body[data-software-landscape="true"] #cart-capacity-load [data-case-id] {
@@ -103,6 +135,49 @@ body[data-software-landscape="true"] #cart-capacity-load [data-case-id] {
   -webkit-user-select: none !important;
   user-select: none !important;
   -webkit-tap-highlight-color: transparent;
+}
+
+/* In a portrait browser that is software-rotated, vh still refers to the tall
+   portrait viewport. The old 2vh overlay padding therefore stole too much of the
+   short landscape axis and clipped Level 6's feedback/UNDO footer. Keep the
+   modal compact enough for 360-390px landscape heights without shrinking the
+   tappable case cards below a comfortable touch target. */
+body[data-software-landscape="true"] #cart-capacity-load {
+  padding: 4px 6px !important;
+  align-items: center !important;
+}
+
+body[data-software-landscape="true"] #cart-capacity-panel {
+  max-height: calc(100% - 4px) !important;
+  padding: 9px 12px 9px !important;
+}
+
+body[data-software-landscape="true"] #cart-capacity-target {
+  min-height: 208px !important;
+  gap: 4px !important;
+  padding: 7px 9px !important;
+}
+
+body[data-software-landscape="true"] #cart-capacity-cart-image {
+  width: 150px !important;
+  height: 76px !important;
+}
+
+body[data-software-landscape="true"] #cart-capacity-current-load {
+  min-height: 26px !important;
+}
+
+body[data-software-landscape="true"] #cart-capacity-bar [data-capacity-segment] {
+  height: 15px !important;
+}
+
+body[data-software-landscape="true"] #cart-capacity-feedback {
+  min-height: 16px !important;
+  font-size: 10px !important;
+}
+
+body[data-software-landscape="true"] #cart-capacity-undo {
+  min-height: 32px !important;
 }
 
 body[data-software-landscape="true"] #mobile-orientation-hint,
@@ -123,6 +198,48 @@ body[data-software-landscape="true"] #mobile-fullscreen-button {
 
   #mobile-orientation-hint {
     display: none !important;
+  }
+}
+
+/* Apply the same compact Level 6 footer protection on real short landscape
+   phones, not only on the software-rotated fallback. */
+@media (max-height: 520px) and (pointer: coarse) {
+  #cart-capacity-load {
+    padding: 4px 6px !important;
+    align-items: center !important;
+  }
+
+  #cart-capacity-panel {
+    max-height: calc(100% - 4px) !important;
+    padding: 9px 12px 9px !important;
+  }
+
+  #cart-capacity-target {
+    min-height: 208px !important;
+    gap: 4px !important;
+    padding: 7px 9px !important;
+  }
+
+  #cart-capacity-cart-image {
+    width: 150px !important;
+    height: 76px !important;
+  }
+
+  #cart-capacity-current-load {
+    min-height: 26px !important;
+  }
+
+  #cart-capacity-bar [data-capacity-segment] {
+    height: 15px !important;
+  }
+
+  #cart-capacity-feedback {
+    min-height: 16px !important;
+    font-size: 10px !important;
+  }
+
+  #cart-capacity-undo {
+    min-height: 32px !important;
   }
 }
 
