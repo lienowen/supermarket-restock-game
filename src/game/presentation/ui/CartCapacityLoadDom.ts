@@ -646,7 +646,7 @@ export function mountCartCapacityLoadDom(
       background: "rgba(255, 255, 255, 0.065)",
       cursor: "grab",
       userSelect: "none",
-      WebkitUserSelect: "none",
+      webkitUserSelect: "none",
       touchAction: "none",
       transition: "border-color 120ms ease, opacity 120ms ease, transform 120ms ease"
     });
