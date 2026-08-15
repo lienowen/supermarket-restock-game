@@ -45,7 +45,7 @@ const isLightNeutralPixel = (
 /**
  * Removes only light neutral pixels connected to the canvas edge. This clears
  * white/checkerboard matte and anti-aliased fringe without deleting enclosed
- * white details such as a worker's shirt, name badge, or shoes.
+ * white details such as labels or other interior art.
  */
 const removeConnectedLightNeutralBackground = (
   image: ImageData,
@@ -177,7 +177,8 @@ const createTrimmedTextureFromCanvas = (
 
 /**
  * Creates a transparent texture containing only the source object's visible
- * pixels. Optional cleanup removes a connected light neutral background.
+ * pixels. Connected light-neutral edge cleanup is enabled by default so the
+ * same export-matte rule is applied to restock props and actors in L1-L2.
  * trimBottomRatio is used for composite source art where an unwanted pallet is
  * below the object.
  */
@@ -186,7 +187,7 @@ export function prepareTrimmedTexture(
   sourceKey: string | undefined,
   aliasKey: string,
   padding = 8,
-  removeLightNeutralBackground = false,
+  removeLightNeutralBackground = true,
   trimBottomRatio = 0
 ): string {
   if (!sourceKey || !scene.textures.exists(sourceKey)) return sourceKey ?? aliasKey;
@@ -207,6 +208,8 @@ export function prepareTrimmedTexture(
 /**
  * Applies an approved row-run mask before trimming. This is used for production
  * source art that contains an unwanted baked fixture behind a reusable actor.
+ * Edge-matte cleanup happens before the mask so white fringe cannot survive the
+ * mask path.
  */
 export function prepareMaskedTrimmedTexture(
   scene: Phaser.Scene,
@@ -219,7 +222,7 @@ export function prepareMaskedTrimmedTexture(
   if (scene.textures.exists(aliasKey)) return aliasKey;
 
   const source = scene.textures.get(sourceKey).getSourceImage() as CanvasImageSourceLike;
-  const maskedSource = createSourceCanvas(source, false);
+  const maskedSource = createSourceCanvas(source, true);
   const dimensions = sourceDimensions(maskedSource);
   const context = maskedSource.getContext("2d");
   if (!context) return sourceKey;
