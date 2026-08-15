@@ -70,6 +70,13 @@ export class StarterMarketEnvironmentView {
 
     if (level.mode !== "restock") return false;
 
+    if (
+      level.id === "starter-level-006" &&
+      environmentKey.startsWith("environment-project-restock")
+    ) {
+      return true;
+    }
+
     const isGuidedFirstDelivery = level.tuning.rush?.timeoutEnabled === false;
     const usesAuthoredWaterRestockPlate = environmentKey === "environment-restock-water-l2-v1";
     return isGuidedFirstDelivery || usesAuthoredWaterRestockPlate;
