@@ -27,6 +27,7 @@ export interface CartCapacityExperienceSpec {
   readonly targetLabel: string;
   readonly targetAssetKey: string;
   readonly loadedTargetAssetKey: string;
+  /** Legacy size metadata kept for content validation; Level 6 presents one shared cart capacity. */
   readonly lanes: readonly CartCapacityLaneSpec[];
   readonly options: readonly CartCaseOptionSpec[];
 }
@@ -38,51 +39,51 @@ export const CART_CAPACITY_EXPERIENCE_SPECS: readonly CartCapacityExperienceSpec
     unlockAfterAction: "PICK_BOX",
     confirmAction: "LOAD_CART",
     eyebrow: "CART CAPACITY",
-    title: "Load the evening delivery",
-    instruction: "Match each delivery box to the cart bay that fits its size. Build two complete loads with no wasted space.",
+    title: "Pack two balanced cart loads",
+    instruction: "Each case uses 1, 2, or 3 spaces. Fill the cart to exactly 6/6 spaces for each trip without overloading it.",
     roundsRequired: 2,
-    targetLabel: "CAPACITY CART · 3 BAYS",
+    targetLabel: "CAPACITY CART · 6 SPACES",
     targetAssetKey: "equipment-capacity-cart-empty",
     loadedTargetAssetKey: "equipment-capacity-cart-loaded",
     lanes: Object.freeze([
-      Object.freeze({ id: "large-bay", label: "LARGE BAY", acceptsSize: "large" as const }),
-      Object.freeze({ id: "medium-bay", label: "MEDIUM BAY", acceptsSize: "medium" as const }),
-      Object.freeze({ id: "small-bay", label: "SMALL BAY", acceptsSize: "small" as const })
+      Object.freeze({ id: "large-bay", label: "3 SPACE CASE", acceptsSize: "large" as const }),
+      Object.freeze({ id: "medium-bay", label: "2 SPACE CASE", acceptsSize: "medium" as const }),
+      Object.freeze({ id: "small-bay", label: "1 SPACE CASE", acceptsSize: "small" as const })
     ]),
     options: Object.freeze([
       Object.freeze({
         id: "delivery-small-a",
-        label: "SMALL BOX A",
+        label: "CASE A",
         assetKey: "delivery-box-small",
         size: "small" as const
       }),
       Object.freeze({
         id: "delivery-large-a",
-        label: "LARGE BOX A",
+        label: "CASE B",
         assetKey: "delivery-box-large",
         size: "large" as const
       }),
       Object.freeze({
         id: "delivery-medium-a",
-        label: "MEDIUM BOX A",
+        label: "CASE C",
         assetKey: "delivery-box-medium",
         size: "medium" as const
       }),
       Object.freeze({
         id: "delivery-medium-b",
-        label: "MEDIUM BOX B",
+        label: "CASE D",
         assetKey: "delivery-box-medium",
         size: "medium" as const
       }),
       Object.freeze({
         id: "delivery-small-b",
-        label: "SMALL BOX B",
+        label: "CASE E",
         assetKey: "delivery-box-small",
         size: "small" as const
       }),
       Object.freeze({
         id: "delivery-large-b",
-        label: "LARGE BOX B",
+        label: "CASE F",
         assetKey: "delivery-box-large",
         size: "large" as const
       })
@@ -117,7 +118,7 @@ export function validateCartCapacityExperienceSpecs(
       errors.push(`Cart capacity spec ${spec.levelId} requires at least two loads`);
     }
     if (spec.lanes.length < 3) {
-      errors.push(`Cart capacity spec ${spec.levelId} requires at least three capacity bays`);
+      errors.push(`Cart capacity spec ${spec.levelId} requires at least three case size definitions`);
     }
     if (new Set(spec.lanes.map((lane) => lane.id)).size !== spec.lanes.length) {
       errors.push(`Cart capacity spec ${spec.levelId} has duplicate lane ids`);
@@ -126,13 +127,13 @@ export function validateCartCapacityExperienceSpecs(
       errors.push(`Cart capacity spec ${spec.levelId} has duplicate case option ids`);
     }
     if (spec.options.length !== spec.lanes.length * spec.roundsRequired) {
-      errors.push(`Cart capacity spec ${spec.levelId} must provide one box per lane for every load`);
+      errors.push(`Cart capacity spec ${spec.levelId} must provide two cases of each capacity size`);
     }
     spec.lanes.forEach((lane) => {
       if (!lane.label.trim()) errors.push(`Cart capacity lane ${lane.id} requires a label`);
       const matchingCases = spec.options.filter((option) => option.size === lane.acceptsSize);
       if (matchingCases.length !== spec.roundsRequired) {
-        errors.push(`Cart capacity lane ${lane.id} requires one matching box per load`);
+        errors.push(`Cart capacity size ${lane.id} requires one matching box per trip`);
       }
     });
     spec.options.forEach((option) => {
