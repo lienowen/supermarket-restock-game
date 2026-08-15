@@ -49,13 +49,13 @@ jobs:
 
       - name: Verify Level 6 desktop six-space flow
         id: desktop
-        if: steps.build.outcome == 'success'
+        if: ${{ always() && steps.build.outcome == 'success' }}
         continue-on-error: true
         run: node scripts/capture-cart-capacity.mjs
 
       - name: Verify Level 6 Android software-landscape touch flow
         id: mobile
-        if: steps.build.outcome == 'success' && steps.desktop.outcome == 'success'
+        if: ${{ always() && steps.build.outcome == 'success' && steps.desktop.outcome == 'success' }}
         continue-on-error: true
         run: node scripts/capture-cart-capacity-mobile.mjs
 
