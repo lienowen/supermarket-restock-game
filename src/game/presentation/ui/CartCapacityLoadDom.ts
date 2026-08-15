@@ -506,12 +506,9 @@ export function mountCartCapacityLoadDom(
     }, 100);
   };
 
-  const targetContainsCardCentre = (card: HTMLElement): boolean => {
-    const sourceRect = card.getBoundingClientRect();
-    const centreX = sourceRect.left + sourceRect.width / 2;
-    const centreY = sourceRect.top + sourceRect.height / 2;
+  const targetContainsViewportPoint = (clientX: number, clientY: number): boolean => {
     const rect = target.getBoundingClientRect();
-    return centreX >= rect.left && centreX <= rect.right && centreY >= rect.top && centreY <= rect.bottom;
+    return clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom;
   };
 
   const hasRemainingFit = (): boolean => config.options.some((option) => (
@@ -539,7 +536,7 @@ export function mountCartCapacityLoadDom(
       finishing = true;
       roundTimer = window.setTimeout(() => {
         if (finishing) confirmPrimaryAction();
-      }, 650);
+      }, 850);
       return;
     }
 
@@ -552,7 +549,7 @@ export function mountCartCapacityLoadDom(
       document.body.dataset.cartCapacityState = "ready";
       updateAllVisuals();
       requestAnimationFrame(() => choices.querySelector<HTMLElement>("[data-case-id]:not([aria-disabled='true'])")?.focus());
-    }, 850);
+    }, 1500);
   };
 
   const rejectLoad = (state: DragState, message: string): void => {
@@ -565,10 +562,10 @@ export function mountCartCapacityLoadDom(
     window.setTimeout(() => {
       resetCardPosition(state);
       if (!hasRemainingFit() && currentUnits < CART_CAPACITY) {
-        feedback.textContent = "No remaining case fits. Use UNDO LAST and try a different combination.";
-        feedback.style.color = "#ffba9b";
+        feedback.textContent = "TOO FULL · No remaining case fits. Use UNDO LAST and try a different combination.";
+        feedback.style.color = "#ff9e91";
       }
-    }, 260);
+    }, 360);
   };
 
   const tryLoad = (state: DragState): void => {
@@ -733,8 +730,13 @@ export function mountCartCapacityLoadDom(
       state.translateY = event.clientY - state.startY;
       if (Math.hypot(state.translateX, state.translateY) >= DRAG_THRESHOLD) state.moved = true;
       if (!state.moved) return;
-      card.style.transform = `translate(${state.translateX}px, ${state.translateY}px)`;
-      const overTarget = targetContainsCardCentre(card);
+
+      const softwareLandscape = document.body.dataset.softwareLandscape === "true";
+      const visualTranslateX = softwareLandscape ? state.translateY : state.translateX;
+      const visualTranslateY = softwareLandscape ? -state.translateX : state.translateY;
+      card.style.transform = `translate(${visualTranslateX}px, ${visualTranslateY}px)`;
+
+      const overTarget = targetContainsViewportPoint(event.clientX, event.clientY);
       target.style.transform = overTarget ? "scale(1.018)" : "scale(1)";
       target.style.borderColor = overTarget ? "#72ef9e" : "rgba(255, 217, 94, 0.68)";
       target.style.background = overTarget ? "rgba(57,132,84,0.26)" : "rgba(90, 145, 79, 0.12)";
@@ -745,7 +747,7 @@ export function mountCartCapacityLoadDom(
       event.preventDefault();
       event.stopPropagation();
       const moved = state.moved;
-      const droppedOnTarget = moved && targetContainsCardCentre(card);
+      const droppedOnTarget = moved && targetContainsViewportPoint(event.clientX, event.clientY);
       if (card.hasPointerCapture?.(event.pointerId)) card.releasePointerCapture(event.pointerId);
       if (!moved || droppedOnTarget) tryLoad(state);
       else {
