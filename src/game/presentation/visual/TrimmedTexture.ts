@@ -5,6 +5,12 @@ export interface TrimmedTextureOptions {
   readonly opaque?: boolean;
   readonly suffix?: string;
   readonly padding?: number;
+  /**
+   * Clears light neutral pixels connected to the source canvas edge before
+   * trimming. Enabled by default for gameplay sprites so exported white/grey
+   * matte and anti-aliased halos do not become visible in L1-L5.
+   */
+  readonly removeLightNeutralBackground?: boolean;
 }
 
 const DEFAULT_ALPHA_THRESHOLD = 10;
@@ -37,14 +43,85 @@ const normalizedTextureSize = (
   return { width, height };
 };
 
+const pixelOffset = (pixelIndex: number): number => pixelIndex * 4;
+
+const isLightNeutralPixel = (
+  pixels: Uint8ClampedArray,
+  pixelIndex: number
+): boolean => {
+  const offset = pixelOffset(pixelIndex);
+  const red = pixels[offset] ?? 0;
+  const green = pixels[offset + 1] ?? 0;
+  const blue = pixels[offset + 2] ?? 0;
+  const alpha = pixels[offset + 3] ?? 0;
+  if (alpha <= 8) return true;
+
+  const maximum = Math.max(red, green, blue);
+  const minimum = Math.min(red, green, blue);
+  const average = (red + green + blue) / 3;
+  return maximum - minimum <= 42 && average >= 168;
+};
+
+/**
+ * Removes only light neutral pixels connected to the outside of the source
+ * canvas. Interior whites remain untouched, so labels and product details are
+ * preserved while export mattes / white halos disappear.
+ */
+const removeConnectedLightNeutralBackground = (
+  image: ImageData,
+  width: number,
+  height: number
+): void => {
+  const pixels = image.data;
+  const totalPixels = width * height;
+  const visited = new Uint8Array(totalPixels);
+  const queue = new Int32Array(totalPixels);
+  let head = 0;
+  let tail = 0;
+
+  const enqueue = (x: number, y: number): void => {
+    if (x < 0 || x >= width || y < 0 || y >= height) return;
+    const pixelIndex = y * width + x;
+    if (visited[pixelIndex] === 1 || !isLightNeutralPixel(pixels, pixelIndex)) return;
+    visited[pixelIndex] = 1;
+    queue[tail] = pixelIndex;
+    tail += 1;
+  };
+
+  for (let x = 0; x < width; x += 1) {
+    enqueue(x, 0);
+    enqueue(x, height - 1);
+  }
+  for (let y = 1; y < height - 1; y += 1) {
+    enqueue(0, y);
+    enqueue(width - 1, y);
+  }
+
+  while (head < tail) {
+    const pixelIndex = queue[head] ?? 0;
+    head += 1;
+    const x = pixelIndex % width;
+    const y = Math.floor(pixelIndex / width);
+    enqueue(x - 1, y);
+    enqueue(x + 1, y);
+    enqueue(x, y - 1);
+    enqueue(x, y + 1);
+  }
+
+  for (let pixelIndex = 0; pixelIndex < totalPixels; pixelIndex += 1) {
+    if (visited[pixelIndex] !== 1) continue;
+    pixels[pixelOffset(pixelIndex) + 3] = 0;
+  }
+};
+
 /**
  * Production art in the current repository often lives on a much larger
  * transparent canvas than the visible prop. Scaling that canvas directly is
  * why products, baskets and fixtures look tiny or appear to float.
  *
  * This helper derives a browser-local texture cropped to the real alpha bounds.
- * It never modifies the source asset on disk, so it is safe for the mature-pass
- * visual prototype and can later be replaced by a proper export pipeline.
+ * Before cropping it also removes a connected light neutral export matte by
+ * default. It never modifies the source asset on disk.
  */
 export function createTrimmedTexture(
   scene: Phaser.Scene,
@@ -73,6 +150,11 @@ export function createTrimmedTexture(
   scratchContext.drawImage(source, 0, 0, width, height);
 
   const sourceData = scratchContext.getImageData(0, 0, width, height);
+  if (options.removeLightNeutralBackground !== false) {
+    removeConnectedLightNeutralBackground(sourceData, width, height);
+    scratchContext.putImageData(sourceData, 0, 0);
+  }
+
   const pixels = sourceData.data;
   let minX = width;
   let minY = height;
@@ -106,8 +188,10 @@ export function createTrimmedTexture(
 
   const context = texture.context;
   context.clearRect(0, 0, outputSize.width, outputSize.height);
+  // Draw from the cleaned scratch canvas, not the original source. Drawing the
+  // source again here would re-introduce the matte that was just removed.
   context.drawImage(
-    source,
+    scratch,
     minX,
     minY,
     croppedWidth,
