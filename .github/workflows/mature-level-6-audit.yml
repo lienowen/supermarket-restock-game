@@ -13,6 +13,7 @@ on:
       - "src/mobile-playability.css"
       - "scripts/capture-cart-capacity.mjs"
       - "scripts/capture-cart-capacity-mobile.mjs"
+      - "scripts/capture-cart-capacity-layout-guard.mjs"
       - ".github/workflows/mature-level-6-audit.yml"
   workflow_dispatch:
 
@@ -59,6 +60,12 @@ jobs:
         continue-on-error: true
         run: node scripts/capture-cart-capacity-mobile.mjs
 
+      - name: Verify Level 6 mobile footer and task focus
+        id: layout
+        if: always()
+        continue-on-error: true
+        run: node scripts/capture-cart-capacity-layout-guard.mjs
+
       - name: Upload Level 6 evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -67,6 +74,7 @@ jobs:
           path: |
             ui-audit/cart-capacity
             ui-audit/cart-capacity-mobile
+            ui-audit/cart-capacity-layout-guard
           if-no-files-found: warn
           retention-days: 14
 
@@ -77,13 +85,14 @@ jobs:
           BUILD_OUTCOME: ${{ steps.build.outcome }}
           DESKTOP_OUTCOME: ${{ steps.desktop.outcome }}
           MOBILE_OUTCOME: ${{ steps.mobile.outcome }}
+          LAYOUT_OUTCOME: ${{ steps.layout.outcome }}
         run: |
-          if [ "$BUILD_OUTCOME" = "success" ] && [ "$DESKTOP_OUTCOME" = "success" ] && [ "$MOBILE_OUTCOME" = "success" ]; then
+          if [ "$BUILD_OUTCOME" = "success" ] && [ "$DESKTOP_OUTCOME" = "success" ] && [ "$MOBILE_OUTCOME" = "success" ] && [ "$LAYOUT_OUTCOME" = "success" ]; then
             STATE=success
-            DESC="two-trip six-space capacity puzzle passed desktop + Android"
+            DESC="Level 6 gameplay + Android touch + mobile layout passed"
           else
             STATE=failure
-            DESC="mature Level 6 build/browser/touch audit failed"
+            DESC="mature Level 6 gameplay/touch/layout audit failed"
           fi
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state="$STATE" \
@@ -97,3 +106,4 @@ jobs:
           test "${{ steps.build.outcome }}" = "success"
           test "${{ steps.desktop.outcome }}" = "success"
           test "${{ steps.mobile.outcome }}" = "success"
+          test "${{ steps.layout.outcome }}" = "success"
