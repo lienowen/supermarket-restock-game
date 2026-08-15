@@ -55,7 +55,7 @@ jobs:
 
       - name: Verify Level 6 Android software-landscape touch flow
         id: mobile
-        if: ${{ always() && steps.build.outcome == 'success' && steps.desktop.outcome == 'success' }}
+        if: always()
         continue-on-error: true
         run: node scripts/capture-cart-capacity-mobile.mjs
 
