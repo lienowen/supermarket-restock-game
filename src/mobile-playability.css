@@ -95,6 +95,16 @@ body[data-software-landscape="true"] #guided-drag-target {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Level 6 case cards support both tap and drag. They must win over the generic
+   button manipulation rule or Android can cancel a drag before it reaches the cart. */
+body[data-software-landscape="true"] #cart-capacity-load [data-case-id] {
+  touch-action: none !important;
+  pointer-events: auto !important;
+  -webkit-user-select: none !important;
+  user-select: none !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
 body[data-software-landscape="true"] #mobile-orientation-hint,
 body[data-software-landscape="true"] #mobile-fullscreen-button {
   display: none !important;
@@ -121,5 +131,9 @@ body[data-software-landscape="true"] #mobile-fullscreen-button {
   [role="button"] {
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
+  }
+
+  #cart-capacity-load [data-case-id] {
+    touch-action: none !important;
   }
 }
