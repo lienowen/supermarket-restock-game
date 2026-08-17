@@ -10,7 +10,9 @@ on:
       - "src/game/presentation/checkout/**"
       - "src/game/presentation/scenes/CheckoutMarketScene.ts"
       - "src/game/presentation/visual/**"
+      - "src/mobile-playability.css"
       - "scripts/capture-mature-checkout.mjs"
+      - "scripts/capture-mature-checkout-mobile.mjs"
       - ".github/workflows/mature-checkout-audit.yml"
   workflow_dispatch:
 
@@ -21,7 +23,7 @@ permissions:
 jobs:
   checkout:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 14
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -45,18 +47,26 @@ jobs:
         continue-on-error: true
         run: npm run build
 
-      - name: Verify mature checkout
+      - name: Verify mature checkout desktop
         id: audit
         if: steps.build.outcome == 'success'
         continue-on-error: true
         run: node scripts/capture-mature-checkout.mjs
+
+      - name: Verify mature checkout mobile landscape
+        id: mobile
+        if: steps.build.outcome == 'success'
+        continue-on-error: true
+        run: node scripts/capture-mature-checkout-mobile.mjs
 
       - name: Upload checkout evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: mature-checkout-audit
-          path: ui-audit/mature-checkout
+          path: |
+            ui-audit/mature-checkout
+            ui-audit/mature-checkout-mobile
           if-no-files-found: warn
           retention-days: 14
 
@@ -66,13 +76,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
           AUDIT_OUTCOME: ${{ steps.audit.outcome }}
+          MOBILE_OUTCOME: ${{ steps.mobile.outcome }}
         run: |
-          if [ "$BUILD_OUTCOME" = "success" ] && [ "$AUDIT_OUTCOME" = "success" ]; then
+          if [ "$BUILD_OUTCOME" = "success" ] && [ "$AUDIT_OUTCOME" = "success" ] && [ "$MOBILE_OUTCOME" = "success" ]; then
             STATE=success
-            DESC="HD store + solid actors + real checkout flow passed"
+            DESC="L3 checkout desktop + mobile landscape passed"
           else
             STATE=failure
-            DESC="mature checkout build/browser audit failed"
+            DESC="mature checkout desktop/mobile browser audit failed"
           fi
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state="$STATE" \
@@ -85,3 +96,4 @@ jobs:
         run: |
           test "${{ steps.build.outcome }}" = "success"
           test "${{ steps.audit.outcome }}" = "success"
+          test "${{ steps.mobile.outcome }}" = "success"
