@@ -31,6 +31,12 @@ await new Promise((done) => server.listen(PORT, "127.0.0.1", done));
 const report = {
   generatedAt: new Date().toISOString(),
   level: "starter-level-002",
+  assertions: {
+    latestV2Selected: false,
+    uniformRuntimeScale: false,
+    runtimeTextureExported: false,
+    noRuntimeIssues: false
+  },
   worker: null,
   levelAssets: null,
   matchingTextureKeys: [],
@@ -137,6 +143,15 @@ try {
   report.worker = runtime.worker;
   report.levelAssets = runtime.levelAssets;
   report.matchingTextureKeys = runtime.matchingTextureKeys;
+  report.assertions.latestV2Selected = (
+    runtime.levelAssets.workerIdle === "worker-restock-idle-v2" &&
+    runtime.levelAssets.workerPush === "worker-restock-push-v2"
+  );
+  report.assertions.uniformRuntimeScale = Boolean(
+    Number.isFinite(runtime.worker.scaleX) &&
+    Number.isFinite(runtime.worker.scaleY) &&
+    Math.abs(Math.abs(runtime.worker.scaleX) - Math.abs(runtime.worker.scaleY)) <= 0.002
+  );
 
   const textureKeys = [...new Set([
     "worker-restock-idle-v2",
@@ -159,13 +174,23 @@ try {
     });
   }
 
+  report.assertions.runtimeTextureExported = report.exportedTextures.some(
+    (entry) => entry.key === runtime.worker.textureKey
+  );
+  report.assertions.noRuntimeIssues = (
+    report.consoleErrors.length === 0 &&
+    report.pageErrors.length === 0 &&
+    report.failedRequests.length === 0
+  );
+
   await page.screenshot({ path: join(OUTPUT_DIR, "level-2-worker-runtime.png"), fullPage: true });
 
-  if (report.levelAssets.workerIdle !== "worker-restock-idle-v2") {
-    throw new Error(`L2 selected unexpected idle asset: ${report.levelAssets.workerIdle}`);
+  const failed = Object.entries(report.assertions)
+    .filter(([, passed]) => !passed)
+    .map(([key]) => key);
+  if (failed.length > 0) {
+    throw new Error(`L2 worker texture audit failed: ${failed.join(", ")}`);
   }
-  if (!report.worker.textureKey) throw new Error("L2 worker has no runtime texture key");
-  if (report.exportedTextures.length === 0) throw new Error("No worker textures were exported");
 
   await page.close();
   await context.close();
@@ -179,6 +204,7 @@ try {
 }
 
 console.log(JSON.stringify({
+  assertions: report.assertions,
   worker: report.worker,
   levelAssets: report.levelAssets,
   matchingTextureKeys: report.matchingTextureKeys,
