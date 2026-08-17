@@ -21,6 +21,12 @@ export interface PlayerNavigationViewConfig {
   readonly onManualNavigation?: () => void;
   /** Mature actors are solid by default. Set false only for an intentional translucent actor. */
   readonly solidCutout?: boolean;
+  /**
+   * Treat displaySize as a maximum box instead of forcing both axes. Approved
+   * cutout art can be much narrower than its original export canvas; forcing a
+   * fixed width and height would visibly stretch the character.
+   */
+  readonly preserveAspectRatio?: boolean;
 }
 
 type NavigationKeys = {
@@ -55,6 +61,8 @@ export class PlayerNavigationView {
   private readonly idlePoseKey: string;
   private readonly walkPoseKeys?: readonly [string, string];
   private readonly solidCutout: boolean;
+  private readonly preserveAspectRatio: boolean;
+  private requestedDisplaySize: { width: number; height: number };
   private enabled = true;
   private currentPoseKey: string;
   private walkElapsedMs = 0;
@@ -74,6 +82,11 @@ export class PlayerNavigationView {
       speed: config.speed
     });
     this.solidCutout = config.solidCutout !== false;
+    this.preserveAspectRatio = config.preserveAspectRatio === true;
+    this.requestedDisplaySize = {
+      width: config.displaySize.width,
+      height: config.displaySize.height
+    };
     const resolvePoseKey = (assetKey: string): string => (
       this.solidCutout ? createOpaqueCutoutTexture(scene, assetKey) : assetKey
     );
@@ -112,9 +125,9 @@ export class PlayerNavigationView {
 
     this.actor = scene.add.image(config.start.x, config.start.y, this.idlePoseKey)
       .setOrigin(0.5, footOriginForAsset(config.assetKey))
-      .setDisplaySize(config.displaySize.width, config.displaySize.height)
       .setDepth(config.baseDepth ?? 24)
       .setName(config.name);
+    this.applyRequestedDisplaySize();
 
     const keyboard = scene.input.keyboard;
     if (keyboard) {
@@ -235,14 +248,16 @@ export class PlayerNavigationView {
     this.actor.setOrigin(0.5, footOriginForAsset(assetKey));
     if (this.moving && this.canUseWalkFrames()) {
       this.actor.setTexture(this.walkPoseKeys?.[this.walkFrame] ?? resolvedKey);
+      this.applyRequestedDisplaySize();
       return;
     }
     this.actor.setTexture(resolvedKey);
+    this.applyRequestedDisplaySize();
   }
 
   setDisplaySize(width: number, height: number): void {
-    this.actor.setDisplaySize(width, height);
-    this.shadow.setSize(shadowWidth(width), shadowHeight(height));
+    this.requestedDisplaySize = { width, height };
+    this.applyRequestedDisplaySize();
   }
 
   setVisible(visible: boolean): void {
@@ -286,6 +301,7 @@ export class PlayerNavigationView {
     } else {
       this.actor.setTexture(this.walkPoseKeys?.[0] ?? this.currentPoseKey);
     }
+    this.applyRequestedDisplaySize();
   }
 
   private canUseWalkFrames(): boolean {
@@ -304,6 +320,27 @@ export class PlayerNavigationView {
     this.walkElapsedMs %= 135;
     this.walkFrame = (this.walkFrame + 1) % frames.length;
     this.actor.setTexture(frames[this.walkFrame] ?? this.currentPoseKey);
+    this.applyRequestedDisplaySize();
+  }
+
+  private applyRequestedDisplaySize(): void {
+    const target = this.requestedDisplaySize;
+    let displayWidth = target.width;
+    let displayHeight = target.height;
+
+    if (this.preserveAspectRatio) {
+      const source = this.actor.texture.getSourceImage() as HTMLImageElement | HTMLCanvasElement;
+      const sourceWidth = source instanceof HTMLImageElement ? source.naturalWidth : source.width;
+      const sourceHeight = source instanceof HTMLImageElement ? source.naturalHeight : source.height;
+      if (sourceWidth > 0 && sourceHeight > 0) {
+        const scale = Math.min(target.width / sourceWidth, target.height / sourceHeight);
+        displayWidth = sourceWidth * scale;
+        displayHeight = sourceHeight * scale;
+      }
+    }
+
+    this.actor.setDisplaySize(displayWidth, displayHeight);
+    this.shadow.setSize(shadowWidth(displayWidth), shadowHeight(displayHeight));
   }
 
   private handleWalkAreaPointerDown(pointer: Phaser.Input.Pointer): void {
