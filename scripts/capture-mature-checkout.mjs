@@ -11,6 +11,7 @@ const CANVAS_SELECTOR = "#app > canvas:not(#mobile-game-backdrop)";
 const SCENE_KEY = "starter-market-shift";
 const LEVEL_ID = "starter-level-003";
 const SERVICE_POINT = Object.freeze({ x: 1035, y: 690 });
+const SCALE_EPSILON = 0.002;
 
 if (!existsSync(join(DIST_DIR, "index.html"))) {
   throw new Error("dist/index.html is missing. Run npm run build first.");
@@ -42,6 +43,7 @@ const report = {
     groundedStationScale: false,
     threeRealProductsOnBelt: false,
     workerWalksToRegister: false,
+    walkPoseKeepsAspectRatio: false,
     registerOpens: false,
     firstOrderServed: false,
     customerAdvances: false,
@@ -104,9 +106,10 @@ try {
     initial.counter?.texture?.includes("--checkout-counter-matte-clean-v3")
   );
   report.assertions.groundedActorScale = Boolean(
-    initial.worker && initial.customer &&
-    initial.worker.displayWidth >= 195 && initial.worker.displayWidth <= 215 &&
+    workerAspectSafe(initial.worker) &&
     initial.worker.displayHeight >= 235 && initial.worker.displayHeight <= 250 &&
+    initial.worker.displayWidth >= 70 && initial.worker.displayWidth <= 150 &&
+    initial.customer &&
     initial.customer.displayWidth >= 132 && initial.customer.displayWidth <= 145 &&
     initial.customer.displayHeight >= 220 && initial.customer.displayHeight <= 235
   );
@@ -140,6 +143,7 @@ try {
   report.assertions.workerWalksToRegister = Boolean(
     start && atRegister.worker && Math.hypot(atRegister.worker.x - start.x, atRegister.worker.y - start.y) > 80
   );
+  report.assertions.walkPoseKeepsAspectRatio = workerAspectSafe(atRegister.worker);
 
   await clickHudAction(page);
   await page.waitForFunction((sceneKey) => (
@@ -169,9 +173,10 @@ try {
     firstServe.customer?.visible && firstServe.customer.texture && firstServe.customer.texture !== firstCustomerTexture
   );
   report.assertions.actorScaleStableAfterServe = Boolean(
-    firstServe.worker && firstServe.customer &&
-    firstServe.worker.displayWidth >= 195 && firstServe.worker.displayWidth <= 215 &&
+    workerAspectSafe(firstServe.worker) &&
     firstServe.worker.displayHeight >= 235 && firstServe.worker.displayHeight <= 250 &&
+    firstServe.worker.displayWidth >= 70 && firstServe.worker.displayWidth <= 150 &&
+    firstServe.customer &&
     firstServe.customer.displayWidth >= 132 && firstServe.customer.displayWidth <= 145 &&
     firstServe.customer.displayHeight >= 220 && firstServe.customer.displayHeight <= 235
   );
@@ -212,6 +217,15 @@ try {
 console.log(JSON.stringify({ assertions: report.assertions, fatalError: report.fatalError }, null, 2));
 if (thrownError) throw thrownError;
 
+function workerAspectSafe(worker) {
+  return Boolean(
+    worker &&
+    Number.isFinite(worker.scaleX) &&
+    Number.isFinite(worker.scaleY) &&
+    Math.abs(Math.abs(worker.scaleX) - Math.abs(worker.scaleY)) <= SCALE_EPSILON
+  );
+}
+
 async function readState(page) {
   return page.evaluate((sceneKey) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
@@ -236,7 +250,8 @@ async function readState(page) {
       controller: scene?.controller?.snapshot?.() ?? null,
       worker: worker ? {
         x: worker.x, y: worker.y, texture: worker.texture?.key ?? null,
-        displayWidth: worker.displayWidth ?? 0, displayHeight: worker.displayHeight ?? 0
+        displayWidth: worker.displayWidth ?? 0, displayHeight: worker.displayHeight ?? 0,
+        scaleX: worker.scaleX ?? null, scaleY: worker.scaleY ?? null
       } : null,
       customer: customer ? {
         x: customer.x, y: customer.y, texture: customer.texture?.key ?? null,
