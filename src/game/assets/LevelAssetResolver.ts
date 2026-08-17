@@ -28,6 +28,13 @@ interface BaseResolvedLevelAssets {
   readonly workerWalk: readonly [AssetDescriptor, AssetDescriptor];
 }
 
+interface RestockVisualAssetKeys {
+  readonly workerIdleAssetKey: string;
+  readonly workerPushAssetKey: string;
+  readonly cartEmptyAssetKey: string;
+  readonly cartLoadedAssetKey: string;
+}
+
 export interface ResolvedRestockLevelAssets extends BaseResolvedLevelAssets {
   readonly fixture: AssetDescriptor;
   readonly workerIdle: AssetDescriptor;
@@ -83,6 +90,10 @@ const BACKGROUND_ONLY_RESTOCK_LEVEL_IDS = new Set([
   "starter-level-001",
   "starter-level-002"
 ]);
+const RECUT_RESTOCK_LEVEL_IDS = new Set([
+  "starter-level-001",
+  "starter-level-002"
+]);
 
 const resolveDescriptors = (
   registry: RuntimeAssetRegistry,
@@ -102,9 +113,33 @@ const baseAssets = (
   ]) as readonly [AssetDescriptor, AssetDescriptor]
 });
 
+const restockVisualAssetKeysFor = (
+  level: RestockLevelDefinition,
+  pack: RestockGlobalAssetPack
+): RestockVisualAssetKeys => {
+  if (!RECUT_RESTOCK_LEVEL_IDS.has(level.id)) {
+    return Object.freeze({
+      workerIdleAssetKey: pack.workerIdleAssetKey,
+      workerPushAssetKey: pack.workerPushAssetKey,
+      cartEmptyAssetKey: pack.cartEmptyAssetKey,
+      cartLoadedAssetKey: pack.cartLoadedAssetKey
+    });
+  }
+
+  return Object.freeze({
+    workerIdleAssetKey: "worker-restock-idle-v2",
+    workerPushAssetKey: "worker-restock-push-v2",
+    cartEmptyAssetKey: "equipment-restock-cart-empty-v2",
+    cartLoadedAssetKey: level.id === "starter-level-002"
+      ? "equipment-restock-cart-water-loaded-v2"
+      : "equipment-restock-cart-cola-loaded-v2"
+  });
+};
+
 const restockPreloadKeys = (
   level: RestockLevelDefinition,
   pack: RestockGlobalAssetPack,
+  visualAssetKeys: RestockVisualAssetKeys,
   environmentAssetKey: string,
   caseAssets: { readonly closedAssetKey: string; readonly openAssetKey: string },
   runtime: RestockShiftRuntimeContent
@@ -112,13 +147,13 @@ const restockPreloadKeys = (
   const gameplayKeys = [
     environmentAssetKey,
     ...pack.workerWalkAssetKeys,
-    pack.workerIdleAssetKey,
-    pack.workerPushAssetKey,
+    visualAssetKeys.workerIdleAssetKey,
+    visualAssetKeys.workerPushAssetKey,
     pack.workerCarryAssetKey,
     pack.workerOpenAssetKey,
     pack.workerStockAssetKey,
-    pack.cartEmptyAssetKey,
-    pack.cartLoadedAssetKey,
+    visualAssetKeys.cartEmptyAssetKey,
+    visualAssetKeys.cartLoadedAssetKey,
     caseAssets.closedAssetKey,
     caseAssets.openAssetKey,
     runtime.product.assetKey
@@ -142,23 +177,24 @@ export function resolveRestockLevelAssets(
   runtime: RestockShiftRuntimeContent
 ): ResolvedRestockLevelAssets {
   const pack = resolveGlobalAssetPack(level.presentation.assetPackId, "restock");
+  const visualAssetKeys = restockVisualAssetKeysFor(level, pack);
   const environmentAssetKey = resolveLevelEnvironmentAssetKey(level.id, pack.environmentAssetKey);
   const caseAssets = restockCaseAssetsFor(pack, runtime.product.id);
   const preload = resolveDescriptors(
     registry,
-    restockPreloadKeys(level, pack, environmentAssetKey, caseAssets, runtime)
+    restockPreloadKeys(level, pack, visualAssetKeys, environmentAssetKey, caseAssets, runtime)
   );
   return Object.freeze({
     ...baseAssets(registry, pack, environmentAssetKey),
     preload,
     fixture: registry.require(runtime.fixture.assetKey),
-    workerIdle: registry.require(pack.workerIdleAssetKey),
-    workerPush: registry.require(pack.workerPushAssetKey),
+    workerIdle: registry.require(visualAssetKeys.workerIdleAssetKey),
+    workerPush: registry.require(visualAssetKeys.workerPushAssetKey),
     workerCarry: registry.require(pack.workerCarryAssetKey),
     workerOpen: registry.require(pack.workerOpenAssetKey),
     workerStock: registry.require(pack.workerStockAssetKey),
-    cart: registry.require(pack.cartEmptyAssetKey),
-    cartLoaded: registry.require(pack.cartLoadedAssetKey),
+    cart: registry.require(visualAssetKeys.cartEmptyAssetKey),
+    cartLoaded: registry.require(visualAssetKeys.cartLoadedAssetKey),
     case: registry.require(caseAssets.closedAssetKey),
     caseOpen: registry.require(caseAssets.openAssetKey),
     product: registry.require(runtime.product.assetKey),
