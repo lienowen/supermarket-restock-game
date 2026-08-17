@@ -12,6 +12,7 @@ const SCENE_KEY = "starter-market-shift";
 const LEVEL_ID = "starter-level-004";
 const LOGICAL_WIDTH = 1600;
 const LOGICAL_HEIGHT = 900;
+const SCALE_EPSILON = 0.002;
 
 if (!existsSync(join(DIST_DIR, "index.html"))) throw new Error("dist/index.html is missing. Run npm run build first.");
 mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -36,8 +37,10 @@ const report = {
     matureCleanPresentationActive: false,
     fourProductionSpillsRegistered: false,
     hudCleanButtonRetired: false,
+    idleWorkerKeepsAspectRatio: false,
     toolTapAutoWalksAndCollects: false,
     mopPoseActive: false,
+    mopWorkerKeepsAspectRatio: false,
     firstSpillTapAutoWalks: false,
     scrubChangesSpillBeforeCommit: false,
     completedSpillDisappears: false,
@@ -92,6 +95,11 @@ try {
     initial.touchZones.length === 4
   );
   report.assertions.hudCleanButtonRetired = initial.hudActionVisible === false;
+  report.assertions.idleWorkerKeepsAspectRatio = Boolean(
+    workerAspectSafe(initial.worker) &&
+    initial.worker.displayHeight >= 290 && initial.worker.displayHeight <= 305 &&
+    initial.worker.displayWidth >= 90 && initial.worker.displayWidth <= 190
+  );
   await page.screenshot({ path: join(OUTPUT_DIR, "level-4-initial.png"), fullPage: true });
 
   const workerStart = initial.worker;
@@ -107,6 +115,11 @@ try {
     afterTools.controller?.step === "clean"
   );
   report.assertions.mopPoseActive = Boolean(afterTools.worker?.texture?.includes("worker-a-mop-floor"));
+  report.assertions.mopWorkerKeepsAspectRatio = Boolean(
+    workerAspectSafe(afterTools.worker) &&
+    afterTools.worker.displayHeight >= 290 && afterTools.worker.displayHeight <= 305 &&
+    afterTools.worker.displayWidth >= 120 && afterTools.worker.displayWidth <= 205
+  );
   report.assertions.hudCleanButtonRetired = report.assertions.hudCleanButtonRetired && afterTools.hudActionVisible === false;
   await page.screenshot({ path: join(OUTPUT_DIR, "level-4-tools-collected.png"), fullPage: true });
 
@@ -120,6 +133,9 @@ try {
     Math.hypot(atFirst.worker.x - beforeFirstPosition.x, atFirst.worker.y - beforeFirstPosition.y) > 80 &&
     !atFirst.pendingWalk
   );
+  report.assertions.mopWorkerKeepsAspectRatio = (
+    report.assertions.mopWorkerKeepsAspectRatio && workerAspectSafe(atFirst.worker)
+  );
 
   await scrubSpill(page, 0, { partial: true });
   const scrubMidpoint = await readState(page);
@@ -128,6 +144,9 @@ try {
     scrubMidpoint.controller?.progress === 0 &&
     scrubMidpoint.scrubProgress > 0 && scrubMidpoint.scrubProgress < 100 &&
     scrubMidpoint.spills[0]?.alpha < 1
+  );
+  report.assertions.mopWorkerKeepsAspectRatio = (
+    report.assertions.mopWorkerKeepsAspectRatio && workerAspectSafe(scrubMidpoint.worker)
   );
   await page.screenshot({ path: join(OUTPUT_DIR, "level-4-scrub-midpoint.png"), fullPage: true });
 
@@ -154,6 +173,9 @@ try {
         fourthReady.touchZones[3]?.enabled &&
         fourthReady.controller?.progress === 3
       );
+      report.assertions.mopWorkerKeepsAspectRatio = (
+        report.assertions.mopWorkerKeepsAspectRatio && workerAspectSafe(fourthReady.worker)
+      );
       await page.screenshot({ path: join(OUTPUT_DIR, "level-4-fourth-spill-ready.png"), fullPage: true });
     }
     await scrubSpill(page, index, { partial: false });
@@ -165,6 +187,9 @@ try {
   report.final = final;
   report.assertions.fullCleaningCompletes = Boolean(
     final.controller?.step === "complete" && final.controller.progress === final.controller.total && final.controller.total === 4
+  );
+  report.assertions.mopWorkerKeepsAspectRatio = (
+    report.assertions.mopWorkerKeepsAspectRatio && workerAspectSafe(final.worker)
   );
   report.assertions.noRuntimeIssues = (
     report.consoleErrors.length === 0 && report.pageErrors.length === 0 && report.failedRequests.length === 0
@@ -186,6 +211,15 @@ try {
 
 console.log(JSON.stringify({ assertions: report.assertions, fatalError: report.fatalError }, null, 2));
 if (thrownError) throw thrownError;
+
+function workerAspectSafe(worker) {
+  return Boolean(
+    worker &&
+    Number.isFinite(worker.scaleX) &&
+    Number.isFinite(worker.scaleY) &&
+    Math.abs(Math.abs(worker.scaleX) - Math.abs(worker.scaleY)) <= SCALE_EPSILON
+  );
+}
 
 async function readState(page) {
   return page.evaluate((sceneKey) => {
@@ -231,7 +265,9 @@ async function readState(page) {
         x: worker.x, y: worker.y,
         texture: worker.texture?.key ?? null,
         displayWidth: worker.displayWidth ?? 0,
-        displayHeight: worker.displayHeight ?? 0
+        displayHeight: worker.displayHeight ?? 0,
+        scaleX: worker.scaleX ?? null,
+        scaleY: worker.scaleY ?? null
       } : null,
       spills,
       touchZones
