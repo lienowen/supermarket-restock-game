@@ -45,6 +45,7 @@ const shadowHeight = (displayHeight: number): number => Phaser.Math.Clamp(displa
 const MAX_MOVEMENT_DELTA_MS = 50;
 const DEFAULT_FOOT_ORIGIN_Y = 0.96;
 const TOOL_POSE_FOOT_ORIGIN_Y = 0.78;
+const ASPECT_SAFE_ACTOR_NAMES = new Set(["checkout-worker", "clean-worker"]);
 
 const footOriginForAsset = (assetKey: string): number => (
   assetKey === "worker-a-mop-floor" ? TOOL_POSE_FOOT_ORIGIN_Y : DEFAULT_FOOT_ORIGIN_Y
@@ -82,7 +83,10 @@ export class PlayerNavigationView {
       speed: config.speed
     });
     this.solidCutout = config.solidCutout !== false;
-    this.preserveAspectRatio = config.preserveAspectRatio === true;
+    this.preserveAspectRatio = (
+      config.preserveAspectRatio === true ||
+      ASPECT_SAFE_ACTOR_NAMES.has(config.name)
+    );
     this.requestedDisplaySize = {
       width: config.displaySize.width,
       height: config.displaySize.height
