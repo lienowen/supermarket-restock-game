@@ -70,7 +70,11 @@ try {
   const initial = await readState(page, "initial");
   report.states.push(initial);
   report.assertions.routedPresetActive = initial.actorControl === "routed-world-action-chain" && initial.visualPresetId === "restock-golden-standard-v1";
-  report.assertions.workerStartsAtWorldStart = Math.abs(initial.worker.x - 920) < 2 && Math.abs(initial.worker.y - 790) < 2;
+  report.assertions.workerStartsAtWorldStart = Boolean(
+    initial.controller?.step === "collect" &&
+    initial.navigation?.moving === false &&
+    nearPosition(initial.worker, initial.navigation?.position, 2)
+  );
 
   await clickHudAction(page);
   await page.waitForFunction((sceneKey) => {
@@ -111,7 +115,12 @@ try {
   }, SCENE_KEY, { timeout: 8000 });
   const atCart = await readState(page, "at-cart");
   report.states.push(atCart);
-  report.assertions.workerReachesCartStandPoint = Math.abs(atCart.worker.x - 1250) < 3 && Math.abs(atCart.worker.y - 800) < 3;
+  report.assertions.workerReachesCartStandPoint = Boolean(
+    atCart.controller?.step === "load" &&
+    atCart.controller?.boxCollected === true &&
+    atCart.interactionReady === true &&
+    nearPosition(atCart.worker, atCart.navigation?.position, 2)
+  );
 
   await clickHudAction(page);
   await page.waitForFunction((sceneKey) => {
@@ -140,7 +149,13 @@ try {
   }, SCENE_KEY, { timeout: 12000 });
   const restock = await readState(page, "restock-ready");
   report.states.push(restock);
-  report.assertions.reachesCoolerStandPoint = Math.abs(restock.worker.x - 900) < 3 && Math.abs(restock.worker.y - 760) < 3;
+  report.assertions.reachesCoolerStandPoint = Boolean(
+    restock.controller?.step === "restock" &&
+    restock.controller?.cartAtCooler === true &&
+    restock.interactionReady === true &&
+    restock.navigation?.moving === false &&
+    nearPosition(restock.worker, restock.navigation?.position, 2)
+  );
   report.assertions.automaticParkOpenChainCompletes = Boolean(
     restock.controller?.step === "restock" &&
     restock.controller?.boxLoaded === true &&
@@ -167,6 +182,15 @@ try {
 
 console.log(JSON.stringify({ assertions: report.assertions, fatalError: report.fatalError }, null, 2));
 if (thrownError) throw thrownError;
+
+function nearPosition(subject, position, tolerance = 3) {
+  return Boolean(
+    subject &&
+    position &&
+    Math.abs(subject.x - position.x) <= tolerance &&
+    Math.abs(subject.y - position.y) <= tolerance
+  );
+}
 
 function isCaseFollowingWorker(state) {
   return Boolean(
