@@ -11,6 +11,7 @@ const CANVAS = "#app > canvas:not(#mobile-game-backdrop)";
 const SCENE_KEY = "starter-market-shift";
 const W = 1600;
 const H = 900;
+const SCALE_EPSILON = 0.002;
 
 if (!existsSync(join(DIST_DIR, "index.html"))) throw new Error("dist/index.html is missing");
 mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -28,11 +29,15 @@ const server = createServer((request, response) => {
 await new Promise((done) => server.listen(PORT, "127.0.0.1", done));
 
 const report = { assertions: {
-  startsIdle: false, workerActuallyMoves: false, walkMotionObserved: false,
-  walkTextureAppears: false, pickupMotionObserved: false, pickupPoseAppears: false,
+  startsIdle: false, idleKeepsAspectRatio: false,
+  workerActuallyMoves: false, walkMotionObserved: false,
+  walkTextureAppears: false, walkKeepsAspectRatio: false,
+  pickupMotionObserved: false, pickupPoseAppears: false, pickupKeepsAspectRatio: false,
   appleCollectsAfterTravel: false, basketFeedbackIncrements: false,
-  returnsToIdle: false, workerArrivesAtProduceStand: false, noRuntimeIssues: false
-}, start: null, finished: null, consoleErrors: [], pageErrors: [], failedRequests: [], fatalError: null };
+  returnsToIdle: false, finalIdleKeepsAspectRatio: false,
+  workerArrivesAtProduceStand: false, noRuntimeIssues: false
+}, start: null, walking: null, pickup: null, finished: null,
+consoleErrors: [], pageErrors: [], failedRequests: [], fatalError: null };
 
 const browser = await chromium.launch({ headless: true });
 let thrown;
@@ -56,10 +61,23 @@ try {
   const start = await readWorker(page);
   report.start = start;
   report.assertions.startsIdle = Boolean(start.motion === "idle" && start.textureKey?.includes("worker-a-idle"));
+  report.assertions.idleKeepsAspectRatio = workerAspectSafe(start);
 
   await clickGame(page, 220, 515);
-  await page.waitForFunction(() => document.body.dataset.goldenWorkerWalkObserved === "true", null, { timeout: 6000 });
-  await page.waitForFunction(() => document.body.dataset.goldenPickupObserved === "true", null, { timeout: 10000 });
+  await page.waitForFunction(() => document.body.dataset.goldenWorkerMotion === "walk", null, { timeout: 6000 });
+  const walking = await readWorker(page);
+  report.walking = walking;
+  report.assertions.walkMotionObserved = walking.motion === "walk";
+  report.assertions.walkTextureAppears = Boolean(walking.textureKey?.includes("worker-a-walk"));
+  report.assertions.walkKeepsAspectRatio = workerAspectSafe(walking);
+
+  await page.waitForFunction(() => document.body.dataset.goldenWorkerMotion === "pickup", null, { timeout: 10000 });
+  const pickup = await readWorker(page);
+  report.pickup = pickup;
+  report.assertions.pickupMotionObserved = pickup.motion === "pickup";
+  report.assertions.pickupPoseAppears = Boolean(pickup.textureKey?.includes("worker-a-place-middle"));
+  report.assertions.pickupKeepsAspectRatio = workerAspectSafe(pickup);
+
   await page.waitForFunction((key) => window.__IMMERSIVE_GAME__?.scene?.getScene(key)?.findChallenge?.snapshot?.().collectedProductIds?.includes("apple") === true, SCENE_KEY, { timeout: 15000 });
   report.assertions.appleCollectsAfterTravel = true;
   await page.waitForFunction(() => document.body.dataset.goldenBasketCount === "1", null, { timeout: 5000 });
@@ -69,11 +87,12 @@ try {
   const finished = await readWorker(page);
   report.finished = finished;
   report.assertions.workerActuallyMoves = Math.hypot(finished.x - start.x, finished.y - start.y) > 120;
-  report.assertions.walkMotionObserved = finished.walkObserved === "true";
-  report.assertions.walkTextureAppears = Boolean(finished.lastWalkTexture?.includes("worker-a-walk"));
-  report.assertions.pickupMotionObserved = finished.pickupObserved === "true";
-  report.assertions.pickupPoseAppears = Boolean(finished.lastPickupTexture?.includes("worker-a-place-middle"));
+  report.assertions.walkMotionObserved = report.assertions.walkMotionObserved && finished.walkObserved === "true";
+  report.assertions.walkTextureAppears = report.assertions.walkTextureAppears && Boolean(finished.lastWalkTexture?.includes("worker-a-walk"));
+  report.assertions.pickupMotionObserved = report.assertions.pickupMotionObserved && finished.pickupObserved === "true";
+  report.assertions.pickupPoseAppears = report.assertions.pickupPoseAppears && Boolean(finished.lastPickupTexture?.includes("worker-a-place-middle"));
   report.assertions.returnsToIdle = Boolean(finished.motion === "idle" && finished.textureKey?.includes("worker-a-idle"));
+  report.assertions.finalIdleKeepsAspectRatio = workerAspectSafe(finished);
   report.assertions.workerArrivesAtProduceStand = Math.hypot(finished.x - 255, finished.y - 770) <= 90;
   report.assertions.noRuntimeIssues = report.consoleErrors.length === 0 && report.pageErrors.length === 0 && report.failedRequests.length === 0;
   await page.screenshot({ path: join(OUTPUT_DIR, "golden-order-hunt-motion-finished.png"), fullPage: true });
@@ -91,6 +110,13 @@ try {
 console.log(JSON.stringify({ assertions: report.assertions, fatalError: report.fatalError }, null, 2));
 if (thrown) throw thrown;
 
+function workerAspectSafe(worker) {
+  return Boolean(
+    worker && Number.isFinite(worker.scaleX) && Number.isFinite(worker.scaleY) &&
+    Math.abs(Math.abs(worker.scaleX) - Math.abs(worker.scaleY)) <= SCALE_EPSILON
+  );
+}
+
 async function readWorker(page) {
   return page.evaluate((key) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(key);
@@ -98,6 +124,8 @@ async function readWorker(page) {
     return {
       motion: document.body.dataset.goldenWorkerMotion ?? null,
       textureKey: worker?.texture?.key ?? null, x: worker?.x ?? 0, y: worker?.y ?? 0,
+      displayWidth: worker?.displayWidth ?? 0, displayHeight: worker?.displayHeight ?? 0,
+      scaleX: worker?.scaleX ?? null, scaleY: worker?.scaleY ?? null,
       walkObserved: document.body.dataset.goldenWorkerWalkObserved ?? null,
       pickupObserved: document.body.dataset.goldenPickupObserved ?? null,
       lastWalkTexture: document.body.dataset.goldenLastWalkTexture ?? null,
