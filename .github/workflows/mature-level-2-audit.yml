@@ -21,6 +21,7 @@ on:
       - "scripts/capture-promotion-memory.mjs"
       - "scripts/capture-level-two-contextual.mjs"
       - "scripts/capture-level-two-mobile.mjs"
+      - "scripts/capture-level-two-worker-diagnostic.mjs"
       - ".github/workflows/mature-level-2-audit.yml"
   pull_request:
     branches:
@@ -42,6 +43,7 @@ on:
       - "scripts/capture-promotion-memory.mjs"
       - "scripts/capture-level-two-contextual.mjs"
       - "scripts/capture-level-two-mobile.mjs"
+      - "scripts/capture-level-two-worker-diagnostic.mjs"
       - ".github/workflows/mature-level-2-audit.yml"
   workflow_dispatch:
 
@@ -75,6 +77,11 @@ jobs:
       - name: Build production bundle
         run: npm run build
 
+      - name: Capture Level 2 worker texture diagnostic
+        id: worker_texture
+        continue-on-error: true
+        run: node scripts/capture-level-two-worker-diagnostic.mjs
+
       - name: Verify Level 2 contextual restock flow
         id: audit
         continue-on-error: true
@@ -93,6 +100,7 @@ jobs:
           path: |
             ui-audit/mature-level-2
             ui-audit/mature-level-2-mobile
+            ui-audit/mature-level-2-worker-diagnostic
           if-no-files-found: warn
           retention-days: 14
 
@@ -100,15 +108,16 @@ jobs:
         if: always() && github.event_name == 'push'
         env:
           GH_TOKEN: ${{ github.token }}
+          WORKER_TEXTURE_OUTCOME: ${{ steps.worker_texture.outcome }}
           AUDIT_OUTCOME: ${{ steps.audit.outcome }}
           MOBILE_OUTCOME: ${{ steps.mobile.outcome }}
         run: |
-          if [ "$AUDIT_OUTCOME" = "success" ] && [ "$MOBILE_OUTCOME" = "success" ]; then
+          if [ "$WORKER_TEXTURE_OUTCOME" = "success" ] && [ "$AUDIT_OUTCOME" = "success" ] && [ "$MOBILE_OUTCOME" = "success" ]; then
             STATE=success
-            DESC="L2 desktop + mobile landscape contextual restock passed"
+            DESC="L2 worker texture + desktop + mobile landscape passed"
           else
             STATE=failure
-            DESC="mature Level 2 desktop/mobile browser audit failed"
+            DESC="mature Level 2 texture/desktop/mobile audit failed"
           fi
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state="$STATE" \
@@ -119,5 +128,6 @@ jobs:
       - name: Enforce Level 2 result
         if: always()
         run: |
+          test "${{ steps.worker_texture.outcome }}" = "success"
           test "${{ steps.audit.outcome }}" = "success"
           test "${{ steps.mobile.outcome }}" = "success"
