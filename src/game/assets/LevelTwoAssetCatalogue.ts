@@ -2,14 +2,49 @@ import type { AssetCatalogue, AssetDescriptor } from "./AssetDescriptor";
 
 const asset = (descriptor: AssetDescriptor): AssetDescriptor => descriptor;
 
+const recutWorker = (key: string, fileName: string, state: string): AssetDescriptor => asset({
+  key,
+  path: `assets/game/production-v5/restock-recut-v2/${fileName}`,
+  category: "character",
+  canvasSize: [1086, 1448],
+  anchor: [0.5, 0.96],
+  defaultScale: 0.42,
+  depthGroup: "actors",
+  preloadGroup: "starter-market",
+  perspective: "fixed-third-person",
+  lightDirection: "upper-left",
+  state,
+  status: "production"
+});
+
+const recutCart = (key: string, fileName: string, state: string): AssetDescriptor => asset({
+  key,
+  path: `assets/game/production-v5/restock-recut-v2/${fileName}`,
+  category: "equipment",
+  canvasSize: [1448, 1086],
+  anchor: [0.5, 0.96],
+  defaultScale: 0.44,
+  depthGroup: "props",
+  preloadGroup: "starter-market",
+  perspective: "fixed-third-person",
+  lightDirection: "upper-left",
+  state,
+  status: "production"
+});
+
 /**
- * L2 adds only art that does not already exist in the shared L1 production
- * pack. Worker poses, cart art and the water bottle remain shared assets.
- * Keep release paths as literal strings so runtime asset analysis can protect
- * these files from release pruning.
+ * L2 owns the authored water-restock art and also hosts the clean recut sprites
+ * shared by L1-L2. The recut worker/cart keys are selected only for those two
+ * restock levels, so checkout/clean/find-items scenes keep their existing actor
+ * sets until their own art passes are approved.
  */
 export const LEVEL_TWO_ASSET_CATALOGUE: AssetCatalogue = Object.freeze({
   assets: Object.freeze([
+    recutWorker("worker-restock-idle-v2", "worker-idle.png", "idle"),
+    recutWorker("worker-restock-push-v2", "worker-push.png", "push-cart"),
+    recutCart("equipment-restock-cart-empty-v2", "cart-empty.png", "empty"),
+    recutCart("equipment-restock-cart-cola-loaded-v2", "cart-cola-loaded.png", "cola-loaded"),
+    recutCart("equipment-restock-cart-water-loaded-v2", "cart-water-loaded.png", "water-loaded"),
     asset({
       key: "environment-restock-water-l2-v1",
       path: "assets/game/production-v5/restock-water-l2/bg-restock-water-l2.png",
