@@ -1,9 +1,11 @@
+const assetUrl = (path: string): string => `/${path.replace(/^\/+/, "")}`;
+
 const LEVEL_SIX_CAPACITY_ASSETS = Object.freeze([
-  "/assets/game/missing-assets-batch-01/delivery-box-small.png",
-  "/assets/game/missing-assets-batch-01/delivery-box-medium.png",
-  "/assets/game/missing-assets-batch-01/delivery-box-large.png",
-  "/assets/game/missing-assets-batch-01/equipment-capacity-cart-empty.png",
-  "/assets/game/missing-assets-batch-01/equipment-capacity-cart-loaded.png"
+  "assets/game/missing-assets-batch-01/delivery-box-small.png",
+  "assets/game/missing-assets-batch-01/delivery-box-medium.png",
+  "assets/game/missing-assets-batch-01/delivery-box-large.png",
+  "assets/game/missing-assets-batch-01/equipment-capacity-cart-empty.png",
+  "assets/game/missing-assets-batch-01/equipment-capacity-cart-loaded.png"
 ]);
 
 // Keep strong references for the lifetime of the page so the loaded-cart swap is
@@ -12,7 +14,7 @@ const levelSixCapacityPreloads: HTMLImageElement[] = [];
 LEVEL_SIX_CAPACITY_ASSETS.forEach((path) => {
   const image = new Image();
   image.decoding = "async";
-  image.src = path;
+  image.src = assetUrl(path);
   levelSixCapacityPreloads.push(image);
 });
 
