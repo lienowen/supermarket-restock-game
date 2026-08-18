@@ -368,12 +368,19 @@ export class ShiftHud {
   }
 
   private syncActionState(): void {
-    const active = this.actionEnabled && !this.complete;
+    // CleaningTaskView retires the HUD action by hiding the named hit rectangle.
+    // Keep every visual and interactive layer in lockstep with that visibility;
+    // otherwise the label/surface looks like a button after its hit target is gone.
+    const actionVisible = this.actionButton.visible;
+    const active = actionVisible && this.actionEnabled && !this.complete;
     const passiveShelfPrompt = this.isPassiveShelfPrompt();
+
     this.actionButton.disableInteractive();
     if (active) this.actionButton.setInteractive({ useHandCursor: true });
+    this.actionSurface.setVisible(actionVisible);
+    this.actionHalo.setVisible(actionVisible);
     this.actionLabel
-      .setVisible(!passiveShelfPrompt)
+      .setVisible(actionVisible && !passiveShelfPrompt)
       .setAlpha(active ? 1 : 0.48)
       .setColor("#ffffff")
       .setScale(1);
@@ -391,10 +398,11 @@ export class ShiftHud {
     const height = 42;
     const x = instructionPanel.x + instructionPanel.width - width - 12;
     const y = instructionPanel.y + (instructionPanel.height - height) / 2;
-    const active = this.actionEnabled && !this.complete;
+    const actionVisible = this.actionButton.visible;
+    const active = actionVisible && this.actionEnabled && !this.complete;
     const passiveShelfPrompt = this.isPassiveShelfPrompt();
     this.actionSurface.clear();
-    if (passiveShelfPrompt) return;
+    if (!actionVisible || passiveShelfPrompt) return;
 
     const fill = active
       ? this.actionHovered
