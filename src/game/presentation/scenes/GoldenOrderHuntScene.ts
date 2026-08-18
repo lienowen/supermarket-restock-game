@@ -189,7 +189,8 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
       if (!(object instanceof Phaser.GameObjects.Image)) return;
       const trimmedTexture = createTrimmedTexture(this, layout.assetKey, {
         suffix: "--golden-trimmed",
-        padding: 1
+        padding: 1,
+        removeLightNeutralBackground: false
       });
       object
         .setName(layout.name)
