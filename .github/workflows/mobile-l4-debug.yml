@@ -1,0 +1,33 @@
+name: Mobile L4 Debug
+
+on:
+  push:
+    branches: [test/mobile-l4-software-landscape]
+  workflow_dispatch:
+
+jobs:
+  mobile-l4:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.54.1
+          npx playwright install --with-deps chromium
+      - name: Build production bundle
+        run: npm run build
+      - name: Run Android portrait L4 touch audit
+        run: node scripts/capture-mobile-software-landscape-clean.mjs
+      - name: Upload mobile L4 diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mobile-l4-debug
+          path: ui-audit/mobile-software-landscape-clean
+          if-no-files-found: warn
