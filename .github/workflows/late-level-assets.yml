@@ -1,0 +1,48 @@
+name: Late Level Asset Audit
+
+on:
+  pull_request:
+    paths:
+      - "public/assets/game/production-v7/l8-l10-adapted-assets/**"
+      - "src/game/assets/**"
+      - "src/game/presentation/cleaning/**"
+      - "scripts/capture-late-level-assets.mjs"
+      - ".github/workflows/late-level-assets.yml"
+  workflow_dispatch:
+
+jobs:
+  late-level-assets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.54.1
+          npx playwright install --with-deps chromium
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Verify L8-L10 adapted assets
+        run: node scripts/capture-late-level-assets.mjs
+
+      - name: Upload late-level evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: late-level-assets
+          path: ui-audit/late-level-assets
+          if-no-files-found: error
+          retention-days: 14
