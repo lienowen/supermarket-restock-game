@@ -132,3 +132,72 @@ LEVEL_TWO_ASSETS.forEach((fileName) => {
     `Materialized Level 2 restock asset ${fileName} (${statSync(output).size} bytes).\n`
   );
 });
+
+// Level 6 originally received four PNGs whose IDAT payloads were damaged even
+// though browsers could partially decode them. Do not keep those fragile binary
+// copies in the repository. Rebuild the L6 runtime filenames from production
+// assets that are already used and verified elsewhere in the project.
+const LEVEL_SIX_OUTPUT_DIRECTORY = resolve(ROOT, "public/assets/game/missing-assets-batch-01");
+const LEVEL_SIX_MATERIALIZED_ASSETS = Object.freeze([
+  Object.freeze({
+    source: resolve(ROOT, "public/assets/game/props/cases/milk-case-closed.png"),
+    output: "delivery-box-medium.png",
+    bytes: 262650,
+    sha256: "73403e21642475aade2ad267c2726f771c915a92dc179e97ab0bae1f2edf6b12"
+  }),
+  Object.freeze({
+    source: resolve(ROOT, "public/assets/game/props/cases/cola-case-closed.png"),
+    output: "delivery-box-large.png",
+    bytes: 223872,
+    sha256: "d6d8051b31714b0233d6599f5bfe5fa339ae2a7078062295e5fa58739cefa944"
+  }),
+  Object.freeze({
+    source: resolve(ROOT, "public/assets/game/production-v5/restock-recut-v2/cart-empty.png"),
+    output: "equipment-capacity-cart-empty.png",
+    bytes: 762926,
+    sha256: "6a91facd90fe25e6c8fb324bdac4f3088ac5d64ae0f9e6f248db8717ed30bb8b"
+  }),
+  Object.freeze({
+    source: resolve(ROOT, "public/assets/game/production-v5/restock-recut-v2/cart-cola-loaded.png"),
+    output: "equipment-capacity-cart-loaded.png",
+    bytes: 1371227,
+    sha256: "ab661b23e833c1f9a7052f93f57cd89f5ed34b13068eb079c94f884be3a8aadc"
+  })
+]);
+
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+mkdirSync(LEVEL_SIX_OUTPUT_DIRECTORY, { recursive: true });
+LEVEL_SIX_MATERIALIZED_ASSETS.forEach(({ source, output, bytes: expectedBytes, sha256 }) => {
+  if (!existsSync(source) || !statSync(source).isFile()) {
+    throw new Error(`Missing verified Level 6 source asset for ${output}`);
+  }
+  const sourceBytes = readFileSync(source);
+  const sourceDigest = createHash("sha256").update(sourceBytes).digest("hex");
+  const isPng = sourceBytes.length >= PNG_SIGNATURE.length &&
+    sourceBytes.subarray(0, PNG_SIGNATURE.length).equals(PNG_SIGNATURE);
+  if (!isPng || sourceBytes.length !== expectedBytes || sourceDigest !== sha256) {
+    throw new Error(
+      `Level 6 source integrity check failed for ${output}: bytes=${sourceBytes.length}, sha256=${sourceDigest}, png=${isPng}`
+    );
+  }
+  const outputPath = resolve(LEVEL_SIX_OUTPUT_DIRECTORY, output);
+  writeFileSync(outputPath, sourceBytes);
+  process.stdout.write(`Materialized verified Level 6 asset ${output} (${sourceBytes.length} bytes).\n`);
+});
+
+const LEVEL_SIX_SMALL_BOX = resolve(LEVEL_SIX_OUTPUT_DIRECTORY, "delivery-box-small.png");
+if (!existsSync(LEVEL_SIX_SMALL_BOX) || !statSync(LEVEL_SIX_SMALL_BOX).isFile()) {
+  throw new Error("Missing Level 6 small delivery box");
+}
+const levelSixSmallBytes = readFileSync(LEVEL_SIX_SMALL_BOX);
+const levelSixSmallDigest = createHash("sha256").update(levelSixSmallBytes).digest("hex");
+if (
+  levelSixSmallBytes.length !== 707278 ||
+  levelSixSmallDigest !== "cd6e1ff7c8a9403b4fd5f6dc75e040fd5e538739d76695935b7c92ccadc59b22" ||
+  !levelSixSmallBytes.subarray(0, PNG_SIGNATURE.length).equals(PNG_SIGNATURE)
+) {
+  throw new Error(
+    `Level 6 small-box integrity check failed: bytes=${levelSixSmallBytes.length}, sha256=${levelSixSmallDigest}`
+  );
+}
+process.stdout.write(`Verified Level 6 small delivery box (${levelSixSmallBytes.length} bytes).\n`);
