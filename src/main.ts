@@ -41,6 +41,10 @@ const installPresentationPatches = async (levelId: string): Promise<void> => {
     );
   }
 
+  if (levelId === "starter-level-006") {
+    imports.push(import("./game/presentation/ui/installLevelSixCapacityPolish"));
+  }
+
   await Promise.all(imports);
 };
 

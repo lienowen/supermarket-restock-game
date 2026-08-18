@@ -5,10 +5,12 @@ on:
     branches:
       - main
     paths:
+      - "src/main.ts"
       - "src/game/assets/GlobalProjectAssetCatalogue.ts"
       - "src/game/content/experience/CartCapacityExperienceSpec.ts"
       - "src/game/infrastructure/phaser/createPhaserGame.ts"
       - "src/game/presentation/ui/CartCapacityLoadDom.ts"
+      - "src/game/presentation/ui/installLevelSixCapacityPolish.ts"
       - "src/game/presentation/world/StarterMarketEnvironmentView.ts"
       - "src/mobile-playability.css"
       - "scripts/materialize-assets.mjs"
