@@ -107,6 +107,13 @@ jobs:
           set -o pipefail
           node scripts/capture-mature-clean.mjs 2>&1 | tee mature-clean-audit.log
 
+      - name: Level 4 mobile software landscape gate
+        id: mobile_clean
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          node scripts/capture-mobile-software-landscape-clean.mjs 2>&1 | tee mobile-software-landscape-clean-audit.log
+
       - name: Level 5 golden order-hunt gate
         id: order
         continue-on-error: true
@@ -150,6 +157,7 @@ jobs:
             promotion-memory-audit.log
             mature-checkout-audit.log
             mature-clean-audit.log
+            mobile-software-landscape-clean-audit.log
             golden-order-hunt-audit.log
             cart-capacity-audit.log
             checkout-patience-audit.log
@@ -166,6 +174,7 @@ jobs:
           MEMORY: ${{ steps.memory.outcome }}
           CHECKOUT: ${{ steps.checkout.outcome }}
           CLEAN: ${{ steps.clean.outcome }}
+          MOBILE_CLEAN: ${{ steps.mobile_clean.outcome }}
           ORDER: ${{ steps.order.outcome }}
           CAPACITY: ${{ steps.capacity.outcome }}
           PATIENCE: ${{ steps.patience.outcome }}
@@ -178,6 +187,7 @@ jobs:
               L2: process.env.MEMORY,
               L3: process.env.CHECKOUT,
               L4: process.env.CLEAN,
+              "L4-mobile": process.env.MOBILE_CLEAN,
               L5: process.env.ORDER,
               L6: process.env.CAPACITY,
               L7: process.env.PATIENCE
@@ -204,6 +214,7 @@ jobs:
           test "${{ steps.memory.outcome }}" = "success"
           test "${{ steps.checkout.outcome }}" = "success"
           test "${{ steps.clean.outcome }}" = "success"
+          test "${{ steps.mobile_clean.outcome }}" = "success"
           test "${{ steps.order.outcome }}" = "success"
           test "${{ steps.capacity.outcome }}" = "success"
           test "${{ steps.patience.outcome }}" = "success"
