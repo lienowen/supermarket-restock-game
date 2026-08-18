@@ -10,12 +10,12 @@ const LEVEL_ENVIRONMENT_ASSET_KEYS: Readonly<Record<string, string>> = Object.fr
   "starter-level-004": "environment-project-cleaning-v2",
   "starter-level-005": "environment-project-order-hunt-v2",
 
-  // Later restock missions keep their current plates until individually reviewed.
+  // Later missions use their individually authored production plates.
   "starter-level-006": "environment-starter-market-restock-hd-v3",
   "starter-level-007": "environment-project-checkout-v2",
-  "starter-level-008": "environment-project-cleaning-v2",
-  "starter-level-009": "environment-project-order-hunt-v2",
-  "starter-level-010": "environment-starter-market-restock-hd-v3"
+  "starter-level-008": "environment-project-cleaning-l8-v1",
+  "starter-level-009": "environment-project-order-hunt-l9-v1",
+  "starter-level-010": "environment-project-restock-l10-v1"
 });
 
 export function resolveLevelEnvironmentAssetKey(
