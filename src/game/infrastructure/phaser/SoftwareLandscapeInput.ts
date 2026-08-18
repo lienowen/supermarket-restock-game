@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { mapSoftwareLandscapeClientPoint } from "./SoftwareLandscapeGeometry";
 
 interface MutableInputManager {
   transformPointer: (
@@ -7,14 +8,42 @@ interface MutableInputManager {
     pageY: number,
     wasMove: boolean
   ) => void;
+  canvas?: HTMLCanvasElement | null;
   __softwareLandscapeInputInstalled?: boolean;
 }
 
+const applyPointerPosition = (
+  pointer: Phaser.Input.Pointer,
+  x: number,
+  y: number,
+  wasMove: boolean
+): void => {
+  const position = pointer.position;
+  const previous = pointer.prevPosition;
+  previous.x = position.x;
+  previous.y = position.y;
+
+  const smoothing = pointer.smoothFactor;
+  if (!wasMove || smoothing === 0) {
+    position.x = x;
+    position.y = y;
+    return;
+  }
+
+  position.x = x * smoothing + previous.x * (1 - smoothing);
+  position.y = y * smoothing + previous.y * (1 - smoothing);
+};
+
 /**
- * Phaser's ScaleManager assumes the canvas is axis-aligned in the page. Our
- * portrait fallback rotates the complete landscape stage by 90 degrees in CSS,
- * so the default pointer transform swaps the wrong axes. This adapter performs
- * the inverse rotation before mapping the pointer into the 1600x900 game space.
+ * Phaser 3.90's InputManager maps page coordinates through ScaleManager, which
+ * assumes the canvas is axis-aligned. Our portrait fallback rotates the whole
+ * game stage by 90 degrees in CSS, so software-landscape input needs an inverse
+ * rotation before Phaser performs hit tests.
+ *
+ * Do not reconstruct the canvas size from window.innerWidth/innerHeight here.
+ * Android browser chrome and embedded WebViews can change the dynamic viewport
+ * independently of the layout viewport. Instead we derive the transform from
+ * the body and canvas rectangles that are actually rendered for every event.
  */
 export function installSoftwareLandscapeInput(
   game: Phaser.Game,
@@ -38,45 +67,31 @@ export function installSoftwareLandscapeInput(
       return;
     }
 
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    const stageWidth = viewportHeight;
-    const stageHeight = viewportWidth;
-
-    const clientX = pageX - window.scrollX;
-    const clientY = pageY - window.scrollY;
-
-    // Inverse of: rotate(90deg) translateY(-100%).
-    const stageX = clientY;
-    const stageY = viewportWidth - clientX;
-
-    const fitScale = Math.min(
-      stageWidth / logicalWidth,
-      stageHeight / logicalHeight
-    );
-    const canvasWidth = logicalWidth * fitScale;
-    const canvasHeight = logicalHeight * fitScale;
-    const canvasLeft = (stageWidth - canvasWidth) / 2;
-    const canvasTop = (stageHeight - canvasHeight) / 2;
-
-    const x = (stageX - canvasLeft) / fitScale;
-    const y = (stageY - canvasTop) / fitScale;
-
-    const position = pointer.position;
-    const previous = pointer.prevPosition;
-    previous.x = position.x;
-    previous.y = position.y;
-
-    const smoothing = pointer.smoothFactor;
-    if (!wasMove || smoothing === 0) {
-      position.x = x;
-      position.y = y;
+    const canvas = manager.canvas ?? game.canvas;
+    if (!canvas) {
+      document.body.dataset.softwareLandscapeInputFallback = "no-canvas";
+      defaultTransform(pointer, pageX, pageY, wasMove);
       return;
     }
 
-    position.x = x * smoothing + previous.x * (1 - smoothing);
-    position.y = y * smoothing + previous.y * (1 - smoothing);
+    const mapped = mapSoftwareLandscapeClientPoint({
+      clientX: pageX - window.scrollX,
+      clientY: pageY - window.scrollY,
+      bodyRect: document.body.getBoundingClientRect(),
+      canvasRect: canvas.getBoundingClientRect(),
+      logicalWidth,
+      logicalHeight
+    });
+
+    if (!mapped) {
+      document.body.dataset.softwareLandscapeInputFallback = "invalid-geometry";
+      defaultTransform(pointer, pageX, pageY, wasMove);
+      return;
+    }
+
+    delete document.body.dataset.softwareLandscapeInputFallback;
+    applyPointerPosition(pointer, mapped.x, mapped.y, wasMove);
   };
 
-  document.body.dataset.softwareLandscapeInput = "mapped";
+  document.body.dataset.softwareLandscapeInput = "canvas-geometry-v2";
 }
