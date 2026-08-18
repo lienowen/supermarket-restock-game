@@ -45,6 +45,7 @@ on:
 
 permissions:
   contents: read
+  statuses: write
 
 jobs:
   golden-level:
@@ -67,10 +68,16 @@ jobs:
       - name: Build production bundle
         run: npm run build
       - name: Verify Level 5 desktop three-zone flow
+        id: desktop
+        continue-on-error: true
         run: node scripts/capture-golden-order-hunt.mjs
       - name: Verify Level 5 worker movement
+        id: motion
+        continue-on-error: true
         run: node scripts/capture-golden-worker-motion.mjs
       - name: Verify Level 5 Android software-landscape touch flow
+        id: mobile
+        continue-on-error: true
         run: node scripts/capture-golden-order-hunt-mobile.mjs
       - name: Upload Level 5 evidence
         if: always()
@@ -82,3 +89,29 @@ jobs:
             ui-audit/golden-order-hunt-mobile
           if-no-files-found: error
           retention-days: 14
+      - name: Publish Level 5 commit status
+        if: always() && github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DESKTOP_OUTCOME: ${{ steps.desktop.outcome }}
+          MOTION_OUTCOME: ${{ steps.motion.outcome }}
+          MOBILE_OUTCOME: ${{ steps.mobile.outcome }}
+        run: |
+          if [ "$DESKTOP_OUTCOME" = "success" ] && [ "$MOTION_OUTCOME" = "success" ] && [ "$MOBILE_OUTCOME" = "success" ]; then
+            STATE=success
+            DESC="L5 desktop, motion, joystick and mobile order hunt passed"
+          else
+            STATE=failure
+            DESC="mature Level 5 desktop/motion/mobile audit failed"
+          fi
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state="$STATE" \
+            -f context="Mature Level 5 Audit" \
+            -f description="$DESC" \
+            -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+      - name: Enforce Level 5 result
+        if: always()
+        run: |
+          test "${{ steps.desktop.outcome }}" = "success"
+          test "${{ steps.motion.outcome }}" = "success"
+          test "${{ steps.mobile.outcome }}" = "success"
