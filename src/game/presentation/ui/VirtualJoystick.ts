@@ -70,6 +70,7 @@ export class VirtualJoystick {
   }
 
   vector(): VirtualJoystickVector {
+    this.restorePresentationIfNeeded();
     return Object.freeze({
       x: this.enabled ? this.axisX : 0,
       y: this.enabled ? this.axisY : 0,
@@ -80,11 +81,15 @@ export class VirtualJoystick {
   setEnabled(enabled: boolean): void {
     this.enabled = enabled;
     this.root?.setAlpha(enabled ? 1 : 0.36);
-    if (enabled) this.hitZone?.setInteractive(
-      new Phaser.Geom.Circle(HIT_RADIUS, HIT_RADIUS, HIT_RADIUS),
-      Phaser.Geom.Circle.Contains
-    );
-    else this.hitZone?.disableInteractive();
+    if (enabled) {
+      this.hitZone?.setInteractive(
+        new Phaser.Geom.Circle(HIT_RADIUS, HIT_RADIUS, HIT_RADIUS),
+        Phaser.Geom.Circle.Contains
+      );
+      this.restorePresentationIfNeeded();
+    } else {
+      this.hitZone?.disableInteractive();
+    }
     if (!enabled) this.reset();
   }
 
@@ -103,6 +108,19 @@ export class VirtualJoystick {
     const coarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches ?? false;
     const compactViewport = Math.min(window.innerWidth, window.innerHeight) <= 820;
     return navigator.maxTouchPoints > 0 || coarsePointer || compactViewport;
+  }
+
+  private restorePresentationIfNeeded(): void {
+    if (!this.enabledForDevice || !this.enabled) return;
+    if (this.root && !this.root.visible) this.root.setVisible(true);
+    if (!this.hitZone) return;
+    if (!this.hitZone.visible) this.hitZone.setVisible(true);
+    if (!this.hitZone.input?.enabled) {
+      this.hitZone.setInteractive(
+        new Phaser.Geom.Circle(HIT_RADIUS, HIT_RADIUS, HIT_RADIUS),
+        Phaser.Geom.Circle.Contains
+      );
+    }
   }
 
   private handlePointerDown(pointer: Phaser.Input.Pointer): void {
