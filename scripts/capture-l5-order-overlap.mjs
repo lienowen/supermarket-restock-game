@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { extname, join, normalize, resolve } from "node:path";
 import { chromium } from "playwright";
 
@@ -10,9 +10,18 @@ const ORIGIN = `http://127.0.0.1:${PORT}`;
 const CANVAS = "#app > canvas:not(#mobile-game-backdrop)";
 const SCENE_KEY = "starter-market-shift";
 const ORDER_ICON_IDS = Object.freeze(["milk-bottle", "apple", "cereal-box"]);
+const SOURCE_ASSETS = Object.freeze([
+  ["milk-source.png", "assets/game/production-v1/products/product-milk-jug.png"],
+  ["apple-source.png", "assets/game/production-v1/products/product-apple.png"],
+  ["cereal-source.png", "assets/game/production-v1/products/product-cereal-box.png"]
+]);
 
 if (!existsSync(join(DIST_DIR, "index.html"))) throw new Error("dist/index.html is missing");
 mkdirSync(OUTPUT_DIR, { recursive: true });
+for (const [fileName, relativePath] of SOURCE_ASSETS) {
+  const sourcePath = join(DIST_DIR, relativePath);
+  if (existsSync(sourcePath)) copyFileSync(sourcePath, join(OUTPUT_DIR, fileName));
+}
 
 const server = createServer((request, response) => {
   const raw = decodeURIComponent((request.url ?? "/").split("?")[0]);
@@ -34,11 +43,13 @@ const report = {
     noOrderIconToOrderIconOverlap: false,
     noUnexpectedImageOverlap: false,
     noDuplicateOrderTextures: false,
+    runtimeTexturesExported: false,
     noRuntimeIssues: false
   },
   orderTicket: null,
   orderIcons: [],
   imageOverlaps: [],
+  exportedTextures: [],
   consoleErrors: [],
   pageErrors: [],
   failedRequests: [],
@@ -168,6 +179,16 @@ try {
   const textureCounts = new Map();
   for (const icon of icons) textureCounts.set(icon.textureKey, (textureCounts.get(icon.textureKey) ?? 0) + 1);
   report.assertions.noDuplicateOrderTextures = [...textureCounts.values()].every((count) => count === 1);
+
+  for (const icon of icons) {
+    if (!icon.textureKey) continue;
+    const exported = await exportTexture(page, icon.textureKey);
+    if (!exported) continue;
+    const fileName = `${icon.id}-runtime.png`;
+    writeFileSync(join(OUTPUT_DIR, fileName), Buffer.from(exported.base64, "base64"));
+    report.exportedTextures.push({ id: icon.id, textureKey: icon.textureKey, fileName, width: exported.width, height: exported.height });
+  }
+  report.assertions.runtimeTexturesExported = report.exportedTextures.length === ORDER_ICON_IDS.length;
   report.assertions.noRuntimeIssues = report.consoleErrors.length === 0 && report.pageErrors.length === 0 && report.failedRequests.length === 0;
 
   await page.screenshot({ path: join(OUTPUT_DIR, "level-5-order-overlap.png"), fullPage: true });
@@ -186,8 +207,28 @@ try {
   await new Promise((done) => server.close(done));
 }
 
-console.log(JSON.stringify({ assertions: report.assertions, imageOverlaps: report.imageOverlaps, fatalError: report.fatalError }, null, 2));
+console.log(JSON.stringify({ assertions: report.assertions, imageOverlaps: report.imageOverlaps, exportedTextures: report.exportedTextures, fatalError: report.fatalError }, null, 2));
 if (thrown) throw thrown;
+
+async function exportTexture(page, textureKey) {
+  return page.evaluate(({ sceneKey, textureKey }) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+    if (!scene?.textures?.exists?.(textureKey)) return null;
+    const source = scene.textures.get(textureKey).getSourceImage();
+    const width = source instanceof HTMLImageElement ? source.naturalWidth : source?.width;
+    const height = source instanceof HTMLImageElement ? source.naturalHeight : source?.height;
+    if (!width || !height) return null;
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+    if (!context) return null;
+    context.clearRect(0, 0, width, height);
+    context.drawImage(source, 0, 0, width, height);
+    const dataUrl = canvas.toDataURL("image/png");
+    return { width, height, base64: dataUrl.slice(dataUrl.indexOf(",") + 1) };
+  }, { sceneKey: SCENE_KEY, textureKey });
+}
 
 function overlapRatio(a, b) {
   if (!a || !b) return 0;
