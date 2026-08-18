@@ -1,7 +1,12 @@
 import Phaser from "phaser";
-import { createOpaqueCutoutTexture } from "../visual/OpaqueCutoutTexture";
+import { createTrimmedTexture } from "../visual/TrimmedTexture";
 import type { VisualSize } from "../visual/StarterMarketVisualSpec";
 import type { FindItemsLevelVisualPreset } from "../visual/MarketLevelVisualPreset";
+
+const DEDICATED_ORDER_ICON_KEYS: Readonly<Record<string, string>> = Object.freeze({
+  "milk-bottle": "ui-l5-order-milk",
+  "cereal-box": "ui-l5-order-cereal"
+});
 
 interface OrderTicketSlot {
   readonly productId: string;
@@ -91,8 +96,24 @@ export class OrderTicketView {
 
       const x = startX + index * itemGap;
       const card = scene.add.graphics();
-      const imageSize = this.fitSize(sourceSize, config.visual.iconMaxSize);
-      const iconTextureKey = createOpaqueCutoutTexture(scene, assetKey);
+      const dedicatedAssetKey = DEDICATED_ORDER_ICON_KEYS[productId];
+      const sourceAssetKey = dedicatedAssetKey && scene.textures.exists(dedicatedAssetKey)
+        ? dedicatedAssetKey
+        : assetKey;
+      const iconTextureKey = createTrimmedTexture(scene, sourceAssetKey, {
+        alphaThreshold: 10,
+        opaque: false,
+        suffix: "--opaque-cutout",
+        padding: 2,
+        removeLightNeutralBackground: false
+      });
+      const iconSource = scene.textures.get(iconTextureKey).getSourceImage() as
+        | HTMLImageElement
+        | HTMLCanvasElement;
+      const imageSize = this.fitSize({
+        width: iconSource.width || sourceSize.width,
+        height: iconSource.height || sourceSize.height
+      }, config.visual.iconMaxSize);
       const image = scene.add.image(x, slotY - 10, iconTextureKey)
         .setDisplaySize(imageSize.width, imageSize.height)
         .setName(`order-ticket-icon-${productId}`)
