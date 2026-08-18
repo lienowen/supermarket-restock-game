@@ -11,6 +11,7 @@ const CANVAS = "#app > canvas:not(#mobile-game-backdrop)";
 const SCENE_KEY = "starter-market-shift";
 const W = 1600;
 const H = 900;
+const ORDER_ICON_IDS = Object.freeze(["milk-bottle", "apple", "cereal-box"]);
 
 if (!existsSync(join(DIST_DIR, "index.html"))) throw new Error("dist/index.html is missing");
 mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -37,8 +38,8 @@ const report = {
     backgroundOnly: false,
     noAmbientDressing: false,
     expandedProductHotspots: false,
-    productTapOnlyControl: false,
-    joystickHidden: false,
+    joystickVisibleAndInteractive: false,
+    orderIconsNormalized: false,
     productsReadable: false,
     mobileMoveSpeed: false,
     wrongTouchCostsTime: false,
@@ -86,8 +87,7 @@ try {
   await page.waitForFunction(() => document.body.dataset.goldenLevel === "level-5-three-zone-v3", null, { timeout: 30000 });
   await page.waitForFunction(() => document.body.dataset.softwareLandscape === "true", null, { timeout: 10000 });
   await page.waitForFunction(() => document.body.dataset.goldenMobileTouch === "expanded-product-hotspots-v2", null, { timeout: 10000 });
-  await page.waitForFunction(() => document.body.dataset.goldenManualControl === "product-tap-only-v1", null, { timeout: 10000 });
-  await page.waitForTimeout(200);
+  await page.waitForTimeout(350);
 
   const layout = await page.evaluate((selector) => {
     const canvas = document.querySelector(selector);
@@ -111,8 +111,17 @@ try {
   report.assertions.backgroundOnly = initial.sceneDressing === "background-only";
   report.assertions.noAmbientDressing = initial.ambientCount === 0;
   report.assertions.expandedProductHotspots = initial.mobileTouch === "expanded-product-hotspots-v2";
-  report.assertions.productTapOnlyControl = initial.manualControl === "product-tap-only-v1";
-  report.assertions.joystickHidden = initial.joystickVisible === false && initial.joystickInteractive === false;
+  report.assertions.joystickVisibleAndInteractive = initial.joystickVisible === true && initial.joystickInteractive === true;
+  report.assertions.orderIconsNormalized = (
+    initial.orderIcons.length === ORDER_ICON_IDS.length &&
+    initial.orderIcons.every((icon) => (
+      icon.visible === true &&
+      icon.alpha >= 0.99 &&
+      icon.width >= 28 &&
+      icon.height >= 28 &&
+      icon.textureKey?.includes("--opaque-cutout")
+    ))
+  );
   report.assertions.productsReadable = initial.products.length === 8 && initial.products.every((item) => (
     item.width >= 35 && item.height >= 45 && Math.max(item.width, item.height) >= 68
   ));
@@ -164,7 +173,7 @@ console.log(JSON.stringify({ assertions: report.assertions, fatalError: report.f
 if (thrown) throw thrown;
 
 async function readState(page) {
-  return page.evaluate((key) => {
+  return page.evaluate(({ key, orderIconIds }) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(key);
     const list = scene?.children?.list ?? [];
     const ambientNames = new Set(["ambient-produce-display", "ambient-backroom-rack", "ambient-shopping-cart", "ambient-customer-a", "ambient-customer-b"]);
@@ -183,13 +192,24 @@ async function readState(page) {
       basketCount: document.body.dataset.goldenBasketCount ?? null,
       joystickVisible: joystick?.visible ?? false,
       joystickInteractive: Boolean(joystickHitZone?.input?.enabled),
+      orderIcons: orderIconIds.map((id) => {
+        const icon = scene?.children?.getByName?.(`order-ticket-icon-${id}`);
+        return {
+          id,
+          visible: icon?.visible === true,
+          alpha: icon?.alpha ?? 0,
+          width: icon?.displayWidth ?? 0,
+          height: icon?.displayHeight ?? 0,
+          textureKey: icon?.texture?.key ?? null
+        };
+      }),
       ambientCount: list.filter((entry) => ambientNames.has(entry?.name)).length,
       products: list.filter((entry) => typeof entry?.name === "string")
         .filter((entry) => entry.name.startsWith("find-item-") || entry.name.startsWith("find-decoy-"))
         .filter((entry) => entry.visible !== false && entry.active !== false)
         .map((entry) => ({ name: entry.name, width: entry.displayWidth ?? 0, height: entry.displayHeight ?? 0 }))
     };
-  }, SCENE_KEY);
+  }, { key: SCENE_KEY, orderIconIds: ORDER_ICON_IDS });
 }
 
 async function tapLogical(page, cdp, logicalX, logicalY) {
