@@ -31,13 +31,13 @@ export const PRODUCTION_V1_ASSETS = {
   product_detergent_bottle: "assets/game/production-v1/products/product-detergent-bottle.png",
   product_grapes_pack: "assets/game/production-v1/products/product-grapes-pack.png",
   product_lemon_lime_soda: "assets/game/production-v1/products/product-lemon-lime-soda.png",
-  product_milk_jug: "assets/game/production-v1/products/product-milk-jug.png",
+  product_milk_jug: "assets/game/production-v6/find-items-l5/product-milk-jug-clean.png",
   product_oats_canister: "assets/game/production-v1/products/product-oats-canister.png",
   product_orange_soda: "assets/game/production-v1/products/product-orange-soda.png",
   product_paper_towels: "assets/game/production-v1/products/product-paper-towels.png",
   product_peanut_butter: "assets/game/production-v1/products/product-peanut-butter.png",
   product_water_bottle: "assets/game/production-v1/products/product-water-bottle.png",
-  product_yogurt_cup: "assets/game/production-v1/products/product-yogurt-cup.png",
+  product_yogurt_cup: "assets/game/production-v6/find-items-l5/product-yogurt-cup-clean.png",
   prop_cola_case_open: "assets/game/production-v1/props/prop-cola-case-open.png",
   prop_cola_case_pallet: "assets/game/production-v1/props/prop-cola-case-pallet.png",
   ui_task_clipboard: "assets/game/production-v1/props/ui-task-clipboard.png",
@@ -52,3 +52,4 @@ export const PRODUCTION_V1_ASSETS = {
   worker_walk_01: "assets/game/production-v1/characters/worker/worker-walk-01.png",
   worker_walk_02: "assets/game/production-v1/characters/worker/worker-walk-02.png",
 } as const;
+
