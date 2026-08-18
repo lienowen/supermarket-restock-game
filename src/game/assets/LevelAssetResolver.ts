@@ -86,6 +86,12 @@ const CLEAN_SPILL_ASSET_KEYS = Object.freeze([
   "spill-juice-large",
   "spill-dirt-smear-large"
 ]);
+const L8_CLEAN_SPILL_ASSET_KEYS = Object.freeze([
+  ...CLEAN_SPILL_ASSET_KEYS,
+  "spill-oil-large",
+  "spill-footprint-large",
+  "spill-trash-smear-large"
+]);
 const BACKGROUND_ONLY_RESTOCK_LEVEL_IDS = new Set([
   "starter-level-001",
   "starter-level-002"
@@ -112,6 +118,12 @@ const baseAssets = (
     registry.require(pack.workerWalkAssetKeys[1])
   ]) as readonly [AssetDescriptor, AssetDescriptor]
 });
+
+const cleanSpillAssetKeysFor = (level: CleanLevelDefinition): readonly string[] => (
+  level.id === "starter-level-008"
+    ? L8_CLEAN_SPILL_ASSET_KEYS
+    : CLEAN_SPILL_ASSET_KEYS
+);
 
 const restockVisualAssetKeysFor = (
   level: RestockLevelDefinition,
@@ -240,6 +252,7 @@ export function resolveCleanLevelAssets(
 ): ResolvedCleanLevelAssets {
   const pack = resolveGlobalAssetPack(level.presentation.assetPackId, "clean");
   const environmentAssetKey = resolveLevelEnvironmentAssetKey(level.id, pack.environmentAssetKey);
+  const spillAssetKeys = cleanSpillAssetKeysFor(level);
   const preload = resolveDescriptors(registry, [
     environmentAssetKey,
     ...pack.sharedStoreAssetKeys,
@@ -249,7 +262,7 @@ export function resolveCleanLevelAssets(
     pack.cleaningFixtureAssetKey,
     pack.cleaningCartAssetKey,
     pack.wetFloorSignAssetKey,
-    ...CLEAN_SPILL_ASSET_KEYS
+    ...spillAssetKeys
   ]);
   return Object.freeze({
     ...baseAssets(registry, pack, environmentAssetKey),
@@ -259,7 +272,7 @@ export function resolveCleanLevelAssets(
     cleaningFixture: registry.require(pack.cleaningFixtureAssetKey),
     cleaningCart: registry.require(pack.cleaningCartAssetKey),
     wetFloorSign: registry.require(pack.wetFloorSignAssetKey),
-    spills: Object.freeze(CLEAN_SPILL_ASSET_KEYS.map((key) => registry.require(key)))
+    spills: Object.freeze(spillAssetKeys.map((key) => registry.require(key)))
   });
 }
 
