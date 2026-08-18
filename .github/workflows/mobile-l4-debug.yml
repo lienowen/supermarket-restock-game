@@ -5,12 +5,31 @@ on:
     branches: [test/mobile-l4-software-landscape]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  statuses: write
+
 jobs:
   mobile-l4:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+
+      - name: Publish pending mobile L4 status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: "pending",
+              context: "Mobile L4 Touch Audit",
+              description: "Testing Android portrait software-landscape touch",
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+            });
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -23,6 +42,8 @@ jobs:
       - name: Build production bundle
         run: npm run build
       - name: Run Android portrait L4 touch audit
+        id: audit
+        continue-on-error: true
         run: node scripts/capture-mobile-software-landscape-clean.mjs
       - name: Upload mobile L4 diagnostics
         if: always()
@@ -31,3 +52,23 @@ jobs:
           name: mobile-l4-debug
           path: ui-audit/mobile-software-landscape-clean
           if-no-files-found: warn
+      - name: Publish mobile L4 result
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          AUDIT_OUTCOME: ${{ steps.audit.outcome }}
+        with:
+          script: |
+            const passed = process.env.AUDIT_OUTCOME === "success";
+            await github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: passed ? "success" : "failure",
+              context: "Mobile L4 Touch Audit",
+              description: passed ? "Android portrait L4 touch passed" : "Android portrait L4 touch failed",
+              target_url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+            });
+      - name: Enforce mobile L4 audit
+        if: always()
+        run: test "${{ steps.audit.outcome }}" = "success"
