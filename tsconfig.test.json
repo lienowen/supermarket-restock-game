@@ -58,6 +58,7 @@
     "src/game/assets/RuntimeAssetRegistry.ts",
     "src/game/assets/starterAssetCatalogue.ts",
     "src/game/infrastructure/browser/BrowserLevelNavigator.ts",
+    "src/game/infrastructure/phaser/SoftwareLandscapeGeometry.ts",
     "src/game/presentation/visual/StarterMarketVisualSpec.ts",
     "src/game/presentation/visual/MarketLevelVisualPreset.ts",
     "src/game/presentation/visual/LevelVisualPresetResolver.ts",
