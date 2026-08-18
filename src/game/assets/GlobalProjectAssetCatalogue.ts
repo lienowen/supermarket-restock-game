@@ -79,6 +79,25 @@ const projectBackground = (
   status: "production"
 });
 
+const l5OrderIcon = (
+  key: string,
+  fileName: string,
+  state: string
+): AssetDescriptor => asset({
+  key,
+  path: `assets/game/production-v6/find-items-l5/${fileName}`,
+  category: "ui",
+  canvasSize: [512, 512],
+  anchor: [0.5, 0.5],
+  defaultScale: 1,
+  depthGroup: "ui",
+  preloadGroup: "starter-market",
+  perspective: "screen-space",
+  lightDirection: "neutral",
+  state,
+  status: "production"
+});
+
 /**
  * Project-wide production assets belong here only after their files are present
  * in the repository and pass the release bundle checks. Asset ideas and gap
@@ -121,6 +140,8 @@ export const GLOBAL_PROJECT_ASSET_CATALOGUE: AssetCatalogue = Object.freeze({
       "bg-order-hunt-zone-v2.png",
       "order-hunt-zone-v2"
     ),
+    l5OrderIcon("ui-l5-order-milk", "order-milk-clean.svg", "milk"),
+    l5OrderIcon("ui-l5-order-cereal", "order-cereal-clean.svg", "cereal"),
     asset({
       key: "fixture-beverage-cooler-glass-hd-v3",
       path: "assets/game/production-v3/cooler-restock/cooler_front_glass_hd.png",
