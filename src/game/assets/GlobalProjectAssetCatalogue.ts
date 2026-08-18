@@ -79,6 +79,45 @@ const projectBackground = (
   status: "production"
 });
 
+const lateGameBackground = (
+  key: string,
+  levelDirectory: "L8" | "L9" | "L10",
+  fileName: string,
+  state: string
+): AssetDescriptor => asset({
+  key,
+  path: `assets/game/production-v7/l8-l10-adapted-assets/${levelDirectory}/${fileName}`,
+  category: "environment",
+  canvasSize: [1672, 941],
+  anchor: [0.5, 0.5],
+  defaultScale: 1,
+  depthGroup: "far-environment",
+  preloadGroup: "starter-market",
+  perspective: "fixed-third-person",
+  lightDirection: "upper-left",
+  state,
+  status: "production"
+});
+
+const closingSpill = (
+  key: string,
+  fileName: string,
+  state: string
+): AssetDescriptor => asset({
+  key,
+  path: `assets/game/production-v7/l8-l10-adapted-assets/L8/${fileName}`,
+  category: "effect",
+  canvasSize: [1254, 1254],
+  anchor: [0.5, 0.5],
+  defaultScale: 1,
+  depthGroup: "world-effects",
+  preloadGroup: "starter-market",
+  perspective: "fixed-third-person",
+  lightDirection: "upper-left",
+  state,
+  status: "production"
+});
+
 const l5OrderIcon = (
   key: string,
   fileName: string,
@@ -140,6 +179,24 @@ export const GLOBAL_PROJECT_ASSET_CATALOGUE: AssetCatalogue = Object.freeze({
       "bg-order-hunt-zone-v2.png",
       "order-hunt-zone-v2"
     ),
+    lateGameBackground(
+      "environment-project-cleaning-l8-v1",
+      "L8",
+      "bg-cleaning-closing-l8.png",
+      "closing-cleaning-l8-v1"
+    ),
+    lateGameBackground(
+      "environment-project-order-hunt-l9-v1",
+      "L9",
+      "bg-priority-order-l9.png",
+      "priority-order-l9-v1"
+    ),
+    lateGameBackground(
+      "environment-project-restock-l10-v1",
+      "L10",
+      "bg-final-cooler-rush-l10.png",
+      "final-cooler-rush-l10-v1"
+    ),
     l5OrderIcon("ui-l5-order-milk", "order-milk-clean.png", "milk"),
     l5OrderIcon("ui-l5-order-cereal", "order-cereal-clean.png", "cereal"),
     asset({
@@ -159,6 +216,9 @@ export const GLOBAL_PROJECT_ASSET_CATALOGUE: AssetCatalogue = Object.freeze({
     matureSpill("spill-water-large", "spill-water-large.png", "water"),
     matureSpill("spill-juice-large", "spill-juice-large.png", "juice"),
     matureSpill("spill-dirt-smear-large", "spill-dirt-smear-large.png", "dirt"),
+    closingSpill("spill-oil-large", "spill-oil-large.png", "oil"),
+    closingSpill("spill-footprint-large", "spill-footprint-large.png", "footprint"),
+    closingSpill("spill-trash-smear-large", "spill-trash-smear-large.png", "trash-smear"),
     matureDeliveryProp("delivery-box-small", "delivery-box-small.png", "prop", "small"),
     matureDeliveryProp("delivery-box-medium", "delivery-box-medium.png", "prop", "medium"),
     matureDeliveryProp("delivery-box-large", "delivery-box-large.png", "prop", "large"),
