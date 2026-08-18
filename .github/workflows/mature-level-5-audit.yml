@@ -21,6 +21,7 @@ on:
       - "scripts/capture-golden-order-hunt.mjs"
       - "scripts/capture-golden-order-hunt-mobile.mjs"
       - "scripts/capture-golden-worker-motion.mjs"
+      - "scripts/capture-l5-order-overlap.mjs"
       - ".github/workflows/mature-level-5-audit.yml"
   pull_request:
     paths:
@@ -40,6 +41,7 @@ on:
       - "scripts/capture-golden-order-hunt.mjs"
       - "scripts/capture-golden-order-hunt-mobile.mjs"
       - "scripts/capture-golden-worker-motion.mjs"
+      - "scripts/capture-l5-order-overlap.mjs"
       - ".github/workflows/mature-level-5-audit.yml"
   workflow_dispatch:
 
@@ -79,6 +81,10 @@ jobs:
         id: mobile
         continue-on-error: true
         run: node scripts/capture-golden-order-hunt-mobile.mjs
+      - name: Diagnose Level 5 order icon overlap
+        id: overlap
+        continue-on-error: true
+        run: node scripts/capture-l5-order-overlap.mjs
       - name: Upload Level 5 evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -87,6 +93,7 @@ jobs:
           path: |
             ui-audit/golden-order-hunt
             ui-audit/golden-order-hunt-mobile
+            ui-audit/golden-order-overlap
           if-no-files-found: error
           retention-days: 14
       - name: Publish Level 5 commit status
@@ -96,13 +103,14 @@ jobs:
           DESKTOP_OUTCOME: ${{ steps.desktop.outcome }}
           MOTION_OUTCOME: ${{ steps.motion.outcome }}
           MOBILE_OUTCOME: ${{ steps.mobile.outcome }}
+          OVERLAP_OUTCOME: ${{ steps.overlap.outcome }}
         run: |
-          if [ "$DESKTOP_OUTCOME" = "success" ] && [ "$MOTION_OUTCOME" = "success" ] && [ "$MOBILE_OUTCOME" = "success" ]; then
+          if [ "$DESKTOP_OUTCOME" = "success" ] && [ "$MOTION_OUTCOME" = "success" ] && [ "$MOBILE_OUTCOME" = "success" ] && [ "$OVERLAP_OUTCOME" = "success" ]; then
             STATE=success
-            DESC="L5 desktop, motion, joystick and mobile order hunt passed"
+            DESC="L5 desktop, motion, joystick, order icons and overlap checks passed"
           else
             STATE=failure
-            DESC="mature Level 5 desktop/motion/mobile audit failed"
+            DESC="mature Level 5 desktop/motion/mobile/order overlap audit failed"
           fi
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state="$STATE" \
@@ -115,3 +123,4 @@ jobs:
           test "${{ steps.desktop.outcome }}" = "success"
           test "${{ steps.motion.outcome }}" = "success"
           test "${{ steps.mobile.outcome }}" = "success"
+          test "${{ steps.overlap.outcome }}" = "success"
