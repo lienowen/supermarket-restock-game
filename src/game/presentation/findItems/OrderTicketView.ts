@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { createOpaqueCutoutTexture } from "../visual/OpaqueCutoutTexture";
 import type { VisualSize } from "../visual/StarterMarketVisualSpec";
 import type { FindItemsLevelVisualPreset } from "../visual/MarketLevelVisualPreset";
 
@@ -91,8 +92,11 @@ export class OrderTicketView {
       const x = startX + index * itemGap;
       const card = scene.add.graphics();
       const imageSize = this.fitSize(sourceSize, config.visual.iconMaxSize);
-      const image = scene.add.image(x, slotY - 10, assetKey)
-        .setDisplaySize(imageSize.width, imageSize.height);
+      const iconTextureKey = createOpaqueCutoutTexture(scene, assetKey);
+      const image = scene.add.image(x, slotY - 10, iconTextureKey)
+        .setDisplaySize(imageSize.width, imageSize.height)
+        .setName(`order-ticket-icon-${productId}`)
+        .setAlpha(1);
       const label = scene.add.text(
         x,
         slotY + slotSize.height / 2 - 13,
