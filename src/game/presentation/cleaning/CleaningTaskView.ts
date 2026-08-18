@@ -23,6 +23,12 @@ const DEFAULT_SPILL_ASSET_KEYS = Object.freeze([
   "spill-juice-large",
   "spill-dirt-smear-large"
 ]);
+const CLOSING_SPILL_ASSET_KEYS = Object.freeze([
+  ...DEFAULT_SPILL_ASSET_KEYS,
+  "spill-oil-large",
+  "spill-footprint-large",
+  "spill-trash-smear-large"
+]);
 const SPILL_SIZE_MULTIPLIERS = Object.freeze([
   Object.freeze({ width: 1.0, height: 0.9 }),
   Object.freeze({ width: 1.12, height: 0.98 }),
@@ -155,7 +161,9 @@ export class CleaningTaskView {
 
     this.showToolsPhase(false);
     document.body.dataset.cleaningPresentation = "mature-clean-v3-tap-walk-scrub";
-    document.body.dataset.cleaningSpillArt = "water-juice-dirt-production";
+    document.body.dataset.cleaningSpillArt = this.spillAssetKeys().length > DEFAULT_SPILL_ASSET_KEYS.length
+      ? "six-variety-production"
+      : "water-juice-dirt-production";
     document.body.dataset.cleaningControl = "tap-target-auto-walk-then-drag";
     document.body.dataset.cleanScrubProgress = "0";
     return Object.freeze([...this.spills]);
@@ -323,10 +331,17 @@ export class CleaningTaskView {
     this.syncSpillInteractivity();
   }
 
+  private spillAssetKeys(): readonly string[] {
+    if (this.config.spillAssetKeys?.length) return this.config.spillAssetKeys;
+    return this.config.spotPositions.length >= CLOSING_SPILL_ASSET_KEYS.length
+      ? CLOSING_SPILL_ASSET_KEYS
+      : DEFAULT_SPILL_ASSET_KEYS;
+  }
+
   private createSpill(point: NavigationPoint, index: number): Phaser.GameObjects.Container {
     const { scene, config } = this;
     const visual = config.visual;
-    const spillAssetKeys = config.spillAssetKeys ?? DEFAULT_SPILL_ASSET_KEYS;
+    const spillAssetKeys = this.spillAssetKeys();
     const sourceKey = spillAssetKeys[index % spillAssetKeys.length];
     if (!sourceKey) throw new Error("Clean mode requires at least one spill asset");
     const textureKey = createTrimmedTexture(scene, sourceKey, {
