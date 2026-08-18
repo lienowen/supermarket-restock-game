@@ -79,26 +79,6 @@ const projectBackground = (
   status: "production"
 });
 
-const lateGameBackground = (
-  key: string,
-  levelDirectory: "L8" | "L9" | "L10",
-  fileName: string,
-  state: string
-): AssetDescriptor => asset({
-  key,
-  path: `assets/game/production-v7/l8-l10-adapted-assets/${levelDirectory}/${fileName}`,
-  category: "environment",
-  canvasSize: [1672, 941],
-  anchor: [0.5, 0.5],
-  defaultScale: 1,
-  depthGroup: "far-environment",
-  preloadGroup: "starter-market",
-  perspective: "fixed-third-person",
-  lightDirection: "upper-left",
-  state,
-  status: "production"
-});
-
 const closingSpill = (
   key: string,
   fileName: string,
@@ -179,24 +159,48 @@ export const GLOBAL_PROJECT_ASSET_CATALOGUE: AssetCatalogue = Object.freeze({
       "bg-order-hunt-zone-v2.png",
       "order-hunt-zone-v2"
     ),
-    lateGameBackground(
-      "environment-project-cleaning-l8-v1",
-      "L8",
-      "bg-cleaning-closing-l8.png",
-      "closing-cleaning-l8-v1"
-    ),
-    lateGameBackground(
-      "environment-project-order-hunt-l9-v1",
-      "L9",
-      "bg-priority-order-l9.png",
-      "priority-order-l9-v1"
-    ),
-    lateGameBackground(
-      "environment-project-restock-l10-v1",
-      "L10",
-      "bg-final-cooler-rush-l10.png",
-      "final-cooler-rush-l10-v1"
-    ),
+    asset({
+      key: "environment-project-cleaning-l8-v1",
+      path: "assets/game/production-v7/l8-l10-adapted-assets/L8/bg-cleaning-closing-l8.png",
+      category: "environment",
+      canvasSize: [1672, 941],
+      anchor: [0.5, 0.5],
+      defaultScale: 1,
+      depthGroup: "far-environment",
+      preloadGroup: "starter-market",
+      perspective: "fixed-third-person",
+      lightDirection: "upper-left",
+      state: "closing-cleaning-l8-v1",
+      status: "production"
+    }),
+    asset({
+      key: "environment-project-order-hunt-l9-v1",
+      path: "assets/game/production-v7/l8-l10-adapted-assets/L9/bg-priority-order-l9.png",
+      category: "environment",
+      canvasSize: [1672, 941],
+      anchor: [0.5, 0.5],
+      defaultScale: 1,
+      depthGroup: "far-environment",
+      preloadGroup: "starter-market",
+      perspective: "fixed-third-person",
+      lightDirection: "upper-left",
+      state: "priority-order-l9-v1",
+      status: "production"
+    }),
+    asset({
+      key: "environment-project-restock-l10-v1",
+      path: "assets/game/production-v7/l8-l10-adapted-assets/L10/bg-final-cooler-rush-l10.png",
+      category: "environment",
+      canvasSize: [1672, 941],
+      anchor: [0.5, 0.5],
+      defaultScale: 1,
+      depthGroup: "far-environment",
+      preloadGroup: "starter-market",
+      perspective: "fixed-third-person",
+      lightDirection: "upper-left",
+      state: "final-cooler-rush-l10-v1",
+      status: "production"
+    }),
     l5OrderIcon("ui-l5-order-milk", "order-milk-clean.png", "milk"),
     l5OrderIcon("ui-l5-order-cereal", "order-cereal-clean.png", "cereal"),
     asset({
