@@ -140,8 +140,8 @@ export const GLOBAL_PROJECT_ASSET_CATALOGUE: AssetCatalogue = Object.freeze({
       "bg-order-hunt-zone-v2.png",
       "order-hunt-zone-v2"
     ),
-    l5OrderIcon("ui-l5-order-milk", "order-milk-clean.svg", "milk"),
-    l5OrderIcon("ui-l5-order-cereal", "order-cereal-clean.svg", "cereal"),
+    l5OrderIcon("ui-l5-order-milk", "order-milk-clean.png", "milk"),
+    l5OrderIcon("ui-l5-order-cereal", "order-cereal-clean.png", "cereal"),
     asset({
       key: "fixture-beverage-cooler-glass-hd-v3",
       path: "assets/game/production-v3/cooler-restock/cooler_front_glass_hd.png",
