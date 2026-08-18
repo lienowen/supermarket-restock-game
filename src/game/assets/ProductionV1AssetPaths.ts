@@ -52,4 +52,3 @@ export const PRODUCTION_V1_ASSETS = {
   worker_walk_01: "assets/game/production-v1/characters/worker/worker-walk-01.png",
   worker_walk_02: "assets/game/production-v1/characters/worker/worker-walk-02.png",
 } as const;
-
