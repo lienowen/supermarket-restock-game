@@ -23,8 +23,8 @@ export const CHECKOUT_PATIENCE_EXPERIENCE_SPECS: readonly CheckoutPatienceExperi
     levelId: "starter-level-007",
     mode: "checkout" as const,
     customerCount: 8,
-    patienceDurationMs: 15000,
-    wrongWeightPenaltyMs: 3000,
+    patienceDurationMs: 22000,
+    wrongWeightPenaltyMs: 4500,
     standardProductAssetKeys: Object.freeze([
       "product-milk-bottle",
       "product-cereal-box",
