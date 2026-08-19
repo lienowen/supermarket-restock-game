@@ -201,3 +201,49 @@ if (
   );
 }
 process.stdout.write(`Verified Level 6 small delivery box (${levelSixSmallBytes.length} bytes).\n`);
+
+// Level 7 originally received a damaged scale PNG and two customer mood PNGs
+// that could be partially decoded by Chromium but fail strict PNG validation.
+// Rebuild those runtime filenames from a verified scale source and the existing
+// production-v1 customer set so L7 stays visually consistent with the store.
+const LEVEL_SEVEN_SOURCE_DIRECTORY = resolve(ROOT, "asset-source/l7-patience");
+const LEVEL_SEVEN_OUTPUT_DIRECTORY = resolve(ROOT, "public/assets/game/missing-assets-batch-01");
+const LEVEL_SEVEN_MATERIALIZED_ASSETS = Object.freeze([
+  Object.freeze({
+    source: resolve(LEVEL_SEVEN_SOURCE_DIRECTORY, "equipment-produce-scale.png"),
+    output: "equipment-produce-scale.png",
+    bytes: 57796,
+    sha256: "648003459a876ae7fe9f24b6ac5bc842c14bbfdb5c285554aa73e4a4a71e491e"
+  }),
+  Object.freeze({
+    source: resolve(ROOT, "public/assets/game/production-v1/characters/customers/customer-young-woman-basket.png"),
+    output: "customer-happy.png",
+    bytes: 126832,
+    sha256: "1abf9d9648d09ddbd65ec19665616f7c22c9aed000186a9348ac58109002c76c"
+  }),
+  Object.freeze({
+    source: resolve(ROOT, "public/assets/game/production-v1/characters/customers/customer-young-woman-idle.png"),
+    output: "customer-impatient.png",
+    bytes: 105673,
+    sha256: "18b38ae6e029272d18f59557957bc00c4d27fa2edecf4e81f7dfd324695b3436"
+  })
+]);
+
+mkdirSync(LEVEL_SEVEN_OUTPUT_DIRECTORY, { recursive: true });
+LEVEL_SEVEN_MATERIALIZED_ASSETS.forEach(({ source, output, bytes: expectedBytes, sha256 }) => {
+  if (!existsSync(source) || !statSync(source).isFile()) {
+    throw new Error(`Missing verified Level 7 source asset for ${output}`);
+  }
+  const sourceBytes = readFileSync(source);
+  const sourceDigest = createHash("sha256").update(sourceBytes).digest("hex");
+  const isPng = sourceBytes.length >= PNG_SIGNATURE.length &&
+    sourceBytes.subarray(0, PNG_SIGNATURE.length).equals(PNG_SIGNATURE);
+  if (!isPng || sourceBytes.length !== expectedBytes || sourceDigest !== sha256) {
+    throw new Error(
+      `Level 7 source integrity check failed for ${output}: bytes=${sourceBytes.length}, sha256=${sourceDigest}, png=${isPng}`
+    );
+  }
+  const outputPath = resolve(LEVEL_SEVEN_OUTPUT_DIRECTORY, output);
+  writeFileSync(outputPath, sourceBytes);
+  process.stdout.write(`Materialized verified Level 7 asset ${output} (${sourceBytes.length} bytes).\n`);
+});
