@@ -212,8 +212,8 @@ const LEVEL_SEVEN_MATERIALIZED_ASSETS = Object.freeze([
   Object.freeze({
     source: resolve(LEVEL_SEVEN_SOURCE_DIRECTORY, "equipment-produce-scale.png"),
     output: "equipment-produce-scale.png",
-    bytes: 57796,
-    sha256: "648003459a876ae7fe9f24b6ac5bc842c14bbfdb5c285554aa73e4a4a71e491e"
+    bytes: 8594,
+    sha256: "345ff8cd69b12431a3ac462b7a5273de936a55df73cddfcc2399e5feb60b7dca"
   }),
   Object.freeze({
     source: resolve(ROOT, "public/assets/game/production-v1/characters/customers/customer-young-woman-basket.png"),
