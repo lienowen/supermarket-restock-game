@@ -38,9 +38,9 @@ const SPILL_SIZE_MULTIPLIERS = Object.freeze([
 ]);
 
 /**
- * L8 closing shift mechanic. Liquid hazards require a visible wet-floor sign
- * before scrubbing can begin. Dry dirt / footprints / trash can be scrubbed
- * immediately after the worker reaches the target.
+ * Closing-shift safety mechanic. Liquid hazards require a visible wet-floor
+ * sign before scrubbing can begin. Dry dirt / footprints / trash can be
+ * scrubbed immediately after the worker reaches the target.
  */
 export class ClosingSafetyCleaningTaskView {
   private readonly staticObjects: Phaser.GameObjects.GameObject[] = [];
@@ -202,6 +202,12 @@ export class ClosingSafetyCleaningTaskView {
     this.syncToolInteractivity();
     this.previousPhase = state.phase;
     this.previousCompletedSpills = state.completedSpills;
+  }
+
+  canCommitCurrentSpill(index: number): boolean {
+    if (this.currentPhase !== "spills" || index !== this.activeSpillIndex) return false;
+    if (this.warningRequired.has(index) && !this.warningPlaced.has(index)) return false;
+    return this.scrubRatio() >= 1;
   }
 
   destroy(): void {
