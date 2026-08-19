@@ -13,6 +13,10 @@ import {
 } from "../../application/UtilityTaskSceneController";
 import { STARTER_RUNTIME_ASSET_REGISTRY } from "../../assets/RuntimeAssetRegistry";
 import {
+  resolveCleaningExperienceSpec,
+  type CleaningExperienceSpec
+} from "../../content/experience/CleaningExperienceSpec";
+import {
   resolveLevelExperienceSpec,
   type FindItemsSearchDecoySpec,
   type LevelExperienceSpec
@@ -49,22 +53,13 @@ type UtilityVisualPreset = CleanLevelVisualPreset | FindItemsLevelVisualPreset;
 type UtilityProgressObject = Phaser.GameObjects.Image | Phaser.GameObjects.Container;
 type CleanTaskPresentation = CleaningTaskView | ClosingSafetyCleaningTaskView;
 
-const L8_CLOSING_CLEAN_SPILL_ASSET_KEYS = Object.freeze([
-  "spill-water-large",
-  "spill-footprint-large",
-  "spill-juice-large",
-  "spill-dirt-smear-large",
-  "spill-oil-large",
-  "spill-trash-smear-large"
-]);
-const L8_WARNING_REQUIRED_SPILL_INDEXES = Object.freeze([0, 2, 4]);
-
 export class UtilityTaskScene extends Phaser.Scene {
   readonly controller: UtilityTaskSceneController;
 
   private readonly interactionGate = new InteractionGate();
   private readonly visualPreset: UtilityVisualPreset;
   private readonly experience: LevelExperienceSpec;
+  private readonly cleaningExperience?: CleaningExperienceSpec;
   private readonly findChallenge?: FindItemsChallengeController;
   private readonly disposers: Array<() => void> = [];
   private readonly findItemsByProduct = new Map<string, Phaser.GameObjects.Image>();
@@ -89,6 +84,7 @@ export class UtilityTaskScene extends Phaser.Scene {
     super(context.scene.key);
     this.visualPreset = resolveLevelVisualPreset(context.campaignLevel.level);
     this.experience = resolveLevelExperienceSpec(context.campaignLevel.level);
+    this.cleaningExperience = resolveCleaningExperienceSpec(context.campaignLevel.level);
     const initialEconomy = campaignSession?.initialEconomy ?? {
       coins: context.campaignLevel.level.tuning.initialCoins,
       stars: 0,
@@ -107,15 +103,10 @@ export class UtilityTaskScene extends Phaser.Scene {
   preload(): void {
     this.context.levelAssets.preload.forEach((asset) => this.load.image(asset.key, asset.path));
 
-    if (
-      this.context.mode === "clean" &&
-      this.context.campaignLevel.level.id === "starter-level-008"
-    ) {
-      L8_CLOSING_CLEAN_SPILL_ASSET_KEYS.forEach((assetKey) => {
-        const asset = STARTER_RUNTIME_ASSET_REGISTRY.require(assetKey);
-        if (!this.textures.exists(asset.key)) this.load.image(asset.key, asset.path);
-      });
-    }
+    this.cleaningExperience?.spillAssetKeys.forEach((assetKey) => {
+      const asset = STARTER_RUNTIME_ASSET_REGISTRY.require(assetKey);
+      if (!this.textures.exists(asset.key)) this.load.image(asset.key, asset.path);
+    });
 
     if (this.context.mode !== "find-items") return;
     this.experience.findItemsSearch?.decoys.forEach((decoy) => {
@@ -232,12 +223,12 @@ export class UtilityTaskScene extends Phaser.Scene {
     context: CleanStarterMarketPresentationContext,
     visual: CleanLevelVisualPreset
   ): void {
-    if (context.campaignLevel.level.id === "starter-level-008") {
+    if (this.cleaningExperience?.kind === "closing-safety") {
       this.cleaningView = new ClosingSafetyCleaningTaskView(this, {
         cleaningCartAssetKey: context.levelAssets.cleaningCart.key,
         wetFloorSignAssetKey: context.levelAssets.wetFloorSign.key,
-        spillAssetKeys: L8_CLOSING_CLEAN_SPILL_ASSET_KEYS,
-        warningRequiredSpillIndexes: L8_WARNING_REQUIRED_SPILL_INDEXES,
+        spillAssetKeys: this.cleaningExperience.spillAssetKeys,
+        warningRequiredSpillIndexes: this.cleaningExperience.warningRequiredSpillIndexes,
         toolPoint: context.runtime.toolPoint,
         spotPositions: context.runtime.spotPositions,
         visual
@@ -383,6 +374,11 @@ export class UtilityTaskScene extends Phaser.Scene {
     if (!this.canInteract(snapshot)) return;
     const action = this.controller.actionForCurrentStep();
     if (!action) return;
+    if (
+      action === "CLEAN_SPOT" &&
+      this.cleaningView instanceof ClosingSafetyCleaningTaskView &&
+      !this.cleaningView.canCommitCurrentSpill(snapshot.progress)
+    ) return;
 
     const duration = this.context.runtime.cleanDurationMs;
     this.interactionGate.lockFor(action === "COLLECT_TOOLS" ? 320 : duration);
