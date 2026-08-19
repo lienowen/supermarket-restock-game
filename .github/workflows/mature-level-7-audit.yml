@@ -5,11 +5,20 @@ on:
     branches:
       - main
     paths:
+      - "src/main.ts"
       - "src/game/assets/GlobalProjectAssetCatalogue.ts"
       - "src/game/content/experience/CheckoutPatienceExperienceSpec.ts"
+      - "src/game/infrastructure/browser/CheckoutSoftwareLandscapeDrag.ts"
       - "src/game/infrastructure/phaser/createPhaserGame.ts"
       - "src/game/presentation/ui/CheckoutPatienceDom.ts"
+      - "src/mobile-playability.css"
+      - "scripts/materialize-assets.mjs"
+      - "asset-source/l7-patience/**"
+      - "public/assets/game/production-v1/characters/customers/*.png"
+      - "public/assets/game/missing-assets-batch-01/equipment-produce-scale.png"
+      - "public/assets/game/missing-assets-batch-01/customer-*.png"
       - "scripts/capture-checkout-patience.mjs"
+      - "scripts/capture-checkout-patience-mobile.mjs"
       - ".github/workflows/mature-level-7-audit.yml"
   workflow_dispatch:
 
@@ -20,7 +29,7 @@ permissions:
 jobs:
   level7:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 14
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -44,18 +53,26 @@ jobs:
         continue-on-error: true
         run: npm run build
 
-      - name: Verify mature Level 7 patience flow
-        id: audit
-        if: steps.build.outcome == 'success'
+      - name: Verify Level 7 desktop patience flow
+        id: desktop
+        if: ${{ always() && steps.build.outcome == 'success' }}
         continue-on-error: true
         run: node scripts/capture-checkout-patience.mjs
+
+      - name: Verify Level 7 Android software-landscape touch flow
+        id: mobile
+        if: ${{ always() && steps.build.outcome == 'success' }}
+        continue-on-error: true
+        run: node scripts/capture-checkout-patience-mobile.mjs
 
       - name: Upload Level 7 evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: mature-level-7-audit
-          path: ui-audit/mature-level-7
+          path: |
+            ui-audit/mature-level-7
+            ui-audit/mature-level-7-mobile
           if-no-files-found: warn
           retention-days: 14
 
@@ -64,14 +81,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
-          AUDIT_OUTCOME: ${{ steps.audit.outcome }}
+          DESKTOP_OUTCOME: ${{ steps.desktop.outcome }}
+          MOBILE_OUTCOME: ${{ steps.mobile.outcome }}
         run: |
-          if [ "$BUILD_OUTCOME" = "success" ] && [ "$AUDIT_OUTCOME" = "success" ]; then
+          if [ "$BUILD_OUTCOME" = "success" ] && [ "$DESKTOP_OUTCOME" = "success" ] && [ "$MOBILE_OUTCOME" = "success" ]; then
             STATE=success
-            DESC="real scale + mood states + 8-customer patience flow passed"
+            DESC="Level 7 scale + mood + 8-customer desktop/Android flow passed"
           else
             STATE=failure
-            DESC="mature Level 7 build/browser audit failed"
+            DESC="mature Level 7 desktop/Android audit failed"
           fi
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state="$STATE" \
@@ -83,4 +101,5 @@ jobs:
         if: always()
         run: |
           test "${{ steps.build.outcome }}" = "success"
-          test "${{ steps.audit.outcome }}" = "success"
+          test "${{ steps.desktop.outcome }}" = "success"
+          test "${{ steps.mobile.outcome }}" = "success"
