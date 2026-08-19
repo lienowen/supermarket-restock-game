@@ -81,7 +81,10 @@ const projectBackground = (
 
 const l8Background = (): AssetDescriptor => asset({
   key: "environment-project-cleaning-closing-l8",
-  path: "assets/game/production-v7/l8-l10-adapted-assets/L8/bg-cleaning-closing-l8.png",
+  // The uploaded L8 plate is currently truncated in the repository. Keep the
+  // stable key but bind it to the validated cleaning plate until the binary is
+  // replaced; shipping a known-good supermarket scene is preferable to black.
+  path: "assets/game/production-v4/project-backgrounds/bg-cleaning-zone-v2.png",
   category: "environment",
   canvasSize: [1672, 941],
   anchor: [0.5, 0.5],
@@ -90,7 +93,7 @@ const l8Background = (): AssetDescriptor => asset({
   preloadGroup: "starter-market",
   perspective: "fixed-third-person",
   lightDirection: "upper-left",
-  state: "closing-cleanup-l8",
+  state: "closing-cleanup-l8-safe-fallback",
   status: "production"
 });
 
