@@ -419,12 +419,17 @@ export class ClosingSafetyCleaningTaskView {
     delete document.body.dataset.cleaningPendingWalk;
     const sign = this.warningSigns.get(index);
     if (sign) {
-      sign.setVisible(true).setAlpha(0).setScale(0.72);
+      const baseScaleX = sign.scaleX;
+      const baseScaleY = sign.scaleY;
+      sign
+        .setVisible(true)
+        .setAlpha(0)
+        .setScale(baseScaleX * 0.86, baseScaleY * 0.86);
       this.scene.tweens.add({
         targets: sign,
         alpha: 1,
-        scaleX: 1,
-        scaleY: 1,
+        scaleX: baseScaleX,
+        scaleY: baseScaleY,
         duration: 220,
         ease: "Back.Out"
       });
