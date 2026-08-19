@@ -10,10 +10,10 @@ const LEVEL_ENVIRONMENT_ASSET_KEYS: Readonly<Record<string, string>> = Object.fr
   "starter-level-004": "environment-project-cleaning-v2",
   "starter-level-005": "environment-project-order-hunt-v2",
 
-  // Later missions keep their own reviewed plates once available.
+  // Later missions keep reviewed plates while their mechanics supply the variation.
   "starter-level-006": "environment-starter-market-restock-hd-v3",
   "starter-level-007": "environment-project-checkout-v2",
-  "starter-level-008": "environment-project-cleaning-closing-l8",
+  "starter-level-008": "environment-project-cleaning-v2",
   "starter-level-009": "environment-project-order-hunt-v2",
   "starter-level-010": "environment-starter-market-restock-hd-v3"
 });
