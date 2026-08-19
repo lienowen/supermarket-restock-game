@@ -135,6 +135,13 @@ jobs:
           set -o pipefail
           node scripts/capture-checkout-patience.mjs 2>&1 | tee checkout-patience-audit.log
 
+      - name: Level 7 Android software landscape gate
+        id: mobile_patience
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          node scripts/capture-checkout-patience-mobile.mjs 2>&1 | tee checkout-patience-mobile-audit.log
+
       - name: Upload CrazyGames release package
         if: always()
         uses: actions/upload-artifact@v4
@@ -161,6 +168,7 @@ jobs:
             golden-order-hunt-audit.log
             cart-capacity-audit.log
             checkout-patience-audit.log
+            checkout-patience-mobile-audit.log
             build.log
             release-check.log
             release-payload.log
@@ -178,6 +186,7 @@ jobs:
           ORDER: ${{ steps.order.outcome }}
           CAPACITY: ${{ steps.capacity.outcome }}
           PATIENCE: ${{ steps.patience.outcome }}
+          MOBILE_PATIENCE: ${{ steps.mobile_patience.outcome }}
         with:
           script: |
             const sha = context.eventName === "pull_request"
@@ -190,7 +199,8 @@ jobs:
               "L4-mobile": process.env.MOBILE_CLEAN,
               L5: process.env.ORDER,
               L6: process.env.CAPACITY,
-              L7: process.env.PATIENCE
+              L7: process.env.PATIENCE,
+              "L7-mobile": process.env.MOBILE_PATIENCE
             };
             const failed = Object.entries(outcomes)
               .filter(([, value]) => value !== "success")
@@ -218,3 +228,4 @@ jobs:
           test "${{ steps.order.outcome }}" = "success"
           test "${{ steps.capacity.outcome }}" = "success"
           test "${{ steps.patience.outcome }}" = "success"
+          test "${{ steps.mobile_patience.outcome }}" = "success"
