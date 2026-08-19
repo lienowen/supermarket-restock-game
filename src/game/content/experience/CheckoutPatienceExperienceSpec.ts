@@ -23,8 +23,11 @@ export const CHECKOUT_PATIENCE_EXPERIENCE_SPECS: readonly CheckoutPatienceExperi
     levelId: "starter-level-007",
     mode: "checkout" as const,
     customerCount: 8,
-    patienceDurationMs: 22000,
-    wrongWeightPenaltyMs: 4500,
+    // L7 asks for a real drag, a produce-weight decision and payment. Thirty
+    // seconds keeps that three-step loop readable on touch devices while wrong
+    // weights still create strong pressure instead of an instant hidden reset.
+    patienceDurationMs: 30000,
+    wrongWeightPenaltyMs: 6000,
     standardProductAssetKeys: Object.freeze([
       "product-milk-bottle",
       "product-cereal-box",
