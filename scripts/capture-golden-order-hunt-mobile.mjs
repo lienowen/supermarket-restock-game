@@ -179,6 +179,17 @@ async function readState(page) {
     const ambientNames = new Set(["ambient-produce-display", "ambient-backroom-rack", "ambient-shopping-cart", "ambient-customer-a", "ambient-customer-b"]);
     const joystick = scene?.children?.getByName?.("virtual-movement-joystick");
     const joystickHitZone = scene?.children?.getByName?.("virtual-movement-joystick-hit-zone");
+    const findNamed = (name) => {
+      const direct = scene?.children?.getByName?.(name);
+      if (direct) return direct;
+      const pending = [...list];
+      while (pending.length > 0) {
+        const object = pending.shift();
+        if (object?.name === name) return object;
+        if (Array.isArray(object?.list)) pending.push(...object.list);
+      }
+      return null;
+    };
     return {
       environmentKey: document.body.dataset.goldenEnvironment ?? scene?.context?.levelAssets?.environment?.key ?? null,
       sceneDressing: document.body.dataset.sceneDressing ?? null,
@@ -193,7 +204,7 @@ async function readState(page) {
       joystickVisible: joystick?.visible ?? false,
       joystickInteractive: Boolean(joystickHitZone?.input?.enabled),
       orderIcons: orderIconIds.map((id) => {
-        const icon = scene?.children?.getByName?.(`order-ticket-icon-${id}`);
+        const icon = findNamed(`order-ticket-icon-${id}`);
         return {
           id,
           visible: icon?.visible === true,
