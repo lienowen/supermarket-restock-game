@@ -152,6 +152,7 @@ export interface RestockWaveMemoryDefinition {
   readonly previewDurationMs: number;
   readonly hideActiveTarget: boolean;
   readonly keepTargetOnFailure: boolean;
+  readonly instruction?: string;
 }
 
 export interface RestockRushTuningDefinition {
