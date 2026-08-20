@@ -29,6 +29,33 @@ test("Order hunt tracks requested products independently from presentation", () 
   assert.deepEqual(completed.snapshot.remainingProductIds, []);
 });
 
+test("Priority order rejects a requested product when it is selected out of sequence", () => {
+  const challenge = createChallenge({
+    productIds: ["cereal-box", "milk-bottle", "apple"],
+    selectionMode: "sequence",
+    timeLimitSeconds: 40,
+    mistakePenaltySeconds: 7
+  });
+
+  assert.equal(challenge.snapshot().nextRequiredProductId, "cereal-box");
+  const earlyMilk = challenge.selectProduct("milk-bottle");
+  assert.equal(earlyMilk.accepted, false);
+  assert.equal(earlyMilk.reason, "out-of-order");
+  assert.equal(earlyMilk.snapshot.mistakes, 1);
+  assert.equal(earlyMilk.snapshot.remainingSeconds, 33);
+  assert.equal(earlyMilk.snapshot.nextRequiredProductId, "cereal-box");
+  assert.deepEqual(earlyMilk.snapshot.collectedProductIds, []);
+
+  assert.equal(challenge.selectProduct("cereal-box").accepted, true);
+  assert.equal(challenge.snapshot().nextRequiredProductId, "milk-bottle");
+  assert.equal(challenge.selectProduct("milk-bottle").accepted, true);
+  const completed = challenge.selectProduct("apple");
+  assert.equal(completed.accepted, true);
+  assert.equal(completed.snapshot.status, "complete");
+  assert.equal(completed.snapshot.nextRequiredProductId, undefined);
+  assert.deepEqual(completed.snapshot.collectedProductIds, ["cereal-box", "milk-bottle", "apple"]);
+});
+
 test("Wrong shelf choices consume configured time without advancing the order", () => {
   const challenge = createChallenge();
   const afterMistake = challenge.recordMistake();
