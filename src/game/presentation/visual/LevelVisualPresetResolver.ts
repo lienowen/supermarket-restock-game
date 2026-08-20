@@ -34,7 +34,19 @@ const resolveMatureCleanPreset = (level: CleanLevelDefinition): CleanLevelVisual
 const resolveMatureFindItemsPreset = (
   level: FindItemsLevelDefinition
 ): FindItemsLevelVisualPreset => {
-  const preset = resolveMarketLevelVisualPreset(level.presentation.visualPresetId, "find-items");
+  const basePreset = resolveMarketLevelVisualPreset(level.presentation.visualPresetId, "find-items");
+  const preset = basePreset.id === "find-items-golden-standard-v1"
+    ? Object.freeze({
+        ...basePreset,
+        orderTicket: Object.freeze({
+          ...basePreset.orderTicket,
+          // A tall bottle was landing at ~27 physical pixels wide on the
+          // Android audit. Give all three order icons a little more room
+          // while preserving their aspect ratios.
+          iconMaxSize: Object.freeze({ width: 48, height: 52 })
+        })
+      })
+    : basePreset;
   const priority = resolvePriorityOrderExperienceSpec(level);
   if (!priority) return preset;
 
