@@ -21,6 +21,10 @@ import {
   type FindItemsSearchDecoySpec,
   type LevelExperienceSpec
 } from "../../content/experience/LevelExperienceSpec";
+import {
+  resolvePriorityOrderExperienceSpec,
+  type PriorityOrderExperienceSpec
+} from "../../content/experience/PriorityOrderExperienceSpec";
 import { navigateToLevel } from "../../infrastructure/browser/BrowserLevelNavigator";
 import { PlayerNavigationView } from "../actors/PlayerNavigationView";
 import { CleaningTaskView } from "../cleaning/CleaningTaskView";
@@ -60,6 +64,7 @@ export class UtilityTaskScene extends Phaser.Scene {
   private readonly visualPreset: UtilityVisualPreset;
   private readonly experience: LevelExperienceSpec;
   private readonly cleaningExperience?: CleaningExperienceSpec;
+  private readonly priorityOrderExperience?: PriorityOrderExperienceSpec;
   private readonly findChallenge?: FindItemsChallengeController;
   private readonly disposers: Array<() => void> = [];
   private readonly findItemsByProduct = new Map<string, Phaser.GameObjects.Image>();
@@ -85,6 +90,7 @@ export class UtilityTaskScene extends Phaser.Scene {
     this.visualPreset = resolveLevelVisualPreset(context.campaignLevel.level);
     this.experience = resolveLevelExperienceSpec(context.campaignLevel.level);
     this.cleaningExperience = resolveCleaningExperienceSpec(context.campaignLevel.level);
+    this.priorityOrderExperience = resolvePriorityOrderExperienceSpec(context.campaignLevel.level);
     const initialEconomy = campaignSession?.initialEconomy ?? {
       coins: context.campaignLevel.level.tuning.initialCoins,
       stars: 0,
@@ -95,7 +101,8 @@ export class UtilityTaskScene extends Phaser.Scene {
       this.findChallenge = new FindItemsChallengeController({
         productIds: context.runtime.itemTargets.map((target) => target.productId),
         timeLimitSeconds: context.runtime.timeLimitSeconds,
-        mistakePenaltySeconds: context.runtime.mistakePenaltySeconds
+        mistakePenaltySeconds: context.runtime.mistakePenaltySeconds,
+        selectionMode: this.priorityOrderExperience?.selectionMode ?? "any"
       });
     }
   }
@@ -109,7 +116,7 @@ export class UtilityTaskScene extends Phaser.Scene {
     });
 
     if (this.context.mode !== "find-items") return;
-    this.experience.findItemsSearch?.decoys.forEach((decoy) => {
+    this.findItemsDecoys().forEach((decoy) => {
       const asset = STARTER_RUNTIME_ASSET_REGISTRY.require(decoy.assetKey);
       if (!this.textures.exists(asset.key)) this.load.image(asset.key, asset.path);
     });
@@ -124,8 +131,11 @@ export class UtilityTaskScene extends Phaser.Scene {
     document.body.dataset.activeLevel = context.campaignLevel.level.id;
     document.body.dataset.activeMode = context.mode;
     document.body.dataset.findItemsVisibleCount = context.mode === "find-items"
-      ? String(context.runtime.itemTargets.length + (this.experience.findItemsSearch?.decoys.length ?? 0))
+      ? String(context.runtime.itemTargets.length + this.findItemsDecoys().length)
       : "0";
+    document.body.dataset.findItemsSelectionMode = context.mode === "find-items"
+      ? (this.priorityOrderExperience?.selectionMode ?? "any")
+      : "none";
     this.cameras.main.setBackgroundColor("#171712");
 
     new StarterMarketEnvironmentView(this, context).create();
@@ -283,7 +293,7 @@ export class UtilityTaskScene extends Phaser.Scene {
       this.findItemsByProduct.set(target.productId, item);
     });
 
-    this.experience.findItemsSearch?.decoys.forEach((decoy) => {
+    this.findItemsDecoys().forEach((decoy) => {
       this.createFindDecoySprite(decoy);
     });
 
@@ -293,7 +303,8 @@ export class UtilityTaskScene extends Phaser.Scene {
       itemSizes: visual.itemSizes,
       visual: visual.orderTicket,
       panelColor: context.palette.hud,
-      accentColor: context.palette.gold
+      accentColor: context.palette.gold,
+      numberedSequence: this.priorityOrderExperience?.numberedTicket ?? false
     });
     this.orderTicket.create();
 
@@ -305,6 +316,10 @@ export class UtilityTaskScene extends Phaser.Scene {
       initialSeconds: context.runtime.timeLimitSeconds
     });
     this.findCountdown.create();
+  }
+
+  private findItemsDecoys(): readonly FindItemsSearchDecoySpec[] {
+    return this.priorityOrderExperience?.decoys ?? this.experience.findItemsSearch?.decoys ?? [];
   }
 
   private createFindDecoySprite(decoy: FindItemsSearchDecoySpec): void {
@@ -452,7 +467,12 @@ export class UtilityTaskScene extends Phaser.Scene {
     if (this.context.mode !== "find-items" || !this.findChallenge) return;
     const result = this.findChallenge.selectProduct(productId);
     if (!result.accepted) {
-      if (result.reason !== "inactive") this.showFindMistake(result.snapshot, "WRONG ITEM");
+      if (result.reason !== "inactive") {
+        this.showFindMistake(
+          result.snapshot,
+          result.reason === "out-of-order" ? "WRONG ORDER" : "WRONG ITEM"
+        );
+      }
       return;
     }
 
@@ -693,5 +713,6 @@ export class UtilityTaskScene extends Phaser.Scene {
     this.target?.destroy();
     this.interactionGate.destroy();
     delete document.body.dataset.findItemsVisibleCount;
+    delete document.body.dataset.findItemsSelectionMode;
   }
 }
