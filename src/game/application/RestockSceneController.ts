@@ -43,6 +43,7 @@ export interface RestockSceneControllerConfig {
   readonly initialCoins?: number;
   readonly initialStars?: number;
   readonly itemsPerRow?: number;
+  readonly restockInstruction?: string;
 }
 
 type SnapshotListener = (snapshot: RestockSceneSnapshot, copy: RestockSceneCopy) => void;
@@ -83,7 +84,7 @@ export class RestockSceneController {
     });
     const initialStars = config.initialStars ?? 0;
     if (initialStars > 0) this.workflow.wallet.grant(0, initialStars);
-    this.copyByStep = createCopy(runtime, config.itemsPerRow);
+    this.copyByStep = createCopy(runtime, config.itemsPerRow, config.restockInstruction);
   }
 
   subscribe(listener: SnapshotListener): () => void {
@@ -136,7 +137,8 @@ export class RestockSceneController {
 
 function createCopy(
   runtime: RestockShiftRuntimeContent,
-  interactionsPerShelf?: number
+  interactionsPerShelf?: number,
+  restockInstruction?: string
 ): Record<RestockSceneStep, RestockSceneCopy> {
   const product = runtime.product.name;
   const fixture = runtime.fixture.kind === "cooler" ? "cooler" : "fixture";
@@ -170,9 +172,11 @@ function createCopy(
     },
     restock: {
       objective,
-      instruction: interactionsPerShelf === 1
-        ? "Tap the highlighted shelf once. The worker places all 3 bottles."
-        : "Tap the highlighted shelf to stock it. Keep going until the shelf is full.",
+      instruction: restockInstruction ?? (
+        interactionsPerShelf === 1
+          ? "Tap the highlighted shelf once. The worker places all 3 bottles."
+          : "Tap the highlighted shelf to stock it. Keep going until the shelf is full."
+      ),
       actionLabel: "TAP A SHELF"
     },
     complete: {
