@@ -12,6 +12,7 @@ const SCENE_KEY = "starter-market-shift";
 const LEVEL_ID = "starter-level-010";
 const WIDTH = 1600;
 const HEIGHT = 900;
+const BLIND_INSTRUCTION = "Tap the shelf from memory once. The worker places all 3 bottles.";
 
 if (!existsSync(join(DIST_DIR, "index.html"))) throw new Error("dist/index.html is missing. Run npm run build first.");
 mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -37,6 +38,7 @@ const report = {
     waveMemoryModeActive: false,
     waveOnePreviewMatchesRoute: false,
     waveOneRunsWithoutTargetGlow: false,
+    blindHudInstructionCorrect: false,
     wrongShelfKeepsRouteStable: false,
     waveTwoPreviewStartsAfterThreeShelves: false,
     waveTwoPreviewMatchesRoute: false,
@@ -77,7 +79,8 @@ try {
 
   await waitForWaveActive(page, "1/2");
   let state = await readState(page);
-  report.assertions.waveOneRunsWithoutTargetGlow = state.visibleRowTargets === 0 && state.rush?.activeRowIndex === planned[0];
+  report.assertions.waveOneRunsWithoutTargetGlow = state.visibleRowGlows === 0 && state.rush?.activeRowIndex === planned[0];
+  report.assertions.blindHudInstructionCorrect = state.visibleTexts.includes(BLIND_INSTRUCTION);
   await page.screenshot({ path: join(OUTPUT_DIR, "level-10-wave-1-active.png"), fullPage: true });
 
   const expectedBeforeMistake = state.rush.activeRowIndex;
@@ -108,7 +111,7 @@ try {
 
   await waitForWaveActive(page, "2/2");
   state = await readState(page);
-  report.assertions.waveTwoRunsWithoutTargetGlow = state.visibleRowTargets === 0 && state.rush?.activeRowIndex === planned[3];
+  report.assertions.waveTwoRunsWithoutTargetGlow = state.visibleRowGlows === 0 && state.rush?.activeRowIndex === planned[3];
 
   for (let index = 3; index < 6; index += 1) {
     await waitForGameReady(page);
@@ -153,7 +156,8 @@ async function readState(page) {
       waveState: document.body.dataset.restockFinaleWaveState ?? null,
       controller: scene?.controller?.snapshot?.() ?? null,
       rush: scene?.rush?.snapshot?.(scene.time.now) ?? null,
-      visibleRowTargets: list.filter((entry) => entry?.visible === true && typeof entry?.name === "string" && entry.name.startsWith("beverage-cooler-row-target-")).length
+      visibleRowGlows: list.filter((entry) => entry?.visible === true && typeof entry?.name === "string" && entry.name.startsWith("beverage-cooler-row-glow-")).length,
+      visibleTexts: list.filter((entry) => entry?.visible === true && typeof entry?.text === "string").map((entry) => entry.text)
     };
   }, SCENE_KEY);
 }
