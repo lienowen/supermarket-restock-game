@@ -1,7 +1,11 @@
+export type RestockMemoryPreviewVariant = "promotion" | "finale-wave";
+
 export interface RestockMemoryPreviewDomConfig {
   readonly sequence: readonly number[];
   readonly durationMs: number;
   readonly onComplete: () => void;
+  readonly variant?: RestockMemoryPreviewVariant;
+  readonly waveLabel?: string;
 }
 
 export interface RestockMemoryPreviewDomHandle {
@@ -15,19 +19,34 @@ const applyStyles = (element: HTMLElement, styles: Partial<CSSStyleDeclaration>)
 export function mountRestockMemoryPreviewDom(
   config: RestockMemoryPreviewDomConfig
 ): RestockMemoryPreviewDomHandle {
-  if (config.sequence.length !== 6) {
-    throw new Error("Restock memory preview requires exactly six cooler slots");
+  if (config.sequence.length < 1 || config.sequence.length > 6) {
+    throw new Error("Restock memory preview requires between one and six cooler slots");
+  }
+  const uniqueSlots = new Set(config.sequence);
+  if (
+    uniqueSlots.size !== config.sequence.length ||
+    config.sequence.some((slot) => !Number.isInteger(slot) || slot < 0 || slot > 5)
+  ) {
+    throw new Error("Restock memory preview slots must be unique cooler indexes from 0 to 5");
   }
   if (!Number.isFinite(config.durationMs) || config.durationMs < 1000) {
     throw new Error("Restock memory preview duration must be at least one second");
   }
+
+  const variant = config.variant ?? "promotion";
+  const sequenceLength = config.sequence.length;
+  const waveLabel = config.waveLabel?.trim() || "FINAL WAVE";
+  const isFinaleWave = variant === "finale-wave";
 
   let active = true;
   let completed = false;
   const overlay = document.createElement("section");
   overlay.id = "restock-memory-preview";
   overlay.setAttribute("role", "dialog");
-  overlay.setAttribute("aria-label", "Memorize the promotion shelf order");
+  overlay.setAttribute(
+    "aria-label",
+    isFinaleWave ? `Memorize ${waveLabel.toLowerCase()}` : "Memorize the promotion shelf order"
+  );
   applyStyles(overlay, {
     position: "fixed",
     inset: "0",
@@ -56,7 +75,7 @@ export function mountRestockMemoryPreviewDom(
   });
 
   const eyebrow = document.createElement("div");
-  eyebrow.textContent = "PROMOTION PLAN";
+  eyebrow.textContent = isFinaleWave ? "CHAPTER FINALE" : "PROMOTION PLAN";
   applyStyles(eyebrow, {
     color: "#ffd95e",
     fontSize: "10px",
@@ -66,7 +85,7 @@ export function mountRestockMemoryPreviewDom(
   });
 
   const title = document.createElement("h2");
-  title.textContent = "Memorize the shelf order";
+  title.textContent = isFinaleWave ? `Memorize ${waveLabel}` : "Memorize the shelf order";
   applyStyles(title, {
     margin: "6px 0 5px",
     textAlign: "center",
@@ -75,7 +94,9 @@ export function mountRestockMemoryPreviewDom(
   });
 
   const instruction = document.createElement("p");
-  instruction.textContent = "Watch the glow from 1 to 6. The numbers disappear when stocking begins.";
+  instruction.textContent = isFinaleWave
+    ? `Watch this ${sequenceLength}-shelf route. The glow disappears when the rush begins.`
+    : `Watch the glow from 1 to ${sequenceLength}. The numbers disappear when stocking begins.`;
   applyStyles(instruction, {
     margin: "0 auto 10px",
     maxWidth: "500px",
@@ -87,7 +108,7 @@ export function mountRestockMemoryPreviewDom(
 
   const sequenceCue = document.createElement("div");
   sequenceCue.id = "restock-memory-sequence-cue";
-  sequenceCue.textContent = "WATCH THE GLOW · 1 → 6";
+  sequenceCue.textContent = `WATCH THE GLOW · 1 → ${sequenceLength}`;
   applyStyles(sequenceCue, {
     marginBottom: "12px",
     textAlign: "center",
@@ -127,9 +148,12 @@ export function mountRestockMemoryPreviewDom(
       placeItems: "center",
       border: "2px solid rgba(183, 213, 199, 0.26)",
       borderRadius: "10px",
-      background: "linear-gradient(180deg, rgba(59, 92, 78, 0.5), rgba(13, 36, 28, 0.65))",
+      background: order > 0
+        ? "linear-gradient(180deg, rgba(59, 92, 78, 0.5), rgba(13, 36, 28, 0.65))"
+        : "linear-gradient(180deg, rgba(33, 48, 41, 0.4), rgba(9, 22, 17, 0.55))",
       overflow: "hidden",
-      transformOrigin: "center"
+      transformOrigin: "center",
+      opacity: order > 0 ? "1" : "0.5"
     });
 
     const shelf = document.createElement("div");
@@ -144,15 +168,15 @@ export function mountRestockMemoryPreviewDom(
     });
 
     const number = document.createElement("span");
-    number.textContent = String(order || "?");
+    number.textContent = String(order || "·");
     applyStyles(number, {
       display: "grid",
       placeItems: "center",
       width: "42px",
       height: "42px",
       borderRadius: "50%",
-      background: "#dcb53f",
-      color: "#182319",
+      background: order > 0 ? "#dcb53f" : "rgba(92, 116, 104, 0.45)",
+      color: order > 0 ? "#182319" : "#a7b8af",
       fontSize: "22px",
       fontWeight: "900",
       boxShadow: "0 6px 14px rgba(0, 0, 0, 0.28)",
@@ -196,7 +220,10 @@ export function mountRestockMemoryPreviewDom(
   overlay.appendChild(panel);
   document.body.appendChild(overlay);
   document.body.dataset.restockMemory = "preview";
-  document.body.dataset.levelTwoMemoryPreview = "sequential-glow";
+  document.body.dataset.restockMemoryVariant = variant;
+  if (!isFinaleWave && sequenceLength === 6) {
+    document.body.dataset.levelTwoMemoryPreview = "sequential-glow";
+  }
 
   const startedAt = performance.now();
   let frameId = 0;
@@ -206,7 +233,7 @@ export function mountRestockMemoryPreviewDom(
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const pulseStepMs = Math.max(
     90,
-    Math.min(420, Math.floor(Math.max(540, config.durationMs - 560) / config.sequence.length))
+    Math.min(420, Math.floor(Math.max(540, config.durationMs - 560) / sequenceLength))
   );
 
   const clearPulseTimers = (): void => {
@@ -255,7 +282,7 @@ export function mountRestockMemoryPreviewDom(
     cancelAnimationFrame(frameId);
     window.clearTimeout(timerId);
     clearPulseTimers();
-    countdown.textContent = "GO! STOCK FROM MEMORY";
+    countdown.textContent = isFinaleWave ? "GO! STOCK THE WAVE" : "GO! STOCK FROM MEMORY";
     countdown.style.color = "#9be7ff";
     countdown.style.fontSize = "18px";
     sequenceCue.textContent = "NUMBERS HIDDEN · TRUST YOUR MEMORY";
@@ -286,7 +313,7 @@ export function mountRestockMemoryPreviewDom(
     if (!active) return;
     const elapsed = performance.now() - startedAt;
     const remaining = Math.max(0, config.durationMs - elapsed);
-    countdown.textContent = `Stocking starts in ${Math.max(1, Math.ceil(remaining / 1000))}`;
+    countdown.textContent = `${isFinaleWave ? "Wave" : "Stocking"} starts in ${Math.max(1, Math.ceil(remaining / 1000))}`;
     fill.style.transform = `scaleX(${Math.max(0, remaining / config.durationMs)})`;
     if (remaining > 0) frameId = requestAnimationFrame(update);
   };
@@ -303,6 +330,7 @@ export function mountRestockMemoryPreviewDom(
       clearPulseTimers();
       overlay.remove();
       delete document.body.dataset.restockMemory;
+      delete document.body.dataset.restockMemoryVariant;
       delete document.body.dataset.levelTwoMemoryPreview;
     }
   });
