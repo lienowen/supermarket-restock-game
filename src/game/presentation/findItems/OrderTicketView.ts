@@ -176,15 +176,16 @@ export class OrderTicketView {
     if (!this.container || !this.counter) return;
     const completed = new Set(completedProductIds);
     const completedCount = Phaser.Math.Clamp(completed.size, 0, this.slots.length);
-    const nextIndex = this.config.numberedSequence
+    const numberedSequence = this.config.numberedSequence === true;
+    const nextIndex = numberedSequence
       ? this.slots.findIndex((slot) => !completed.has(slot.productId))
       : -1;
     this.counter.setText(`${completedCount}/${this.slots.length}`);
 
     this.slots.forEach((slot, index) => {
       const isCompleted = completed.has(slot.productId);
-      const isCurrent = this.config.numberedSequence && index === nextIndex;
-      const isFuture = this.config.numberedSequence && nextIndex >= 0 && index > nextIndex;
+      const isCurrent = numberedSequence && index === nextIndex;
+      const isFuture = numberedSequence && nextIndex >= 0 && index > nextIndex;
       this.drawSlot(slot.card, index, isCompleted, isCurrent);
       slot.checkBadge.setVisible(isCompleted);
       slot.check.setVisible(isCompleted);
