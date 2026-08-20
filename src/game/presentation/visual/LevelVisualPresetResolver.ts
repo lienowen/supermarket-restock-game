@@ -69,6 +69,7 @@ const resolveMatureFindItemsPreset = (
       ...preset.actor,
       idleSize: priority.actorSize
     }),
+    basket: priority.basket,
     itemSizes: Object.freeze(itemSizes),
     itemPositions: Object.freeze(itemPositions)
   });
