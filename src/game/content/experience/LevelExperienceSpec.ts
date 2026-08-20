@@ -185,13 +185,13 @@ export const STARTER_LEVEL_EXPERIENCE_SPECS: readonly LevelExperienceSpec[] = Ob
   define({
     levelId: "starter-level-006",
     mode: "restock",
-    modeLabel: "CART CAPACITY",
-    eyebrow: "CLOSING LOAD",
-    title: "Closing Stock Sprint",
-    objective: "Use the two-slot restock cart to deliver both cola cases needed for the closing refill.",
-    mechanic: "Three cases are available, but the cart holds only two; the water case is a wrong load and must stay behind.",
-    control: "Drag both cola cases into the two cart slots, reject the water case, then complete the cooler refill.",
-    successMetric: "Leave the backroom with two correct cola cases and finish the cooler without a loading mistake.",
+    modeLabel: "DISPATCH LOADING",
+    eyebrow: "WAREHOUSE DISPATCH",
+    title: "Dispatch Loading",
+    objective: "Build, verify and dispatch two chilled outbound orders.",
+    mechanic: "Small, medium and large cases use one, two and three spaces. Each order needs exactly one of each.",
+    control: "Tap or drag cases into the truck. Undo a wrong load before verification.",
+    successMetric: "Dispatch both correct six-space orders without an overload or missing case.",
     primaryInput: "mixed"
   }),
   define({

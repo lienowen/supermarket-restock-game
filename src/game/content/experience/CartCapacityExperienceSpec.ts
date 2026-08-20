@@ -30,6 +30,8 @@ export interface CartCapacityExperienceSpec {
   /** Legacy size metadata kept for content validation; Level 6 presents one shared cart capacity. */
   readonly lanes: readonly CartCapacityLaneSpec[];
   readonly options: readonly CartCaseOptionSpec[];
+  readonly autoStart: boolean;
+  readonly requiredSizesPerOrder: readonly CartCaseSize[];
 }
 
 export const CART_CAPACITY_EXPERIENCE_SPECS: readonly CartCapacityExperienceSpec[] = Object.freeze([
@@ -38,13 +40,15 @@ export const CART_CAPACITY_EXPERIENCE_SPECS: readonly CartCapacityExperienceSpec
     mode: "restock" as const,
     unlockAfterAction: "PICK_BOX",
     confirmAction: "LOAD_CART",
-    eyebrow: "CART CAPACITY",
-    title: "Pack two balanced cart loads",
-    instruction: "Each case uses 1, 2, or 3 spaces. Fill the cart to exactly 6/6 spaces for each trip without overloading it.",
+    eyebrow: "OUTBOUND DISPATCH",
+    title: "Load two chilled orders",
+    instruction: "Each order requires one LARGE, one MEDIUM and one SMALL case. Fit exactly 6/6 spaces, verify the load, then dispatch the truck.",
     roundsRequired: 2,
-    targetLabel: "CAPACITY CART · 6 SPACES",
+    targetLabel: "OUTBOUND TRUCK · 6 SPACES",
     targetAssetKey: "equipment-capacity-cart-empty",
     loadedTargetAssetKey: "equipment-capacity-cart-loaded",
+    autoStart: true,
+    requiredSizesPerOrder: Object.freeze(["large" as const, "medium" as const, "small" as const]),
     lanes: Object.freeze([
       Object.freeze({ id: "large-bay", label: "3 SPACE CASE", acceptsSize: "large" as const }),
       Object.freeze({ id: "medium-bay", label: "2 SPACE CASE", acceptsSize: "medium" as const }),
@@ -106,6 +110,16 @@ export function resolveCartCapacityExperienceSpec(
   return spec;
 }
 
+export function isDispatchOrderValid(
+  loadedSizes: readonly CartCaseSize[],
+  requiredSizes: readonly CartCaseSize[]
+): boolean {
+  const units: Readonly<Record<CartCaseSize, number>> = Object.freeze({ small: 1, medium: 2, large: 3 });
+  return loadedSizes.reduce((total, size) => total + units[size], 0) === 6 &&
+    loadedSizes.length === requiredSizes.length &&
+    requiredSizes.every((size) => loadedSizes.filter((loaded) => loaded === size).length === 1);
+}
+
 export function validateCartCapacityExperienceSpecs(
   levels: readonly LevelDefinition[]
 ): readonly string[] {
@@ -142,6 +156,9 @@ export function validateCartCapacityExperienceSpecs(
     });
     if (!spec.targetAssetKey.trim() || !spec.loadedTargetAssetKey.trim()) {
       errors.push(`Cart capacity spec ${spec.levelId} requires empty and loaded cart assets`);
+    }
+    if (new Set(spec.requiredSizesPerOrder).size !== 3) {
+      errors.push(`Cart capacity spec ${spec.levelId} requires one small, medium and large case per order`);
     }
   });
 

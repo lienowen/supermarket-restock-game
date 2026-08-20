@@ -177,7 +177,15 @@ export async function createPhaserGame(
       ).path,
       loadedTargetImagePath: STARTER_RUNTIME_ASSET_REGISTRY.require(
         cartCapacity.loadedTargetAssetKey
-      ).path
+      ).path,
+      onDispatchComplete: cartCapacity.autoStart
+        ? () => {
+          const scene = game.scene.getScene(presentation.scene.key) as Phaser.Scene & {
+            completeDispatchChallenge?: () => void;
+          };
+          scene.completeDispatchChallenge?.();
+        }
+        : undefined
     });
   } else {
     document.body.dataset.cartCapacityLoad = cartCapacity ? "skipped" : "none";

@@ -4,6 +4,7 @@ import type {
   CartCaseSize,
   CartCaseOptionSpec
 } from "../../content/experience/CartCapacityExperienceSpec";
+import { isDispatchOrderValid } from "../../content/experience/CartCapacityExperienceSpec";
 import { gameDomainEvents } from "../../events/GameDomainEvents";
 
 export interface CartCapacityLoadOption {
@@ -19,6 +20,7 @@ export interface CartCapacityLoadDomConfig {
   readonly options: readonly CartCapacityLoadOption[];
   readonly targetImagePath: string;
   readonly loadedTargetImagePath: string;
+  readonly onDispatchComplete?: () => void;
 }
 
 export interface CartCapacityLoadDomHandle {
@@ -342,7 +344,7 @@ export function mountCartCapacityLoadDom(
     if (input) input.enabled = enabled;
   };
 
-  const isReady = (): boolean => Boolean(scenePort()?.isInteractionReady?.());
+  const isReady = (): boolean => config.spec.autoStart || Boolean(scenePort()?.isInteractionReady?.());
   const isOptionUsed = (id: string): boolean => (
     committedOptionIds.has(id) || currentTripOptionIds.includes(id)
   );
@@ -448,9 +450,9 @@ export function mountCartCapacityLoadDom(
   };
 
   const updateRoundCopy = (): void => {
-    tripBadge.textContent = `TRIP ${currentRound} / ${config.spec.roundsRequired}`;
+    tripBadge.textContent = `ORDER ${currentRound} / ${config.spec.roundsRequired}`;
     if (currentUnits === 0) {
-      feedback.textContent = `Choose any combination that fills exactly ${CART_CAPACITY} spaces.`;
+      feedback.textContent = "CHILLED · 1 LARGE + 1 MEDIUM + 1 SMALL · 6 SPACES";
       feedback.style.color = "#a9cfb7";
     }
   };
@@ -516,6 +518,19 @@ export function mountCartCapacityLoadDom(
   ));
 
   const completeRound = (): void => {
+    const loadedSizes = currentTripOptionIds.map((id) => config.options.find((entry) => entry.spec.id === id)?.spec.size);
+    const validOrder = isDispatchOrderValid(
+      loadedSizes.filter((size): size is CartCaseSize => Boolean(size)),
+      config.spec.requiredSizesPerOrder
+    );
+    if (!validOrder) {
+      document.body.dataset.cartCapacityWrongRejected = "true";
+      feedback.textContent = "WRONG ORDER · Use exactly one LARGE, one MEDIUM and one SMALL case.";
+      feedback.style.color = "#ff9e91";
+      target.style.borderColor = "#ff786e";
+      target.style.background = "rgba(214,83,74,0.18)";
+      return;
+    }
     roundTransitioning = true;
     document.body.dataset.cartCapacityState = "full";
     document.body.dataset.cartCapacityFullObserved = "true";
@@ -523,7 +538,7 @@ export function mountCartCapacityLoadDom(
     target.style.borderColor = "#ffd95e";
     target.style.background = "rgba(220, 181, 63, 0.24)";
     target.style.transform = "scale(1.018)";
-    feedback.textContent = `PERFECT LOAD · ${CART_CAPACITY}/${CART_CAPACITY} · TRIP ${currentRound} READY`;
+    feedback.textContent = `ORDER VERIFIED · ${CART_CAPACITY}/${CART_CAPACITY} · TRUCK READY`;
     feedback.style.color = "#ffd95e";
     undoButton.disabled = true;
     undoButton.style.opacity = "0.38";
@@ -535,7 +550,13 @@ export function mountCartCapacityLoadDom(
     if (currentRound >= config.spec.roundsRequired) {
       finishing = true;
       roundTimer = window.setTimeout(() => {
-        if (finishing) confirmPrimaryAction();
+        if (!finishing) return;
+        if (config.onDispatchComplete) {
+          completed = true;
+          feedback.textContent = "BOTH ORDERS DISPATCHED · SHIFT COMPLETE";
+          config.onDispatchComplete();
+          window.setTimeout(hide, 500);
+        } else confirmPrimaryAction();
       }, 850);
       return;
     }
@@ -614,6 +635,7 @@ export function mountCartCapacityLoadDom(
     document.body.dataset.cartCapacityUndoUsed = "true";
     cartImage.src = assetUrl(config.targetImagePath);
     resetTargetStyle();
+    document.body.dataset.cartCapacityState = "ready";
     updateAllVisuals();
     feedback.textContent = `Last case removed · ${currentUnits}/${CART_CAPACITY} spaces used`;
     feedback.style.color = "#a9cfb7";
@@ -678,7 +700,7 @@ export function mountCartCapacityLoadDom(
     });
 
     const label = document.createElement("span");
-    label.textContent = `CASE ${String.fromCharCode(65 + index)}`;
+    label.textContent = `${option.spec.size.toUpperCase()} CHILLED`;
     applyStyles(label, {
       position: "absolute",
       left: "5px",
@@ -801,6 +823,11 @@ export function mountCartCapacityLoadDom(
   ];
 
   updateAllVisuals();
+  if (config.spec.autoStart) {
+    armed = true;
+    document.body.dataset.cartCapacityLoad = "armed";
+    beginReadinessWatch();
+  }
 
   return Object.freeze({
     destroy: () => {

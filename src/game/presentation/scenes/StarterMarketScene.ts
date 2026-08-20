@@ -730,6 +730,15 @@ export class StarterMarketScene extends Phaser.Scene {
     return `${this.context.runtime.shift.startTime} ${hour < 12 ? "AM" : "PM"}`;
   }
 
+  completeDispatchChallenge(): void {
+    let safety = 0;
+    while (this.controller.snapshot().step !== "complete" && safety < 20) {
+      const action = this.controller.actionForCurrentStep();
+      if (!action || !this.controller.dispatch(action)) break;
+      safety += 1;
+    }
+  }
+
   private dispose(): void {
     this.disposers.splice(0).forEach((dispose) => dispose());
     this.input.off("pointerdown", this.handleRushPointerDown, this);

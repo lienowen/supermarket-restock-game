@@ -97,6 +97,21 @@ const l8Background = (): AssetDescriptor => asset({
   status: "production"
 });
 
+const dispatchBackground = (): AssetDescriptor => asset({
+  key: "environment-dispatch-loading-l6",
+  path: "assets/game/production-v8/l6-l10-rework-assets/bg-dispatch-loading-l6.png",
+  category: "environment",
+  canvasSize: [1536, 1024],
+  anchor: [0.5, 0.5],
+  defaultScale: 1,
+  depthGroup: "far-environment",
+  preloadGroup: "starter-market",
+  perspective: "fixed-third-person",
+  lightDirection: "upper-left",
+  state: "dispatch-loading-l6",
+  status: "production"
+});
+
 const l8Spill = (
   key: string,
   fileName: string,
@@ -178,6 +193,7 @@ export const GLOBAL_PROJECT_ASSET_CATALOGUE: AssetCatalogue = Object.freeze({
       "order-hunt-zone-v2"
     ),
     l8Background(),
+    dispatchBackground(),
     l5OrderIcon("ui-l5-order-milk", "order-milk-clean.png", "milk"),
     l5OrderIcon("ui-l5-order-cereal", "order-cereal-clean.png", "cereal"),
     asset({

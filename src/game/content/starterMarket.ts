@@ -68,8 +68,8 @@ export const FIND_ORDER_ITEMS_MISSION: MissionDefinition = {
 
 export const RESTOCK_COLA_CLOSING_MISSION: MissionDefinition = {
   id: "restock-cola-closing",
-  title: "Finish the Cola Cooler",
-  description: "Refill both cola bays before the evening traffic arrives.",
+  title: "Verify the Outbound Load",
+  description: "Build and verify both chilled six-space orders before dispatch.",
   objectives: [{
     type: "transfer-product",
     productId: "cola-bottle",

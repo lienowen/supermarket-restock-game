@@ -55,8 +55,8 @@ test("Completion previews promise the actual configured next task", () => {
 
   assert.deepEqual(resolveCampaignProgressionPreview("starter-level-005"), {
     eyebrow: "UP NEXT · LEVEL 6",
-    title: "CLOSING STOCK SPRINT",
-    detail: "RESTOCK CHALLENGE · FINISH THE COLA COOLER",
+    title: "DISPATCH LOADING",
+    detail: "RESTOCK CHALLENGE · VERIFY THE OUTBOUND LOAD",
     isCampaignComplete: false,
     currentLevelNumber: 5,
     totalLevels: 10

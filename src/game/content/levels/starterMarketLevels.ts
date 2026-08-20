@@ -165,7 +165,7 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     mode: "restock",
     shiftId: "starter-shift-005",
     missionId: "restock-cola-closing",
-    title: "Closing Stock Sprint",
+    title: "Dispatch Loading",
     randomSeed: "starter-level-006-v1",
     navigation: { moveSpeed: 600, interactionRadius: 150 },
     presentation: {
