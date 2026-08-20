@@ -133,6 +133,10 @@ export class RestockRushMeter {
     return document.body.dataset.restockChallenge === "memory";
   }
 
+  private isWaveMemoryMode(): boolean {
+    return document.body.dataset.restockChallenge === "wave-memory";
+  }
+
   private syncMemoryProgress(snapshot: RestockRushSnapshot): void {
     const totalShelves = snapshot.rowItemCounts.length;
     const totalItems = Math.max(
@@ -157,7 +161,13 @@ export class RestockRushMeter {
         ? this.config.accentColor
         : 0xe45d52;
     this.progressFill.setDisplaySize(width, 9).setFillStyle(timerColor, 1);
-    this.summaryText.setText(`STREAK x${snapshot.currentStreak}  BEST x${snapshot.bestStreak}`);
+
+    if (this.isWaveMemoryMode()) {
+      const wave = document.body.dataset.restockFinaleWave ?? "1/2";
+      this.summaryText.setText(`WAVE ${wave}  ·  STREAK x${snapshot.currentStreak}`);
+    } else {
+      this.summaryText.setText(`STREAK x${snapshot.currentStreak}  BEST x${snapshot.bestStreak}`);
+    }
 
     if (snapshot.currentStreak > this.previousStreak && snapshot.currentStreak > 1) {
       this.summaryText.setScale(1.18);
@@ -183,6 +193,19 @@ export class RestockRushMeter {
       this.statusText.setText(instruction).setColor("#ffffff");
       return;
     }
+
+    if (this.isWaveMemoryMode()) {
+      const waveState = document.body.dataset.restockFinaleWaveState;
+      this.statusText
+        .setText(
+          waveState === "preview"
+            ? "MEMORIZE THIS 3-SHELF ROUTE"
+            : "NO GLOW · FOLLOW THE MEMORIZED ROUTE"
+        )
+        .setColor("#ffffff");
+      return;
+    }
+
     const instruction = snapshot.itemsPerRow === 1 && snapshot.unitsPerInteraction === 3
       ? "TAP EACH SHELF ONCE · AUTO-PLACE 3 BOTTLES"
       : this.defaultInstruction;
