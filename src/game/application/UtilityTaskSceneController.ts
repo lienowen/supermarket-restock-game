@@ -146,7 +146,7 @@ export class UtilityTaskSceneController {
     }
     return Object.freeze({
       objective: this.runtime.mission.title,
-      instruction: "Use the order list, search the shelf, and tap any requested product.",
+      instruction: "Follow the order list, search the store, and tap the requested products.",
       actionLabel: "TAP A PRODUCT",
       progressUnit: "ITEMS" as const
     });

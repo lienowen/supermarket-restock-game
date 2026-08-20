@@ -259,10 +259,11 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
       initialCoins: 990,
       timeLimitSeconds: 40,
       mistakePenaltySeconds: 7,
+      // Stand points line up with the visible produce, grocery and dairy zones.
       itemTargets: [
-        { productId: "cereal-box", x: 820, y: 650 },
-        { productId: "milk-bottle", x: 520, y: 700 },
-        { productId: "apple", x: 1180, y: 720 }
+        { productId: "cereal-box", x: 720, y: 742 },
+        { productId: "milk-bottle", x: 1320, y: 758 },
+        { productId: "apple", x: 255, y: 770 }
       ]
     }
   },

@@ -1,9 +1,11 @@
 export type FindItemsChallengeStatus = "active" | "complete" | "failed";
+export type FindItemsSelectionMode = "any" | "sequence";
 
 export interface FindItemsChallengeConfig {
   readonly productIds: readonly string[];
   readonly timeLimitSeconds: number;
   readonly mistakePenaltySeconds: number;
+  readonly selectionMode?: FindItemsSelectionMode;
 }
 
 export interface FindItemsChallengeSnapshot {
@@ -13,11 +15,12 @@ export interface FindItemsChallengeSnapshot {
   readonly remainingMs: number;
   readonly remainingSeconds: number;
   readonly mistakes: number;
+  readonly nextRequiredProductId?: string;
 }
 
 export interface FindItemsSelectionResult {
   readonly accepted: boolean;
-  readonly reason: "collected" | "already-collected" | "not-requested" | "inactive";
+  readonly reason: "collected" | "already-collected" | "not-requested" | "out-of-order" | "inactive";
   readonly snapshot: FindItemsChallengeSnapshot;
 }
 
@@ -40,6 +43,7 @@ export class FindItemsChallengeController {
   private readonly productIds: readonly string[];
   private readonly requested = new Set<string>();
   private readonly collected = new Set<string>();
+  private readonly selectionMode: FindItemsSelectionMode;
   private remainingMs: number;
   private mistakes = 0;
   private status: FindItemsChallengeStatus = "active";
@@ -57,9 +61,13 @@ export class FindItemsChallengeController {
     }
     requirePositive(config.timeLimitSeconds, "Find-items time limit");
     requireNonNegative(config.mistakePenaltySeconds, "Find-items mistake penalty");
+    if (config.selectionMode && config.selectionMode !== "any" && config.selectionMode !== "sequence") {
+      throw new Error(`Unsupported find-items selection mode: ${config.selectionMode}`);
+    }
 
     this.productIds = Object.freeze([...normalized]);
     this.productIds.forEach((productId) => this.requested.add(productId));
+    this.selectionMode = config.selectionMode ?? "any";
     this.remainingMs = config.timeLimitSeconds * 1000;
   }
 
@@ -87,6 +95,10 @@ export class FindItemsChallengeController {
       this.applyMistake();
       return Object.freeze({ accepted: false, reason: "already-collected", snapshot: this.snapshot() });
     }
+    if (this.selectionMode === "sequence" && normalized !== this.nextRequiredProductId()) {
+      this.applyMistake();
+      return Object.freeze({ accepted: false, reason: "out-of-order", snapshot: this.snapshot() });
+    }
 
     this.collected.add(normalized);
     if (this.collected.size === this.productIds.length) this.status = "complete";
@@ -107,8 +119,13 @@ export class FindItemsChallengeController {
       remainingProductIds: Object.freeze(remainingProductIds),
       remainingMs: this.remainingMs,
       remainingSeconds: Math.ceil(this.remainingMs / 1000),
-      mistakes: this.mistakes
+      mistakes: this.mistakes,
+      nextRequiredProductId: this.selectionMode === "sequence" ? this.nextRequiredProductId() : undefined
     });
+  }
+
+  private nextRequiredProductId(): string | undefined {
+    return this.productIds.find((productId) => !this.collected.has(productId));
   }
 
   private applyMistake(): void {

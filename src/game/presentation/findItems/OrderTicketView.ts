@@ -26,6 +26,7 @@ export interface OrderTicketViewConfig {
   readonly visual: FindItemsLevelVisualPreset["orderTicket"];
   readonly panelColor: number;
   readonly accentColor: number;
+  readonly numberedSequence?: boolean;
 }
 
 /** A reusable, data-driven order summary for player-driven find-items activities. */
@@ -69,13 +70,18 @@ export class OrderTicketView {
       br: 0
     });
 
-    const title = scene.add.text(-size.width / 2 + 20, -size.height / 2 + 17, "ORDER LIST", {
-      fontFamily: "Arial",
-      fontSize: "14px",
-      color: "#ffffff",
-      fontStyle: "bold",
-      letterSpacing: 2
-    }).setOrigin(0, 0.5);
+    const title = scene.add.text(
+      -size.width / 2 + 20,
+      -size.height / 2 + 17,
+      config.numberedSequence ? "PICK IN ORDER" : "ORDER LIST",
+      {
+        fontFamily: "Arial",
+        fontSize: "14px",
+        color: "#ffffff",
+        fontStyle: "bold",
+        letterSpacing: 2
+      }
+    ).setOrigin(0, 0.5);
 
     this.counter = scene.add.text(size.width / 2 - 20, -size.height / 2 + 17, `0/${config.productIds.length}`, {
       fontFamily: "Arial",
@@ -118,17 +124,18 @@ export class OrderTicketView {
         .setDisplaySize(imageSize.width, imageSize.height)
         .setName(`order-ticket-icon-${productId}`)
         .setAlpha(1);
+      const itemLabel = this.productLabel(productId);
       const label = scene.add.text(
         x,
         slotY + slotSize.height / 2 - 13,
-        this.productLabel(productId),
+        config.numberedSequence ? `${index + 1} · ${itemLabel}` : itemLabel,
         {
           fontFamily: "Arial",
           fontSize: "11px",
           color: "#234f35",
           fontStyle: "bold",
           align: "center",
-          wordWrap: { width: slotSize.width - 18 }
+          wordWrap: { width: slotSize.width - 12 }
         }
       ).setOrigin(0.5);
       const checkBadge = scene.add.circle(
@@ -169,15 +176,23 @@ export class OrderTicketView {
     if (!this.container || !this.counter) return;
     const completed = new Set(completedProductIds);
     const completedCount = Phaser.Math.Clamp(completed.size, 0, this.slots.length);
+    const numberedSequence = this.config.numberedSequence === true;
+    const nextIndex = numberedSequence
+      ? this.slots.findIndex((slot) => !completed.has(slot.productId))
+      : -1;
     this.counter.setText(`${completedCount}/${this.slots.length}`);
 
     this.slots.forEach((slot, index) => {
       const isCompleted = completed.has(slot.productId);
-      this.drawSlot(slot.card, index, isCompleted);
+      const isCurrent = numberedSequence && index === nextIndex;
+      const isFuture = numberedSequence && nextIndex >= 0 && index > nextIndex;
+      this.drawSlot(slot.card, index, isCompleted, isCurrent);
       slot.checkBadge.setVisible(isCompleted);
       slot.check.setVisible(isCompleted);
-      slot.label.setColor(isCompleted ? "#5d7867" : "#234f35");
-      slot.image.setAlpha(isCompleted ? 0.35 : 1);
+      slot.label.setColor(
+        isCompleted ? "#5d7867" : isCurrent ? "#8a5a00" : "#234f35"
+      );
+      slot.image.setAlpha(isCompleted ? 0.35 : isFuture ? 0.55 : 1);
       slot.image.setScale(slot.baseScaleX, slot.baseScaleY);
 
       if (animate && isCompleted && !this.previousCompleted.has(slot.productId)) {
@@ -226,13 +241,17 @@ export class OrderTicketView {
   private drawSlot(
     card: Phaser.GameObjects.Graphics,
     index: number,
-    completed: boolean
+    completed: boolean,
+    current: boolean
   ): void {
     const { slotSize, itemGap } = this.config.visual;
     const x = -((this.slots.length - 1) * itemGap) / 2 + index * itemGap;
     const y = 27;
     card.clear();
-    card.fillStyle(completed ? 0xdfece2 : 0xfff3c4, completed ? 0.75 : 0.96);
+    card.fillStyle(
+      completed ? 0xdfece2 : current ? 0xffe7a0 : 0xfff3c4,
+      completed ? 0.75 : current ? 1 : 0.9
+    );
     card.fillRoundedRect(
       x - slotSize.width / 2,
       y - slotSize.height / 2,
@@ -240,7 +259,11 @@ export class OrderTicketView {
       slotSize.height,
       12
     );
-    card.lineStyle(2, completed ? 0x9cb2a2 : this.config.accentColor, completed ? 0.55 : 0.9);
+    card.lineStyle(
+      current ? 4 : 2,
+      completed ? 0x9cb2a2 : this.config.accentColor,
+      completed ? 0.55 : current ? 1 : 0.72
+    );
     card.strokeRoundedRect(
       x - slotSize.width / 2,
       y - slotSize.height / 2,
