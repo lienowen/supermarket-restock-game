@@ -142,12 +142,25 @@ export interface RestockMemoryPreviewDefinition {
   readonly keepTargetOnFailure: boolean;
 }
 
+/**
+ * Finale-style restock memory challenge. The route is split into short waves;
+ * each wave is previewed, then the shelf glow is hidden while the player stocks
+ * the memorized route under the normal rush clock.
+ */
+export interface RestockWaveMemoryDefinition {
+  readonly waveSize: number;
+  readonly previewDurationMs: number;
+  readonly hideActiveTarget: boolean;
+  readonly keepTargetOnFailure: boolean;
+}
+
 export interface RestockRushTuningDefinition {
   readonly itemsPerRow?: number;
   readonly unitsPerInteraction?: number;
   readonly sequenceMode?: RestockSequenceMode;
   readonly timeoutEnabled?: boolean;
   readonly memoryPreview?: RestockMemoryPreviewDefinition;
+  readonly waveMemory?: RestockWaveMemoryDefinition;
   readonly targetDurationMs?: number;
   readonly minimumTargetDurationMs?: number;
   readonly speedUpPerSuccessMs?: number;
