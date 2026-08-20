@@ -18,6 +18,7 @@ export interface RestockShiftRuntimeContent {
   readonly slotCount: number;
   readonly unitsPerSlot: number;
   readonly totalUnits: number;
+  readonly restockInstruction?: string;
   readonly reward: {
     readonly totalCoins: number;
     readonly totalStars: number;
@@ -31,6 +32,7 @@ export interface ResolveRestockShiftOptions {
   readonly missionId?: string;
   readonly slotCount?: number;
   readonly progressRewardRatio?: number;
+  readonly restockInstruction?: string;
 }
 
 const findRequired = <T extends { readonly id: string }>(
@@ -120,6 +122,9 @@ export function resolveRestockShiftRuntime(
   if (progressRewardRatio < 0 || progressRewardRatio > 1) {
     throw new Error("Restock progress reward ratio must be between 0 and 1");
   }
+  if (options.restockInstruction !== undefined && !options.restockInstruction.trim()) {
+    throw new Error("Restock instruction must not be empty when provided");
+  }
 
   const progressCoinPool = Math.floor(totalCoins * progressRewardRatio);
   const coinsPerSlot = Math.floor(progressCoinPool / slotCount);
@@ -135,6 +140,7 @@ export function resolveRestockShiftRuntime(
     slotCount,
     unitsPerSlot,
     totalUnits,
+    restockInstruction: options.restockInstruction,
     reward: Object.freeze({
       totalCoins,
       totalStars,
@@ -173,6 +179,10 @@ export function validateRestockShiftRuntime(runtime: RestockShiftRuntimeContent)
 
   if (!runtime.shift.missionIds.includes(runtime.mission.id)) {
     errors.push("Restock mission does not belong to its resolved shift");
+  }
+
+  if (runtime.restockInstruction !== undefined && !runtime.restockInstruction.trim()) {
+    errors.push("Restock interaction instruction is empty");
   }
 
   return Object.freeze(errors);

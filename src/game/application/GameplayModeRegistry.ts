@@ -61,7 +61,8 @@ const GAMEPLAY_MODE_ADAPTERS: Readonly<Record<LevelDefinition["mode"], GameplayM
       return resolveRestockShiftRuntime(catalogue, shift.id, {
         missionId: mission.id,
         slotCount: level.tuning.slotCount,
-        progressRewardRatio: level.tuning.progressRewardRatio
+        progressRewardRatio: level.tuning.progressRewardRatio,
+        restockInstruction: level.tuning.rush?.waveMemory?.instruction
       });
     },
     (runtime: PlayableLevelRuntimeContent) => (

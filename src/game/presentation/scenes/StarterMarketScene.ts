@@ -57,6 +57,7 @@ export class StarterMarketScene extends Phaser.Scene {
   private readonly visualPreset: RestockLevelVisualPreset;
   private readonly rush: RestockRushController;
   private readonly disposers: Array<() => void> = [];
+  private readonly wavePreviewedStarts = new Set<number>();
   private hud?: ShiftHud;
   private actors?: RestockActorView;
   private cooler?: BeverageCoolerView;
@@ -99,12 +100,15 @@ export class StarterMarketScene extends Phaser.Scene {
       coolerRowYs: this.visualPreset.cooler.rowYs,
       coolerTargetWidth: this.visualPreset.cooler.activeStockWidth
     });
+    this.validateWaveMemoryConfig();
     this.rush = new RestockRushController({
       rowCount: this.visualPreset.cooler.rowYs.length,
       itemsPerRow,
       randomSeed: context.campaignLevel.level.randomSeed,
       ...(rushTuning ?? {}),
-      keepTargetOnFailure: rushTuning?.memoryPreview?.keepTargetOnFailure
+      keepTargetOnFailure:
+        rushTuning?.waveMemory?.keepTargetOnFailure ??
+        rushTuning?.memoryPreview?.keepTargetOnFailure
     });
   }
 
@@ -116,13 +120,24 @@ export class StarterMarketScene extends Phaser.Scene {
     const context = this.context;
     const experience = resolveLevelExperienceSpec(context.campaignLevel.level);
     const memoryConfig = this.memoryConfig();
+    const waveMemoryConfig = this.waveMemoryConfig();
     document.body.dataset.gameScene = context.scene.datasetName;
     document.body.dataset.gameArchitecture = context.scene.architecture;
     document.body.dataset.activeShift = context.runtime.shift.id;
     document.body.dataset.activeDay = String(context.campaignShift.dayNumber);
     document.body.dataset.activeLevel = context.campaignLevel.level.id;
     document.body.dataset.activeMode = context.mode;
-    document.body.dataset.restockChallenge = memoryConfig ? "memory" : "rush";
+    document.body.dataset.restockChallenge = waveMemoryConfig
+      ? "wave-memory"
+      : memoryConfig
+        ? "memory"
+        : "rush";
+    if (waveMemoryConfig) {
+      const waveCount = Math.ceil(this.visualPreset.cooler.rowYs.length / waveMemoryConfig.waveSize);
+      document.body.dataset.restockFinaleWaveCount = String(waveCount);
+      document.body.dataset.restockFinaleWave = `0/${waveCount}`;
+      document.body.dataset.restockFinaleWaveState = "delivery";
+    }
     this.cameras.main.setBackgroundColor("#171712");
 
     new StarterMarketEnvironmentView(this, context).create();
@@ -131,18 +146,22 @@ export class StarterMarketScene extends Phaser.Scene {
       x: context.world.beverageCooler.x,
       y: 770,
       accentColor: context.palette.gold,
-      title: memoryConfig
-        ? "SHELF MEMORY"
-        : context.campaignLevel.level.tuning.rush?.timeoutEnabled === false
-          ? "GUIDED STOCK"
-          : "RESTOCK RUSH",
-      instruction: memoryConfig
-        ? "FOLLOW THE MEMORIZED ORDER · STOCK 3 ITEMS"
-        : context.campaignLevel.level.tuning.rush?.timeoutEnabled === false
-          ? context.campaignLevel.level.tuning.rush?.itemsPerRow === 1
-            ? "TAP EACH SHELF ONCE · AUTO-PLACE 3 BOTTLES"
-            : "FOLLOW THE GUIDED ORDER · STOCK 3 ITEMS"
-          : "FIND THE GLOWING SHELF · STOCK 3 ITEMS"
+      title: waveMemoryConfig
+        ? "FINAL MEMORY RUSH"
+        : memoryConfig
+          ? "SHELF MEMORY"
+          : context.campaignLevel.level.tuning.rush?.timeoutEnabled === false
+            ? "GUIDED STOCK"
+            : "RESTOCK RUSH",
+      instruction: waveMemoryConfig
+        ? `MEMORIZE ${waveMemoryConfig.waveSize} SHELVES · THEN STOCK BLIND`
+        : memoryConfig
+          ? "FOLLOW THE MEMORIZED ORDER · STOCK 3 ITEMS"
+          : context.campaignLevel.level.tuning.rush?.timeoutEnabled === false
+            ? context.campaignLevel.level.tuning.rush?.itemsPerRow === 1
+              ? "TAP EACH SHELF ONCE · AUTO-PLACE 3 BOTTLES"
+              : "FOLLOW THE GUIDED ORDER · STOCK 3 ITEMS"
+            : "FIND THE GLOWING SHELF · STOCK 3 ITEMS"
     });
     this.actors = this.createActors();
     this.target = new InteractionTargetView(
@@ -371,8 +390,10 @@ export class StarterMarketScene extends Phaser.Scene {
     const rowCentre = this.cooler.rowCentre(rowIndex);
     if (!result.correct) {
       this.cooler.showMistake(rowIndex);
-      this.rushMeter?.showMistake("WRONG SHELF");
-      playActionFeedback(this, rowCentre, "mistake");
+      this.rushMeter?.showMistake(this.waveMemoryConfig() ? "ROUTE BROKEN" : "WRONG SHELF");
+      playActionFeedback(this, rowCentre, "mistake", {
+        label: this.waveMemoryConfig() ? "WRONG ROUTE" : "WRONG SHELF"
+      });
       this.cameras.main.shake(90, 0.0025);
       this.syncRushPresentation(result.snapshot);
       return;
@@ -395,6 +416,8 @@ export class StarterMarketScene extends Phaser.Scene {
       emphasis: result.rowCompleted ? 1.22 : 1.04
     });
     this.cameras.main.shake(result.rowCompleted ? 55 : 30, result.rowCompleted ? 0.0014 : 0.0008);
+
+    if (result.rowCompleted) this.startNextWaveIfNeeded(result.snapshot);
   }
 
   private updateRush(): void {
@@ -404,8 +427,10 @@ export class StarterMarketScene extends Phaser.Scene {
     if (result.event === "timeout" && expiredRow !== undefined && this.cooler) {
       const rowCentre = this.cooler.rowCentre(expiredRow);
       this.cooler.showMistake(expiredRow);
-      this.rushMeter?.showMistake("TOO SLOW");
-      playActionFeedback(this, rowCentre, "mistake", { label: "TOO SLOW" });
+      this.rushMeter?.showMistake(this.waveMemoryConfig() ? "ROUTE TIMEOUT" : "TOO SLOW");
+      playActionFeedback(this, rowCentre, "mistake", {
+        label: this.waveMemoryConfig() ? "ROUTE TIMEOUT" : "TOO SLOW"
+      });
       this.cameras.main.shake(80, 0.002);
     }
     this.syncRushPresentation(result.snapshot);
@@ -413,12 +438,15 @@ export class StarterMarketScene extends Phaser.Scene {
 
   private syncRushPresentation(snapshot: RestockRushSnapshot): void {
     const memoryConfig = this.memoryConfig();
+    const waveMemoryConfig = this.waveMemoryConfig();
+    const hideActiveTarget =
+      waveMemoryConfig?.hideActiveTarget ?? memoryConfig?.hideActiveTarget ?? false;
     this.cooler?.syncRush({
       filledRowIndexes: snapshot.filledRowIndexes,
       rowItemCounts: snapshot.rowItemCounts.map((count) => (
         Math.min(COOLER_STOCK_ITEMS_PER_SLOT, count * snapshot.unitsPerInteraction)
       )),
-      activeRowIndex: memoryConfig?.hideActiveTarget ? undefined : snapshot.activeRowIndex,
+      activeRowIndex: hideActiveTarget ? undefined : snapshot.activeRowIndex,
       remainingRatio: snapshot.remainingRatio,
       interactionEnabled:
         !snapshot.complete &&
@@ -433,7 +461,7 @@ export class StarterMarketScene extends Phaser.Scene {
     if (!memoryConfig || this.memoryPreviewShown) return false;
     this.memoryPreviewShown = true;
     this.memoryPreviewActive = true;
-    this.interactionGate.lockFor(memoryConfig.durationMs + 220);
+    this.interactionGate.lockFor(memoryConfig.durationMs + 620);
     this.cooler?.syncRush({
       filledRowIndexes: [],
       rowItemCounts: Array.from({ length: this.visualPreset.cooler.rowYs.length }, () => 0),
@@ -454,8 +482,86 @@ export class StarterMarketScene extends Phaser.Scene {
     return true;
   }
 
+  private startWaveMemoryPreview(completedRows: number): boolean {
+    const waveConfig = this.waveMemoryConfig();
+    if (!waveConfig || this.memoryPreviewActive || this.wavePreviewedStarts.has(completedRows)) return false;
+
+    const planned = this.rush.plannedRowIndexes();
+    if (completedRows < 0 || completedRows >= planned.length) return false;
+    const sequence = planned.slice(completedRows, completedRows + waveConfig.waveSize);
+    if (sequence.length === 0) return false;
+
+    const waveIndex = Math.floor(completedRows / waveConfig.waveSize);
+    const waveCount = Math.ceil(planned.length / waveConfig.waveSize);
+    this.wavePreviewedStarts.add(completedRows);
+    this.memoryPreviewActive = true;
+    this.memoryPreview?.destroy();
+    this.interactionGate.lockFor(waveConfig.previewDurationMs + 620);
+    document.body.dataset.restockFinaleWave = `${waveIndex + 1}/${waveCount}`;
+    document.body.dataset.restockFinaleWaveState = "preview";
+
+    const rushSnapshot = this.rush.snapshot(this.time.now);
+    this.cooler?.syncRush({
+      filledRowIndexes: rushSnapshot.filledRowIndexes,
+      rowItemCounts: rushSnapshot.rowItemCounts.map((count) => (
+        Math.min(COOLER_STOCK_ITEMS_PER_SLOT, count * rushSnapshot.unitsPerInteraction)
+      )),
+      activeRowIndex: undefined,
+      remainingRatio: 1,
+      interactionEnabled: false
+    });
+
+    this.memoryPreview = mountRestockMemoryPreviewDom({
+      sequence,
+      durationMs: waveConfig.previewDurationMs,
+      variant: "finale-wave",
+      waveLabel: `WAVE ${waveIndex + 1} OF ${waveCount}`,
+      onComplete: () => {
+        if (!this.sys.isActive()) return;
+        this.memoryPreviewActive = false;
+        document.body.dataset.restockFinaleWaveState = "active";
+        const projected = this.rush.snapshot(this.time.now);
+        const activeSnapshot = projected.started
+          ? projected
+          : this.rush.start(this.time.now);
+        this.syncRushPresentation(activeSnapshot);
+      }
+    });
+    return true;
+  }
+
+  private startNextWaveIfNeeded(snapshot: RestockRushSnapshot): boolean {
+    const waveConfig = this.waveMemoryConfig();
+    if (!waveConfig || snapshot.complete) return false;
+    const completedRows = snapshot.filledRowIndexes.length;
+    if (completedRows === 0 || completedRows % waveConfig.waveSize !== 0) return false;
+    return this.startWaveMemoryPreview(completedRows);
+  }
+
   private memoryConfig() {
     return this.context.campaignLevel.level.tuning.rush?.memoryPreview;
+  }
+
+  private waveMemoryConfig() {
+    return this.context.campaignLevel.level.tuning.rush?.waveMemory;
+  }
+
+  private validateWaveMemoryConfig(): void {
+    const rushTuning = this.context.campaignLevel.level.tuning.rush;
+    const waveConfig = rushTuning?.waveMemory;
+    if (!waveConfig) return;
+    if (rushTuning?.memoryPreview) {
+      throw new Error("Restock rush cannot use memoryPreview and waveMemory at the same time");
+    }
+    if (!Number.isInteger(waveConfig.waveSize) || waveConfig.waveSize < 1) {
+      throw new Error("Restock wave-memory waveSize must be a positive integer");
+    }
+    if (waveConfig.waveSize >= this.visualPreset.cooler.rowYs.length) {
+      throw new Error("Restock wave-memory must split the cooler into at least two waves");
+    }
+    if (!Number.isFinite(waveConfig.previewDurationMs) || waveConfig.previewDurationMs < 1000) {
+      throw new Error("Restock wave-memory preview must last at least one second");
+    }
   }
 
   private dispatchSceneAction(action: RestockSceneAction, feedback = true): boolean {
@@ -486,7 +592,9 @@ export class StarterMarketScene extends Phaser.Scene {
     this.actors?.sync(snapshot);
 
     if (snapshot.step === "restock") {
-      if (this.previousStep !== "restock" && this.startMemoryPreview()) {
+      if (this.previousStep !== "restock" && this.startWaveMemoryPreview(0)) {
+        // Finale wave clock starts only after the first route preview closes.
+      } else if (this.previousStep !== "restock" && this.startMemoryPreview()) {
         // The challenge clock starts only after the memorization window closes.
       } else if (!this.memoryPreviewActive) {
         const rushSnapshot = this.previousStep === "restock"
@@ -515,6 +623,7 @@ export class StarterMarketScene extends Phaser.Scene {
 
     if (snapshot.step === "complete" && this.previousStep !== "complete") {
       this.pendingAction = false;
+      document.body.dataset.restockFinaleWaveState = "complete";
       const rushPerformance = this.rush.snapshot(this.time.now);
       const completedEconomy = {
         coins: snapshot.coins,
@@ -551,6 +660,7 @@ export class StarterMarketScene extends Phaser.Scene {
       );
       const grade = rushPerformance.grade ?? "BRONZE";
       const seconds = (rushPerformance.elapsedMs / 1000).toFixed(1);
+      const finaleLabel = this.waveMemoryConfig() ? "FINAL ROUTE" : "RUSH";
       this.completionOverlay = new LevelCompleteOverlay(
         this,
         {
@@ -561,7 +671,7 @@ export class StarterMarketScene extends Phaser.Scene {
           statusLabel: progression.statusLabel,
           levelTitle: context.labels.levelTitle,
           rewardLabel:
-            `${grade} RUSH  •  ${context.runtime.totalUnits} ITEMS  •  ${seconds}s\n` +
+            `${grade} ${finaleLabel}  •  ${context.runtime.totalUnits} ITEMS  •  ${seconds}s\n` +
             `+${context.runtime.reward.totalStars} STAR   +${context.runtime.reward.totalCoins} COINS`,
           actionLabel: progression.actionLabel,
           panelColor: context.palette.hud,
@@ -630,5 +740,8 @@ export class StarterMarketScene extends Phaser.Scene {
     this.rushMeter?.destroy();
     this.target?.destroy();
     this.interactionGate.destroy();
+    delete document.body.dataset.restockFinaleWave;
+    delete document.body.dataset.restockFinaleWaveCount;
+    delete document.body.dataset.restockFinaleWaveState;
   }
 }

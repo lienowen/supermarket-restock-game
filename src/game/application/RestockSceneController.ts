@@ -170,9 +170,11 @@ function createCopy(
     },
     restock: {
       objective,
-      instruction: interactionsPerShelf === 1
-        ? "Tap the highlighted shelf once. The worker places all 3 bottles."
-        : "Tap the highlighted shelf to stock it. Keep going until the shelf is full.",
+      instruction: runtime.restockInstruction ?? (
+        interactionsPerShelf === 1
+          ? "Tap the highlighted shelf once. The worker places all 3 bottles."
+          : "Tap the highlighted shelf to stock it. Keep going until the shelf is full."
+      ),
       actionLabel: "TAP A SHELF"
     },
     complete: {
