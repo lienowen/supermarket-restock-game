@@ -15,12 +15,14 @@ test("Level 10 is a two-wave blind-memory finale rather than a timing-only resto
     waveSize: 3,
     previewDurationMs: 2300,
     hideActiveTarget: true,
-    keepTargetOnFailure: true
+    keepTargetOnFailure: true,
+    instruction: "Tap the shelf from memory once. The worker places all 3 bottles."
   });
   assert.equal(rush.memoryPreview, undefined);
   assert.equal(rush.sequenceMode, "shuffled");
   assert.equal(rush.itemsPerRow, 1);
   assert.equal(rush.unitsPerInteraction, 3);
+  assert.equal(finale.runtime.restockInstruction, rush.waveMemory.instruction);
 });
 
 test("Final memory route stays deterministic and keeps its target after a wrong shelf", () => {
