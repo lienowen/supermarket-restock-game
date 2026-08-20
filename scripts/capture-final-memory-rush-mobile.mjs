@@ -78,7 +78,7 @@ try {
   await touchRow(page, cdp, wrong);
   await page.waitForFunction(({ key, expected }) => { const s = window.__IMMERSIVE_GAME__?.scene?.getScene(key); const r = s?.rush?.snapshot?.(s.time.now); return r?.mistakes === 1 && r?.activeRowIndex === expected; }, { key: SCENE_KEY, expected }, { timeout: 12000 });
   const afterWrong = await readState(page);
-  report.assertions.blindTouchWrongShelfKeepsRoute = afterWrong.rush?.mistakes === 1 && afterWrong.rush?.activeRowIndex === expected && afterWrong.visibleRowTargets === 0;
+  report.assertions.blindTouchWrongShelfKeepsRoute = afterWrong.rush?.mistakes === 1 && afterWrong.rush?.activeRowIndex === expected && afterWrong.visibleRowGlows === 0;
   await page.screenshot({ path: join(OUTPUT_DIR, "level-10-mobile-blind-active.png"), fullPage: true });
 
   for (let index = 0; index < 3; index += 1) {
@@ -126,7 +126,7 @@ async function readState(page) {
   return page.evaluate((key) => { const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(key); const list = scene?.children?.list ?? []; return {
     wave: document.body.dataset.restockFinaleWave ?? null, waveState: document.body.dataset.restockFinaleWaveState ?? null,
     controller: scene?.controller?.snapshot?.() ?? null, rush: scene?.rush?.snapshot?.(scene.time.now) ?? null,
-    visibleRowTargets: list.filter((entry) => entry?.visible === true && typeof entry?.name === "string" && entry.name.startsWith("beverage-cooler-row-target-")).length
+    visibleRowGlows: list.filter((entry) => entry?.visible === true && typeof entry?.name === "string" && entry.name.startsWith("beverage-cooler-row-glow-")).length
   }; }, SCENE_KEY);
 }
 async function waitForWaveActive(page, wave) { await page.waitForFunction((wave) => document.body.dataset.restockFinaleWave === wave && document.body.dataset.restockFinaleWaveState === "active" && !document.getElementById("restock-memory-preview"), wave, { timeout: 15000 }); }
