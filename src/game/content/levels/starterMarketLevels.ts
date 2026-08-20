@@ -274,7 +274,7 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
     shiftId: "starter-shift-009",
     missionId: "restock-water-finale",
     title: "Final Cooler Rush",
-    randomSeed: "starter-level-010-v2-wave-memory",
+    randomSeed: "starter-level-010-v1",
     navigation: { moveSpeed: 620, interactionRadius: 145 },
     presentation: {
       assetPackId: "market-restock-v1",
@@ -296,13 +296,13 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
           hideActiveTarget: true,
           keepTargetOnFailure: true
         },
-        targetDurationMs: 7800,
-        minimumTargetDurationMs: 5600,
-        speedUpPerSuccessMs: 350,
-        introGraceMs: 900,
-        streakWindowMs: 1150,
-        goldTimeMs: 36000,
-        silverTimeMs: 50000
+        targetDurationMs: 13000,
+        minimumTargetDurationMs: 7500,
+        speedUpPerSuccessMs: 320,
+        introGraceMs: 3200,
+        streakWindowMs: 1100,
+        goldTimeMs: 38000,
+        silverTimeMs: 56000
       }
     }
   }
