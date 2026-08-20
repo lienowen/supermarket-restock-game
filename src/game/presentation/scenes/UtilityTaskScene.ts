@@ -13,6 +13,10 @@ import {
 } from "../../application/UtilityTaskSceneController";
 import { STARTER_RUNTIME_ASSET_REGISTRY } from "../../assets/RuntimeAssetRegistry";
 import {
+  resolveCleaningExperienceSpec,
+  type CleaningExperienceSpec
+} from "../../content/experience/CleaningExperienceSpec";
+import {
   resolveLevelExperienceSpec,
   type FindItemsSearchDecoySpec,
   type LevelExperienceSpec
@@ -20,6 +24,7 @@ import {
 import { navigateToLevel } from "../../infrastructure/browser/BrowserLevelNavigator";
 import { PlayerNavigationView } from "../actors/PlayerNavigationView";
 import { CleaningTaskView } from "../cleaning/CleaningTaskView";
+import { ClosingSafetyCleaningTaskView } from "../cleaning/ClosingSafetyCleaningTaskView";
 import type {
   CleanStarterMarketPresentationContext,
   FindItemsStarterMarketPresentationContext
@@ -46,6 +51,7 @@ export type UtilityPresentationContext =
 
 type UtilityVisualPreset = CleanLevelVisualPreset | FindItemsLevelVisualPreset;
 type UtilityProgressObject = Phaser.GameObjects.Image | Phaser.GameObjects.Container;
+type CleanTaskPresentation = CleaningTaskView | ClosingSafetyCleaningTaskView;
 
 export class UtilityTaskScene extends Phaser.Scene {
   readonly controller: UtilityTaskSceneController;
@@ -53,13 +59,14 @@ export class UtilityTaskScene extends Phaser.Scene {
   private readonly interactionGate = new InteractionGate();
   private readonly visualPreset: UtilityVisualPreset;
   private readonly experience: LevelExperienceSpec;
+  private readonly cleaningExperience?: CleaningExperienceSpec;
   private readonly findChallenge?: FindItemsChallengeController;
   private readonly disposers: Array<() => void> = [];
   private readonly findItemsByProduct = new Map<string, Phaser.GameObjects.Image>();
   private player?: PlayerNavigationView;
   private target?: InteractionTargetView;
   private hud?: ShiftHud;
-  private cleaningView?: CleaningTaskView;
+  private cleaningView?: CleanTaskPresentation;
   private orderTicket?: OrderTicketView;
   private findCountdown?: FindItemsCountdownView;
   private findBasket?: Phaser.GameObjects.Image;
@@ -77,6 +84,7 @@ export class UtilityTaskScene extends Phaser.Scene {
     super(context.scene.key);
     this.visualPreset = resolveLevelVisualPreset(context.campaignLevel.level);
     this.experience = resolveLevelExperienceSpec(context.campaignLevel.level);
+    this.cleaningExperience = resolveCleaningExperienceSpec(context.campaignLevel.level);
     const initialEconomy = campaignSession?.initialEconomy ?? {
       coins: context.campaignLevel.level.tuning.initialCoins,
       stars: 0,
@@ -94,6 +102,12 @@ export class UtilityTaskScene extends Phaser.Scene {
 
   preload(): void {
     this.context.levelAssets.preload.forEach((asset) => this.load.image(asset.key, asset.path));
+
+    this.cleaningExperience?.spillAssetKeys.forEach((assetKey) => {
+      const asset = STARTER_RUNTIME_ASSET_REGISTRY.require(assetKey);
+      if (!this.textures.exists(asset.key)) this.load.image(asset.key, asset.path);
+    });
+
     if (this.context.mode !== "find-items") return;
     this.experience.findItemsSearch?.decoys.forEach((decoy) => {
       const asset = STARTER_RUNTIME_ASSET_REGISTRY.require(decoy.assetKey);
@@ -209,14 +223,26 @@ export class UtilityTaskScene extends Phaser.Scene {
     context: CleanStarterMarketPresentationContext,
     visual: CleanLevelVisualPreset
   ): void {
-    this.cleaningView = new CleaningTaskView(this, {
-      fixtureAssetKey: context.levelAssets.cleaningFixture.key,
-      cleaningCartAssetKey: context.levelAssets.cleaningCart.key,
-      wetFloorSignAssetKey: context.levelAssets.wetFloorSign.key,
-      toolPoint: context.runtime.toolPoint,
-      spotPositions: context.runtime.spotPositions,
-      visual
-    });
+    if (this.cleaningExperience?.kind === "closing-safety") {
+      this.cleaningView = new ClosingSafetyCleaningTaskView(this, {
+        cleaningCartAssetKey: context.levelAssets.cleaningCart.key,
+        wetFloorSignAssetKey: context.levelAssets.wetFloorSign.key,
+        spillAssetKeys: this.cleaningExperience.spillAssetKeys,
+        warningRequiredSpillIndexes: this.cleaningExperience.warningRequiredSpillIndexes,
+        toolPoint: context.runtime.toolPoint,
+        spotPositions: context.runtime.spotPositions,
+        visual
+      });
+    } else {
+      this.cleaningView = new CleaningTaskView(this, {
+        fixtureAssetKey: context.levelAssets.cleaningFixture.key,
+        cleaningCartAssetKey: context.levelAssets.cleaningCart.key,
+        wetFloorSignAssetKey: context.levelAssets.wetFloorSign.key,
+        toolPoint: context.runtime.toolPoint,
+        spotPositions: context.runtime.spotPositions,
+        visual
+      });
+    }
     this.cleaningView.create();
   }
 
@@ -348,6 +374,11 @@ export class UtilityTaskScene extends Phaser.Scene {
     if (!this.canInteract(snapshot)) return;
     const action = this.controller.actionForCurrentStep();
     if (!action) return;
+    if (
+      action === "CLEAN_SPOT" &&
+      this.cleaningView instanceof ClosingSafetyCleaningTaskView &&
+      !this.cleaningView.canCommitCurrentSpill(snapshot.progress)
+    ) return;
 
     const duration = this.context.runtime.cleanDurationMs;
     this.interactionGate.lockFor(action === "COLLECT_TOOLS" ? 320 : duration);

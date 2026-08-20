@@ -79,6 +79,43 @@ const projectBackground = (
   status: "production"
 });
 
+const l8Background = (): AssetDescriptor => asset({
+  key: "environment-project-cleaning-closing-l8",
+  // The uploaded L8 plate is currently truncated in the repository. Keep the
+  // stable key but bind it to the validated cleaning plate until the binary is
+  // replaced; shipping a known-good supermarket scene is preferable to black.
+  path: "assets/game/production-v4/project-backgrounds/bg-cleaning-zone-v2.png",
+  category: "environment",
+  canvasSize: [1672, 941],
+  anchor: [0.5, 0.5],
+  defaultScale: 1,
+  depthGroup: "far-environment",
+  preloadGroup: "starter-market",
+  perspective: "fixed-third-person",
+  lightDirection: "upper-left",
+  state: "closing-cleanup-l8-safe-fallback",
+  status: "production"
+});
+
+const l8Spill = (
+  key: string,
+  fileName: string,
+  state: string
+): AssetDescriptor => asset({
+  key,
+  path: `assets/game/production-v7/l8-l10-adapted-assets/L8/${fileName}`,
+  category: "effect",
+  canvasSize: [768, 512],
+  anchor: [0.5, 0.5],
+  defaultScale: 1,
+  depthGroup: "world-effects",
+  preloadGroup: "starter-market",
+  perspective: "fixed-third-person",
+  lightDirection: "upper-left",
+  state,
+  status: "production"
+});
+
 const l5OrderIcon = (
   key: string,
   fileName: string,
@@ -140,6 +177,7 @@ export const GLOBAL_PROJECT_ASSET_CATALOGUE: AssetCatalogue = Object.freeze({
       "bg-order-hunt-zone-v2.png",
       "order-hunt-zone-v2"
     ),
+    l8Background(),
     l5OrderIcon("ui-l5-order-milk", "order-milk-clean.png", "milk"),
     l5OrderIcon("ui-l5-order-cereal", "order-cereal-clean.png", "cereal"),
     asset({
@@ -159,6 +197,9 @@ export const GLOBAL_PROJECT_ASSET_CATALOGUE: AssetCatalogue = Object.freeze({
     matureSpill("spill-water-large", "spill-water-large.png", "water"),
     matureSpill("spill-juice-large", "spill-juice-large.png", "juice"),
     matureSpill("spill-dirt-smear-large", "spill-dirt-smear-large.png", "dirt"),
+    l8Spill("spill-oil-large", "spill-oil-large.png", "oil"),
+    l8Spill("spill-footprint-large", "spill-footprint-large.png", "footprint"),
+    l8Spill("spill-trash-smear-large", "spill-trash-smear-large.png", "trash-smear"),
     matureDeliveryProp("delivery-box-small", "delivery-box-small.png", "prop", "small"),
     matureDeliveryProp("delivery-box-medium", "delivery-box-medium.png", "prop", "medium"),
     matureDeliveryProp("delivery-box-large", "delivery-box-large.png", "prop", "large"),

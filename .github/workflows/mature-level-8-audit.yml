@@ -1,0 +1,110 @@
+name: Mature Level 8 Audit
+
+on:
+  pull_request:
+    paths:
+      - "src/game/assets/GlobalProjectAssetCatalogue.ts"
+      - "src/game/assets/LevelEnvironmentRegistry.ts"
+      - "src/game/presentation/cleaning/ClosingSafetyCleaningTaskView.ts"
+      - "src/game/presentation/scenes/UtilityTaskScene.ts"
+      - "src/game/content/experience/LevelExperienceSpec.ts"
+      - "public/assets/game/production-v7/l8-l10-adapted-assets/L8/**"
+      - "scripts/capture-closing-safety-cleanup.mjs"
+      - "scripts/capture-closing-safety-cleanup-mobile.mjs"
+      - ".github/workflows/mature-level-8-audit.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "src/game/assets/GlobalProjectAssetCatalogue.ts"
+      - "src/game/assets/LevelEnvironmentRegistry.ts"
+      - "src/game/presentation/cleaning/ClosingSafetyCleaningTaskView.ts"
+      - "src/game/presentation/scenes/UtilityTaskScene.ts"
+      - "src/game/content/experience/LevelExperienceSpec.ts"
+      - "public/assets/game/production-v7/l8-l10-adapted-assets/L8/**"
+      - "scripts/capture-closing-safety-cleanup.mjs"
+      - "scripts/capture-closing-safety-cleanup-mobile.mjs"
+      - ".github/workflows/mature-level-8-audit.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  level8:
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.54.1
+          npx playwright install --with-deps chromium
+
+      - name: Build production bundle
+        id: build
+        continue-on-error: true
+        run: npm run build
+
+      - name: Verify Level 8 desktop closing-safety flow
+        id: desktop
+        if: ${{ always() && steps.build.outcome == 'success' }}
+        continue-on-error: true
+        run: node scripts/capture-closing-safety-cleanup.mjs
+
+      - name: Verify Level 8 Android software-landscape flow
+        id: mobile
+        if: ${{ always() && steps.build.outcome == 'success' }}
+        continue-on-error: true
+        run: node scripts/capture-closing-safety-cleanup-mobile.mjs
+
+      - name: Upload Level 8 evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mature-level-8-audit
+          path: |
+            ui-audit/mature-level-8
+            ui-audit/mature-level-8-mobile
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Publish Level 8 commit status
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          DESKTOP_OUTCOME: ${{ steps.desktop.outcome }}
+          MOBILE_OUTCOME: ${{ steps.mobile.outcome }}
+        run: |
+          if [ "$BUILD_OUTCOME" = "success" ] && [ "$DESKTOP_OUTCOME" = "success" ] && [ "$MOBILE_OUTCOME" = "success" ]; then
+            STATE=success
+            DESC="Level 8 six-spill safety-sign desktop/Android flow passed"
+          else
+            STATE=failure
+            DESC="mature Level 8 closing-safety audit failed"
+          fi
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state="$STATE" \
+            -f context="Mature Level 8 Audit" \
+            -f description="$DESC" \
+            -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+      - name: Enforce Level 8 result
+        if: always()
+        run: |
+          test "${{ steps.build.outcome }}" = "success"
+          test "${{ steps.desktop.outcome }}" = "success"
+          test "${{ steps.mobile.outcome }}" = "success"

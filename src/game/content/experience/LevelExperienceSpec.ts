@@ -209,14 +209,14 @@ export const STARTER_LEVEL_EXPERIENCE_SPECS: readonly LevelExperienceSpec[] = Ob
   define({
     levelId: "starter-level-008",
     mode: "clean",
-    modeLabel: "CLOSING CLEAN-UP",
+    modeLabel: "CLOSING SAFETY",
     eyebrow: "FINAL FLOOR CHECK",
     title: "Closing Clean-up",
-    objective: "Collect the cart and clear all six closing-time spills.",
-    mechanic: "A longer route and tighter interaction spacing demand deliberate movement.",
-    control: "Move close to each marked spill before confirming the clean action.",
-    successMetric: "Complete all six stops without skipping a spill.",
-    primaryInput: "tap"
+    objective: "Collect the cleaning cart and clear all six closing-time floor hazards.",
+    mechanic: "Water, juice and oil hazards require a wet-floor sign before scrubbing; dry marks can be cleaned immediately.",
+    control: "Tap a hazard to walk over and place the safety sign when required, then drag across the spill until it reaches 100% clean.",
+    successMetric: "Clear all six stops and place a safety sign on every liquid hazard before scrubbing it.",
+    primaryInput: "mixed"
   }),
   define({
     levelId: "starter-level-009",
