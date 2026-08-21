@@ -452,8 +452,35 @@ export function mountCheckoutPatienceDom(
     fontWeight: "800"
   });
 
+  const scoreBoard = document.createElement("div");
+  scoreBoard.id = "checkout-rush-scoreboard";
+  applyStyles(scoreBoard, {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: "8px",
+    marginTop: "9px"
+  });
+  const scoreValue = (label: string): HTMLDivElement => {
+    const card = document.createElement("div");
+    applyStyles(card, {
+      padding: "7px 9px",
+      borderRadius: "10px",
+      background: "rgba(255,255,255,0.065)",
+      color: "#dcebe1",
+      textAlign: "center",
+      fontSize: "11px",
+      fontWeight: "900"
+    });
+    card.dataset.metric = label.toLowerCase();
+    return card;
+  };
+  const speedScore = scoreValue("Speed");
+  const accuracyScore = scoreValue("Accuracy");
+  const satisfactionScore = scoreValue("Satisfaction");
+  scoreBoard.append(speedScore, accuracyScore, satisfactionScore);
+
   workArea.append(standardCard, scanner, scalePanel, payment);
-  panel.append(header, instruction, workArea, feedback);
+  panel.append(header, instruction, workArea, feedback, scoreBoard);
   overlay.appendChild(panel);
   document.body.appendChild(overlay);
   document.body.dataset.checkoutPatience = "waiting";
@@ -463,6 +490,7 @@ export function mountCheckoutPatienceDom(
 
   let activeCustomer = -1;
   let standardScanned = false;
+  let scannedItemCount = 0;
   let weightCorrect = false;
   let remainingMs = config.spec.patienceDurationMs;
   let lastFrameMs = performance.now();
@@ -479,6 +507,28 @@ export function mountCheckoutPatienceDom(
   let translateX = 0;
   let translateY = 0;
   let mood: "happy" | "impatient" = "happy";
+  let elapsedServiceMs = 0;
+  let completedPatienceRatioTotal = 0;
+
+  const activeProfile = () => config.spec.customerProfiles[Math.max(0, activeCustomer)];
+  const activePatienceDuration = () => activeProfile()?.patienceDurationMs ?? config.spec.patienceDurationMs;
+
+  const updateScoreBoard = (): void => {
+    const served = Math.max(0, snapshot()?.customersServed ?? 0);
+    const speed = served === 0
+      ? 100
+      : Math.max(0, Math.round(100 - elapsedServiceMs / served / 300));
+    const accuracy = Math.max(0, Math.round(100 - mistakes * 12.5));
+    const satisfaction = served === 0
+      ? 100
+      : Math.max(0, Math.round((completedPatienceRatioTotal / served) * 100 - abandonments * 10));
+    speedScore.textContent = `SPEED  ${speed}`;
+    accuracyScore.textContent = `ACCURACY  ${accuracy}%`;
+    satisfactionScore.textContent = `SATISFACTION  ${satisfaction}%`;
+    document.body.dataset.checkoutRushSpeed = String(speed);
+    document.body.dataset.checkoutRushAccuracy = String(accuracy);
+    document.body.dataset.checkoutRushSatisfaction = String(satisfaction);
+  };
 
   const scenePort = (): CheckoutScenePort | undefined => {
     try {
@@ -524,7 +574,7 @@ export function mountCheckoutPatienceDom(
   };
 
   const updatePatienceUi = (): void => {
-    const ratio = Math.max(0, Math.min(1, remainingMs / config.spec.patienceDurationMs));
+    const ratio = Math.max(0, Math.min(1, remainingMs / activePatienceDuration()));
     const percent = Math.ceil(ratio * 100);
     patienceFill.style.width = `${percent}%`;
     patienceValue.textContent = `${percent}%`;
@@ -569,8 +619,9 @@ export function mountCheckoutPatienceDom(
   const prepareCustomer = (customerIndex: number): void => {
     activeCustomer = customerIndex;
     standardScanned = false;
+    scannedItemCount = 0;
     weightCorrect = false;
-    remainingMs = config.spec.patienceDurationMs;
+    remainingMs = config.spec.customerProfiles[customerIndex]?.patienceDurationMs ?? config.spec.patienceDurationMs;
     lastFrameMs = performance.now();
     document.body.dataset.checkoutPatienceScanned = "false";
     document.body.dataset.checkoutPatienceWeightCorrect = "false";
@@ -582,17 +633,20 @@ export function mountCheckoutPatienceDom(
       customerIndex % config.standardProductAssets.length
     ];
     const targetWeight = config.spec.targetWeightsKg[customerIndex];
-    if (!standardAsset || targetWeight === undefined) {
+    const profile = config.spec.customerProfiles[customerIndex];
+    if (!standardAsset || targetWeight === undefined || !profile) {
       throw new Error(`Missing evening checkout configuration for customer ${customerIndex + 1}`);
     }
     standardImage.src = assetUrl(standardAsset.path);
-    standardLabel.textContent = `SCAN ${standardAsset.key.replace(/^product-/, "").replaceAll("-", " ").toUpperCase()}`;
+    standardLabel.textContent = `SCAN ITEM 1/${profile.itemCount}`;
     weightTicket.textContent = `APPLE LABEL  ${targetWeight.toFixed(1)} kg`;
-    customerLabel.textContent = `CUSTOMER ${customerIndex + 1} / ${config.totalCustomers}`;
+    const typeLabel = profile.type === "rushed" ? "RUSHED CUSTOMER" : profile.type === "large-order" ? "LARGE ORDER" : "REGULAR CUSTOMER";
+    customerLabel.textContent = `${typeLabel} · ${customerIndex + 1}/${config.totalCustomers} · ${profile.itemCount} ITEMS`;
     feedback.textContent = "Scan the standard item and weigh the apple.";
     feedback.style.color = "#a9cfb7";
     updatePatienceUi();
     updateCompletionUi();
+    updateScoreBoard();
     document.body.dataset.checkoutPatienceCustomer = String(customerIndex + 1);
   };
 
@@ -627,8 +681,17 @@ export function mountCheckoutPatienceDom(
 
   const markStandardScanned = (): void => {
     if (standardScanned) return;
-    standardScanned = true;
-    feedback.textContent = "Standard item scanned. Weigh the apple.";
+    const profile = activeProfile();
+    scannedItemCount += 1;
+    standardScanned = scannedItemCount >= (profile?.itemCount ?? 1);
+    if (!standardScanned) {
+      const nextAsset = config.standardProductAssets[(activeCustomer + scannedItemCount) % config.standardProductAssets.length];
+      if (nextAsset) standardImage.src = assetUrl(nextAsset.path);
+      standardLabel.textContent = `SCAN ITEM ${scannedItemCount + 1}/${profile?.itemCount ?? 1}`;
+    }
+    feedback.textContent = standardScanned
+      ? "All basket items scanned. Weigh the apple."
+      : `${scannedItemCount} item scanned. Continue the order.`;
     feedback.style.color = "#72ef9e";
     resetDrag();
     updateCompletionUi();
@@ -694,18 +757,20 @@ export function mountCheckoutPatienceDom(
         weightCorrect = true;
         feedback.textContent = `Exact weight: ${selectedWeight.toFixed(1)} kg. Customer patience stabilized.`;
         feedback.style.color = "#72ef9e";
-        remainingMs = Math.min(config.spec.patienceDurationMs, remainingMs + 700);
+        remainingMs = Math.min(activePatienceDuration(), remainingMs + 700);
         document.body.dataset.checkoutPatienceWeightCorrect = "true";
         setMood("happy");
       } else {
         mistakes += 1;
-        remainingMs = Math.max(0, remainingMs - config.spec.wrongWeightPenaltyMs);
-        feedback.textContent = `Wrong weight. Customer patience -${Math.round(config.spec.wrongWeightPenaltyMs / 1000)}s.`;
+        const penaltyMs = Math.round(config.spec.wrongWeightPenaltyMs * (activeProfile()?.mistakePenaltyMultiplier ?? 1));
+        remainingMs = Math.max(0, remainingMs - penaltyMs);
+        feedback.textContent = `Wrong weight. Customer patience -${(penaltyMs / 1000).toFixed(1)}s.`;
         feedback.style.color = "#ff9e91";
         document.body.dataset.checkoutPatienceMistakes = String(mistakes);
       }
       updatePatienceUi();
       updateCompletionUi();
+      updateScoreBoard();
     });
   });
 
@@ -720,6 +785,7 @@ export function mountCheckoutPatienceDom(
       return;
     }
     payment.disabled = true;
+    completedPatienceRatioTotal += Math.max(0, remainingMs / activePatienceDuration());
     setMood("happy");
     feedback.textContent = "Payment accepted. Customer satisfied.";
     feedback.style.color = "#ffd95e";
@@ -732,6 +798,7 @@ export function mountCheckoutPatienceDom(
     lastFrameMs = nowMs;
     if (visible && snapshot()?.step === "serve") {
       remainingMs = Math.max(0, remainingMs - delta);
+      elapsedServiceMs += delta;
       updatePatienceUi();
       if (remainingMs === 0) {
         abandonments += 1;
@@ -741,6 +808,7 @@ export function mountCheckoutPatienceDom(
         feedback.textContent = "Customer lost patience. The current basket has restarted.";
         feedback.style.color = "#ff786e";
       }
+      updateScoreBoard();
     }
     animationId = requestAnimationFrame(patienceLoop);
   };
@@ -796,6 +864,9 @@ export function mountCheckoutPatienceDom(
       delete document.body.dataset.checkoutPatienceScanned;
       delete document.body.dataset.checkoutPatienceWeightCorrect;
       delete document.body.dataset.checkoutPatienceMood;
+      delete document.body.dataset.checkoutRushSpeed;
+      delete document.body.dataset.checkoutRushAccuracy;
+      delete document.body.dataset.checkoutRushSatisfaction;
     }
   });
 }

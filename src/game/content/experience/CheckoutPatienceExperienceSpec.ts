@@ -1,11 +1,21 @@
 import type { LevelDefinition } from "../GameContent";
 
+export type CheckoutRushCustomerType = "regular" | "rushed" | "large-order";
+
+export interface CheckoutRushCustomerProfile {
+  readonly type: CheckoutRushCustomerType;
+  readonly itemCount: number;
+  readonly patienceDurationMs: number;
+  readonly mistakePenaltyMultiplier: number;
+}
+
 export interface CheckoutPatienceExperienceSpec {
   readonly levelId: string;
   readonly mode: "checkout";
   readonly customerCount: number;
   readonly patienceDurationMs: number;
   readonly wrongWeightPenaltyMs: number;
+  readonly customerProfiles: readonly CheckoutRushCustomerProfile[];
   readonly standardProductAssetKeys: readonly string[];
   readonly weighedProductAssetKey: string;
   readonly scaleAssetKey: string;
@@ -23,11 +33,18 @@ export const CHECKOUT_PATIENCE_EXPERIENCE_SPECS: readonly CheckoutPatienceExperi
     levelId: "starter-level-007",
     mode: "checkout" as const,
     customerCount: 8,
-    // L7 asks for a real drag, a produce-weight decision and payment. Thirty
-    // seconds keeps that three-step loop readable on touch devices while wrong
-    // weights still create strong pressure instead of an instant hidden reset.
-    patienceDurationMs: 30000,
-    wrongWeightPenaltyMs: 6000,
+    patienceDurationMs: 20000,
+    wrongWeightPenaltyMs: 3000,
+    customerProfiles: Object.freeze([
+      Object.freeze({ type: "regular" as const, itemCount: 2, patienceDurationMs: 20000, mistakePenaltyMultiplier: 1 }),
+      Object.freeze({ type: "rushed" as const, itemCount: 2, patienceDurationMs: 12000, mistakePenaltyMultiplier: 1.5 }),
+      Object.freeze({ type: "large-order" as const, itemCount: 4, patienceDurationMs: 26000, mistakePenaltyMultiplier: 1 }),
+      Object.freeze({ type: "regular" as const, itemCount: 2, patienceDurationMs: 20000, mistakePenaltyMultiplier: 1 }),
+      Object.freeze({ type: "rushed" as const, itemCount: 2, patienceDurationMs: 12000, mistakePenaltyMultiplier: 1.5 }),
+      Object.freeze({ type: "large-order" as const, itemCount: 5, patienceDurationMs: 30000, mistakePenaltyMultiplier: 1 }),
+      Object.freeze({ type: "regular" as const, itemCount: 3, patienceDurationMs: 22000, mistakePenaltyMultiplier: 1 }),
+      Object.freeze({ type: "rushed" as const, itemCount: 3, patienceDurationMs: 14000, mistakePenaltyMultiplier: 1.5 })
+    ]),
     standardProductAssetKeys: Object.freeze([
       "product-milk-bottle",
       "product-cereal-box",
@@ -88,6 +105,23 @@ export function validateCheckoutPatienceExperienceSpecs(
     }
     if (spec.targetWeightsKg.length !== spec.customerCount) {
       errors.push(`Checkout patience spec ${spec.levelId} target weights must match customer count`);
+    }
+    if (spec.customerProfiles.length !== spec.customerCount) {
+      errors.push(`Checkout patience spec ${spec.levelId} customer profiles must match customer count`);
+    }
+    if (!spec.customerProfiles.some((profile) => profile.type === "rushed")) {
+      errors.push(`Checkout patience spec ${spec.levelId} requires rushed customers`);
+    }
+    if (!spec.customerProfiles.some((profile) => profile.type === "large-order" && profile.itemCount >= 4)) {
+      errors.push(`Checkout patience spec ${spec.levelId} requires a large order with at least four items`);
+    }
+    if (spec.customerProfiles.some((profile) => (
+      !Number.isInteger(profile.itemCount) ||
+      profile.itemCount < 1 ||
+      profile.patienceDurationMs < 8000 ||
+      profile.mistakePenaltyMultiplier < 1
+    ))) {
+      errors.push(`Checkout patience spec ${spec.levelId} has an invalid customer profile`);
     }
     const validWeights = new Set(spec.weightChoicesKg);
     if (spec.weightChoicesKg.length < 3 || spec.weightChoicesKg.some((weight) => weight <= 0)) {

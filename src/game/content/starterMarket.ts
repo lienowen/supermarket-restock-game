@@ -82,7 +82,7 @@ export const RESTOCK_COLA_CLOSING_MISSION: MissionDefinition = {
 export const SERVE_EVENING_RUSH_MISSION: MissionDefinition = {
   id: "serve-evening-rush",
   title: "Clear the Evening Queue",
-  description: "Serve eight baskets with a faster scanner and shorter queue gaps.",
+  description: "Manage regular, rushed and large orders while protecting speed, accuracy and satisfaction.",
   objectives: [{
     type: "operate-checkout",
     checkoutId: "checkout-a",

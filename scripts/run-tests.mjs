@@ -23,6 +23,7 @@ const run = spawnSync(
     "--test",
     "tests/core-flow.test.cjs",
     "tests/l6-dispatch-acceptance.test.cjs",
+    "tests/checkout-patience-experience.test.cjs",
     "tests/release-asset-references.test.cjs",
     "tests/v3-architecture.test.cjs",
     "tests/v3-catalogues.test.cjs",

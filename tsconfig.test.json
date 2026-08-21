@@ -27,6 +27,7 @@
     "src/game/content/levels/starterMarketLevels.ts",
     "src/game/content/experience/LevelExperienceSpec.ts",
     "src/game/content/experience/CartCapacityExperienceSpec.ts",
+    "src/game/content/experience/CheckoutPatienceExperienceSpec.ts",
     "src/game/content/validation/LevelConfigValidator.ts",
     "src/game/application/CampaignRuntime.ts",
     "src/game/application/CampaignSession.ts",

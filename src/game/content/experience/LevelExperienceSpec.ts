@@ -197,13 +197,13 @@ export const STARTER_LEVEL_EXPERIENCE_SPECS: readonly LevelExperienceSpec[] = Ob
   define({
     levelId: "starter-level-007",
     mode: "checkout",
-    modeLabel: "PATIENCE & WEIGHT",
+    modeLabel: "CHECKOUT RUSH",
     eyebrow: "PEAK SERVICE",
     title: "Evening Checkout",
-    objective: "Serve all eight evening customers before their individual patience bars expire.",
-    mechanic: "Every basket combines a standard scan with an apple weight decision; a wrong weight removes three seconds of patience.",
-    control: "Drag the standard item through the scanner, match the produce label to the correct weight, then take payment.",
-    successMetric: "Complete all eight orders with no abandoned customers and as few weight mistakes as possible.",
+    objective: "Serve regular, rushed and large-order customers before their individual patience bars expire.",
+    mechanic: "Rushed customers have less patience and stronger mistake penalties, while large orders contain four or five scannable items.",
+    control: "Scan every item, match the produce label to the correct weight, then take payment while watching all three service scores.",
+    successMetric: "Keep speed, accuracy and customer satisfaction high through all eight evening orders.",
     primaryInput: "mixed"
   }),
   define({

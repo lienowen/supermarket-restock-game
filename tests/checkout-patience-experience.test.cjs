@@ -25,10 +25,34 @@ test("Evening checkout owns eight patience and produce-weight decisions", () => 
 
 test("Wrong produce weight has a meaningful patience penalty", () => {
   const spec = CHECKOUT_PATIENCE_EXPERIENCE_SPECS[0];
-  assert.equal(spec.patienceDurationMs, 15000);
+  assert.equal(spec.patienceDurationMs, 20000);
   assert.equal(spec.wrongWeightPenaltyMs, 3000);
   assert.ok(spec.wrongWeightPenaltyMs < spec.patienceDurationMs);
   assert.equal(new Set(spec.standardProductAssetKeys).size, 5);
   assert.equal(spec.weighedProductAssetKey, "product-apple");
   assert.ok(spec.targetWeightsKg.every((weight) => spec.weightChoicesKg.includes(weight)));
+});
+
+test("L7 mixes regular, rushed and genuinely larger customer orders", () => {
+  const spec = CHECKOUT_PATIENCE_EXPERIENCE_SPECS[0];
+  assert.deepEqual(new Set(spec.customerProfiles.map((profile) => profile.type)), new Set([
+    "regular",
+    "rushed",
+    "large-order"
+  ]));
+  assert.ok(spec.customerProfiles.filter((profile) => profile.type === "rushed").every((profile) => (
+    profile.patienceDurationMs < spec.patienceDurationMs && profile.mistakePenaltyMultiplier > 1
+  )));
+  assert.ok(spec.customerProfiles.some((profile) => profile.type === "large-order" && profile.itemCount >= 4));
+});
+
+test("L7 exposes speed, accuracy and satisfaction scoring", () => {
+  const source = require("node:fs").readFileSync(
+    "src/game/presentation/ui/CheckoutPatienceDom.ts",
+    "utf8"
+  );
+  assert.match(source, /SPEED/);
+  assert.match(source, /ACCURACY/);
+  assert.match(source, /SATISFACTION/);
+  assert.match(source, /checkoutRushSpeed/);
 });
