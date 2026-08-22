@@ -9,6 +9,7 @@ export interface ClosingSafetyCleaningTaskViewConfig {
   readonly wetFloorSignAssetKey: string;
   readonly spillAssetKeys: readonly string[];
   readonly warningRequiredSpillIndexes: readonly number[];
+  readonly customerPatrolAssetKey: string;
   readonly toolPoint: NavigationPoint;
   readonly spotPositions: readonly NavigationPoint[];
   readonly visual: CleanLevelVisualPreset;
@@ -55,6 +56,10 @@ export class ClosingSafetyCleaningTaskView {
   private readonly completedSpillIndexes = new Set<number>();
   private readonly awaitingSignRecovery = new Set<number>();
   private readonly scrubHint: Phaser.GameObjects.Text;
+  private customerPatrol?: Phaser.GameObjects.Image;
+  private customerPatrolTween?: Phaser.Tweens.Tween;
+  private customerHoldIndex = -1;
+  private customerSafetyStops = 0;
   private toolTouchZone?: Phaser.GameObjects.Zone;
   private previousPhase: ClosingSafetyCleaningTaskViewState["phase"] = "tools";
   private currentPhase: ClosingSafetyCleaningTaskViewState["phase"] = "tools";
@@ -107,6 +112,11 @@ export class ClosingSafetyCleaningTaskView {
       suffix: "--closing-sign-trimmed",
       padding: 2
     });
+    const customerTexture = createTrimmedTexture(this.scene, this.config.customerPatrolAssetKey, {
+      alphaThreshold: 10,
+      suffix: "--closing-customer-trimmed",
+      padding: 2
+    });
 
     const cartShadow = this.scene.add.ellipse(
       this.config.toolPoint.x + 5,
@@ -153,6 +163,23 @@ export class ClosingSafetyCleaningTaskView {
     this.staticObjects.push(cartShadow, cart, this.toolTouchZone);
     this.toolObjects.push(cart);
 
+    this.customerPatrol = this.scene.add.image(410, 672, customerTexture)
+      .setOrigin(0.5, 0.96)
+      .setDisplaySize(92, 154)
+      .setDepth(23)
+      .setVisible(false)
+      .setName("closing-customer-patrol");
+    this.customerPatrolTween = this.scene.tweens.add({
+      targets: this.customerPatrol,
+      x: 1190,
+      duration: 8200,
+      yoyo: true,
+      repeat: -1,
+      ease: "Sine.InOut",
+      paused: true
+    });
+    this.staticObjects.push(this.customerPatrol);
+
     this.config.spotPositions.forEach((point, index) => {
       this.spills.push(this.createSpill(point, index));
       if (this.warningRequired.has(index)) {
@@ -183,6 +210,8 @@ export class ClosingSafetyCleaningTaskView {
       .join(",");
     this.syncSafetyDataset();
     document.body.dataset.cleanScrubProgress = "0";
+    document.body.dataset.cleaningCustomerRisk = "clear";
+    document.body.dataset.cleaningCustomerSafetyStops = "0";
     return Object.freeze([...this.spills]);
   }
 
@@ -227,12 +256,15 @@ export class ClosingSafetyCleaningTaskView {
     this.completedSpillIndexes.clear();
     this.awaitingSignRecovery.clear();
     this.scrubHint.destroy();
+    this.customerPatrolTween?.stop();
     delete document.body.dataset.cleanScrubProgress;
     delete document.body.dataset.cleaningControl;
     delete document.body.dataset.cleaningPendingWalk;
     delete document.body.dataset.cleaningSafetyRequired;
     delete document.body.dataset.cleaningSafetyPlaced;
     delete document.body.dataset.cleaningAwaitingSignRecovery;
+    delete document.body.dataset.cleaningCustomerRisk;
+    delete document.body.dataset.cleaningCustomerSafetyStops;
   }
 
   private showToolsPhase(animate: boolean): void {
@@ -261,6 +293,8 @@ export class ClosingSafetyCleaningTaskView {
     });
     this.spills.forEach((spill) => spill.setVisible(false).setAlpha(0).setScale(0.82));
     this.warningSigns.forEach((sign) => sign.setVisible(false).setAlpha(0));
+    this.customerPatrol?.setVisible(false);
+    this.customerPatrolTween?.pause();
   }
 
   private showSpillPhase(completedSpills: number, animate: boolean): void {
@@ -273,6 +307,8 @@ export class ClosingSafetyCleaningTaskView {
       this.scene.tweens.killTweensOf(tool);
       tool.setAlpha(this.config.visual.collectedToolsAlpha);
     });
+    this.customerPatrol?.setVisible(true);
+    if (this.customerHoldIndex < 0) this.customerPatrolTween?.resume();
 
     this.spills.forEach((spill, index) => {
       this.scene.tweens.killTweensOf(spill);
@@ -326,6 +362,8 @@ export class ClosingSafetyCleaningTaskView {
     this.scrubHint.setVisible(false);
     this.spills.forEach((spill) => spill.setVisible(false).setAlpha(0));
     this.warningSigns.forEach((sign) => sign.setVisible(false).setAlpha(0));
+    this.customerPatrol?.setVisible(false);
+    this.customerPatrolTween?.pause();
     this.syncSpillInteractivity();
   }
 
@@ -469,6 +507,11 @@ export class ClosingSafetyCleaningTaskView {
     }
     this.scrubHint.setText("SAFETY SIGN SET · DRAG TO SCRUB");
     this.syncSafetyDataset();
+    if (this.customerHoldIndex === index) {
+      this.customerHoldIndex = -1;
+      document.body.dataset.cleaningCustomerRisk = "clear";
+      this.customerPatrolTween?.resume();
+    }
     this.showSafetyFeedback(index);
   }
 
@@ -483,6 +526,7 @@ export class ClosingSafetyCleaningTaskView {
 
   private readonly handleSceneUpdate = (): void => {
     const scene = this.scene as CleanScenePort;
+    this.updateCustomerPatrolSafety();
     const targetIndex = this.pendingWarningWalkIndex >= 0
       ? this.pendingWarningWalkIndex
       : this.pendingSpillWalkIndex;
@@ -701,6 +745,34 @@ export class ClosingSafetyCleaningTaskView {
       .sort((a, b) => a - b)
       .map((index) => String(index + 1))
       .join(",");
+  }
+
+  private updateCustomerPatrolSafety(): void {
+    const customer = this.customerPatrol;
+    if (!customer?.visible || this.currentPhase !== "spills") return;
+    const unsafeIndex = this.routeChoices().find((index) => {
+      if (!this.warningRequired.has(index) || this.warningPlaced.has(index)) return false;
+      const point = this.config.spotPositions[index];
+      return Boolean(point && Math.hypot(customer.x - point.x, customer.y - point.y) < 135);
+    });
+    if (unsafeIndex === undefined) {
+      if (this.customerHoldIndex >= 0) {
+        this.customerHoldIndex = -1;
+        document.body.dataset.cleaningCustomerRisk = "clear";
+        this.customerPatrolTween?.resume();
+      }
+      return;
+    }
+    if (this.customerHoldIndex === unsafeIndex) return;
+    this.customerHoldIndex = unsafeIndex;
+    this.customerSafetyStops += 1;
+    this.customerPatrolTween?.pause();
+    document.body.dataset.cleaningCustomerRisk = `blocked-by-hazard-${unsafeIndex + 1}`;
+    document.body.dataset.cleaningCustomerSafetyStops = String(this.customerSafetyStops);
+    this.scrubHint
+      .setPosition(customer.x, customer.y - 126)
+      .setText(`CUSTOMER WAITING · SECURE HAZARD ${unsafeIndex + 1}`)
+      .setVisible(true);
   }
 
   private syncSpillInteractivity(): void {

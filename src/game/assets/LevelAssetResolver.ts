@@ -66,6 +66,7 @@ export interface ResolvedCleanLevelAssets extends BaseResolvedLevelAssets {
   readonly cleaningCart: AssetDescriptor;
   readonly wetFloorSign: AssetDescriptor;
   readonly spills: readonly AssetDescriptor[];
+  readonly customerPatrol: AssetDescriptor;
 }
 
 export interface ResolvedFindItemsLevelAssets extends BaseResolvedLevelAssets {
@@ -249,6 +250,7 @@ export function resolveCleanLevelAssets(
     pack.cleaningFixtureAssetKey,
     pack.cleaningCartAssetKey,
     pack.wetFloorSignAssetKey,
+    "customer-a-carry-basket",
     ...CLEAN_SPILL_ASSET_KEYS
   ]);
   return Object.freeze({
@@ -259,6 +261,7 @@ export function resolveCleanLevelAssets(
     cleaningFixture: registry.require(pack.cleaningFixtureAssetKey),
     cleaningCart: registry.require(pack.cleaningCartAssetKey),
     wetFloorSign: registry.require(pack.wetFloorSignAssetKey),
+    customerPatrol: registry.require("customer-a-carry-basket"),
     spills: Object.freeze(CLEAN_SPILL_ASSET_KEYS.map((key) => registry.require(key)))
   });
 }
