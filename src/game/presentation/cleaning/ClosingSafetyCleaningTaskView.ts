@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import type { NavigationPoint } from "../../application/PlayerNavigationController";
 import type { CleanLevelVisualPreset } from "../visual/MarketLevelVisualPreset";
 import { createTrimmedTexture, fitImageIntoBox } from "../visual/TrimmedTexture";
+import { resolveClosingSafetyRouteChoices } from "../../systems/cleaning/ClosingSafetyRoute";
 
 export interface ClosingSafetyCleaningTaskViewConfig {
   readonly cleaningCartAssetKey: string;
@@ -23,7 +24,8 @@ interface CleanNavigationPort {
 }
 
 interface CleanScenePort extends Phaser.Scene {
-  isInteractionReady?: () => boolean;
+  isPlayerNear?: (point: NavigationPoint) => boolean;
+  commitClosingSafetySpill?: (index: number) => boolean;
   readonly player?: CleanNavigationPort;
 }
 
@@ -50,6 +52,8 @@ export class ClosingSafetyCleaningTaskView {
   private readonly warningSigns = new Map<number, Phaser.GameObjects.Image>();
   private readonly warningRequired = new Set<number>();
   private readonly warningPlaced = new Set<number>();
+  private readonly completedSpillIndexes = new Set<number>();
+  private readonly awaitingSignRecovery = new Set<number>();
   private readonly scrubHint: Phaser.GameObjects.Text;
   private toolTouchZone?: Phaser.GameObjects.Zone;
   private previousPhase: ClosingSafetyCleaningTaskViewState["phase"] = "tools";
@@ -220,12 +224,15 @@ export class ClosingSafetyCleaningTaskView {
     this.spills.splice(0).forEach((spill) => spill.destroy(true));
     this.spillTouchZones.splice(0).forEach((zone) => zone.destroy());
     this.warningSigns.clear();
+    this.completedSpillIndexes.clear();
+    this.awaitingSignRecovery.clear();
     this.scrubHint.destroy();
     delete document.body.dataset.cleanScrubProgress;
     delete document.body.dataset.cleaningControl;
     delete document.body.dataset.cleaningPendingWalk;
     delete document.body.dataset.cleaningSafetyRequired;
     delete document.body.dataset.cleaningSafetyPlaced;
+    delete document.body.dataset.cleaningAwaitingSignRecovery;
   }
 
   private showToolsPhase(animate: boolean): void {
@@ -257,12 +264,10 @@ export class ClosingSafetyCleaningTaskView {
   }
 
   private showSpillPhase(completedSpills: number, animate: boolean): void {
-    if (completedSpills !== this.activeSpillIndex) {
-      this.activeSpillIndex = completedSpills;
-      this.pendingSpillWalkIndex = -1;
-      this.pendingWarningWalkIndex = -1;
-      this.resetScrubProgress();
-    }
+    if (this.completedSpillIndexes.has(this.activeSpillIndex)) this.activeSpillIndex = -1;
+    this.pendingSpillWalkIndex = -1;
+    this.pendingWarningWalkIndex = -1;
+    this.resetScrubProgress();
 
     this.toolObjects.forEach((tool) => {
       this.scene.tweens.killTweensOf(tool);
@@ -271,38 +276,44 @@ export class ClosingSafetyCleaningTaskView {
 
     this.spills.forEach((spill, index) => {
       this.scene.tweens.killTweensOf(spill);
-      if (index < completedSpills) {
+      if (this.completedSpillIndexes.has(index)) {
         spill.setVisible(false).setAlpha(0).setScale(0.58);
         const completedSign = this.warningSigns.get(index);
         completedSign?.setVisible(false).setAlpha(0);
         return;
       }
-      const active = index === completedSpills;
+      const active = index === this.activeSpillIndex;
+      const eligible = this.routeChoices().includes(index);
       spill.setVisible(true);
       if (!animate) {
-        spill.setAlpha(active ? 1 : 0.32).setScale(active ? 1.04 : 0.91);
+        spill.setAlpha(active ? 1 : eligible ? 0.72 : 0.28).setScale(active ? 1.04 : 0.91);
         return;
       }
       if (this.previousPhase !== "spills") spill.setAlpha(0).setScale(0.82);
       this.scene.tweens.add({
         targets: spill,
-        alpha: active ? 1 : 0.32,
+        alpha: active ? 1 : eligible ? 0.72 : 0.28,
         scaleX: active ? 1.04 : 0.91,
         scaleY: active ? 1.04 : 0.91,
         duration: 230,
-        delay: this.previousPhase !== "spills" ? Math.max(0, index - completedSpills) * 45 : 0,
+        delay: this.previousPhase !== "spills" ? index * 45 : 0,
         ease: active ? "Back.Out" : "Sine.Out"
       });
     });
 
-    const active = this.spills[completedSpills];
+    const active = this.spills[this.activeSpillIndex];
     if (active) {
       this.scrubHint
         .setPosition(active.x, active.y - 78)
         .setText(this.hintForActiveSpill())
         .setVisible(true);
     } else {
-      this.scrubHint.setVisible(false);
+      const choices = this.routeChoices();
+      const dangerousRemain = choices.some((index) => this.warningRequired.has(index));
+      this.scrubHint
+        .setPosition(this.config.visual.environment.focus.x, this.config.visual.environment.focus.y - 135)
+        .setText(dangerousRemain ? "CHOOSE A DANGEROUS SPILL FIRST" : "CHOOSE YOUR NEXT CLEANING STOP")
+        .setVisible(choices.length > 0);
     }
     this.syncSpillInteractivity();
   }
@@ -373,7 +384,7 @@ export class ClosingSafetyCleaningTaskView {
   private requestToolWalk(): void {
     if (this.currentPhase !== "tools") return;
     const scene = this.scene as CleanScenePort;
-    if (scene.isInteractionReady?.() === true) {
+    if (scene.isPlayerNear?.(this.config.toolPoint) === true) {
       this.commitWorldAction();
       return;
     }
@@ -383,9 +394,31 @@ export class ClosingSafetyCleaningTaskView {
   }
 
   private beginSpillInteraction(index: number, pointer: Phaser.Input.Pointer): void {
-    if (index !== this.activeSpillIndex || this.currentPhase !== "spills") return;
+    if (this.currentPhase !== "spills" || this.completedSpillIndexes.has(index)) return;
+    if (!this.routeChoices().includes(index)) {
+      this.scrubHint.setText("DANGER FIRST · SECURE LIQUID HAZARDS");
+      return;
+    }
+    if (this.activeSpillIndex !== index) {
+      this.activeSpillIndex = index;
+      this.resetScrubProgress();
+      this.highlightSelectedSpill(index);
+    }
     const scene = this.scene as CleanScenePort;
-    const ready = scene.isInteractionReady?.() === true;
+    const point = this.config.spotPositions[index] ?? this.config.toolPoint;
+    const ready = scene.isPlayerNear?.(point) === true;
+
+    if (this.awaitingSignRecovery.has(index)) {
+      if (!ready) {
+        scene.player?.setDestination(point);
+        this.pendingSpillWalkIndex = index;
+        this.scrubHint.setText("MOVING · RECOVER SAFETY SIGN");
+        document.body.dataset.cleaningPendingWalk = `recover-${index + 1}`;
+        return;
+      }
+      this.recoverWarningSign(index);
+      return;
+    }
 
     if (this.warningRequired.has(index) && !this.warningPlaced.has(index)) {
       if (!ready) {
@@ -450,7 +483,13 @@ export class ClosingSafetyCleaningTaskView {
 
   private readonly handleSceneUpdate = (): void => {
     const scene = this.scene as CleanScenePort;
-    if (scene.isInteractionReady?.() !== true) return;
+    const targetIndex = this.pendingWarningWalkIndex >= 0
+      ? this.pendingWarningWalkIndex
+      : this.pendingSpillWalkIndex;
+    const targetPoint = targetIndex >= 0
+      ? this.config.spotPositions[targetIndex]
+      : this.config.toolPoint;
+    if (!targetPoint || scene.isPlayerNear?.(targetPoint) !== true) return;
 
     if (this.pendingToolWalk && this.currentPhase === "tools") {
       this.pendingToolWalk = false;
@@ -473,6 +512,10 @@ export class ClosingSafetyCleaningTaskView {
     ) {
       this.pendingSpillWalkIndex = -1;
       delete document.body.dataset.cleaningPendingWalk;
+      if (this.awaitingSignRecovery.has(this.activeSpillIndex)) {
+        this.recoverWarningSign(this.activeSpillIndex);
+        return;
+      }
       this.scrubHint.setText(this.hintForActiveSpill());
       const spill = this.spills[this.activeSpillIndex];
       if (spill) {
@@ -521,15 +564,71 @@ export class ClosingSafetyCleaningTaskView {
     const cleanedIndex = this.activeSpillIndex;
     this.scrubPointerId = undefined;
     this.scrubLastPoint = undefined;
-    this.scrubHint.setText("CLEAN!");
+    this.scrubHint.setText(this.warningRequired.has(cleanedIndex)
+      ? "CLEAN · TAP AGAIN TO RECOVER SAFETY SIGN"
+      : "CLEAN!");
     document.body.dataset.cleanScrubProgress = "100";
-    if (cleanedIndex >= 0) this.showCleanFeedback(cleanedIndex);
-    this.commitWorldAction();
+    if (cleanedIndex < 0) return;
+    this.showCleanFeedback(cleanedIndex);
+    if (this.warningRequired.has(cleanedIndex)) {
+      this.awaitingSignRecovery.add(cleanedIndex);
+      document.body.dataset.cleaningAwaitingSignRecovery = String(cleanedIndex + 1);
+      this.syncSpillInteractivity();
+      return;
+    }
+    this.completeSelectedSpill(cleanedIndex);
   }
 
   private commitWorldAction(): void {
     const action = this.scene.children.getByName("shift-hud-action");
     action?.emit("pointerdown");
+  }
+
+  private recoverWarningSign(index: number): void {
+    if (!this.awaitingSignRecovery.has(index)) return;
+    this.awaitingSignRecovery.delete(index);
+    delete document.body.dataset.cleaningAwaitingSignRecovery;
+    delete document.body.dataset.cleaningPendingWalk;
+    const sign = this.warningSigns.get(index);
+    if (sign) {
+      this.scene.tweens.add({
+        targets: sign,
+        alpha: 0,
+        scaleX: sign.scaleX * 0.78,
+        scaleY: sign.scaleY * 0.78,
+        duration: 180,
+        ease: "Cubic.In",
+        onComplete: () => sign.setVisible(false)
+      });
+    }
+    this.scrubHint.setText("SAFETY SIGN RECOVERED");
+    this.completeSelectedSpill(index);
+    this.warningPlaced.delete(index);
+    this.syncSafetyDataset();
+  }
+
+  private completeSelectedSpill(index: number): void {
+    this.completedSpillIndexes.add(index);
+    const scene = this.scene as CleanScenePort;
+    if (scene.commitClosingSafetySpill?.(index) === true) return;
+    this.completedSpillIndexes.delete(index);
+  }
+
+  private routeChoices(): readonly number[] {
+    return resolveClosingSafetyRouteChoices(
+      this.spills.length,
+      this.completedSpillIndexes,
+      this.warningRequired
+    );
+  }
+
+  private highlightSelectedSpill(index: number): void {
+    this.spills.forEach((spill, spillIndex) => {
+      if (this.completedSpillIndexes.has(spillIndex)) return;
+      spill.setAlpha(spillIndex === index ? 1 : 0.28).setScale(spillIndex === index ? 1.04 : 0.91);
+    });
+    const spill = this.spills[index];
+    if (spill) this.scrubHint.setPosition(spill.x, spill.y - 78).setText(this.hintForActiveSpill());
   }
 
   private showSafetyFeedback(index: number): void {
@@ -609,7 +708,7 @@ export class ClosingSafetyCleaningTaskView {
       const spill = this.spills[index];
       const enabled = Boolean(
         this.currentPhase === "spills" &&
-        index === this.activeSpillIndex &&
+        !this.completedSpillIndexes.has(index) &&
         spill?.visible
       );
       if (enabled) {

@@ -224,6 +224,23 @@ export class UtilityTaskScene extends Phaser.Scene {
     return this.player?.position();
   }
 
+  isPlayerNear(point: NavigationPoint): boolean {
+    return Boolean(this.player?.isNear(
+      point,
+      this.context.campaignLevel.level.navigation.interactionRadius
+    ));
+  }
+
+  commitClosingSafetySpill(index: number): boolean {
+    if (
+      this.context.mode !== "clean" ||
+      !(this.cleaningView instanceof ClosingSafetyCleaningTaskView) ||
+      !this.cleaningView.canCommitCurrentSpill(index)
+    ) return false;
+    this.interactionGate.lockFor(this.context.runtime.cleanDurationMs);
+    return this.controller.dispatch("CLEAN_SPOT");
+  }
+
   /** Public scene boundary used by product sprites and browser interaction audits. */
   attemptFindProduct(productId: string): void {
     this.requestFindProduct(productId);
@@ -670,7 +687,11 @@ export class UtilityTaskScene extends Phaser.Scene {
     readonly width: number;
     readonly height: number;
   } | undefined {
-    if (snapshot.step === "complete" || this.context.mode !== "clean") return undefined;
+    if (
+      snapshot.step === "complete" ||
+      this.context.mode !== "clean" ||
+      this.cleaningView instanceof ClosingSafetyCleaningTaskView
+    ) return undefined;
     const point = this.currentInteractionPoint(snapshot);
     if (!point) return undefined;
     const visual = this.visualPreset as CleanLevelVisualPreset;

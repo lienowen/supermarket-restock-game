@@ -214,8 +214,8 @@ export const STARTER_LEVEL_EXPERIENCE_SPECS: readonly LevelExperienceSpec[] = Ob
     title: "Closing Clean-up",
     objective: "Collect the cleaning cart and clear all six closing-time floor hazards.",
     mechanic: "Water, juice and oil hazards require a wet-floor sign before scrubbing; dry marks can be cleaned immediately.",
-    control: "Tap a hazard to walk over and place the safety sign when required, then drag across the spill until it reaches 100% clean.",
-    successMetric: "Clear all six stops and place a safety sign on every liquid hazard before scrubbing it.",
+    control: "Choose dangerous hazards first; place a warning sign, scrub the spill, then tap again to recover the sign. Plan the remaining dry route yourself.",
+    successMetric: "Secure every liquid hazard before dry cleanup and recover all warning signs before closing.",
     primaryInput: "mixed"
   }),
   define({

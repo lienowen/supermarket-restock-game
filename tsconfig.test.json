@@ -51,6 +51,8 @@
     "src/game/simulation/DeterministicRandom.ts",
     "src/game/missions/MissionTracker.ts",
     "src/game/systems/checkout/CheckoutWorkflow.ts",
+    "src/game/systems/cleaning/ClosingSafetyRoute.ts",
+    "src/game/content/experience/CleaningExperienceSpec.ts",
     "src/game/systems/stocking/RestockWorkflow.ts",
     "src/game/interactions/RestockInteractionResolver.ts",
     "src/game/world/WorldLayout.ts",
