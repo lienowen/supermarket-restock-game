@@ -143,6 +143,11 @@ export const STARTER_ASSET_CATALOGUE: AssetCatalogue = {
     ),
 
     productionCharacter("worker-a-idle", PRODUCTION_V1_ASSETS.worker_idle, "idle"),
+    productionCharacter(
+      "worker-priority-picker",
+      "assets/game/production-v8/l9-priority-order/worker-priority-picker.png",
+      "priority-pick"
+    ),
     productionCharacter("worker-a-walk-01", PRODUCTION_V1_ASSETS.worker_walk_01, "walk-01"),
     productionCharacter("worker-a-walk-02", PRODUCTION_V1_ASSETS.worker_walk_02, "walk-02"),
     productionCharacter("worker-a-carry-medium", PRODUCTION_V1_ASSETS.worker_carry_box, "carry-medium"),

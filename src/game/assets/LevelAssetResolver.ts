@@ -273,13 +273,16 @@ export function resolveFindItemsLevelAssets(
 ): ResolvedFindItemsLevelAssets {
   const pack = resolveGlobalAssetPack(level.presentation.assetPackId, "find-items");
   const productAssetKeys = runtime.products.map((product) => product.assetKey);
+  const workerIdleAssetKey = level.id === "starter-level-009"
+    ? "worker-priority-picker"
+    : pack.workerIdleAssetKey;
   const environmentAssetKey = resolveLevelEnvironmentAssetKey(level.id, pack.environmentAssetKey);
   const authoredOrderHuntPlate = environmentAssetKey.startsWith("environment-project-order-hunt");
   const preload = resolveDescriptors(registry, [
     environmentAssetKey,
     ...(authoredOrderHuntPlate ? [] : pack.sharedStoreAssetKeys),
     ...pack.workerWalkAssetKeys,
-    pack.workerIdleAssetKey,
+    workerIdleAssetKey,
     pack.workerThinkingAssetKey,
     pack.basketAssetKey,
     ...(authoredOrderHuntPlate ? [] : [runtime.fixture.assetKey]),
@@ -288,7 +291,7 @@ export function resolveFindItemsLevelAssets(
   return Object.freeze({
     ...baseAssets(registry, pack, environmentAssetKey),
     preload,
-    worker: registry.require(pack.workerIdleAssetKey),
+    worker: registry.require(workerIdleAssetKey),
     workerThinking: registry.require(pack.workerThinkingAssetKey),
     fixture: registry.require(runtime.fixture.assetKey),
     basket: registry.require(pack.basketAssetKey),
