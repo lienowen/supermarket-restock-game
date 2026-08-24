@@ -150,11 +150,17 @@ export class UtilityTaskScene extends Phaser.Scene {
       bounds: context.visual.actor.navigationBounds,
       speed: context.campaignLevel.level.navigation.moveSpeed,
       assetKey: context.levelAssets.worker.key,
-      walkAssetKeys: ["worker-a-walk-01", "worker-a-walk-02"],
+      // The L9 cutout already carries the priority basket. Replacing it with
+      // the generic walk frames while moving makes the character visibly swap
+      // identity, so keep the approved picker art throughout this challenge.
+      walkAssetKeys: this.priorityOrderExperience
+        ? undefined
+        : ["worker-a-walk-01", "worker-a-walk-02"],
       displaySize: this.visualPreset.actor.idleSize,
       shadowOffset: this.visualPreset.actor.shadowOffset,
       name: `${context.mode}-worker`,
       baseDepth: 24,
+      preserveAspectRatio: Boolean(this.priorityOrderExperience),
       onManualNavigation: () => {
         this.pendingFindProductId = undefined;
       }
@@ -289,6 +295,10 @@ export class UtilityTaskScene extends Phaser.Scene {
       .setDisplaySize(visual.basket.size.width, visual.basket.size.height)
       .setDepth(19)
       .setName("order-basket");
+    // L9's approved worker cutout already includes a basket. Keep this target
+    // object for the collection animation, but do not draw a duplicate basket
+    // on the floor beside the picker.
+    basket.setVisible(!this.priorityOrderExperience);
     this.findBasket = basket;
     this.taskObjects.push(basket);
 
@@ -498,13 +508,17 @@ export class UtilityTaskScene extends Phaser.Scene {
     if (!this.controller.dispatch("PICK_ITEM")) return;
     const item = this.findItemsByProduct.get(productId);
     const basket = this.findBasket;
+    const playerPosition = this.player?.position();
+    const collectionTarget = this.priorityOrderExperience && playerPosition
+      ? { x: playerPosition.x + 30, y: playerPosition.y - 92 }
+      : { x: basket?.x ?? item?.x ?? 0, y: basket ? basket.y - 22 : item?.y ?? 0 };
     if (item) {
       const baseScaleX = item.scaleX;
       const baseScaleY = item.scaleY;
       this.tweens.add({
         targets: item,
-        x: basket?.x ?? item.x,
-        y: basket ? basket.y - 22 : item.y,
+        x: collectionTarget.x,
+        y: collectionTarget.y,
         alpha: 0,
         scaleX: baseScaleX * 0.32,
         scaleY: baseScaleY * 0.32,
