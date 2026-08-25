@@ -39,6 +39,8 @@ test("L8 requires explicit safety-sign recovery after scrubbing", () => {
   assert.match(source, /TAP AGAIN TO RECOVER SAFETY SIGN/);
   assert.match(source, /DANGER FIRST/);
   assert.match(source, /closing-customer-patrol/);
+  assert.match(source, /customerWalkTween/);
+  assert.match(source, /onYoyo: \(\) => this\.customerPatrol\?\.setFlipX\(true\)/);
   assert.match(source, /CUSTOMER WAITING · SECURE HAZARD/);
   assert.match(source, /cleaningCustomerRisk/);
 });
