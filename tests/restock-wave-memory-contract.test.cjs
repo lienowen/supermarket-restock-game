@@ -71,5 +71,6 @@ test("Level 10 uses a real layered empty-cooler close-up instead of floating she
   assert.match(coolerSource, /RESTOCK THE EMPTY COOLER/);
   assert.match(coolerSource, /0x07130f/);
   assert.match(coolerSource, /scene\.add\.text\(800, 160/);
+  assert.match(coolerSource, /SLOT_XS = \[640, 920\]/);
   assert.match(coolerSource, /\["memory", "wave-memory"\]/);
 });
