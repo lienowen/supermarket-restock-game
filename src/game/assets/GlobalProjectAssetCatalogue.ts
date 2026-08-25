@@ -112,6 +112,21 @@ const dispatchBackground = (): AssetDescriptor => asset({
   status: "production"
 });
 
+const finalShiftBackground = (): AssetDescriptor => asset({
+  key: "environment-final-shift-l10",
+  path: "assets/game/production-v8/l6-l10-rework-assets/bg-final-shift-l10.png",
+  category: "environment",
+  canvasSize: [1672, 941],
+  anchor: [0.5, 0.5],
+  defaultScale: 1,
+  depthGroup: "far-environment",
+  preloadGroup: "starter-market",
+  perspective: "fixed-third-person",
+  lightDirection: "upper-left",
+  state: "final-night-shift-l10",
+  status: "production"
+});
+
 const l8Spill = (
   key: string,
   fileName: string,
@@ -194,6 +209,7 @@ export const GLOBAL_PROJECT_ASSET_CATALOGUE: AssetCatalogue = Object.freeze({
     ),
     l8Background(),
     dispatchBackground(),
+    finalShiftBackground(),
     l5OrderIcon("ui-l5-order-milk", "order-milk-clean.png", "milk"),
     l5OrderIcon("ui-l5-order-cereal", "order-cereal-clean.png", "cereal"),
     asset({
