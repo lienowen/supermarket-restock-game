@@ -15,7 +15,7 @@ const LEVEL_ENVIRONMENT_ASSET_KEYS: Readonly<Record<string, string>> = Object.fr
   "starter-level-007": "environment-project-checkout-v2",
   "starter-level-008": "environment-project-cleaning-closing-l8",
   "starter-level-009": "environment-project-order-hunt-v2",
-  "starter-level-010": "environment-starter-market-restock-hd-v3"
+  "starter-level-010": "environment-final-shift-l10"
 });
 
 export function resolveLevelEnvironmentAssetKey(
