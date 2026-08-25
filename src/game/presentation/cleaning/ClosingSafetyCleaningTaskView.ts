@@ -58,6 +58,7 @@ export class ClosingSafetyCleaningTaskView {
   private readonly scrubHint: Phaser.GameObjects.Text;
   private customerPatrol?: Phaser.GameObjects.Image;
   private customerPatrolTween?: Phaser.Tweens.Tween;
+  private customerWalkTween?: Phaser.Tweens.Tween;
   private customerHoldIndex = -1;
   private customerSafetyStops = 0;
   private toolTouchZone?: Phaser.GameObjects.Zone;
@@ -175,6 +176,19 @@ export class ClosingSafetyCleaningTaskView {
       duration: 8200,
       yoyo: true,
       repeat: -1,
+      ease: "Linear",
+      onYoyo: () => this.customerPatrol?.setFlipX(true),
+      onRepeat: () => this.customerPatrol?.setFlipX(false),
+      paused: true
+    });
+    // The patrol currently has one static customer cutout. A small grounded
+    // step cycle makes the travel read as walking instead of a smooth glide.
+    this.customerWalkTween = this.scene.tweens.add({
+      targets: this.customerPatrol,
+      y: 667,
+      duration: 145,
+      yoyo: true,
+      repeat: -1,
       ease: "Sine.InOut",
       paused: true
     });
@@ -257,6 +271,7 @@ export class ClosingSafetyCleaningTaskView {
     this.awaitingSignRecovery.clear();
     this.scrubHint.destroy();
     this.customerPatrolTween?.stop();
+    this.customerWalkTween?.stop();
     delete document.body.dataset.cleanScrubProgress;
     delete document.body.dataset.cleaningControl;
     delete document.body.dataset.cleaningPendingWalk;
@@ -294,7 +309,7 @@ export class ClosingSafetyCleaningTaskView {
     this.spills.forEach((spill) => spill.setVisible(false).setAlpha(0).setScale(0.82));
     this.warningSigns.forEach((sign) => sign.setVisible(false).setAlpha(0));
     this.customerPatrol?.setVisible(false);
-    this.customerPatrolTween?.pause();
+    this.pauseCustomerPatrol();
   }
 
   private showSpillPhase(completedSpills: number, animate: boolean): void {
@@ -308,7 +323,7 @@ export class ClosingSafetyCleaningTaskView {
       tool.setAlpha(this.config.visual.collectedToolsAlpha);
     });
     this.customerPatrol?.setVisible(true);
-    if (this.customerHoldIndex < 0) this.customerPatrolTween?.resume();
+    if (this.customerHoldIndex < 0) this.resumeCustomerPatrol();
 
     this.spills.forEach((spill, index) => {
       this.scene.tweens.killTweensOf(spill);
@@ -363,7 +378,7 @@ export class ClosingSafetyCleaningTaskView {
     this.spills.forEach((spill) => spill.setVisible(false).setAlpha(0));
     this.warningSigns.forEach((sign) => sign.setVisible(false).setAlpha(0));
     this.customerPatrol?.setVisible(false);
-    this.customerPatrolTween?.pause();
+    this.pauseCustomerPatrol();
     this.syncSpillInteractivity();
   }
 
@@ -510,7 +525,7 @@ export class ClosingSafetyCleaningTaskView {
     if (this.customerHoldIndex === index) {
       this.customerHoldIndex = -1;
       document.body.dataset.cleaningCustomerRisk = "clear";
-      this.customerPatrolTween?.resume();
+      this.resumeCustomerPatrol();
     }
     this.showSafetyFeedback(index);
   }
@@ -759,20 +774,31 @@ export class ClosingSafetyCleaningTaskView {
       if (this.customerHoldIndex >= 0) {
         this.customerHoldIndex = -1;
         document.body.dataset.cleaningCustomerRisk = "clear";
-        this.customerPatrolTween?.resume();
+        this.resumeCustomerPatrol();
       }
       return;
     }
     if (this.customerHoldIndex === unsafeIndex) return;
     this.customerHoldIndex = unsafeIndex;
     this.customerSafetyStops += 1;
-    this.customerPatrolTween?.pause();
+    this.pauseCustomerPatrol();
     document.body.dataset.cleaningCustomerRisk = `blocked-by-hazard-${unsafeIndex + 1}`;
     document.body.dataset.cleaningCustomerSafetyStops = String(this.customerSafetyStops);
     this.scrubHint
       .setPosition(customer.x, customer.y - 126)
       .setText(`CUSTOMER WAITING · SECURE HAZARD ${unsafeIndex + 1}`)
       .setVisible(true);
+  }
+
+  private pauseCustomerPatrol(): void {
+    this.customerPatrolTween?.pause();
+    this.customerWalkTween?.pause();
+    this.customerPatrol?.setY(672);
+  }
+
+  private resumeCustomerPatrol(): void {
+    this.customerPatrolTween?.resume();
+    this.customerWalkTween?.resume();
   }
 
   private syncSpillInteractivity(): void {
