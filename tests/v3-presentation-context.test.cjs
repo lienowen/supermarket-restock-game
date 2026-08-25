@@ -134,6 +134,7 @@ test("Campaign order supplies labels while level mode supplies task differences"
   assert.equal(levelEight.runtime.mission.id, "clean-closing-aisles");
   assert.equal(levelNine.runtime.mission.id, "find-priority-order");
   assert.equal(levelTen.runtime.mission.id, "restock-water-finale");
+  assert.equal(levelTen.levelAssets.environment.key, "environment-final-shift-l10");
   assert.notEqual(levelOne.productAssets.restockProductKey, levelTwo.productAssets.restockProductKey);
 });
 
