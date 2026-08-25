@@ -133,10 +133,10 @@ export class BeverageCoolerView {
       CLOSEUP_CENTRE_Y,
       CLOSEUP_WIDTH + 48,
       CLOSEUP_HEIGHT + 46,
-      0xf4f1e9,
-      0.98
+      0x07130f,
+      0.9
     )
-      .setStrokeStyle(3, 0x2a3833, 0.42)
+      .setStrokeStyle(3, 0xd9b84f, 0.52)
       .setDepth(BASE_DEPTH)
       .setName("restock-cooler-closeup-panel");
 
@@ -159,7 +159,7 @@ export class BeverageCoolerView {
       .setDepth(BASE_DEPTH + 5)
       .setName("restock-cooler-front-glass-hd");
 
-    this.title = scene.add.text(800, 112, "RESTOCK THE EMPTY COOLER", {
+    this.title = scene.add.text(800, 160, "RESTOCK THE EMPTY COOLER", {
       fontFamily: "Arial, sans-serif",
       fontSize: "28px",
       fontStyle: "bold",
@@ -171,7 +171,7 @@ export class BeverageCoolerView {
       .setDepth(BASE_DEPTH + 8)
       .setName("restock-cooler-closeup-title");
 
-    this.subtitle = scene.add.text(800, 158, "6 SHELVES · 3 BOTTLES PER SHELF", {
+    this.subtitle = scene.add.text(800, 202, "6 SHELVES · 3 BOTTLES PER SHELF", {
       fontFamily: "Arial, sans-serif",
       fontSize: "15px",
       fontStyle: "bold",
