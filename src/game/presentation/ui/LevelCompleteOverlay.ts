@@ -54,6 +54,9 @@ export class LevelCompleteOverlay {
     const registeredSession = scene.game.registry.get("campaignSession") as CampaignSession | undefined;
     const campaignSession = config.campaignSession ?? registeredSession;
     const hasUpgradeShop = Boolean(campaignSession);
+    const compactMobile = document.body.dataset.mobileLandscape === "required";
+    const finalScaleX = compactMobile ? 0.9 : 1;
+    const finalScaleY = compactMobile ? 0.82 : 1;
 
     const cardTop = hasUpgradeShop ? -306 : -216;
     const cardHeight = hasUpgradeShop ? 612 : 474;
@@ -202,8 +205,7 @@ export class LevelCompleteOverlay {
 
     const buttonGlow = scene.add.rectangle(0, 0, 348, 78, 0x9ee0ae, 0.12);
     const button = scene.add.rectangle(0, 0, 330, 64, 0x2f8a58, 1)
-      .setStrokeStyle(4, 0x195a38, 1)
-      .setInteractive({ useHandCursor: true });
+      .setStrokeStyle(4, 0x195a38, 1);
     const buttonHighlight = scene.add.rectangle(0, -21, 292, 8, 0x8bd29f, 0.48);
     const buttonLabel = scene.add.text(-10, 0, config.actionLabel, {
       fontFamily: "Arial",
@@ -218,17 +220,24 @@ export class LevelCompleteOverlay {
       color: "#ffffff",
       fontStyle: "bold"
     }).setOrigin(0.5);
+    // Keep one generous hit surface above every visual child. This avoids
+    // mobile edge misses on the arrow/right half after canvas fitting or the
+    // portrait-to-landscape coordinate transform.
+    const buttonHit = scene.add.rectangle(0, 0, 390, 112, 0xffffff, 0.001)
+      .setInteractive({ useHandCursor: true })
+      .setName("completion-primary-action-hit");
     const buttonContainer = scene.add.container(0, buttonY, [
       buttonGlow,
       button,
       buttonHighlight,
       buttonLabel,
-      buttonArrow
+      buttonArrow,
+      buttonHit
     ]).setName("completion-primary-action");
 
-    button.on("pointerover", () => buttonContainer.setScale(1.045));
-    button.on("pointerout", () => buttonContainer.setScale(1));
-    button.on("pointerdown", () => this.continueOnce());
+    buttonHit.on("pointerover", () => buttonContainer.setScale(1.045));
+    buttonHit.on("pointerout", () => buttonContainer.setScale(1));
+    buttonHit.on("pointerdown", () => this.continueOnce());
 
     this.container = scene.add.container(config.centreX, config.centreY, [
       shade,
@@ -248,13 +257,16 @@ export class LevelCompleteOverlay {
       progressLabel,
       ...progressDots,
       buttonContainer
-    ]).setDepth(180).setAlpha(0).setScale(0.84);
+    ])
+      .setDepth(180)
+      .setAlpha(0)
+      .setScale(finalScaleX * 0.84, finalScaleY * 0.84);
 
     scene.tweens.add({
       targets: this.container,
       alpha: 1,
-      scaleX: 1,
-      scaleY: 1,
+      scaleX: finalScaleX,
+      scaleY: finalScaleY,
       duration: 360,
       ease: "Back.Out"
     });
