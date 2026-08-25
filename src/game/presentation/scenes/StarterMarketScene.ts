@@ -228,6 +228,7 @@ export class StarterMarketScene extends Phaser.Scene {
   private createCooler(): BeverageCoolerView {
     const context = this.context;
     const preset = this.visualPreset.cooler;
+    const isFinalShift = context.campaignLevel.level.id === "starter-level-010";
     const cooler = new BeverageCoolerView(this, {
       centreX: context.world.beverageCooler.x,
       stockSource: {
@@ -248,6 +249,23 @@ export class StarterMarketScene extends Phaser.Scene {
         ...context.visual.cooler.ambientRightXs
       ],
       restockStartX: context.visual.cooler.restockStartX,
+      ...(isFinalShift ? {
+        slotPositions: [
+          { x: 1320, y: 300 },
+          { x: 1320, y: 410 },
+          { x: 1320, y: 520 },
+          { x: 1510, y: 300 },
+          { x: 1510, y: 410 },
+          { x: 1510, y: 520 }
+        ],
+        slotWidth: 158,
+        slotHeight: 88,
+        shelfBaselineYs: [344, 454, 564],
+        glassPanels: [
+          { x: 1230, width: 180 },
+          { x: 1420, width: 180 }
+        ]
+      } : {}),
       restockStepX: context.visual.cooler.restockStepX,
       restockItemCount: preset.restockItemCount,
       coolerAssetKey: context.levelAssets.fixture.key,
