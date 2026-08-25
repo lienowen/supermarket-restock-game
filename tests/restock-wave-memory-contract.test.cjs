@@ -52,3 +52,21 @@ test("Final memory route stays deterministic and keeps its target after a wrong 
   assert.equal(wrong.snapshot.mistakes, 1);
   assert.equal(wrong.snapshot.activeRowIndex, first.activeRowIndex);
 });
+
+test("Level 10 aligns its six interactive rows to the authored night cooler", () => {
+  const sceneSource = require("node:fs").readFileSync(
+    "src/game/presentation/scenes/StarterMarketScene.ts",
+    "utf8"
+  );
+  const coolerSource = require("node:fs").readFileSync(
+    "src/game/presentation/fixtures/IntegratedBeverageCoolerView.ts",
+    "utf8"
+  );
+
+  assert.match(sceneSource, /const isFinalShift = .*starter-level-010/);
+  assert.match(sceneSource, /slotPositions:/);
+  assert.match(sceneSource, /\{ x: 1320, y: 300 \}/);
+  assert.match(sceneSource, /\{ x: 1510, y: 520 \}/);
+  assert.match(coolerSource, /\["memory", "wave-memory"\]/);
+  assert.match(coolerSource, /config\.slotPositions/);
+});
