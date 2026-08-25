@@ -27,7 +27,13 @@ import {
 } from "../context/StarterMarketPresentationContext";
 import { playActionFeedback } from "../effects/ActionFeedback";
 import { playRestockCompletionFeedback } from "../effects/RestockCompletionFeedback";
-import { BeverageCoolerView } from "../fixtures/BeverageCoolerView";
+import {
+  BeverageCoolerView,
+  prepareBeverageCoolerTextures,
+  type BeverageCoolerRushState,
+  type BeverageCoolerViewConfig
+} from "../fixtures/BeverageCoolerView";
+import { BeverageCoolerView as HdBeverageCoolerView } from "../fixtures/HdBeverageCoolerView";
 import { InteractionGate } from "../interactions/InteractionGate";
 import { InteractionTargetView } from "../interactions/InteractionTargetView";
 import { RestockTargetResolver } from "../interactions/RestockTargetResolver";
@@ -49,6 +55,15 @@ export interface SceneCampaignSessionContext {
   readonly firstLevelId: string;
 }
 
+interface CoolerPresentation {
+  create(): void;
+  sync(stockedRows: number): void;
+  syncRush(state: BeverageCoolerRushState): void;
+  rowCentre(rowIndex: number): { readonly x: number; readonly y: number };
+  showMistake(rowIndex: number): void;
+  destroy(): void;
+}
+
 export class StarterMarketScene extends Phaser.Scene {
   readonly controller: RestockSceneController;
 
@@ -60,7 +75,7 @@ export class StarterMarketScene extends Phaser.Scene {
   private readonly wavePreviewedStarts = new Set<number>();
   private hud?: ShiftHud;
   private actors?: RestockActorView;
-  private cooler?: BeverageCoolerView;
+  private cooler?: CoolerPresentation;
   private target?: InteractionTargetView;
   private rushMeter?: RestockRushMeter;
   private completionOverlay?: LevelCompleteOverlay;
@@ -225,12 +240,11 @@ export class StarterMarketScene extends Phaser.Scene {
     return this.actors?.position();
   }
 
-  private createCooler(): BeverageCoolerView {
+  private createCooler(): CoolerPresentation {
     const context = this.context;
     const preset = this.visualPreset.cooler;
-    const usesAuthoredFinalShiftCooler =
-      context.levelAssets.environment.key === "environment-final-shift-l10";
-    const cooler = new BeverageCoolerView(this, {
+    const usesFinaleCloseup = context.levelAssets.environment.key === "environment-final-shift-l10";
+    const config: BeverageCoolerViewConfig = {
       centreX: context.world.beverageCooler.x,
       stockSource: {
         x: context.world.cartCooler.x,
@@ -250,30 +264,17 @@ export class StarterMarketScene extends Phaser.Scene {
         ...context.visual.cooler.ambientRightXs
       ],
       restockStartX: context.visual.cooler.restockStartX,
-      ...(usesAuthoredFinalShiftCooler ? {
-        slotPositions: [
-          { x: 1320, y: 300 },
-          { x: 1320, y: 410 },
-          { x: 1320, y: 520 },
-          { x: 1510, y: 300 },
-          { x: 1510, y: 410 },
-          { x: 1510, y: 520 }
-        ],
-        slotWidth: 158,
-        slotHeight: 88,
-        shelfBaselineYs: [344, 454, 564],
-        glassPanels: [
-          { x: 1230, width: 180 },
-          { x: 1420, width: 180 }
-        ]
-      } : {}),
       restockStepX: context.visual.cooler.restockStepX,
       restockItemCount: preset.restockItemCount,
       coolerAssetKey: context.levelAssets.fixture.key,
       ambientProductKeys: context.levelAssets.ambientProducts.map((asset) => asset.key),
       restockProductKey: context.levelAssets.product.key,
       onRowSelected: (rowIndex) => this.selectRushRow(rowIndex)
-    });
+    };
+    prepareBeverageCoolerTextures(this, config);
+    const cooler: CoolerPresentation = usesFinaleCloseup
+      ? new HdBeverageCoolerView(this, config)
+      : new BeverageCoolerView(this, config);
     cooler.create();
     return cooler;
   }
