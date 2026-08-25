@@ -33,7 +33,6 @@ import {
   type BeverageCoolerRushState,
   type BeverageCoolerViewConfig
 } from "../fixtures/BeverageCoolerView";
-import { BeverageCoolerView as HdBeverageCoolerView } from "../fixtures/HdBeverageCoolerView";
 import { InteractionGate } from "../interactions/InteractionGate";
 import { InteractionTargetView } from "../interactions/InteractionTargetView";
 import { RestockTargetResolver } from "../interactions/RestockTargetResolver";
@@ -243,7 +242,7 @@ export class StarterMarketScene extends Phaser.Scene {
   private createCooler(): CoolerPresentation {
     const context = this.context;
     const preset = this.visualPreset.cooler;
-    const usesFinaleCloseup = context.levelAssets.environment.key === "environment-final-shift-l10";
+    const usesFinaleWallCooler = context.levelAssets.environment.key === "environment-final-shift-l10";
     const config: BeverageCoolerViewConfig = {
       centreX: context.world.beverageCooler.x,
       stockSource: {
@@ -271,10 +270,24 @@ export class StarterMarketScene extends Phaser.Scene {
       restockProductKey: context.levelAssets.product.key,
       onRowSelected: (rowIndex) => this.selectRushRow(rowIndex)
     };
+    if (usesFinaleWallCooler) {
+      Object.assign(config, {
+        stockSource: { x: 1160, y: 760 },
+        slotPositions: [
+          { x: 1450, y: 315 }, { x: 1450, y: 380 }, { x: 1450, y: 445 },
+          { x: 1535, y: 315 }, { x: 1535, y: 380 }, { x: 1535, y: 445 }
+        ],
+        slotWidth: 78,
+        slotHeight: 58,
+        shelfBaselineYs: [345, 410, 475],
+        glassPanels: [],
+        bottleWidth: 18,
+        bottleHeights: [44, 48, 52],
+        itemOffsets: [-22, 0, 22]
+      });
+    }
     prepareBeverageCoolerTextures(this, config);
-    const cooler: CoolerPresentation = usesFinaleCloseup
-      ? new HdBeverageCoolerView(this, config)
-      : new BeverageCoolerView(this, config);
+    const cooler: CoolerPresentation = new BeverageCoolerView(this, config);
     cooler.create();
     return cooler;
   }
@@ -308,6 +321,9 @@ export class StarterMarketScene extends Phaser.Scene {
       cartSize: preset.props.cartSize,
       caseSize: preset.props.caseSize,
       shadowOffset: preset.actor.shadowOffset,
+      finaleStation: context.levelAssets.environment.key === "environment-final-shift-l10"
+        ? { worker: { x: 1280, y: 770 }, cart: { x: 1120, y: 785 } }
+        : undefined,
       onManualNavigation: () => this.cancelPendingAction()
     });
   }

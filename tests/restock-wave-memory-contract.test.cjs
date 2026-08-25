@@ -53,24 +53,22 @@ test("Final memory route stays deterministic and keeps its target after a wrong 
   assert.equal(wrong.snapshot.activeRowIndex, first.activeRowIndex);
 });
 
-test("Level 10 uses a real layered empty-cooler close-up instead of floating shelf lines", () => {
+test("Level 10 stocks the empty wall cooler inside the supermarket scene", () => {
   const sceneSource = require("node:fs").readFileSync(
     "src/game/presentation/scenes/StarterMarketScene.ts",
     "utf8"
   );
-  const coolerSource = require("node:fs").readFileSync(
-    "src/game/presentation/fixtures/HdBeverageCoolerView.ts",
+  const catalogueSource = require("node:fs").readFileSync(
+    "src/game/assets/GlobalProjectAssetCatalogue.ts",
     "utf8"
   );
 
   assert.match(sceneSource, /environment-final-shift-l10/);
-  assert.match(sceneSource, /new HdBeverageCoolerView/);
-  assert.doesNotMatch(sceneSource, /slotPositions:/);
-  assert.match(coolerSource, /restock-cooler-empty-hd-v3/);
-  assert.match(coolerSource, /restock-cooler-glass-hd-v3/);
-  assert.match(coolerSource, /RESTOCK THE EMPTY COOLER/);
-  assert.match(coolerSource, /0x07130f/);
-  assert.match(coolerSource, /scene\.add\.text\(800, 160/);
-  assert.match(coolerSource, /SLOT_XS = \[640, 920\]/);
-  assert.match(coolerSource, /\["memory", "wave-memory"\]/);
+  assert.doesNotMatch(sceneSource, /HdBeverageCoolerView/);
+  assert.match(sceneSource, /slotPositions:/);
+  assert.match(sceneSource, /\{ x: 1450, y: 315 \}/);
+  assert.match(sceneSource, /\{ x: 1535, y: 445 \}/);
+  assert.match(sceneSource, /glassPanels: \[\]/);
+  assert.match(sceneSource, /finaleStation:/);
+  assert.match(catalogueSource, /bg-final-shift-l10-empty-cooler\.png/);
 });

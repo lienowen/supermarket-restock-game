@@ -39,6 +39,10 @@ export interface RestockActorViewConfig {
   readonly cartSize: VisualSize;
   readonly caseSize: VisualSize;
   readonly shadowOffset: NavigationPoint;
+  readonly finaleStation?: {
+    readonly worker: NavigationPoint;
+    readonly cart: NavigationPoint;
+  };
   readonly onManualNavigation?: () => void;
 }
 
@@ -393,14 +397,18 @@ export class RestockActorView {
         return;
 
       case "restock":
+        if (this.config.finaleStation) {
+          this.navigation.setPosition(this.config.finaleStation.worker);
+        }
         this.loadDropZone.setVisible(false);
         this.showRouteFinalCart();
+        const finalCart = this.finalCartPosition();
         this.caseBox
           .setTexture(this.textures.caseOpen)
           .setVisible(true)
           .setPosition(
-            this.config.cartDestination.x + RESTOCK_CART_CASE_OFFSET.x,
-            this.config.cartDestination.y + RESTOCK_CART_CASE_OFFSET.y
+            finalCart.x + RESTOCK_CART_CASE_OFFSET.x,
+            finalCart.y + RESTOCK_CART_CASE_OFFSET.y
           )
           .setDisplaySize(this.config.caseSize.width, this.config.caseSize.height)
           .setAngle(-2)
@@ -488,8 +496,7 @@ export class RestockActorView {
   }
 
   private showRouteFinalCart(): void {
-    const x = this.config.cartDestination.x;
-    const y = this.config.cartDestination.y;
+    const { x, y } = this.finalCartPosition();
     this.cart
       .setTexture(this.textures.cartEmpty)
       .setDisplaySize(this.config.cartSize.width, this.config.cartSize.height)
@@ -507,6 +514,13 @@ export class RestockActorView {
       .setSize(Math.max(180, this.config.cartSize.width * 0.52), Math.max(34, this.config.cartSize.height * 0.12))
       .setVisible(true)
       .setDepth(21.9 + y / 1000);
+  }
+
+  private finalCartPosition(): NavigationPoint {
+    if (this.currentSnapshot?.step === "restock" && this.config.finaleStation) {
+      return this.config.finaleStation.cart;
+    }
+    return this.config.cartDestination;
   }
 
   private showCollectState(): void {

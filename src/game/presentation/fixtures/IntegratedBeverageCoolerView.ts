@@ -36,6 +36,9 @@ export interface BeverageCoolerViewConfig {
   readonly slotHeight?: number;
   readonly shelfBaselineYs?: readonly number[];
   readonly glassPanels?: readonly { readonly x: number; readonly width: number }[];
+  readonly bottleWidth?: number;
+  readonly bottleHeights?: readonly number[];
+  readonly itemOffsets?: readonly number[];
 }
 
 export interface BeverageCoolerRushState {
@@ -400,7 +403,8 @@ export class IntegratedBeverageCoolerView {
     if (!holder || !slot) throw new Error(`Missing cooler shelf holder ${rowIndex}`);
 
     const localTarget = this.itemLocalPosition(rowIndex, itemIndex);
-    const bottleHeight = Phaser.Math.Linear(76, 90, slot.shelfIndex / 2);
+    const bottleHeight = this.config.bottleHeights?.[slot.shelfIndex]
+      ?? Phaser.Math.Linear(76, 90, slot.shelfIndex / 2);
     const sourceX = this.config.stockSource.x - 18;
     const sourceY = this.config.stockSource.y - 96;
     const bottle = this.scene.add.image(
@@ -409,7 +413,7 @@ export class IntegratedBeverageCoolerView {
       PRODUCT_KEY
     )
       .setOrigin(0.5, 1)
-      .setDisplaySize(36, bottleHeight)
+      .setDisplaySize(this.config.bottleWidth ?? 36, bottleHeight)
       .setAlpha(animate ? 0.78 : 1)
       .setDepth(BASE_DEPTH + 3)
       .setName(`beverage-cooler-row-${rowIndex}-item-${itemIndex}`);
@@ -457,7 +461,7 @@ export class IntegratedBeverageCoolerView {
   private itemLocalPosition(rowIndex: number, itemIndex: number): CoolerStockPoint {
     const slot = this.slots[rowIndex];
     if (!slot) throw new Error(`Missing cooler shelf geometry ${rowIndex}`);
-    const positions = [-54, 0, 54] as const;
+    const positions = this.config.itemOffsets ?? [-54, 0, 54] as const;
     const shelfBaselineY = this.shelfBaselineYs[slot.shelfIndex] ?? slot.y;
     return Object.freeze({
       x: positions[itemIndex] ?? 0,
