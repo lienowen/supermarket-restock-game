@@ -502,6 +502,8 @@ export function mountCheckoutPatienceDom(
   let animationId = 0;
   let pointerId: number | undefined;
   let dragging = false;
+  let itemTransitioning = false;
+  let itemTransitionTimer = 0;
   let dragStartX = 0;
   let dragStartY = 0;
   let translateX = 0;
@@ -617,6 +619,8 @@ export function mountCheckoutPatienceDom(
   };
 
   const prepareCustomer = (customerIndex: number): void => {
+    window.clearTimeout(itemTransitionTimer);
+    itemTransitioning = false;
     activeCustomer = customerIndex;
     standardScanned = false;
     scannedItemCount = 0;
@@ -638,6 +642,8 @@ export function mountCheckoutPatienceDom(
       throw new Error(`Missing evening checkout configuration for customer ${customerIndex + 1}`);
     }
     standardImage.src = assetUrl(standardAsset.path);
+    standardCard.style.transition = "none";
+    standardCard.style.opacity = "1";
     standardLabel.textContent = `SCAN ITEM 1/${profile.itemCount}`;
     weightTicket.textContent = `APPLE LABEL  ${targetWeight.toFixed(1)} kg`;
     const typeLabel = profile.type === "rushed" ? "RUSHED CUSTOMER" : profile.type === "large-order" ? "LARGE ORDER" : "REGULAR CUSTOMER";
@@ -680,26 +686,47 @@ export function mountCheckoutPatienceDom(
   };
 
   const markStandardScanned = (): void => {
-    if (standardScanned) return;
+    if (standardScanned || itemTransitioning) return;
+    itemTransitioning = true;
     const profile = activeProfile();
     scannedItemCount += 1;
     standardScanned = scannedItemCount >= (profile?.itemCount ?? 1);
-    if (!standardScanned) {
-      const nextAsset = config.standardProductAssets[(activeCustomer + scannedItemCount) % config.standardProductAssets.length];
-      if (nextAsset) standardImage.src = assetUrl(nextAsset.path);
-      standardLabel.textContent = `SCAN ITEM ${scannedItemCount + 1}/${profile?.itemCount ?? 1}`;
-    }
     feedback.textContent = standardScanned
       ? "All basket items scanned. Weigh the apple."
-      : `${scannedItemCount} item scanned. Continue the order.`;
+      : `ITEM ${scannedItemCount} SCANNED · loading the next product…`;
     feedback.style.color = "#72ef9e";
     resetDrag();
-    updateCompletionUi();
-    document.body.dataset.checkoutPatienceScanned = "true";
+    standardCard.style.transition = "opacity 150ms ease, transform 150ms ease";
+    standardCard.style.opacity = "0";
+    standardCard.style.transform = "translate(24px, 0) scale(0.92)";
+
+    itemTransitionTimer = window.setTimeout(() => {
+      if (destroyed) return;
+      if (!standardScanned) {
+        const nextAsset = config.standardProductAssets[
+          (activeCustomer + scannedItemCount) % config.standardProductAssets.length
+        ];
+        if (nextAsset) standardImage.src = assetUrl(nextAsset.path);
+        standardLabel.textContent = `SCAN ITEM ${scannedItemCount + 1}/${profile?.itemCount ?? 1}`;
+      }
+      standardCard.style.transition = "none";
+      standardCard.style.transform = "translate(-24px, 0) scale(0.92)";
+      requestAnimationFrame(() => {
+        if (destroyed) return;
+        standardCard.style.transition = "opacity 170ms ease, transform 170ms ease";
+        standardCard.style.opacity = standardScanned ? "0.34" : "1";
+        standardCard.style.transform = "translate(0, 0) scale(1)";
+        itemTransitionTimer = window.setTimeout(() => {
+          itemTransitioning = false;
+          updateCompletionUi();
+        }, 175);
+      });
+    }, 155);
+    document.body.dataset.checkoutPatienceScanned = String(standardScanned);
   };
 
   standardCard.addEventListener("pointerdown", (event) => {
-    if (!visible || standardScanned) return;
+    if (!visible || standardScanned || itemTransitioning) return;
     event.preventDefault();
     event.stopPropagation();
     dragging = true;
@@ -852,6 +879,7 @@ export function mountCheckoutPatienceDom(
     destroy: () => {
       destroyed = true;
       window.clearTimeout(pollId);
+      window.clearTimeout(itemTransitionTimer);
       cancelAnimationFrame(animationId);
       disposers.forEach((dispose) => dispose());
       setSceneInputEnabled(true);
