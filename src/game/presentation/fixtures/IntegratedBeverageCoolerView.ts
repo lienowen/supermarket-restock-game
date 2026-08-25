@@ -31,6 +31,11 @@ export interface BeverageCoolerViewConfig {
   readonly restockItemCount?: number;
   readonly coolerAssetKey?: string;
   readonly ambientProductKeys?: readonly string[];
+  readonly slotPositions?: readonly CoolerStockPoint[];
+  readonly slotWidth?: number;
+  readonly slotHeight?: number;
+  readonly shelfBaselineYs?: readonly number[];
+  readonly glassPanels?: readonly { readonly x: number; readonly width: number }[];
 }
 
 export interface BeverageCoolerRushState {
@@ -54,13 +59,21 @@ const GLASS_PANELS = Object.freeze([
   Object.freeze({ x: 1073, width: 286 })
 ]);
 
-const createSlots = (): readonly IntegratedCoolerSlot[] => Object.freeze(
-  SLOT_XS.flatMap((x, bayIndex) => SLOT_YS.map((y, shelfIndex) => Object.freeze({
-    x,
-    y,
-    bayIndex,
-    shelfIndex
-  })))
+const createSlots = (
+  positions?: readonly CoolerStockPoint[]
+): readonly IntegratedCoolerSlot[] => Object.freeze(
+  positions
+    ? positions.map((position, rowIndex) => Object.freeze({
+      ...position,
+      bayIndex: Math.floor(rowIndex / 3),
+      shelfIndex: rowIndex % 3
+    }))
+    : SLOT_XS.flatMap((x, bayIndex) => SLOT_YS.map((y, shelfIndex) => Object.freeze({
+      x,
+      y,
+      bayIndex,
+      shelfIndex
+    })))
 );
 
 /**
@@ -70,7 +83,11 @@ const createSlots = (): readonly IntegratedCoolerSlot[] => Object.freeze(
  * never redrawn, avoiding the previous double-cooler appearance.
  */
 export class IntegratedBeverageCoolerView {
-  private readonly slots = createSlots();
+  private readonly slots: readonly IntegratedCoolerSlot[];
+  private readonly slotWidth: number;
+  private readonly slotHeight: number;
+  private readonly shelfBaselineYs: readonly number[];
+  private readonly glassPanels: readonly { readonly x: number; readonly width: number }[];
   private readonly rowHolders: Phaser.GameObjects.Container[] = [];
   private readonly rowItems: Phaser.GameObjects.Image[][] = [];
   private readonly rowTargets: Phaser.GameObjects.Rectangle[] = [];
@@ -86,6 +103,11 @@ export class IntegratedBeverageCoolerView {
     private readonly scene: Phaser.Scene,
     private readonly config: BeverageCoolerViewConfig
   ) {
+    this.slots = createSlots(config.slotPositions);
+    this.slotWidth = config.slotWidth ?? SLOT_WIDTH;
+    this.slotHeight = config.slotHeight ?? SLOT_HEIGHT;
+    this.shelfBaselineYs = config.shelfBaselineYs ?? SHELF_BASELINE_YS;
+    this.glassPanels = config.glassPanels ?? GLASS_PANELS;
     this.shelfForeground = this.createShelfForeground();
     this.shelfRuleLabel = scene.add.text(
       COOLER_CENTRE_X,
@@ -119,8 +141,8 @@ export class IntegratedBeverageCoolerView {
       const target = this.scene.add.rectangle(
         slot.x,
         slot.y,
-        SLOT_WIDTH + 14,
-        SLOT_HEIGHT + 10,
+        this.slotWidth + 14,
+        this.slotHeight + 10,
         0xffffff,
         0.001
       )
@@ -206,18 +228,18 @@ export class IntegratedBeverageCoolerView {
     const flash = this.scene.add.graphics().setDepth(BASE_DEPTH + 9);
     flash.fillStyle(0xe45d52, 0.16);
     flash.fillRoundedRect(
-      centre.x - SLOT_WIDTH / 2,
-      centre.y - SLOT_HEIGHT / 2,
-      SLOT_WIDTH,
-      SLOT_HEIGHT,
+      centre.x - this.slotWidth / 2,
+      centre.y - this.slotHeight / 2,
+      this.slotWidth,
+      this.slotHeight,
       12
     );
     flash.lineStyle(4, 0xff8f86, 0.94);
     flash.strokeRoundedRect(
-      centre.x - SLOT_WIDTH / 2,
-      centre.y - SLOT_HEIGHT / 2,
-      SLOT_WIDTH,
-      SLOT_HEIGHT,
+      centre.x - this.slotWidth / 2,
+      centre.y - this.slotHeight / 2,
+      this.slotWidth,
+      this.slotHeight,
       12
     );
     this.scene.tweens.add({
@@ -241,7 +263,7 @@ export class IntegratedBeverageCoolerView {
   private renderRushTargets(state: BeverageCoolerRushState): void {
     const filledRows = new Set(state.filledRowIndexes);
     const memorySelection =
-      document.body.dataset.restockChallenge === "memory" &&
+      ["memory", "wave-memory"].includes(document.body.dataset.restockChallenge ?? "") &&
       state.activeRowIndex === undefined;
 
     this.rowPlates.forEach((plate, index) => {
@@ -277,7 +299,7 @@ export class IntegratedBeverageCoolerView {
       .setDepth(BASE_DEPTH + 4)
       .setName("restock-cooler-shelf-foreground");
 
-    GLASS_PANELS.forEach((panel, panelIndex) => {
+    this.glassPanels.forEach((panel, panelIndex) => {
       foreground.lineStyle(2, 0xffffff, 0.022);
       foreground.lineBetween(
         panel.x + 32,
@@ -286,7 +308,7 @@ export class IntegratedBeverageCoolerView {
         382 + panelIndex * 8
       );
 
-      SHELF_BASELINE_YS.forEach((baselineY) => {
+      this.shelfBaselineYs.forEach((baselineY) => {
         foreground.lineStyle(6, 0x111817, 0.34);
         foreground.lineBetween(panel.x + 10, baselineY + 3, panel.x + panel.width - 10, baselineY + 3);
         foreground.lineStyle(3, 0xdfe9e6, 0.64);
@@ -309,26 +331,26 @@ export class IntegratedBeverageCoolerView {
       .setName(`beverage-cooler-row-glow-${rowIndex}`);
     plate.fillStyle(0xffd95e, 0.12);
     plate.fillRoundedRect(
-      slot.x - SLOT_WIDTH / 2,
-      slot.y - SLOT_HEIGHT / 2,
-      SLOT_WIDTH,
-      SLOT_HEIGHT,
+      slot.x - this.slotWidth / 2,
+      slot.y - this.slotHeight / 2,
+      this.slotWidth,
+      this.slotHeight,
       12
     );
     plate.lineStyle(10, 0xffd95e, 0.18);
     plate.strokeRoundedRect(
-      slot.x - SLOT_WIDTH / 2 - 3,
-      slot.y - SLOT_HEIGHT / 2 - 3,
-      SLOT_WIDTH + 6,
-      SLOT_HEIGHT + 6,
+      slot.x - this.slotWidth / 2 - 3,
+      slot.y - this.slotHeight / 2 - 3,
+      this.slotWidth + 6,
+      this.slotHeight + 6,
       15
     );
     plate.lineStyle(4, 0xffd95e, 0.98);
     plate.strokeRoundedRect(
-      slot.x - SLOT_WIDTH / 2,
-      slot.y - SLOT_HEIGHT / 2,
-      SLOT_WIDTH,
-      SLOT_HEIGHT,
+      slot.x - this.slotWidth / 2,
+      slot.y - this.slotHeight / 2,
+      this.slotWidth,
+      this.slotHeight,
       12
     );
     return plate;
@@ -336,8 +358,8 @@ export class IntegratedBeverageCoolerView {
 
   private createCountLabel(slot: IntegratedCoolerSlot, rowIndex: number): Phaser.GameObjects.Text {
     return this.scene.add.text(
-      slot.x + SLOT_WIDTH / 2 - 8,
-      slot.y - SLOT_HEIGHT / 2 + 8,
+      slot.x + this.slotWidth / 2 - 8,
+      slot.y - this.slotHeight / 2 + 8,
       `0/${COOLER_STOCK_ITEMS_PER_SLOT}`,
       {
         fontFamily: "Arial, sans-serif",
@@ -436,7 +458,7 @@ export class IntegratedBeverageCoolerView {
     const slot = this.slots[rowIndex];
     if (!slot) throw new Error(`Missing cooler shelf geometry ${rowIndex}`);
     const positions = [-54, 0, 54] as const;
-    const shelfBaselineY = SHELF_BASELINE_YS[slot.shelfIndex] ?? slot.y;
+    const shelfBaselineY = this.shelfBaselineYs[slot.shelfIndex] ?? slot.y;
     return Object.freeze({
       x: positions[itemIndex] ?? 0,
       y: shelfBaselineY - slot.y
