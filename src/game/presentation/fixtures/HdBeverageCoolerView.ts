@@ -255,7 +255,13 @@ export class BeverageCoolerView {
 
     this.rowPlates.forEach((plate, index) => {
       const active = state.activeRowIndex === index && !filledRows.has(index);
-      plate.setVisible(active).setAlpha(active ? 0.52 + (1 - state.remainingRatio) * 0.34 : 0);
+      const memoryChoice =
+        ["memory", "wave-memory"].includes(document.body.dataset.restockChallenge ?? "") &&
+        state.interactionEnabled &&
+        !filledRows.has(index);
+      plate
+        .setVisible(active || memoryChoice)
+        .setAlpha(active ? 0.52 + (1 - state.remainingRatio) * 0.34 : memoryChoice ? 0.12 : 0);
     });
 
     this.countLabels.forEach((label, index) => {
