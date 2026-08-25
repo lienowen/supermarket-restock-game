@@ -56,3 +56,13 @@ test("L7 exposes speed, accuracy and satisfaction scoring", () => {
   assert.match(source, /SATISFACTION/);
   assert.match(source, /checkoutRushSpeed/);
 });
+
+test("L7 transitions between scanned products instead of replacing the image instantly", () => {
+  const source = require("node:fs").readFileSync(
+    "src/game/presentation/ui/CheckoutPatienceDom.ts",
+    "utf8"
+  );
+  assert.match(source, /itemTransitioning/);
+  assert.match(source, /loading the next product/);
+  assert.match(source, /opacity 150ms ease/);
+});
