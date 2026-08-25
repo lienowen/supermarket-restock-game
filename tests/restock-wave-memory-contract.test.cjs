@@ -63,7 +63,7 @@ test("Level 10 aligns its six interactive rows to the authored night cooler", ()
     "utf8"
   );
 
-  assert.match(sceneSource, /const isFinalShift = .*starter-level-010/);
+  assert.match(sceneSource, /environment-final-shift-l10/);
   assert.match(sceneSource, /slotPositions:/);
   assert.match(sceneSource, /\{ x: 1320, y: 300 \}/);
   assert.match(sceneSource, /\{ x: 1510, y: 520 \}/);
