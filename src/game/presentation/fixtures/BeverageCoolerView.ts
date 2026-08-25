@@ -111,6 +111,30 @@ const aliasCanvasTexture = (
   texture.refresh();
 };
 
+export const prepareBeverageCoolerTextures = (
+  scene: Phaser.Scene,
+  config: BeverageCoolerViewConfig
+): void => {
+  aliasImageTexture(scene, "restock-cooler-empty-hd-v3", config.coolerAssetKey);
+  aliasCanvasTexture(
+    scene,
+    "restock-cooler-glass-hd-v3",
+    "fixture-beverage-cooler-glass-hd-v3",
+    768,
+    512,
+    0.18
+  );
+  aliasCanvasTexture(
+    scene,
+    "restock-cola-bottle-hd-v2",
+    config.restockProductKey,
+    28,
+    68,
+    1,
+    true
+  );
+};
+
 /**
  * Compatibility wrapper for the scene API. It prepares stable HD textures and
  * delegates rendering to the world-integrated cooler composition. No full-screen
@@ -118,28 +142,7 @@ const aliasCanvasTexture = (
  */
 export class BeverageCoolerView extends IntegratedBeverageCoolerView {
   constructor(scene: Phaser.Scene, config: BeverageCoolerViewConfig) {
-    aliasImageTexture(scene, "restock-cooler-empty-hd-v3", config.coolerAssetKey);
-    aliasCanvasTexture(
-      scene,
-      "restock-cooler-glass-hd-v3",
-      "fixture-beverage-cooler-glass-hd-v3",
-      768,
-      512,
-      0.18
-    );
-    // Normalize the production bottle into a shelf-sized runtime texture.
-    // IntegratedBeverageCoolerView animates scale values; keeping the derived
-    // texture physically small prevents an animation reset from turning a
-    // bottle back into a giant source-canvas sprite.
-    aliasCanvasTexture(
-      scene,
-      "restock-cola-bottle-hd-v2",
-      config.restockProductKey,
-      28,
-      68,
-      1,
-      true
-    );
+    prepareBeverageCoolerTextures(scene, config);
     super(scene, config);
   }
 }
