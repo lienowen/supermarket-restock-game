@@ -66,8 +66,8 @@ test("Level 10 stocks the empty wall cooler inside the supermarket scene", () =>
   assert.match(sceneSource, /environment-final-shift-l10/);
   assert.doesNotMatch(sceneSource, /HdBeverageCoolerView/);
   assert.match(sceneSource, /slotPositions:/);
-  assert.match(sceneSource, /\{ x: 1450, y: 315 \}/);
-  assert.match(sceneSource, /\{ x: 1535, y: 445 \}/);
+  assert.match(sceneSource, /\{ x: 1503, y: 315 \}/);
+  assert.match(sceneSource, /\{ x: 1568, y: 445 \}/);
   assert.match(sceneSource, /glassPanels: \[\]/);
   assert.match(sceneSource, /finaleStation:/);
   assert.match(sceneSource, /FINAL SHIFT COMPLETE!/);

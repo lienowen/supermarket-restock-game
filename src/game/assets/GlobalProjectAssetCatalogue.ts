@@ -116,7 +116,7 @@ const finalShiftBackground = (): AssetDescriptor => asset({
   key: "environment-final-shift-l10",
   path: "assets/game/production-v8/l6-l10-rework-assets/bg-final-shift-l10-empty-cooler.png",
   category: "environment",
-  canvasSize: [1671, 941],
+  canvasSize: [1672, 941],
   anchor: [0.5, 0.5],
   defaultScale: 1,
   depthGroup: "far-environment",

@@ -274,16 +274,16 @@ export class StarterMarketScene extends Phaser.Scene {
       Object.assign(config, {
         stockSource: { x: 1160, y: 760 },
         slotPositions: [
-          { x: 1450, y: 315 }, { x: 1450, y: 380 }, { x: 1450, y: 445 },
-          { x: 1535, y: 315 }, { x: 1535, y: 380 }, { x: 1535, y: 445 }
+          { x: 1503, y: 315 }, { x: 1503, y: 380 }, { x: 1503, y: 445 },
+          { x: 1568, y: 315 }, { x: 1568, y: 380 }, { x: 1568, y: 445 }
         ],
-        slotWidth: 78,
+        slotWidth: 50,
         slotHeight: 58,
         shelfBaselineYs: [345, 410, 475],
         glassPanels: [],
-        bottleWidth: 18,
+        bottleWidth: 13,
         bottleHeights: [44, 48, 52],
-        itemOffsets: [-22, 0, 22]
+        itemOffsets: [-15, 0, 15]
       });
     }
     prepareBeverageCoolerTextures(this, config);
