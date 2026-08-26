@@ -71,7 +71,7 @@ test("Level 10 stocks the empty wall cooler inside the supermarket scene", () =>
   assert.match(sceneSource, /glassPanels: \[\]/);
   assert.match(sceneSource, /finaleStation:/);
   assert.match(sceneSource, /FINAL SHIFT COMPLETE!/);
-  assert.match(catalogueSource, /bg-final-shift-l10-empty-cooler-v2\.png/);
+  assert.match(catalogueSource, /bg-final-shift-l10-empty-cooler-v3\.webp/);
 });
 
 test("Level 10 memory preview fits short landscape phone screens", () => {

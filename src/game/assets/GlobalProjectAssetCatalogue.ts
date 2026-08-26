@@ -114,7 +114,7 @@ const dispatchBackground = (): AssetDescriptor => asset({
 
 const finalShiftBackground = (): AssetDescriptor => asset({
   key: "environment-final-shift-l10",
-  path: "assets/game/production-v8/l6-l10-rework-assets/bg-final-shift-l10-empty-cooler-v2.png",
+  path: "assets/game/production-v8/l6-l10-rework-assets/bg-final-shift-l10-empty-cooler-v3.webp",
   category: "environment",
   canvasSize: [1672, 941],
   anchor: [0.5, 0.5],
