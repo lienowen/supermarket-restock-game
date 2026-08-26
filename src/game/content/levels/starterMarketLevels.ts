@@ -292,7 +292,7 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
           previewDurationMs: 2300,
           hideActiveTarget: true,
           keepTargetOnFailure: true,
-          instruction: "Tap the shelf from memory once. The worker places all 3 bottles."
+          instruction: "Tap each shelf once in the memorized order. The worker places all 3 bottles."
         },
         targetDurationMs: 13000,
         minimumTargetDurationMs: 7500,

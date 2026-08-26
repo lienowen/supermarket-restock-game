@@ -66,7 +66,8 @@ export function mountRestockMemoryPreviewDom(
   const panel = document.createElement("div");
   applyStyles(panel, {
     width: "min(620px, 100%)",
-    padding: "22px",
+    maxHeight: "calc(100dvh - 20px)",
+    padding: "clamp(10px, 2.4vh, 22px)",
     boxSizing: "border-box",
     border: "1px solid rgba(255, 217, 94, 0.55)",
     borderRadius: "22px",
@@ -87,30 +88,30 @@ export function mountRestockMemoryPreviewDom(
   const title = document.createElement("h2");
   title.textContent = isFinaleWave ? `Memorize ${waveLabel}` : "Memorize the shelf order";
   applyStyles(title, {
-    margin: "6px 0 5px",
+    margin: "clamp(2px, 1vh, 6px) 0 4px",
     textAlign: "center",
-    fontSize: "clamp(24px, 5vw, 36px)",
+    fontSize: "clamp(20px, min(5vw, 5vh), 34px)",
     lineHeight: "1.05"
   });
 
   const instruction = document.createElement("p");
   instruction.textContent = isFinaleWave
-    ? `Watch this ${sequenceLength}-shelf route. The glow disappears when the rush begins.`
+    ? `Watch ${sequenceLength} shelves in order. Then tap each shelf once in the same order.`
     : `Watch the glow from 1 to ${sequenceLength}. The numbers disappear when stocking begins.`;
   applyStyles(instruction, {
-    margin: "0 auto 10px",
+    margin: "0 auto clamp(5px, 1.3vh, 10px)",
     maxWidth: "500px",
     textAlign: "center",
     color: "#d6e7db",
-    fontSize: "14px",
-    lineHeight: "1.45"
+    fontSize: "clamp(11px, 1.8vh, 14px)",
+    lineHeight: "1.3"
   });
 
   const sequenceCue = document.createElement("div");
   sequenceCue.id = "restock-memory-sequence-cue";
   sequenceCue.textContent = `WATCH THE GLOW · 1 → ${sequenceLength}`;
   applyStyles(sequenceCue, {
-    marginBottom: "12px",
+    marginBottom: "clamp(5px, 1.4vh, 12px)",
     textAlign: "center",
     color: "#9be7ff",
     fontSize: "12px",
@@ -123,11 +124,11 @@ export function mountRestockMemoryPreviewDom(
   applyStyles(cooler, {
     display: "grid",
     gridTemplateColumns: "repeat(2, minmax(120px, 1fr))",
-    gridTemplateRows: "repeat(3, 70px)",
-    gap: "10px 16px",
+    gridTemplateRows: "repeat(3, clamp(40px, 9.5vh, 70px))",
+    gap: "clamp(5px, 1.2vh, 10px) clamp(8px, 2vw, 16px)",
     maxWidth: "390px",
     margin: "0 auto",
-    padding: "14px",
+    padding: "clamp(7px, 1.6vh, 14px)",
     border: "5px solid #203b30",
     borderRadius: "16px",
     background: "rgba(2, 14, 11, 0.8)",
@@ -172,12 +173,12 @@ export function mountRestockMemoryPreviewDom(
     applyStyles(number, {
       display: "grid",
       placeItems: "center",
-      width: "42px",
-      height: "42px",
+      width: "clamp(30px, 6.2vh, 42px)",
+      height: "clamp(30px, 6.2vh, 42px)",
       borderRadius: "50%",
       background: order > 0 ? "#dcb53f" : "rgba(92, 116, 104, 0.45)",
       color: order > 0 ? "#182319" : "#a7b8af",
-      fontSize: "22px",
+      fontSize: "clamp(16px, 3.5vh, 22px)",
       fontWeight: "900",
       boxShadow: "0 6px 14px rgba(0, 0, 0, 0.28)",
       transformOrigin: "center"
@@ -190,7 +191,7 @@ export function mountRestockMemoryPreviewDom(
   const countdown = document.createElement("div");
   countdown.id = "restock-memory-countdown";
   applyStyles(countdown, {
-    marginTop: "14px",
+    marginTop: "clamp(6px, 1.5vh, 14px)",
     textAlign: "center",
     color: "#ffd95e",
     fontSize: "13px",

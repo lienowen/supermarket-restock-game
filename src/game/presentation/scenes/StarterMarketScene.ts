@@ -673,7 +673,7 @@ export class StarterMarketScene extends Phaser.Scene {
       });
 
       playRestockCompletionFeedback(this, {
-        title: context.labels.completionTitle,
+        title: this.waveMemoryConfig() ? "FINAL SHIFT COMPLETE!" : context.labels.completionTitle,
         coins: context.runtime.reward.totalCoins,
         stars: context.runtime.reward.totalStars,
         hudColor: context.palette.hud,
@@ -697,6 +697,7 @@ export class StarterMarketScene extends Phaser.Scene {
       const grade = rushPerformance.grade ?? "BRONZE";
       const seconds = (rushPerformance.elapsedMs / 1000).toFixed(1);
       const finaleLabel = this.waveMemoryConfig() ? "FINAL ROUTE" : "RUSH";
+      const campaignCompleteLabel = this.waveMemoryConfig() ? "CAMPAIGN COMPLETE  •  " : "";
       this.completionOverlay = new LevelCompleteOverlay(
         this,
         {
@@ -707,7 +708,7 @@ export class StarterMarketScene extends Phaser.Scene {
           statusLabel: progression.statusLabel,
           levelTitle: context.labels.levelTitle,
           rewardLabel:
-            `${grade} ${finaleLabel}  •  ${context.runtime.totalUnits} ITEMS  •  ${seconds}s\n` +
+            `${campaignCompleteLabel}${grade} ${finaleLabel}  •  ${context.runtime.totalUnits} ITEMS  •  ${seconds}s\n` +
             `+${context.runtime.reward.totalStars} STAR   +${context.runtime.reward.totalCoins} COINS`,
           actionLabel: progression.actionLabel,
           panelColor: context.palette.hud,

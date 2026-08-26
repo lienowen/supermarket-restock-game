@@ -16,7 +16,7 @@ test("Level 10 is a two-wave blind-memory finale rather than a timing-only resto
     previewDurationMs: 2300,
     hideActiveTarget: true,
     keepTargetOnFailure: true,
-    instruction: "Tap the shelf from memory once. The worker places all 3 bottles."
+    instruction: "Tap each shelf once in the memorized order. The worker places all 3 bottles."
   });
   assert.equal(rush.memoryPreview, undefined);
   assert.equal(rush.sequenceMode, "shuffled");
@@ -70,5 +70,17 @@ test("Level 10 stocks the empty wall cooler inside the supermarket scene", () =>
   assert.match(sceneSource, /\{ x: 1535, y: 445 \}/);
   assert.match(sceneSource, /glassPanels: \[\]/);
   assert.match(sceneSource, /finaleStation:/);
+  assert.match(sceneSource, /FINAL SHIFT COMPLETE!/);
   assert.match(catalogueSource, /bg-final-shift-l10-empty-cooler\.png/);
+});
+
+test("Level 10 memory preview fits short landscape phone screens", () => {
+  const previewSource = require("node:fs").readFileSync(
+    "src/game/presentation/ui/RestockMemoryPreviewDom.ts",
+    "utf8"
+  );
+
+  assert.match(previewSource, /maxHeight: "calc\(100dvh - 20px\)"/);
+  assert.match(previewSource, /repeat\(3, clamp\(40px, 9\.5vh, 70px\)\)/);
+  assert.match(previewSource, /tap each shelf once in the same order/i);
 });
