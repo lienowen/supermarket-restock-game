@@ -62,6 +62,10 @@ test("Level 10 stocks the empty wall cooler inside the supermarket scene", () =>
     "src/game/assets/GlobalProjectAssetCatalogue.ts",
     "utf8"
   );
+  const actorSource = require("node:fs").readFileSync(
+    "src/game/presentation/actors/RestockActorView.ts",
+    "utf8"
+  );
 
   assert.match(sceneSource, /environment-final-shift-l10/);
   assert.doesNotMatch(sceneSource, /HdBeverageCoolerView/);
@@ -70,6 +74,8 @@ test("Level 10 stocks the empty wall cooler inside the supermarket scene", () =>
   assert.match(sceneSource, /\{ x: 1568, y: 445 \}/);
   assert.match(sceneSource, /glassPanels: \[\]/);
   assert.match(sceneSource, /finaleStation:/);
+  assert.match(actorSource, /fixedWorkerPosition/);
+  assert.match(actorSource, /fixedFinalCartPosition/);
   assert.match(sceneSource, /FINAL SHIFT COMPLETE!/);
   assert.match(catalogueSource, /bg-final-shift-l10-empty-cooler-v3\.webp/);
 });

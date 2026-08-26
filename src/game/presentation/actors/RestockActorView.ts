@@ -577,14 +577,15 @@ export class RestockActorView {
   }
 
   private showOpenState(snapshot: RestockSceneSnapshot): void {
+    const cart = this.fixedFinalCartPosition();
     this.loadDropZone.setVisible(false);
     this.showFinalCart();
     this.handProduct.setVisible(false);
     this.caseBox.setTexture(snapshot.boxOpened ? this.textures.caseOpen : this.textures.caseClosed)
       .setVisible(true)
       .setPosition(
-        this.finalCartX() + RESTOCK_CART_CASE_OFFSET.x,
-        this.config.cartDestination.y + RESTOCK_CART_CASE_OFFSET.y
+        cart.x + RESTOCK_CART_CASE_OFFSET.x,
+        cart.y - 20 + RESTOCK_CART_CASE_OFFSET.y
       )
       .setDisplaySize(RESTOCK_CASE_SIZE.width, RESTOCK_CASE_SIZE.height)
       .setAngle(snapshot.boxOpened ? -2 : 0)
@@ -592,13 +593,14 @@ export class RestockActorView {
   }
 
   private showStockState(snapshot: RestockSceneSnapshot): void {
+    const cart = this.fixedFinalCartPosition();
     this.loadDropZone.setVisible(false);
     this.showFinalCart();
     this.caseBox.setTexture(this.textures.caseOpen)
       .setVisible(true)
       .setPosition(
-        this.finalCartX() + RESTOCK_CART_CASE_OFFSET.x,
-        this.config.cartDestination.y + RESTOCK_CART_CASE_OFFSET.y
+        cart.x + RESTOCK_CART_CASE_OFFSET.x,
+        cart.y - 20 + RESTOCK_CART_CASE_OFFSET.y
       )
       .setDisplaySize(RESTOCK_CASE_SIZE.width, RESTOCK_CASE_SIZE.height)
       .setAngle(-2)
@@ -614,8 +616,8 @@ export class RestockActorView {
     this.handProduct
       .setDisplaySize(RESTOCK_HAND_PRODUCT_SIZE.width, RESTOCK_HAND_PRODUCT_SIZE.height)
       .setPosition(
-        RESTOCK_WORKER_POSITION.x + RESTOCK_HAND_PRODUCT_OFFSET.x,
-        RESTOCK_WORKER_POSITION.y + RESTOCK_HAND_PRODUCT_OFFSET.y
+        this.navigation.position().x + RESTOCK_HAND_PRODUCT_OFFSET.x,
+        this.navigation.position().y + RESTOCK_HAND_PRODUCT_OFFSET.y
       )
       .setAngle(-3)
       .setVisible(true);
@@ -629,8 +631,7 @@ export class RestockActorView {
   }
 
   private showFinalCart(): void {
-    const x = this.finalCartX();
-    const y = this.config.cartDestination.y + 20;
+    const { x, y } = this.fixedFinalCartPosition();
     this.cart.setTexture(this.textures.cartEmpty)
       .setDisplaySize(RESTOCK_CART_SIZE.width, RESTOCK_CART_SIZE.height)
       .setPosition(x, y)
@@ -646,9 +647,10 @@ export class RestockActorView {
   }
 
   private placeWorkerAtRestockStation(): void {
+    const target = this.fixedWorkerPosition();
     const current = this.navigation.position();
-    if (Math.hypot(current.x - RESTOCK_WORKER_POSITION.x, current.y - RESTOCK_WORKER_POSITION.y) > 0.5) {
-      this.navigation.setPosition(RESTOCK_WORKER_POSITION);
+    if (Math.hypot(current.x - target.x, current.y - target.y) > 0.5) {
+      this.navigation.setPosition(target);
     }
   }
 
@@ -661,6 +663,26 @@ export class RestockActorView {
 
   private finalCartX(): number {
     return this.config.cartDestination.x - 265;
+  }
+
+  private fixedWorkerPosition(): NavigationPoint {
+    if (
+      (this.currentSnapshot?.step === "restock" || this.currentSnapshot?.step === "complete") &&
+      this.config.finaleStation
+    ) {
+      return this.config.finaleStation.worker;
+    }
+    return RESTOCK_WORKER_POSITION;
+  }
+
+  private fixedFinalCartPosition(): NavigationPoint {
+    if (
+      (this.currentSnapshot?.step === "restock" || this.currentSnapshot?.step === "complete") &&
+      this.config.finaleStation
+    ) {
+      return this.config.finaleStation.cart;
+    }
+    return { x: this.finalCartX(), y: this.config.cartDestination.y + 20 };
   }
 
   private openCaseSourceKey(): string {
