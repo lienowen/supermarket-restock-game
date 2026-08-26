@@ -8,36 +8,28 @@ const { RestockRushController } = require("../.test-dist/src/game/application/Re
 const campaign = resolveLevelCampaignRuntime(STARTER_MARKET_CONTENT, "main-campaign");
 const finale = campaign.levels.find((entry) => entry.level.id === "starter-level-010");
 
-test("Level 10 is a two-wave blind-memory finale rather than a timing-only restock", () => {
+test("Level 10 is an integrated 18-placement finale without a memory modal", () => {
   assert.ok(finale);
   const rush = finale.level.tuning.rush;
-  assert.deepEqual(rush.waveMemory, {
-    waveSize: 3,
-    previewDurationMs: 2300,
-    hideActiveTarget: true,
-    keepTargetOnFailure: true,
-    instruction: "Tap each shelf once in the memorized order. The worker places all 3 bottles."
-  });
+  assert.equal(rush.waveMemory, undefined);
   assert.equal(rush.memoryPreview, undefined);
   assert.equal(rush.sequenceMode, "shuffled");
-  assert.equal(rush.itemsPerRow, 1);
-  assert.equal(rush.unitsPerInteraction, 3);
-  assert.equal(finale.runtime.restockInstruction, rush.waveMemory.instruction);
+  assert.equal(rush.itemsPerRow, 3);
+  assert.equal(rush.unitsPerInteraction, 1);
+  assert.equal(finale.runtime.totalUnits, 18);
 });
 
-test("Final memory route stays deterministic and keeps its target after a wrong shelf", () => {
+test("Final rush requires three accurate placements before advancing a shelf", () => {
   const tuning = finale.level.tuning.rush;
   const controller = new RestockRushController({
     rowCount: 6,
     randomSeed: finale.level.randomSeed,
-    ...tuning,
-    keepTargetOnFailure: tuning.waveMemory.keepTargetOnFailure
+    ...tuning
   });
   const matching = new RestockRushController({
     rowCount: 6,
     randomSeed: finale.level.randomSeed,
-    ...tuning,
-    keepTargetOnFailure: tuning.waveMemory.keepTargetOnFailure
+    ...tuning
   });
 
   const planned = controller.plannedRowIndexes();
@@ -50,7 +42,14 @@ test("Final memory route stays deterministic and keeps its target after a wrong 
   const wrong = controller.selectRow(wrongRow, 100);
   assert.equal(wrong.correct, false);
   assert.equal(wrong.snapshot.mistakes, 1);
-  assert.equal(wrong.snapshot.activeRowIndex, first.activeRowIndex);
+  const target = wrong.snapshot.activeRowIndex;
+  const firstBottle = controller.selectRow(target, 200);
+  const secondBottle = controller.selectRow(target, 300);
+  const thirdBottle = controller.selectRow(target, 400);
+  assert.equal(firstBottle.rowCompleted, false);
+  assert.equal(secondBottle.rowCompleted, false);
+  assert.equal(thirdBottle.rowCompleted, true);
+  assert.equal(thirdBottle.snapshot.totalItemsStocked, 3);
 });
 
 test("Level 10 stocks the empty wall cooler inside the supermarket scene", () => {
@@ -80,13 +79,12 @@ test("Level 10 stocks the empty wall cooler inside the supermarket scene", () =>
   assert.match(catalogueSource, /bg-final-shift-l10-empty-cooler-v3\.webp/);
 });
 
-test("Level 10 memory preview fits short landscape phone screens", () => {
-  const previewSource = require("node:fs").readFileSync(
-    "src/game/presentation/ui/RestockMemoryPreviewDom.ts",
+test("Level 10 keeps its challenge inside the world instead of opening memory UI", () => {
+  const levelSource = require("node:fs").readFileSync(
+    "src/game/content/levels/starterMarketLevels.ts",
     "utf8"
   );
-
-  assert.match(previewSource, /maxHeight: "calc\(100dvh - 20px\)"/);
-  assert.match(previewSource, /repeat\(3, clamp\(40px, 9\.5vh, 70px\)\)/);
-  assert.match(previewSource, /tap each shelf once in the same order/i);
+  const finaleBlock = levelSource.slice(levelSource.indexOf('id: "starter-level-010"'));
+  assert.doesNotMatch(finaleBlock, /waveMemory:/);
+  assert.doesNotMatch(finaleBlock, /memoryPreview:/);
 });

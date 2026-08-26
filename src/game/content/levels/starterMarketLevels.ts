@@ -283,17 +283,10 @@ export const STARTER_MARKET_LEVELS: readonly LevelDefinition[] = Object.freeze([
       slotCount: 6,
       progressRewardRatio: 0.5,
       rush: {
-        itemsPerRow: 1,
-        unitsPerInteraction: 3,
+        itemsPerRow: 3,
+        unitsPerInteraction: 1,
         sequenceMode: "shuffled",
         timeoutEnabled: true,
-        waveMemory: {
-          waveSize: 3,
-          previewDurationMs: 2300,
-          hideActiveTarget: true,
-          keepTargetOnFailure: true,
-          instruction: "Tap each shelf once in the memorized order. The worker places all 3 bottles."
-        },
         targetDurationMs: 13000,
         minimumTargetDurationMs: 7500,
         speedUpPerSuccessMs: 320,

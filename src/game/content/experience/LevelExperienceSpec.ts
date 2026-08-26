@@ -233,14 +233,14 @@ export const STARTER_LEVEL_EXPERIENCE_SPECS: readonly LevelExperienceSpec[] = Ob
   define({
     levelId: "starter-level-010",
     mode: "restock",
-    modeLabel: "FINAL MEMORY RUSH",
+    modeLabel: "FINAL RESTOCK RUSH",
     eyebrow: "CHAPTER FINALE",
     title: "Final Cooler Rush",
-    objective: "Finish the final water delivery by clearing two memorized three-shelf waves.",
-    mechanic: "Each wave previews three shelf positions, then removes every target glow while the rush clock is active. A mistake keeps the route intact so you can recover instead of guessing a new answer.",
-    control: "Memorize Wave 1, stock its three shelves from memory, then repeat the process for Wave 2.",
-    successMetric: "Clear both blind routes with a strong streak and as few route mistakes as possible.",
-    primaryInput: "sequence"
+    objective: "Finish the final water delivery by stocking all 18 bottles across six cooler shelves.",
+    mechanic: "The target glow moves between cooler shelves while the rush clock speeds up. Each shelf needs three accurate placements before the next target appears.",
+    control: "Follow the glowing shelf, tap it three times to fill the row and avoid wrong shelves.",
+    successMetric: "Fill all six shelves quickly with a strong streak and as few mistakes as possible.",
+    primaryInput: "tap"
   })
 ]);
 

@@ -673,7 +673,7 @@ export class StarterMarketScene extends Phaser.Scene {
       });
 
       playRestockCompletionFeedback(this, {
-        title: this.waveMemoryConfig() ? "FINAL SHIFT COMPLETE!" : context.labels.completionTitle,
+        title: this.isCampaignFinale() ? "FINAL SHIFT COMPLETE!" : context.labels.completionTitle,
         coins: context.runtime.reward.totalCoins,
         stars: context.runtime.reward.totalStars,
         hudColor: context.palette.hud,
@@ -696,8 +696,8 @@ export class StarterMarketScene extends Phaser.Scene {
       );
       const grade = rushPerformance.grade ?? "BRONZE";
       const seconds = (rushPerformance.elapsedMs / 1000).toFixed(1);
-      const finaleLabel = this.waveMemoryConfig() ? "FINAL ROUTE" : "RUSH";
-      const campaignCompleteLabel = this.waveMemoryConfig() ? "CAMPAIGN COMPLETE  •  " : "";
+      const finaleLabel = this.isCampaignFinale() ? "FINAL RESTOCK" : "RUSH";
+      const campaignCompleteLabel = this.isCampaignFinale() ? "CAMPAIGN COMPLETE  •  " : "";
       this.completionOverlay = new LevelCompleteOverlay(
         this,
         {
@@ -765,6 +765,10 @@ export class StarterMarketScene extends Phaser.Scene {
   private shiftTimeLabel(): string {
     const hour = Number(this.context.runtime.shift.startTime.slice(0, 2));
     return `${this.context.runtime.shift.startTime} ${hour < 12 ? "AM" : "PM"}`;
+  }
+
+  private isCampaignFinale(): boolean {
+    return this.context.campaignLevel.nextLevelId === undefined;
   }
 
   completeDispatchChallenge(): void {
