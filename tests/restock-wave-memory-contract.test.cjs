@@ -52,7 +52,7 @@ test("Final rush requires three accurate placements before advancing a shelf", (
   assert.equal(thirdBottle.snapshot.totalItemsStocked, 3);
 });
 
-test("Level 10 stocks the empty wall cooler inside the supermarket scene", () => {
+test("Level 10 switches to a readable cooler close-up for the 18 placements", () => {
   const sceneSource = require("node:fs").readFileSync(
     "src/game/presentation/scenes/StarterMarketScene.ts",
     "utf8"
@@ -65,13 +65,20 @@ test("Level 10 stocks the empty wall cooler inside the supermarket scene", () =>
     "src/game/presentation/actors/RestockActorView.ts",
     "utf8"
   );
+  const closeupSource = require("node:fs").readFileSync(
+    "src/game/presentation/fixtures/HdBeverageCoolerView.ts",
+    "utf8"
+  );
 
   assert.match(sceneSource, /environment-final-shift-l10/);
-  assert.doesNotMatch(sceneSource, /HdBeverageCoolerView/);
-  assert.match(sceneSource, /slotPositions:/);
-  assert.match(sceneSource, /\{ x: 1503, y: 315 \}/);
-  assert.match(sceneSource, /\{ x: 1568, y: 445 \}/);
-  assert.match(sceneSource, /glassPanels: \[\]/);
+  assert.match(sceneSource, /HdBeverageCoolerView/);
+  assert.match(sceneSource, /usesFinaleWallCooler\s*\?\s*new HdBeverageCoolerView/);
+  assert.doesNotMatch(sceneSource, /slotWidth:\s*50/);
+  assert.doesNotMatch(sceneSource, /bottleWidth:\s*13/);
+  assert.match(closeupSource, /const CLOSEUP_WIDTH = 1040/);
+  assert.match(closeupSource, /const SLOT_WIDTH = 280/);
+  assert.match(closeupSource, /const SLOT_XS = \[640, 920\]/);
+  assert.match(closeupSource, /const SLOT_YS = \[300, 428, 543\]/);
   assert.match(sceneSource, /finaleStation:/);
   assert.match(actorSource, /fixedWorkerPosition/);
   assert.match(actorSource, /fixedFinalCartPosition/);

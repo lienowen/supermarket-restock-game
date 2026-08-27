@@ -33,6 +33,7 @@ import {
   type BeverageCoolerRushState,
   type BeverageCoolerViewConfig
 } from "../fixtures/BeverageCoolerView";
+import { BeverageCoolerView as HdBeverageCoolerView } from "../fixtures/HdBeverageCoolerView";
 import { InteractionGate } from "../interactions/InteractionGate";
 import { InteractionTargetView } from "../interactions/InteractionTargetView";
 import { RestockTargetResolver } from "../interactions/RestockTargetResolver";
@@ -270,24 +271,10 @@ export class StarterMarketScene extends Phaser.Scene {
       restockProductKey: context.levelAssets.product.key,
       onRowSelected: (rowIndex) => this.selectRushRow(rowIndex)
     };
-    if (usesFinaleWallCooler) {
-      Object.assign(config, {
-        stockSource: { x: 1160, y: 760 },
-        slotPositions: [
-          { x: 1503, y: 315 }, { x: 1503, y: 380 }, { x: 1503, y: 445 },
-          { x: 1568, y: 315 }, { x: 1568, y: 380 }, { x: 1568, y: 445 }
-        ],
-        slotWidth: 50,
-        slotHeight: 58,
-        shelfBaselineYs: [345, 410, 475],
-        glassPanels: [],
-        bottleWidth: 13,
-        bottleHeights: [44, 48, 52],
-        itemOffsets: [-15, 0, 15]
-      });
-    }
     prepareBeverageCoolerTextures(this, config);
-    const cooler: CoolerPresentation = new BeverageCoolerView(this, config);
+    const cooler: CoolerPresentation = usesFinaleWallCooler
+      ? new HdBeverageCoolerView(this, config)
+      : new BeverageCoolerView(this, config);
     cooler.create();
     return cooler;
   }
