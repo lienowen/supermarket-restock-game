@@ -155,7 +155,10 @@ export class BeverageCoolerView {
       HD_ASSETS.coolerGlass
     )
       .setDisplaySize(CLOSEUP_WIDTH, CLOSEUP_HEIGHT)
-      .setAlpha(0.28)
+      // The final L10 artwork already contains its own doors, reflections and
+      // frame. Reusing the legacy standalone glass texture covers the lower
+      // half of the new cooler with an opaque dark rectangle.
+      .setAlpha(0)
       .setDepth(BASE_DEPTH + 5)
       .setName("restock-cooler-front-glass-hd");
 

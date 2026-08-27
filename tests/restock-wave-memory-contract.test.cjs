@@ -79,6 +79,7 @@ test("Level 10 switches to a readable cooler close-up for the 18 placements", ()
   assert.match(closeupSource, /const SLOT_WIDTH = 320/);
   assert.match(closeupSource, /const SLOT_XS = \[623, 993\]/);
   assert.match(closeupSource, /const SLOT_YS = \[347, 467, 587\]/);
+  assert.match(closeupSource, /\.setAlpha\(0\)/);
   assert.match(catalogueSource, /bg-l10-cooler-closeup-v1\.png/);
   assert.match(sceneSource, /finaleStation:/);
   assert.match(actorSource, /fixedWorkerPosition/);
