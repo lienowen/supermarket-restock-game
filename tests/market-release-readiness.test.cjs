@@ -17,6 +17,14 @@ test("Level 6 uses its authored dispatch plate without duplicate store dressing"
   assert.match(assets, /"starter-level-006"/);
 });
 
+test("Level 6 suppresses generic cooler lines and cooler-only rule copy", () => {
+  const scene = read("src/game/presentation/scenes/StarterMarketScene.ts");
+  const cooler = read("src/game/presentation/fixtures/IntegratedBeverageCoolerView.ts");
+  assert.match(scene, /showShelfForeground: !usesDispatchWarehouse/);
+  assert.match(scene, /shelfRuleLabel: usesDispatchWarehouse \? ""/);
+  assert.match(cooler, /showShelfForeground === false/);
+});
+
 test("runtime backgrounds and L1-L2 sprites use compact WebP assets", () => {
   const catalogue = read("src/game/assets/GlobalProjectAssetCatalogue.ts");
   const levelTwo = read("src/game/assets/LevelTwoAssetCatalogue.ts");

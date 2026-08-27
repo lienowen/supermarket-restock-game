@@ -244,6 +244,7 @@ export class StarterMarketScene extends Phaser.Scene {
     const context = this.context;
     const preset = this.visualPreset.cooler;
     const usesFinaleWallCooler = context.levelAssets.environment.key === "environment-final-shift-l10";
+    const usesDispatchWarehouse = context.levelAssets.environment.key === "environment-dispatch-loading-l6";
     const finaleCloseup = usesFinaleWallCooler
       ? context.levelAssets.preload.find((asset) => asset.key === "fixture-final-shift-cooler-closeup-l10")
       : undefined;
@@ -272,6 +273,8 @@ export class StarterMarketScene extends Phaser.Scene {
       coolerAssetKey: finaleCloseup?.key ?? context.levelAssets.fixture.key,
       ambientProductKeys: context.levelAssets.ambientProducts.map((asset) => asset.key),
       restockProductKey: context.levelAssets.product.key,
+      showShelfForeground: !usesDispatchWarehouse,
+      shelfRuleLabel: usesDispatchWarehouse ? "" : undefined,
       onRowSelected: (rowIndex) => this.selectRushRow(rowIndex)
     };
     prepareBeverageCoolerTextures(this, config);

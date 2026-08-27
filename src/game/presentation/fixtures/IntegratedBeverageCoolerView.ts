@@ -39,6 +39,8 @@ export interface BeverageCoolerViewConfig {
   readonly bottleWidth?: number;
   readonly bottleHeights?: readonly number[];
   readonly itemOffsets?: readonly number[];
+  readonly showShelfForeground?: boolean;
+  readonly shelfRuleLabel?: string;
 }
 
 export interface BeverageCoolerRushState {
@@ -115,7 +117,7 @@ export class IntegratedBeverageCoolerView {
     this.shelfRuleLabel = scene.add.text(
       COOLER_CENTRE_X,
       126,
-      "6 SHELVES · COMPLETE 3 BOTTLES ON EACH",
+      config.shelfRuleLabel ?? "6 SHELVES · COMPLETE 3 BOTTLES ON EACH",
       {
         fontFamily: "Arial, sans-serif",
         fontSize: "14px",
@@ -127,6 +129,7 @@ export class IntegratedBeverageCoolerView {
     )
       .setOrigin(0.5)
       .setDepth(96)
+      .setVisible(config.shelfRuleLabel !== "")
       .setName("restock-cooler-shelf-rule");
 
     document.body.dataset.restockCoolerView = "background-integrated";
@@ -301,6 +304,8 @@ export class IntegratedBeverageCoolerView {
     const foreground = this.scene.add.graphics()
       .setDepth(BASE_DEPTH + 4)
       .setName("restock-cooler-shelf-foreground");
+
+    if (this.config.showShelfForeground === false) return foreground;
 
     this.glassPanels.forEach((panel, panelIndex) => {
       foreground.lineStyle(2, 0xffffff, 0.022);
