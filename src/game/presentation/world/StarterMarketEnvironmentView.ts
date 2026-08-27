@@ -7,6 +7,7 @@ import type { MarketLevelVisualPreset } from "../visual/MarketLevelVisualPreset"
 const AUTHORED_RESTOCK_ENVIRONMENT_KEYS = new Set([
   "environment-starter-market-restock-hd-v3",
   "environment-restock-water-l2-v1",
+  "environment-dispatch-loading-l6",
   "environment-final-shift-l10"
 ]);
 

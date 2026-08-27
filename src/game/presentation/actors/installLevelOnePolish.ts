@@ -14,9 +14,9 @@ const SLOT_WIDTH = 230;
 const SLOT_HEIGHT = 112;
 const BASE_DEPTH = 20;
 const LEVEL_TWO_PREFETCH_PATHS = Object.freeze([
-  "assets/game/production-v5/restock-water-l2/bg-restock-water-l2.png",
-  "assets/game/production-v5/restock-water-l2/water-case-closed.png",
-  "assets/game/production-v5/restock-water-l2/water-case-open.png"
+  "assets/game/runtime-optimized/backgrounds/l2-water.webp",
+  "assets/game/runtime-optimized/l1-l2/water-case-closed.webp",
+  "assets/game/runtime-optimized/l1-l2/water-case-open.webp"
 ]);
 let levelTwoPrefetchScheduled = false;
 

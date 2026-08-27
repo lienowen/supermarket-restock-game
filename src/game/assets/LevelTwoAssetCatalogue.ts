@@ -4,7 +4,7 @@ const asset = (descriptor: AssetDescriptor): AssetDescriptor => descriptor;
 
 const recutWorker = (key: string, fileName: string, state: string): AssetDescriptor => asset({
   key,
-  path: `assets/game/production-v5/restock-recut-v2/${fileName}`,
+  path: `assets/game/runtime-optimized/l1-l2/${fileName.replace(/\.png$/, ".webp")}`,
   category: "character",
   canvasSize: [1086, 1448],
   anchor: [0.5, 0.96],
@@ -19,7 +19,7 @@ const recutWorker = (key: string, fileName: string, state: string): AssetDescrip
 
 const recutCart = (key: string, fileName: string, state: string): AssetDescriptor => asset({
   key,
-  path: `assets/game/production-v5/restock-recut-v2/${fileName}`,
+  path: `assets/game/runtime-optimized/l1-l2/${fileName.replace(/\.png$/, ".webp")}`,
   category: "equipment",
   canvasSize: [1448, 1086],
   anchor: [0.5, 0.96],
@@ -47,7 +47,7 @@ export const LEVEL_TWO_ASSET_CATALOGUE: AssetCatalogue = Object.freeze({
     recutCart("equipment-restock-cart-water-loaded-v2", "cart-water-loaded.png", "water-loaded"),
     asset({
       key: "environment-restock-water-l2-v1",
-      path: "assets/game/production-v5/restock-water-l2/bg-restock-water-l2.png",
+      path: "assets/game/runtime-optimized/backgrounds/l2-water.webp",
       category: "environment",
       canvasSize: [1672, 941],
       anchor: [0.5, 0.5],
@@ -61,7 +61,7 @@ export const LEVEL_TWO_ASSET_CATALOGUE: AssetCatalogue = Object.freeze({
     }),
     asset({
       key: "prop-water-case-closed-v2",
-      path: "assets/game/production-v5/restock-water-l2/water-case-closed.png",
+      path: "assets/game/runtime-optimized/l1-l2/water-case-closed.webp",
       category: "prop",
       canvasSize: [1536, 1024],
       anchor: [0.5, 0.96],
@@ -75,7 +75,7 @@ export const LEVEL_TWO_ASSET_CATALOGUE: AssetCatalogue = Object.freeze({
     }),
     asset({
       key: "prop-water-case-open-v2",
-      path: "assets/game/production-v5/restock-water-l2/water-case-open.png",
+      path: "assets/game/runtime-optimized/l1-l2/water-case-open.webp",
       category: "prop",
       canvasSize: [1536, 1024],
       anchor: [0.5, 0.96],

@@ -66,7 +66,7 @@ const projectBackground = (
   state: string
 ): AssetDescriptor => asset({
   key,
-  path: `assets/game/production-v4/project-backgrounds/${fileName}`,
+  path: `assets/game/runtime-optimized/backgrounds/${fileName}`,
   category: "environment",
   canvasSize: [1672, 941],
   anchor: [0.5, 0.5],
@@ -84,7 +84,7 @@ const l8Background = (): AssetDescriptor => asset({
   // The uploaded L8 plate is currently truncated in the repository. Keep the
   // stable key but bind it to the validated cleaning plate until the binary is
   // replaced; shipping a known-good supermarket scene is preferable to black.
-  path: "assets/game/production-v4/project-backgrounds/bg-cleaning-zone-v2.png",
+  path: "assets/game/runtime-optimized/backgrounds/cleaning.webp",
   category: "environment",
   canvasSize: [1672, 941],
   anchor: [0.5, 0.5],
@@ -99,7 +99,7 @@ const l8Background = (): AssetDescriptor => asset({
 
 const dispatchBackground = (): AssetDescriptor => asset({
   key: "environment-dispatch-loading-l6",
-  path: "assets/game/production-v8/l6-l10-rework-assets/bg-dispatch-loading-l6.png",
+  path: "assets/game/runtime-optimized/backgrounds/l6-dispatch.webp",
   category: "environment",
   canvasSize: [1536, 1024],
   anchor: [0.5, 0.5],
@@ -190,7 +190,7 @@ export const GLOBAL_PROJECT_ASSET_CATALOGUE: AssetCatalogue = Object.freeze({
   assets: Object.freeze([
     asset({
       key: "environment-starter-market-restock-hd-v3",
-      path: "assets/game/production-v3/cooler-restock/market_bg_hd.png",
+      path: "assets/game/runtime-optimized/backgrounds/l1-market.webp",
       category: "environment",
       canvasSize: [1672, 941],
       anchor: [0.5, 0.5],
@@ -204,22 +204,22 @@ export const GLOBAL_PROJECT_ASSET_CATALOGUE: AssetCatalogue = Object.freeze({
     }),
     projectBackground(
       "environment-project-restock-v2",
-      "bg-restock-zone-v2.png",
+      "restock.webp",
       "restock-zone-v2"
     ),
     projectBackground(
       "environment-project-checkout-v2",
-      "bg-checkout-zone-v2.png",
+      "checkout.webp",
       "checkout-zone-v2"
     ),
     projectBackground(
       "environment-project-cleaning-v2",
-      "bg-cleaning-zone-v2.png",
+      "cleaning.webp",
       "cleaning-zone-v2"
     ),
     projectBackground(
       "environment-project-order-hunt-v2",
-      "bg-order-hunt-zone-v2.png",
+      "order-hunt.webp",
       "order-hunt-zone-v2"
     ),
     l8Background(),

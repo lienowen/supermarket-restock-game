@@ -18,6 +18,7 @@ import { mountGuidedLevelBriefingDomOverlay } from "../../presentation/ui/Guided
 import { mountLevelBriefingDomOverlay } from "../../presentation/ui/LevelBriefingDomOverlay";
 import { BrowserCampaignSessionStore } from "../browser/BrowserCampaignSessionStore";
 import { requestMobileLandscapeMode } from "../browser/MobileLandscapeController";
+import { scheduleNextLevelWarmup } from "../browser/NextLevelWarmup";
 import { createGameplayScene } from "./GameplaySceneRegistry";
 import { installSafeInteractiveGuard } from "./SafeInteractiveGuard";
 import { installSoftwareLandscapeInput } from "./SoftwareLandscapeInput";
@@ -125,6 +126,19 @@ export async function createPhaserGame(
     scene: [activeScene]
   });
   installSoftwareLandscapeInput(game, presentation.world.width, presentation.world.height);
+  const activeLevelIndex = MAIN_LEVEL_CAMPAIGN_RUNTIME.levels.findIndex(
+    (entry) => entry.level.id === presentation.campaignLevel.level.id
+  );
+  const nextLevel = MAIN_LEVEL_CAMPAIGN_RUNTIME.levels[activeLevelIndex + 1];
+  const nextPresentation = nextLevel
+    ? createStarterMarketPresentationContext(nextLevel.level.id)
+    : undefined;
+  scheduleNextLevelWarmup(nextPresentation
+    ? {
+        mode: nextPresentation.mode,
+        assetPaths: nextPresentation.levelAssets.preload.map((asset) => asset.path)
+      }
+    : undefined);
   game.registry.set("campaignSession", session);
   game.registry.set("levelExperience", experience);
 

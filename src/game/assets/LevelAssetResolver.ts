@@ -92,7 +92,8 @@ const CLEAN_SPILL_ASSET_KEYS = Object.freeze([
 ]);
 const BACKGROUND_ONLY_RESTOCK_LEVEL_IDS = new Set([
   "starter-level-001",
-  "starter-level-002"
+  "starter-level-002",
+  "starter-level-006"
 ]);
 const RECUT_RESTOCK_LEVEL_IDS = new Set([
   "starter-level-001",

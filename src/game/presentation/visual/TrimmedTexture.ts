@@ -14,8 +14,11 @@ export interface TrimmedTextureOptions {
 }
 
 const DEFAULT_ALPHA_THRESHOLD = 10;
-const GOLDEN_REQUESTED_ITEM_SCALE = 1.42;
-const GOLDEN_DECOY_ITEM_SCALE = 1.18;
+// L5 products live inside authored produce, grocery and dairy zones. Scaling
+// them above their measured boxes made them look like floating promotional
+// stickers instead of products placed on shelves.
+const GOLDEN_REQUESTED_ITEM_SCALE = 0.9;
+const GOLDEN_DECOY_ITEM_SCALE = 0.82;
 
 const fitSize = (
   width: number,
