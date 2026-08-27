@@ -84,14 +84,14 @@ export interface BeverageCoolerRushState {
 }
 
 const CLOSEUP_CENTRE_X = 800;
-const CLOSEUP_CENTRE_Y = 485;
-const CLOSEUP_WIDTH = 1180;
-const CLOSEUP_HEIGHT = 664;
-const SLOT_XS = [623, 993] as const;
-const SLOT_YS = [347, 467, 587] as const;
-const SHELF_BASELINE_YS = [400, 510, 633] as const;
-const SLOT_WIDTH = 320;
-const SLOT_HEIGHT = 108;
+const CLOSEUP_CENTRE_Y = 450;
+const CLOSEUP_WIDTH = 1600;
+const CLOSEUP_HEIGHT = 900;
+const SLOT_XS = [560, 1062] as const;
+const SLOT_YS = [263, 425, 588] as const;
+const SHELF_BASELINE_YS = [335, 484, 651] as const;
+const SLOT_WIDTH = 434;
+const SLOT_HEIGHT = 146;
 const BASE_DEPTH = 48;
 
 const createSlots = (): readonly HdCoolerSlot[] => Object.freeze(
@@ -131,12 +131,11 @@ export class BeverageCoolerView {
     this.panel = scene.add.rectangle(
       CLOSEUP_CENTRE_X,
       CLOSEUP_CENTRE_Y,
-      CLOSEUP_WIDTH + 48,
-      CLOSEUP_HEIGHT + 46,
+      CLOSEUP_WIDTH,
+      CLOSEUP_HEIGHT,
       0x07130f,
-      0.9
+      1
     )
-      .setStrokeStyle(3, 0xd9b84f, 0.52)
       .setDepth(BASE_DEPTH)
       .setName("restock-cooler-closeup-panel");
 
@@ -162,7 +161,7 @@ export class BeverageCoolerView {
       .setDepth(BASE_DEPTH + 5)
       .setName("restock-cooler-front-glass-hd");
 
-    this.title = scene.add.text(800, 170, "FINAL COOLER RESTOCK", {
+    this.title = scene.add.text(800, 154, "FINAL COOLER RESTOCK", {
       fontFamily: "Arial, sans-serif",
       fontSize: "28px",
       fontStyle: "bold",
@@ -174,7 +173,7 @@ export class BeverageCoolerView {
       .setDepth(BASE_DEPTH + 8)
       .setName("restock-cooler-closeup-title");
 
-    this.subtitle = scene.add.text(800, 211, "3 BATCHES · 18 BOTTLES · 6 SHELVES", {
+    this.subtitle = scene.add.text(800, 195, "3 BATCHES · 18 BOTTLES · 6 SHELVES", {
       fontFamily: "Arial, sans-serif",
       fontSize: "15px",
       fontStyle: "bold",
@@ -413,7 +412,7 @@ export class BeverageCoolerView {
     if (!holder || !slot) throw new Error(`Missing cooler shelf holder ${rowIndex}`);
 
     const localTarget = this.itemLocalPosition(rowIndex, itemIndex);
-    const bottleHeight = Phaser.Math.Linear(96, 112, slot.shelfIndex / 2);
+    const bottleHeight = Phaser.Math.Linear(112, 130, slot.shelfIndex / 2);
     const sourceX = this.config.stockSource.x;
     const sourceY = this.config.stockSource.y - 34;
     const bottle = this.scene.add.image(
@@ -422,7 +421,7 @@ export class BeverageCoolerView {
       HD_ASSETS.colaBottle
     )
       .setOrigin(0.5, 1)
-      .setDisplaySize(46, bottleHeight)
+      .setDisplaySize(54, bottleHeight)
       .setAlpha(animate ? 0.72 : 1)
       .setDepth(BASE_DEPTH + 4)
       .setName(`beverage-cooler-row-${rowIndex}-item-${itemIndex}`);
@@ -470,7 +469,7 @@ export class BeverageCoolerView {
   private itemLocalPosition(rowIndex: number, itemIndex: number): CoolerStockPoint {
     const slot = this.slots[rowIndex];
     if (!slot) throw new Error(`Missing cooler shelf geometry ${rowIndex}`);
-    const positions = [-82, 0, 82] as const;
+    const positions = [-112, 0, 112] as const;
     const shelfBaselineY = SHELF_BASELINE_YS[slot.shelfIndex] ?? slot.y;
     return Object.freeze({
       x: positions[itemIndex] ?? 0,

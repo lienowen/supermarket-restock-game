@@ -75,10 +75,11 @@ test("Level 10 switches to a readable cooler close-up for the 18 placements", ()
   assert.match(sceneSource, /usesFinaleWallCooler\s*\?\s*new HdBeverageCoolerView/);
   assert.doesNotMatch(sceneSource, /slotWidth:\s*50/);
   assert.doesNotMatch(sceneSource, /bottleWidth:\s*13/);
-  assert.match(closeupSource, /const CLOSEUP_WIDTH = 1180/);
-  assert.match(closeupSource, /const SLOT_WIDTH = 320/);
-  assert.match(closeupSource, /const SLOT_XS = \[623, 993\]/);
-  assert.match(closeupSource, /const SLOT_YS = \[347, 467, 587\]/);
+  assert.match(closeupSource, /const CLOSEUP_WIDTH = 1600/);
+  assert.match(closeupSource, /const CLOSEUP_HEIGHT = 900/);
+  assert.match(closeupSource, /const SLOT_WIDTH = 434/);
+  assert.match(closeupSource, /const SLOT_XS = \[560, 1062\]/);
+  assert.match(closeupSource, /const SLOT_YS = \[263, 425, 588\]/);
   assert.match(closeupSource, /\.setAlpha\(0\)/);
   assert.match(catalogueSource, /bg-l10-cooler-closeup-v1\.png/);
   assert.match(sceneSource, /finaleStation:/);
