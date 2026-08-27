@@ -6,8 +6,8 @@ const read = (path) => fs.readFileSync(path, "utf8");
 
 test("Level 5 products stay shelf-sized instead of becoming floating stickers", () => {
   const source = read("src/game/presentation/visual/TrimmedTexture.ts");
-  assert.match(source, /GOLDEN_REQUESTED_ITEM_SCALE = 0\.9/);
-  assert.match(source, /GOLDEN_DECOY_ITEM_SCALE = 0\.82/);
+  assert.match(source, /GOLDEN_REQUESTED_ITEM_SCALE = 0\.62/);
+  assert.match(source, /GOLDEN_DECOY_ITEM_SCALE = 0\.56/);
 });
 
 test("Level 6 uses its authored dispatch plate without duplicate store dressing", () => {
