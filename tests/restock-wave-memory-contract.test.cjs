@@ -97,3 +97,14 @@ test("Level 10 keeps its challenge inside the world instead of opening memory UI
   assert.doesNotMatch(finaleBlock, /waveMemory:/);
   assert.doesNotMatch(finaleBlock, /memoryPreview:/);
 });
+
+test("Level 10 cooler artwork contains a complete non-truncated PNG stream", () => {
+  const image = require("node:fs").readFileSync(
+    "public/assets/game/production-v9/l10-final-redesign/bg-l10-cooler-closeup-v1.png"
+  );
+  const pngSignature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+
+  assert.equal(image.subarray(0, 8).equals(pngSignature), true);
+  assert.equal(image.subarray(-8, -4).toString("ascii"), "IEND");
+  assert.ok(image.length > 1_500_000, "L10 cooler PNG was unexpectedly truncated");
+});
