@@ -127,6 +127,21 @@ const finalShiftBackground = (): AssetDescriptor => asset({
   status: "production"
 });
 
+const finalShiftCoolerCloseup = (): AssetDescriptor => asset({
+  key: "fixture-final-shift-cooler-closeup-l10",
+  path: "assets/game/production-v9/l10-final-redesign/bg-l10-cooler-closeup-v1.png",
+  category: "fixture",
+  canvasSize: [1672, 941],
+  anchor: [0.5, 0.5],
+  defaultScale: 1,
+  depthGroup: "fixtures",
+  preloadGroup: "starter-market",
+  perspective: "fixed-third-person",
+  lightDirection: "upper-left",
+  state: "final-night-cooler-closeup-l10",
+  status: "production"
+});
+
 const l8Spill = (
   key: string,
   fileName: string,
@@ -210,6 +225,7 @@ export const GLOBAL_PROJECT_ASSET_CATALOGUE: AssetCatalogue = Object.freeze({
     l8Background(),
     dispatchBackground(),
     finalShiftBackground(),
+    finalShiftCoolerCloseup(),
     l5OrderIcon("ui-l5-order-milk", "order-milk-clean.png", "milk"),
     l5OrderIcon("ui-l5-order-cereal", "order-cereal-clean.png", "cereal"),
     asset({

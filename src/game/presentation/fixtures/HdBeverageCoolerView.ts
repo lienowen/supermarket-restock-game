@@ -84,14 +84,14 @@ export interface BeverageCoolerRushState {
 }
 
 const CLOSEUP_CENTRE_X = 800;
-const CLOSEUP_CENTRE_Y = 466;
-const CLOSEUP_WIDTH = 1040;
-const CLOSEUP_HEIGHT = 694;
-const SLOT_XS = [640, 920] as const;
-const SLOT_YS = [300, 428, 543] as const;
-const SHELF_BASELINE_YS = [367, 487, 598] as const;
-const SLOT_WIDTH = 280;
-const SLOT_HEIGHT = 112;
+const CLOSEUP_CENTRE_Y = 485;
+const CLOSEUP_WIDTH = 1180;
+const CLOSEUP_HEIGHT = 664;
+const SLOT_XS = [623, 993] as const;
+const SLOT_YS = [347, 467, 587] as const;
+const SHELF_BASELINE_YS = [400, 510, 633] as const;
+const SLOT_WIDTH = 320;
+const SLOT_HEIGHT = 108;
 const BASE_DEPTH = 48;
 
 const createSlots = (): readonly HdCoolerSlot[] => Object.freeze(
@@ -159,7 +159,7 @@ export class BeverageCoolerView {
       .setDepth(BASE_DEPTH + 5)
       .setName("restock-cooler-front-glass-hd");
 
-    this.title = scene.add.text(800, 160, "RESTOCK THE EMPTY COOLER", {
+    this.title = scene.add.text(800, 170, "FINAL COOLER RESTOCK", {
       fontFamily: "Arial, sans-serif",
       fontSize: "28px",
       fontStyle: "bold",
@@ -171,7 +171,7 @@ export class BeverageCoolerView {
       .setDepth(BASE_DEPTH + 8)
       .setName("restock-cooler-closeup-title");
 
-    this.subtitle = scene.add.text(800, 202, "6 SHELVES · 3 BOTTLES PER SHELF", {
+    this.subtitle = scene.add.text(800, 211, "3 BATCHES · 18 BOTTLES · 6 SHELVES", {
       fontFamily: "Arial, sans-serif",
       fontSize: "15px",
       fontStyle: "bold",
@@ -467,7 +467,7 @@ export class BeverageCoolerView {
   private itemLocalPosition(rowIndex: number, itemIndex: number): CoolerStockPoint {
     const slot = this.slots[rowIndex];
     if (!slot) throw new Error(`Missing cooler shelf geometry ${rowIndex}`);
-    const positions = [-72, 0, 72] as const;
+    const positions = [-82, 0, 82] as const;
     const shelfBaselineY = SHELF_BASELINE_YS[slot.shelfIndex] ?? slot.y;
     return Object.freeze({
       x: positions[itemIndex] ?? 0,

@@ -28,6 +28,9 @@ interface BaseResolvedLevelAssets {
   readonly workerWalk: readonly [AssetDescriptor, AssetDescriptor];
 }
 
+const FINAL_SHIFT_ENVIRONMENT_KEY = "environment-final-shift-l10";
+const FINAL_SHIFT_COOLER_CLOSEUP_KEY = "fixture-final-shift-cooler-closeup-l10";
+
 interface RestockVisualAssetKeys {
   readonly workerIdleAssetKey: string;
   readonly workerPushAssetKey: string;
@@ -147,6 +150,9 @@ const restockPreloadKeys = (
 ): readonly string[] => {
   const gameplayKeys = [
     environmentAssetKey,
+    ...(environmentAssetKey === FINAL_SHIFT_ENVIRONMENT_KEY
+      ? [FINAL_SHIFT_COOLER_CLOSEUP_KEY]
+      : []),
     ...pack.workerWalkAssetKeys,
     visualAssetKeys.workerIdleAssetKey,
     visualAssetKeys.workerPushAssetKey,
