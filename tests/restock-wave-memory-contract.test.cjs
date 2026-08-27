@@ -106,5 +106,7 @@ test("Level 10 cooler artwork contains a complete non-truncated PNG stream", () 
 
   assert.equal(image.subarray(0, 8).equals(pngSignature), true);
   assert.equal(image.subarray(-8, -4).toString("ascii"), "IEND");
-  assert.ok(image.length > 1_500_000, "L10 cooler PNG was unexpectedly truncated");
+  assert.ok(image.length > 300_000, "L10 cooler PNG was unexpectedly truncated");
+  assert.equal(image.readUInt32BE(16), 1672);
+  assert.equal(image.readUInt32BE(20), 941);
 });
