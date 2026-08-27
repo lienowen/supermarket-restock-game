@@ -1,0 +1,20 @@
+{
+  "asset": "bg-l10-cooler-closeup-v1.png",
+  "canvas": { "width": 1672, "height": 941 },
+  "layout": "2 columns x 3 rows",
+  "slots": [
+    { "id": "left-top", "center": { "x": 586, "y": 275 }, "baselineY": 351 },
+    { "id": "left-middle", "center": { "x": 586, "y": 445 }, "baselineY": 506 },
+    { "id": "left-bottom", "center": { "x": 586, "y": 615 }, "baselineY": 680 },
+    { "id": "right-top", "center": { "x": 1110, "y": 275 }, "baselineY": 351 },
+    { "id": "right-middle", "center": { "x": 1110, "y": 445 }, "baselineY": 506 },
+    { "id": "right-bottom", "center": { "x": 1110, "y": 615 }, "baselineY": 680 }
+  ],
+  "recommendedHitArea": { "width": 450, "height": 145 },
+  "notes": [
+    "Use as the L10 restocking close-up background.",
+    "Place products on baselineY, anchored bottom-center.",
+    "Keep HUD above the cooler header and outside the six slots."
+  ]
+}
+
