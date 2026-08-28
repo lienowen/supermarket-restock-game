@@ -40,6 +40,7 @@ test("L8 provides a guided cart handoff and reliable mobile scrubbing", () => {
   assert.match(source, /DANGER FIRST/);
   assert.match(source, /cleaning-cart-guide/);
   assert.match(source, /GO TO THE CLEANING CART/);
+  assert.match(source, /if \(this\.pendingToolWalk \|\| targetIndex >= 0\) scene\.player\?\.setDestination\(targetPoint\)/);
   assert.match(source, /if \(pointer\?\.isDown\) this\.startScrub\(pointer\)/);
   assert.doesNotMatch(source, /closing-customer-patrol/);
   assert.doesNotMatch(source, /customerWalkTween/);

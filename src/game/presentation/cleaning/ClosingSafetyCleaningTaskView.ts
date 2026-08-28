@@ -529,7 +529,14 @@ export class ClosingSafetyCleaningTaskView {
     const targetPoint = targetIndex >= 0
       ? this.config.spotPositions[targetIndex]
       : this.config.toolPoint;
-    if (!targetPoint || scene.isPlayerNear?.(targetPoint) !== true) return;
+    if (!targetPoint) return;
+    if (scene.isPlayerNear?.(targetPoint) !== true) {
+      // A premature swipe on the floor can be interpreted as manual navigation
+      // by Phaser. Keep the guided destination authoritative until arrival so
+      // the worker never stalls halfway to the cart, sign or spill.
+      if (this.pendingToolWalk || targetIndex >= 0) scene.player?.setDestination(targetPoint);
+      return;
+    }
 
     if (this.pendingToolWalk && this.currentPhase === "tools") {
       this.pendingToolWalk = false;
