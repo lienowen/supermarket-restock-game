@@ -223,7 +223,7 @@ export class LevelCompleteOverlay {
     // Keep one generous hit surface above every visual child. This avoids
     // mobile edge misses on the arrow/right half after canvas fitting or the
     // portrait-to-landscape coordinate transform.
-    const buttonHit = scene.add.rectangle(0, 0, 390, 112, 0xffffff, 0.001)
+    const buttonHit = scene.add.rectangle(0, 0, 460, 120, 0xffffff, 0.001)
       .setInteractive({ useHandCursor: true })
       .setName("completion-primary-action-hit");
     const buttonContainer = scene.add.container(0, buttonY, [
@@ -233,11 +233,15 @@ export class LevelCompleteOverlay {
       buttonLabel,
       buttonArrow,
       buttonHit
-    ]).setName("completion-primary-action");
+    ])
+      .setSize(460, 120)
+      .setInteractive({ useHandCursor: true })
+      .setName("completion-primary-action");
 
     buttonHit.on("pointerover", () => buttonContainer.setScale(1.045));
     buttonHit.on("pointerout", () => buttonContainer.setScale(1));
     buttonHit.on("pointerdown", () => this.continueOnce());
+    buttonContainer.on("pointerdown", () => this.continueOnce());
 
     this.container = scene.add.container(config.centreX, config.centreY, [
       shade,
