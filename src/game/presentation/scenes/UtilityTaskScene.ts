@@ -262,7 +262,6 @@ export class UtilityTaskScene extends Phaser.Scene {
         wetFloorSignAssetKey: context.levelAssets.wetFloorSign.key,
         spillAssetKeys: this.cleaningExperience.spillAssetKeys,
         warningRequiredSpillIndexes: this.cleaningExperience.warningRequiredSpillIndexes,
-        customerPatrolAssetKey: context.levelAssets.customerPatrol.key,
         toolPoint: context.runtime.toolPoint,
         spotPositions: context.runtime.spotPositions,
         visual

@@ -29,7 +29,7 @@ test("L8 unlocks player-chosen dry cleanup only after every danger is complete",
   assert.deepEqual(resolveClosingSafetyRouteChoices(6, new Set([0, 2, 4]), warnings), [1, 3, 5]);
 });
 
-test("L8 requires explicit safety-sign recovery after scrubbing", () => {
+test("L8 provides a guided cart handoff and reliable mobile scrubbing", () => {
   const source = fs.readFileSync(
     "src/game/presentation/cleaning/ClosingSafetyCleaningTaskView.ts",
     "utf8"
@@ -38,9 +38,9 @@ test("L8 requires explicit safety-sign recovery after scrubbing", () => {
   assert.match(source, /recoverWarningSign/);
   assert.match(source, /TAP AGAIN TO RECOVER SAFETY SIGN/);
   assert.match(source, /DANGER FIRST/);
-  assert.match(source, /closing-customer-patrol/);
-  assert.match(source, /customerWalkTween/);
-  assert.match(source, /onYoyo: \(\) => this\.customerPatrol\?\.setFlipX\(true\)/);
-  assert.match(source, /CUSTOMER WAITING · SECURE HAZARD/);
-  assert.match(source, /cleaningCustomerRisk/);
+  assert.match(source, /cleaning-cart-guide/);
+  assert.match(source, /GO TO THE CLEANING CART/);
+  assert.match(source, /if \(pointer\?\.isDown\) this\.startScrub\(pointer\)/);
+  assert.doesNotMatch(source, /closing-customer-patrol/);
+  assert.doesNotMatch(source, /customerWalkTween/);
 });

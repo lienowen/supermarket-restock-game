@@ -9,7 +9,6 @@ export interface ClosingSafetyCleaningTaskViewConfig {
   readonly wetFloorSignAssetKey: string;
   readonly spillAssetKeys: readonly string[];
   readonly warningRequiredSpillIndexes: readonly number[];
-  readonly customerPatrolAssetKey: string;
   readonly toolPoint: NavigationPoint;
   readonly spotPositions: readonly NavigationPoint[];
   readonly visual: CleanLevelVisualPreset;
@@ -30,10 +29,10 @@ interface CleanScenePort extends Phaser.Scene {
   readonly player?: CleanNavigationPort;
 }
 
-const SCRUB_DISTANCE_REQUIRED = 260;
-const MAX_SCRUB_STEP = 46;
-const MOBILE_SPILL_TOUCH_WIDTH = 230;
-const MOBILE_SPILL_TOUCH_HEIGHT = 170;
+const SCRUB_DISTANCE_REQUIRED = 190;
+const MAX_SCRUB_STEP = 64;
+const MOBILE_SPILL_TOUCH_WIDTH = 260;
+const MOBILE_SPILL_TOUCH_HEIGHT = 200;
 const SPILL_SIZE_MULTIPLIERS = Object.freeze([
   Object.freeze({ width: 1.0, height: 0.9 }),
   Object.freeze({ width: 1.08, height: 0.94 }),
@@ -56,11 +55,7 @@ export class ClosingSafetyCleaningTaskView {
   private readonly completedSpillIndexes = new Set<number>();
   private readonly awaitingSignRecovery = new Set<number>();
   private readonly scrubHint: Phaser.GameObjects.Text;
-  private customerPatrol?: Phaser.GameObjects.Image;
-  private customerPatrolTween?: Phaser.Tweens.Tween;
-  private customerWalkTween?: Phaser.Tweens.Tween;
-  private customerHoldIndex = -1;
-  private customerSafetyStops = 0;
+  private toolGuide?: Phaser.GameObjects.Container;
   private toolTouchZone?: Phaser.GameObjects.Zone;
   private previousPhase: ClosingSafetyCleaningTaskViewState["phase"] = "tools";
   private currentPhase: ClosingSafetyCleaningTaskViewState["phase"] = "tools";
@@ -113,12 +108,6 @@ export class ClosingSafetyCleaningTaskView {
       suffix: "--closing-sign-trimmed",
       padding: 2
     });
-    const customerTexture = createTrimmedTexture(this.scene, this.config.customerPatrolAssetKey, {
-      alphaThreshold: 10,
-      suffix: "--closing-customer-trimmed",
-      padding: 2
-    });
-
     const cartShadow = this.scene.add.ellipse(
       this.config.toolPoint.x + 5,
       this.config.toolPoint.y + 4,
@@ -164,35 +153,32 @@ export class ClosingSafetyCleaningTaskView {
     this.staticObjects.push(cartShadow, cart, this.toolTouchZone);
     this.toolObjects.push(cart);
 
-    this.customerPatrol = this.scene.add.image(410, 672, customerTexture)
-      .setOrigin(0.5, 0.96)
-      .setDisplaySize(92, 154)
-      .setDepth(23)
-      .setVisible(false)
-      .setName("closing-customer-patrol");
-    this.customerPatrolTween = this.scene.tweens.add({
-      targets: this.customerPatrol,
-      x: 1190,
-      duration: 8200,
+    const guideRing = this.scene.add.ellipse(0, 0, toolTouchWidth * 0.86, toolTouchHeight * 0.68)
+      .setStrokeStyle(6, 0xffd54a, 0.95);
+    const guideLabel = this.scene.add.text(0, -toolTouchHeight * 0.48, "CLEANING CART · GO", {
+      fontFamily: "Arial, sans-serif",
+      fontSize: "18px",
+      fontStyle: "bold",
+      color: "#17251f",
+      backgroundColor: "#ffd54a",
+      padding: { x: 14, y: 8 }
+    }).setOrigin(0.5);
+    this.toolGuide = this.scene.add.container(
+      this.config.toolPoint.x,
+      this.config.toolPoint.y - Math.max(18, this.config.visual.cartSize.height * 0.18),
+      [guideRing, guideLabel]
+    ).setDepth(27).setName("cleaning-cart-guide");
+    this.scene.tweens.add({
+      targets: guideRing,
+      scaleX: 1.08,
+      scaleY: 1.08,
+      alpha: 0.42,
+      duration: 620,
       yoyo: true,
       repeat: -1,
-      ease: "Linear",
-      onYoyo: () => this.customerPatrol?.setFlipX(true),
-      onRepeat: () => this.customerPatrol?.setFlipX(false),
-      paused: true
+      ease: "Sine.InOut"
     });
-    // The patrol currently has one static customer cutout. A small grounded
-    // step cycle makes the travel read as walking instead of a smooth glide.
-    this.customerWalkTween = this.scene.tweens.add({
-      targets: this.customerPatrol,
-      y: 667,
-      duration: 145,
-      yoyo: true,
-      repeat: -1,
-      ease: "Sine.InOut",
-      paused: true
-    });
-    this.staticObjects.push(this.customerPatrol);
+    this.staticObjects.push(this.toolGuide);
 
     this.config.spotPositions.forEach((point, index) => {
       this.spills.push(this.createSpill(point, index));
@@ -224,8 +210,6 @@ export class ClosingSafetyCleaningTaskView {
       .join(",");
     this.syncSafetyDataset();
     document.body.dataset.cleanScrubProgress = "0";
-    document.body.dataset.cleaningCustomerRisk = "clear";
-    document.body.dataset.cleaningCustomerSafetyStops = "0";
     return Object.freeze([...this.spills]);
   }
 
@@ -270,16 +254,12 @@ export class ClosingSafetyCleaningTaskView {
     this.completedSpillIndexes.clear();
     this.awaitingSignRecovery.clear();
     this.scrubHint.destroy();
-    this.customerPatrolTween?.stop();
-    this.customerWalkTween?.stop();
     delete document.body.dataset.cleanScrubProgress;
     delete document.body.dataset.cleaningControl;
     delete document.body.dataset.cleaningPendingWalk;
     delete document.body.dataset.cleaningSafetyRequired;
     delete document.body.dataset.cleaningSafetyPlaced;
     delete document.body.dataset.cleaningAwaitingSignRecovery;
-    delete document.body.dataset.cleaningCustomerRisk;
-    delete document.body.dataset.cleaningCustomerSafetyStops;
   }
 
   private showToolsPhase(animate: boolean): void {
@@ -308,8 +288,7 @@ export class ClosingSafetyCleaningTaskView {
     });
     this.spills.forEach((spill) => spill.setVisible(false).setAlpha(0).setScale(0.82));
     this.warningSigns.forEach((sign) => sign.setVisible(false).setAlpha(0));
-    this.customerPatrol?.setVisible(false);
-    this.pauseCustomerPatrol();
+    this.toolGuide?.setVisible(true);
   }
 
   private showSpillPhase(completedSpills: number, animate: boolean): void {
@@ -322,8 +301,7 @@ export class ClosingSafetyCleaningTaskView {
       this.scene.tweens.killTweensOf(tool);
       tool.setAlpha(this.config.visual.collectedToolsAlpha);
     });
-    this.customerPatrol?.setVisible(true);
-    if (this.customerHoldIndex < 0) this.resumeCustomerPatrol();
+    this.toolGuide?.setVisible(false);
 
     this.spills.forEach((spill, index) => {
       this.scene.tweens.killTweensOf(spill);
@@ -377,8 +355,7 @@ export class ClosingSafetyCleaningTaskView {
     this.scrubHint.setVisible(false);
     this.spills.forEach((spill) => spill.setVisible(false).setAlpha(0));
     this.warningSigns.forEach((sign) => sign.setVisible(false).setAlpha(0));
-    this.customerPatrol?.setVisible(false);
-    this.pauseCustomerPatrol();
+    this.toolGuide?.setVisible(false);
     this.syncSpillInteractivity();
   }
 
@@ -482,7 +459,7 @@ export class ClosingSafetyCleaningTaskView {
         document.body.dataset.cleaningPendingWalk = `sign-${index + 1}`;
         return;
       }
-      this.placeWarningSign(index);
+      this.placeWarningSign(index, pointer);
       return;
     }
 
@@ -498,7 +475,7 @@ export class ClosingSafetyCleaningTaskView {
     this.startScrub(pointer);
   }
 
-  private placeWarningSign(index: number): void {
+  private placeWarningSign(index: number, pointer?: Phaser.Input.Pointer): void {
     if (!this.warningRequired.has(index) || this.warningPlaced.has(index)) return;
     this.warningPlaced.add(index);
     this.pendingWarningWalkIndex = -1;
@@ -522,12 +499,8 @@ export class ClosingSafetyCleaningTaskView {
     }
     this.scrubHint.setText("SAFETY SIGN SET · DRAG TO SCRUB");
     this.syncSafetyDataset();
-    if (this.customerHoldIndex === index) {
-      this.customerHoldIndex = -1;
-      document.body.dataset.cleaningCustomerRisk = "clear";
-      this.resumeCustomerPatrol();
-    }
     this.showSafetyFeedback(index);
+    if (pointer?.isDown) this.startScrub(pointer);
   }
 
   private startScrub(pointer: Phaser.Input.Pointer): void {
@@ -541,7 +514,15 @@ export class ClosingSafetyCleaningTaskView {
 
   private readonly handleSceneUpdate = (): void => {
     const scene = this.scene as CleanScenePort;
-    this.updateCustomerPatrolSafety();
+    if (this.currentPhase === "tools" && !this.pendingToolWalk) {
+      scene.player?.setDestination(this.config.toolPoint);
+      this.pendingToolWalk = true;
+      this.scrubHint
+        .setPosition(this.config.toolPoint.x, this.config.toolPoint.y - 150)
+        .setText("GO TO THE CLEANING CART")
+        .setVisible(true);
+      document.body.dataset.cleaningPendingWalk = "tools";
+    }
     const targetIndex = this.pendingWarningWalkIndex >= 0
       ? this.pendingWarningWalkIndex
       : this.pendingSpillWalkIndex;
@@ -760,45 +741,6 @@ export class ClosingSafetyCleaningTaskView {
       .sort((a, b) => a - b)
       .map((index) => String(index + 1))
       .join(",");
-  }
-
-  private updateCustomerPatrolSafety(): void {
-    const customer = this.customerPatrol;
-    if (!customer?.visible || this.currentPhase !== "spills") return;
-    const unsafeIndex = this.routeChoices().find((index) => {
-      if (!this.warningRequired.has(index) || this.warningPlaced.has(index)) return false;
-      const point = this.config.spotPositions[index];
-      return Boolean(point && Math.hypot(customer.x - point.x, customer.y - point.y) < 135);
-    });
-    if (unsafeIndex === undefined) {
-      if (this.customerHoldIndex >= 0) {
-        this.customerHoldIndex = -1;
-        document.body.dataset.cleaningCustomerRisk = "clear";
-        this.resumeCustomerPatrol();
-      }
-      return;
-    }
-    if (this.customerHoldIndex === unsafeIndex) return;
-    this.customerHoldIndex = unsafeIndex;
-    this.customerSafetyStops += 1;
-    this.pauseCustomerPatrol();
-    document.body.dataset.cleaningCustomerRisk = `blocked-by-hazard-${unsafeIndex + 1}`;
-    document.body.dataset.cleaningCustomerSafetyStops = String(this.customerSafetyStops);
-    this.scrubHint
-      .setPosition(customer.x, customer.y - 126)
-      .setText(`CUSTOMER WAITING · SECURE HAZARD ${unsafeIndex + 1}`)
-      .setVisible(true);
-  }
-
-  private pauseCustomerPatrol(): void {
-    this.customerPatrolTween?.pause();
-    this.customerWalkTween?.pause();
-    this.customerPatrol?.setY(672);
-  }
-
-  private resumeCustomerPatrol(): void {
-    this.customerPatrolTween?.resume();
-    this.customerWalkTween?.resume();
   }
 
   private syncSpillInteractivity(): void {
