@@ -45,6 +45,78 @@ const applyStyles = (element: HTMLElement, styles: Partial<CSSStyleDeclaration>)
 
 const assetUrl = (path: string): string => `/${path.replace(/^\/+/, "")}`;
 
+interface CheckoutProductDisplaySize {
+  readonly width: number;
+  readonly height: number;
+}
+
+const checkoutProductDisplaySize = (assetKey: string): CheckoutProductDisplaySize => {
+  if (assetKey === "product-apple") return { width: 58, height: 58 };
+  if (assetKey === "product-oats-canister") return { width: 60, height: 64 };
+  if (assetKey === "product-chips-bag") return { width: 62, height: 68 };
+  return { width: 60, height: 72 };
+};
+
+const trimmedCheckoutProductSources = new Map<string, string>();
+
+/**
+ * Checkout products come from several art batches. Some fill their PNG canvas,
+ * while older assets keep large transparent margins. Crop the alpha bounds at
+ * runtime so the visible product, rather than its source canvas, owns sizing.
+ */
+const trimTransparentProduct = (image: HTMLImageElement, sourcePath: string): void => {
+  const sourceWidth = image.naturalWidth;
+  const sourceHeight = image.naturalHeight;
+  if (sourceWidth < 1 || sourceHeight < 1) return;
+
+  const sourceCanvas = document.createElement("canvas");
+  sourceCanvas.width = sourceWidth;
+  sourceCanvas.height = sourceHeight;
+  const sourceContext = sourceCanvas.getContext("2d", { willReadFrequently: true });
+  if (!sourceContext) return;
+  sourceContext.drawImage(image, 0, 0);
+
+  const pixels = sourceContext.getImageData(0, 0, sourceWidth, sourceHeight).data;
+  let left = sourceWidth;
+  let top = sourceHeight;
+  let right = -1;
+  let bottom = -1;
+  for (let y = 0; y < sourceHeight; y += 1) {
+    for (let x = 0; x < sourceWidth; x += 1) {
+      if ((pixels[(y * sourceWidth + x) * 4 + 3] ?? 0) < 8) continue;
+      left = Math.min(left, x);
+      top = Math.min(top, y);
+      right = Math.max(right, x);
+      bottom = Math.max(bottom, y);
+    }
+  }
+  if (right < left || bottom < top) return;
+
+  const cropWidth = right - left + 1;
+  const cropHeight = bottom - top + 1;
+  const outputScale = Math.min(1, 256 / Math.max(cropWidth, cropHeight));
+  const outputCanvas = document.createElement("canvas");
+  outputCanvas.width = Math.max(1, Math.round(cropWidth * outputScale));
+  outputCanvas.height = Math.max(1, Math.round(cropHeight * outputScale));
+  const outputContext = outputCanvas.getContext("2d");
+  if (!outputContext) return;
+  outputContext.drawImage(
+    sourceCanvas,
+    left,
+    top,
+    cropWidth,
+    cropHeight,
+    0,
+    0,
+    outputCanvas.width,
+    outputCanvas.height
+  );
+  const trimmedSource = outputCanvas.toDataURL("image/png");
+  trimmedCheckoutProductSources.set(sourcePath, trimmedSource);
+  image.src = trimmedSource;
+  image.dataset.alphaTrimmed = "true";
+};
+
 export function mountCheckoutScanDom(config: CheckoutScanDomConfig): CheckoutScanDomHandle {
   if (config.productAssets.length < 3) {
     throw new Error("Checkout scan interaction requires at least three product assets");
@@ -321,16 +393,25 @@ export function mountCheckoutScanDom(config: CheckoutScanDomConfig): CheckoutSca
       transition: "opacity 160ms ease, transform 160ms ease, border-color 120ms ease"
     });
     const image = document.createElement("img");
-    image.src = assetUrl(asset.path);
     image.alt = "";
     image.draggable = false;
+    const displaySize = checkoutProductDisplaySize(asset.key);
     applyStyles(image, {
-      width: "70px",
-      height: "76px",
+      width: `${displaySize.width}px`,
+      height: `${displaySize.height}px`,
       objectFit: "contain",
+      objectPosition: "center bottom",
       pointerEvents: "none",
       filter: "drop-shadow(0 6px 8px rgba(0,0,0,0.28))"
     });
+    const cachedTrimmedSource = trimmedCheckoutProductSources.get(asset.path);
+    if (cachedTrimmedSource) {
+      image.src = cachedTrimmedSource;
+      image.dataset.alphaTrimmed = "true";
+    } else {
+      image.addEventListener("load", () => trimTransparentProduct(image, asset.path), { once: true });
+      image.src = assetUrl(asset.path);
+    }
     card.appendChild(image);
 
     const state: ProductCardState = { element: card, asset, scanned: false };

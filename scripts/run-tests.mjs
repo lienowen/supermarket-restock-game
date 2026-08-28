@@ -46,7 +46,8 @@ const run = spawnSync(
     "tests/level-experience-spec.test.cjs",
     "tests/restock-guided-mode.test.cjs",
     "tests/software-landscape-input.test.cjs",
-    "tests/market-release-readiness.test.cjs"
+    "tests/market-release-readiness.test.cjs",
+    "tests/l3-checkout-product-sizing.test.cjs"
   ],
   { encoding: "utf8" }
 );
