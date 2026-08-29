@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import type { CampaignSession } from "../../application/CampaignSession";
+import { mapSoftwareLandscapeClientPoint } from "../../infrastructure/phaser/SoftwareLandscapeGeometry";
 import { CampaignUpgradePanel } from "./CampaignUpgradePanel";
 import {
   resolveCampaignProgressionPreview,
@@ -25,6 +26,7 @@ export interface LevelCompleteOverlayConfig {
 export class LevelCompleteOverlay {
   private timer?: Phaser.Time.TimerEvent;
   private container?: Phaser.GameObjects.Container;
+  private mobileActionFallback?: (event: PointerEvent) => void;
   private handled = false;
 
   constructor(
@@ -43,6 +45,10 @@ export class LevelCompleteOverlay {
     this.timer = undefined;
     this.container?.destroy(true);
     this.container = undefined;
+    if (this.mobileActionFallback) {
+      window.removeEventListener("pointerdown", this.mobileActionFallback, true);
+      this.mobileActionFallback = undefined;
+    }
   }
 
   private create(): void {
@@ -242,6 +248,32 @@ export class LevelCompleteOverlay {
     buttonHit.on("pointerout", () => buttonContainer.setScale(1));
     buttonHit.on("pointerdown", () => this.continueOnce());
     buttonContainer.on("pointerdown", () => this.continueOnce());
+
+    // Android WebViews that keep a portrait viewport rotate the complete game
+    // with CSS. Phaser normally inverse-maps that pointer, but browser chrome
+    // resizing can leave the right half of this final button outside its hit
+    // result for a frame. A native capture listener maps the rendered canvas
+    // directly and treats the whole visual row as one action.
+    this.mobileActionFallback = (event: PointerEvent): void => {
+      if (!event.isPrimary || document.body.dataset.softwareLandscape !== "true") return;
+      const canvas = scene.game.canvas;
+      const mapped = mapSoftwareLandscapeClientPoint({
+        clientX: event.clientX,
+        clientY: event.clientY,
+        bodyRect: document.body.getBoundingClientRect(),
+        canvasRect: canvas.getBoundingClientRect(),
+        logicalWidth: config.worldWidth,
+        logicalHeight: config.worldHeight
+      });
+      if (!mapped) return;
+      const actionCentreY = config.centreY + buttonY * finalScaleY;
+      const insideAction = (
+        Math.abs(mapped.x - config.centreX) <= 250 * finalScaleX &&
+        Math.abs(mapped.y - actionCentreY) <= 72 * finalScaleY
+      );
+      if (insideAction) this.continueOnce();
+    };
+    window.addEventListener("pointerdown", this.mobileActionFallback, true);
 
     this.container = scene.add.container(config.centreX, config.centreY, [
       shade,

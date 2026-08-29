@@ -20,6 +20,9 @@ test("completion action owns one full-width topmost mobile hit surface", () => {
   assert.match(source, /buttonHit\.on\("pointerdown"/);
   assert.match(source, /buttonContainer\.on\("pointerdown"/);
   assert.match(source, /\.setSize\(460, 120\)/);
+  assert.match(source, /window\.addEventListener\("pointerdown", this\.mobileActionFallback, true\)/);
+  assert.match(source, /mapSoftwareLandscapeClientPoint/);
+  assert.match(source, /Math\.abs\(mapped\.x - config\.centreX\) <= 250 \* finalScaleX/);
 });
 
 test("software-landscape briefing is compact and uses the rotated viewport axes", () => {
