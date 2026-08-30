@@ -15,9 +15,17 @@ type CrazyGamesGameModule = {
   reportGameCompletedPercentage?: (percentage: number) => void;
 };
 
+export type CrazyGamesDataModule = {
+  clear: () => void;
+  getItem: (key: string) => string | null;
+  removeItem: (key: string) => void;
+  setItem: (key: string, value: string) => void;
+};
+
 type CrazyGamesSdk = {
   init: () => Promise<void>;
   game: CrazyGamesGameModule;
+  data: CrazyGamesDataModule;
 };
 
 type SoundManagerLike = {
@@ -104,6 +112,10 @@ class CrazyGamesPlatform {
     return Boolean(this.sdk);
   }
 
+  dataStorage(): CrazyGamesDataModule | undefined {
+    return this.sdk?.data;
+  }
+
   private async initializeInternal(): Promise<boolean> {
     try {
       if (window.__crazyGamesSdkScriptReady) {
@@ -141,7 +153,8 @@ class CrazyGamesPlatform {
 
   private applyAudioSettings(settings?: CrazyGamesSettings): void {
     if (!this.game?.sound || !settings) return;
-    if (settings.muteAudio === true) this.game.sound.mute = true;
+    this.game.sound.mute = settings.muteAudio === true;
+    document.body.dataset.crazyGamesAudio = settings.muteAudio === true ? "muted" : "audible";
   }
 }
 

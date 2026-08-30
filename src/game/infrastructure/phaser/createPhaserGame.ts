@@ -57,6 +57,14 @@ const checkoutScanDisabledFromLocation = (): boolean => featureDisabledFromLocat
 const checkoutPatienceDisabledFromLocation = (): boolean => featureDisabledFromLocation("patience");
 const holdWorkDisabledFromLocation = (): boolean => featureDisabledFromLocation("hold");
 
+const availableLocalStorage = (): Storage | undefined => {
+  try {
+    return window.localStorage;
+  } catch {
+    return undefined;
+  }
+};
+
 export async function createPhaserGame(
   options: PhaserGameFactoryOptions = {}
 ): Promise<Phaser.Game> {
@@ -73,6 +81,7 @@ export async function createPhaserGame(
   const cartCapacity = resolveCartCapacityExperienceSpec(basePresentation.campaignLevel.level);
   const checkoutPatience = resolveCheckoutPatienceExperienceSpec(basePresentation.campaignLevel.level);
 
+  const crazyGamesData = crazyGamesPlatform.dataStorage();
   const session = new CampaignSession(
     {
       campaignId: MAIN_LEVEL_CAMPAIGN_RUNTIME.campaign.id,
@@ -83,7 +92,10 @@ export async function createPhaserGame(
         reputation: 0
       }
     },
-    new BrowserCampaignSessionStore(),
+    new BrowserCampaignSessionStore(
+      crazyGamesData,
+      crazyGamesData ? availableLocalStorage() : undefined
+    ),
     gameDomainEvents
   );
   const presentation = applyMarketUpgradesToPresentation(basePresentation, session);

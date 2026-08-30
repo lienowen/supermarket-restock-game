@@ -48,7 +48,8 @@ const run = spawnSync(
     "tests/software-landscape-input.test.cjs",
     "tests/market-release-readiness.test.cjs",
     "tests/l3-checkout-product-sizing.test.cjs",
-    "tests/level-complete-mobile-acceptance.test.cjs"
+    "tests/level-complete-mobile-acceptance.test.cjs",
+    "tests/crazygames-compliance.test.cjs"
   ],
   { encoding: "utf8" }
 );

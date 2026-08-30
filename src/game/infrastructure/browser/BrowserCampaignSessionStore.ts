@@ -7,13 +7,21 @@ import {
 
 const STORAGE_PREFIX = "supermarket-restock:campaign:";
 
+export interface CampaignKeyValueStorage {
+  getItem(key: string): string | null;
+  removeItem(key: string): void;
+  setItem(key: string, value: string): void;
+}
+
 export class BrowserCampaignSessionStore implements CampaignSessionStore {
   private readonly memory = new Map<string, string>();
-  private readonly storage?: Storage;
+  private readonly storage?: CampaignKeyValueStorage;
+  private readonly legacyStorage?: CampaignKeyValueStorage;
 
-  constructor(storage?: Storage) {
+  constructor(storage?: CampaignKeyValueStorage, legacyStorage?: CampaignKeyValueStorage) {
     if (storage) {
       this.storage = storage;
+      this.legacyStorage = legacyStorage;
       return;
     }
     try {
@@ -60,6 +68,11 @@ export class BrowserCampaignSessionStore implements CampaignSessionStore {
     try {
       const persistent = this.storage?.getItem(key);
       if (persistent !== undefined && persistent !== null) return persistent;
+      const legacy = this.legacyStorage?.getItem(key);
+      if (legacy !== undefined && legacy !== null) {
+        this.storage?.setItem(key, legacy);
+        return legacy;
+      }
     } catch {
       // Fall through to in-memory state.
     }
