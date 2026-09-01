@@ -67,7 +67,7 @@ try {
   );
 
   const patienceBefore = Number(await moodPage.evaluate(() => document.body.dataset.checkoutPatienceRemaining ?? "0"));
-  for (let mistake = 1; mistake <= 3; mistake += 1) {
+  for (let mistake = 1; mistake <= 4; mistake += 1) {
     await moodPage.locator('[data-weight-kg="1"]').click();
     await moodPage.waitForFunction(
       (expected) => Number(document.body.dataset.checkoutPatienceMistakes ?? "0") >= expected,
@@ -81,7 +81,7 @@ try {
     { timeout: 7000 }
   );
   const patienceAfter = Number(await moodPage.evaluate(() => document.body.dataset.checkoutPatienceRemaining ?? "0"));
-  report.assertions.wrongWeightCostsPatience = patienceBefore - patienceAfter >= 8200;
+  report.assertions.wrongWeightCostsPatience = patienceBefore - patienceAfter >= 11000;
   report.assertions.moodTurnsImpatient = await moodPage.evaluate(
     () => document.body.dataset.checkoutPatienceMood === "impatient"
   );
@@ -208,10 +208,7 @@ async function scanEntireBasket(page, firstScanUsesDrag) {
     if (attempt === 0 && firstScanUsesDrag) await dragStandardItem(page);
     else await item.press("Enter");
 
-    // The production UI intentionally animates the next basket item in before it
-    // accepts another scan. Wait for that real interaction boundary rather than
-    // treating the first scan as the whole customer order.
-    await page.waitForTimeout(430);
+    await page.waitForTimeout(390);
   }
 
   await page.waitForFunction(
