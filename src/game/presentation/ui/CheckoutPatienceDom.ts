@@ -823,7 +823,8 @@ export function mountCheckoutPatienceDom(
     if (destroyed) return;
     const delta = Math.min(250, Math.max(0, nowMs - lastFrameMs));
     lastFrameMs = nowMs;
-    if (visible && snapshot()?.step === "serve") {
+    const playerCanAct = isReady() && !itemTransitioning;
+    if (visible && snapshot()?.step === "serve" && playerCanAct) {
       remainingMs = Math.max(0, remainingMs - delta);
       elapsedServiceMs += delta;
       updatePatienceUi();
