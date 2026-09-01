@@ -110,22 +110,8 @@ try {
       { timeout: 12000 }
     );
 
-    if (customer === 0) {
-      await dragStandardItem(page);
-      await page.waitForFunction(
-        () => document.body.dataset.checkoutPatienceScanned === "true",
-        null,
-        { timeout: 7000 }
-      );
-      report.assertions.standardItemDragWorks = true;
-    } else {
-      await page.locator("#patience-standard-item").press("Enter");
-      await page.waitForFunction(
-        () => document.body.dataset.checkoutPatienceScanned === "true",
-        null,
-        { timeout: 7000 }
-      );
-    }
+    await scanEntireBasket(page, customer === 0);
+    if (customer === 0) report.assertions.standardItemDragWorks = true;
 
     const targetWeight = TARGET_WEIGHTS[customer];
     await page.locator(`[data-weight-kg="${targetWeight}"]`).click();
@@ -211,6 +197,28 @@ async function createReadyLevelSevenPage(context, auditReport) {
     { timeout: 12000 }
   );
   return page;
+}
+
+async function scanEntireBasket(page, firstScanUsesDrag) {
+  const item = page.locator("#patience-standard-item");
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const complete = await page.evaluate(() => document.body.dataset.checkoutPatienceScanned === "true");
+    if (complete) return;
+
+    if (attempt === 0 && firstScanUsesDrag) await dragStandardItem(page);
+    else await item.press("Enter");
+
+    // The production UI intentionally animates the next basket item in before it
+    // accepts another scan. Wait for that real interaction boundary rather than
+    // treating the first scan as the whole customer order.
+    await page.waitForTimeout(430);
+  }
+
+  await page.waitForFunction(
+    () => document.body.dataset.checkoutPatienceScanned === "true",
+    null,
+    { timeout: 2500 }
+  );
 }
 
 async function dragStandardItem(page) {
