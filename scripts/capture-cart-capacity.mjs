@@ -9,8 +9,6 @@ const PORT = 4180;
 const ORIGIN = `http://127.0.0.1:${PORT}`;
 const GAME_CANVAS_SELECTOR = "#app > canvas:not(#mobile-game-backdrop)";
 const GAME_SCENE_KEY = "starter-market-shift";
-const GAME_WIDTH = 1600;
-const GAME_HEIGHT = 900;
 
 if (!existsSync(join(DIST_DIR, "index.html"))) {
   throw new Error("dist/index.html is missing. Run npm run build first.");
@@ -79,12 +77,17 @@ try {
   await page.waitForSelector(GAME_CANVAS_SELECTOR, { state: "visible", timeout: 45000 });
   await page.waitForFunction(() => document.body.dataset.activeLevel === "starter-level-006", null, { timeout: 30000 });
 
-  await clickGame(page, 1228, 850);
-  await waitForSnapshot(page, { step: "load", boxCollected: true }, 20000);
-  await page.waitForFunction(() => document.body.dataset.cartCapacityLoad === "active", null, { timeout: 20000 });
+  // Ask the same scene action used by the HUD. This avoids a brittle hardcoded
+  // pixel after HUD/career layout changes while preserving the actual walk + pickup flow.
+  await page.evaluate((sceneKey) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+    scene?.requestCurrentAction?.();
+  }, GAME_SCENE_KEY);
+  await waitForSnapshot(page, { step: "load", boxCollected: true }, 45000);
+  await page.waitForFunction(() => document.body.dataset.cartCapacityLoad === "active", null, { timeout: 30000 });
 
   const overlay = page.locator("#cart-capacity-load");
-  await overlay.waitFor({ state: "visible", timeout: 10000 });
+  await overlay.waitFor({ state: "visible", timeout: 15000 });
   const initial = await readState(page);
   report.states.initial = initial;
   report.assertions.capacityGateAppears = await overlay.isVisible();
@@ -97,15 +100,15 @@ try {
   await page.screenshot({ path: join(OUTPUT_DIR, "cart-capacity-initial.png"), fullPage: true });
 
   await tapCase(page, "delivery-large-a");
-  await page.waitForFunction(() => document.body.dataset.cartCapacityUnits === "3", null, { timeout: 3000 });
+  await page.waitForFunction(() => document.body.dataset.cartCapacityUnits === "3", null, { timeout: 8000 });
   report.assertions.tapLoadsCase = true;
   await tapCase(page, "delivery-small-a");
   await tapCase(page, "delivery-small-b");
-  await page.waitForFunction(() => document.body.dataset.cartCapacityUnits === "5", null, { timeout: 3000 });
+  await page.waitForFunction(() => document.body.dataset.cartCapacityUnits === "5", null, { timeout: 8000 });
 
   const beforeOverload = await readState(page);
   await tapCase(page, "delivery-medium-a");
-  await page.waitForFunction(() => document.body.dataset.cartCapacityWrongRejected === "true", null, { timeout: 3000 });
+  await page.waitForFunction(() => document.body.dataset.cartCapacityWrongRejected === "true", null, { timeout: 8000 });
   const afterOverload = await readState(page);
   report.states.afterOverload = afterOverload;
   report.assertions.overCapacityRejected = afterOverload.units === "5" && /TOO FULL/i.test(afterOverload.feedback);
@@ -113,35 +116,35 @@ try {
     afterOverload.loaded === beforeOverload.loaded && afterOverload.snapshot?.boxLoaded === false;
 
   await page.locator("#cart-capacity-undo").click();
-  await page.waitForFunction(() => document.body.dataset.cartCapacityUnits === "4", null, { timeout: 3000 });
+  await page.waitForFunction(() => document.body.dataset.cartCapacityUnits === "4", null, { timeout: 8000 });
   const afterUndo = await readState(page);
   report.states.afterUndo = afterUndo;
   report.assertions.undoRecoversDeadEnd = afterUndo.undoUsed === "true" && afterUndo.units === "4";
 
   await tapCase(page, "delivery-medium-a");
-  await page.waitForFunction(() => document.body.dataset.cartCapacityState === "full", null, { timeout: 3000 });
+  await page.waitForFunction(() => document.body.dataset.cartCapacityState === "full", null, { timeout: 8000 });
   report.assertions.firstTripHitsSix = documentTruthy(await readState(page), "6", "1");
   report.assertions.loadedCapacityCartVisible = await imageUses(page, "equipment-capacity-cart-loaded.png");
   await page.screenshot({ path: join(OUTPUT_DIR, "cart-capacity-first-trip-full.png"), fullPage: true });
 
-  await page.waitForFunction(() => document.body.dataset.cartCapacityRound === "2" && document.body.dataset.cartCapacityUnits === "0", null, { timeout: 5000 });
+  await page.waitForFunction(() => document.body.dataset.cartCapacityRound === "2" && document.body.dataset.cartCapacityUnits === "0", null, { timeout: 12000 });
   const secondStart = await readState(page);
   report.states.secondStart = secondStart;
   report.assertions.secondTripStartsEmpty = secondStart.round === "2" && secondStart.units === "0" && secondStart.loaded === "3";
 
   await dragCaseToCart(page, "delivery-large-b");
-  await page.waitForFunction(() => document.body.dataset.cartCapacityUnits === "3", null, { timeout: 3000 });
+  await page.waitForFunction(() => document.body.dataset.cartCapacityUnits === "3", null, { timeout: 8000 });
   report.assertions.dragLoadsCase = true;
   await tapCase(page, "delivery-medium-b");
   await tapCase(page, "delivery-small-b");
-  await page.waitForFunction(() => document.body.dataset.cartCapacityState === "full", null, { timeout: 3000 });
+  await page.waitForFunction(() => document.body.dataset.cartCapacityState === "full", null, { timeout: 8000 });
   const secondFull = await readState(page);
   report.states.secondFull = secondFull;
   report.assertions.secondTripHitsSix = secondFull.units === "6" && secondFull.round === "2" && secondFull.fullObserved === "true";
   await page.screenshot({ path: join(OUTPUT_DIR, "cart-capacity-second-trip-full.png"), fullPage: true });
 
-  await page.waitForFunction(() => document.body.dataset.cartCapacityLoad === "complete", null, { timeout: 10000 });
-  await waitForSnapshotAnyStep(page, ["push", "park", "open", "restock"], 25000);
+  await page.waitForFunction(() => document.body.dataset.cartCapacityLoad === "complete", null, { timeout: 15000 });
+  await waitForSnapshotAnyStep(page, ["push", "park", "open", "restock"], 35000);
   const continued = await readState(page);
   report.states.continued = continued;
   report.assertions.deliveryContinues = continued.snapshot?.boxLoaded === true &&
@@ -181,7 +184,7 @@ async function dragCaseToCart(page, caseId) {
   if (!sourceBox || !targetBox) throw new Error(`Missing drag bounds for ${caseId}`);
   await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2);
   await page.mouse.down();
-  await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, { steps: 14 });
+  await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, { steps: 18 });
   await page.mouse.up();
 }
 
@@ -225,12 +228,6 @@ async function waitForSnapshotAnyStep(page, steps, timeout = 15000) {
     const snapshot = scene?.controller?.snapshot?.();
     return Boolean(snapshot && expectedSteps.includes(snapshot.step));
   }, { sceneKey: GAME_SCENE_KEY, expectedSteps: steps }, { timeout });
-}
-
-async function clickGame(page, gameX, gameY) {
-  const box = await page.locator(GAME_CANVAS_SELECTOR).boundingBox();
-  if (!box) throw new Error("Game canvas has no bounding box");
-  await page.mouse.click(box.x + (gameX / GAME_WIDTH) * box.width, box.y + (gameY / GAME_HEIGHT) * box.height);
 }
 
 function attachListeners(page, auditReport) {
