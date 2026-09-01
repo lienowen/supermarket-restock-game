@@ -130,12 +130,7 @@ try {
       { timeout: 12000 }
     );
 
-    await dragDom(page, cdp, "#patience-standard-item", "#patience-scan-zone");
-    await page.waitForFunction(
-      () => document.body.dataset.checkoutPatienceScanned === "true",
-      null,
-      { timeout: 8000 }
-    );
+    await scanEntireBasketByTouch(page, cdp);
     if (customer === 0) report.assertions.touchDragScansStandardItem = true;
 
     await tapDom(page, cdp, `[data-weight-kg="${TARGET_WEIGHTS[customer]}"]`);
@@ -273,6 +268,20 @@ async function tapDom(page, cdp, selector) {
   });
   await page.waitForTimeout(64);
   await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+}
+
+async function scanEntireBasketByTouch(page, cdp) {
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const complete = await page.evaluate(() => document.body.dataset.checkoutPatienceScanned === "true");
+    if (complete) return;
+    await dragDom(page, cdp, "#patience-standard-item", "#patience-scan-zone");
+    await page.waitForTimeout(520);
+  }
+  await page.waitForFunction(
+    () => document.body.dataset.checkoutPatienceScanned === "true",
+    null,
+    { timeout: 2500 }
+  );
 }
 
 async function dragDom(page, cdp, sourceSelector, targetSelector) {
