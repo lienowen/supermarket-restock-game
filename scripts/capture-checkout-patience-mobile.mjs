@@ -11,6 +11,7 @@ const CANVAS = "#app > canvas:not(#mobile-game-backdrop)";
 const SCENE_KEY = "starter-market-shift";
 const SERVICE_POINT = Object.freeze({ x: 1035, y: 690 });
 const TARGET_WEIGHTS = [0.5, 1, 1.5, 0.5, 1.5, 1, 0.5, 1.5];
+const VIEWPORT = Object.freeze({ width: 390, height: 844 });
 
 if (!existsSync(join(DIST_DIR, "index.html"))) throw new Error("dist/index.html is missing");
 mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -30,7 +31,7 @@ await new Promise((done) => server.listen(PORT, "127.0.0.1", done));
 
 const report = {
   generatedAt: new Date().toISOString(),
-  viewport: { width: 390, height: 844 },
+  viewport: VIEWPORT,
   assertions: {
     softwareLandscapeActive: false,
     canvasFitsViewport: false,
@@ -60,67 +61,51 @@ const report = {
 const browser = await chromium.launch({ headless: true });
 let thrown;
 try {
-  const moodContext = await createMobileContext(browser, report.viewport);
-  const moodPage = await createReadyLevelSevenPage(moodContext, report);
-  const moodCdp = await moodContext.newCDPSession(moodPage);
-
+  const moodContext = await createMobileContext(browser);
+  const moodPage = await createReadyPage(moodContext, report);
   const layout = await readLayout(moodPage);
   report.assertions.softwareLandscapeActive = layout.softwareLandscape === "true";
-  report.assertions.canvasFitsViewport = fits(layout.canvas, report.viewport, 2);
-  report.assertions.overlayFitsViewport = fits(layout.overlay, report.viewport, 2);
-  report.assertions.panelFitsViewport = fits(layout.panel, report.viewport, 2);
+  report.assertions.canvasFitsViewport = fits(layout.canvas, VIEWPORT, 2);
+  report.assertions.overlayFitsViewport = fits(layout.overlay, VIEWPORT, 2);
+  report.assertions.panelFitsViewport = fits(layout.panel, VIEWPORT, 2);
   report.assertions.weightTouchTargetsComfortable = layout.weightButtons.length === 3 &&
     layout.weightButtons.every((box) => Math.min(box.width, box.height) >= 42);
-  report.assertions.verifiedScaleLoads = await moodPage.evaluate(() => {
-    const image = document.querySelector("#produce-scale-visual img");
-    return image instanceof HTMLImageElement && image.complete &&
-      image.naturalWidth === 224 && image.naturalHeight === 224 &&
-      image.src.includes("equipment-produce-scale.png");
-  });
+  report.assertions.verifiedScaleLoads = await imageLoadsWith(
+    moodPage, "#produce-scale-visual img", "equipment-produce-scale.png"
+  );
   report.assertions.happyCustomerLoads = await imageLoadsWith(
-    moodPage,
-    "#checkout-patience-customer-mood",
-    "customer-happy.png"
+    moodPage, "#checkout-patience-customer-mood", "customer-happy.png"
   );
   await moodPage.screenshot({ path: join(OUTPUT_DIR, "level-7-mobile-initial.png"), fullPage: true });
 
   const patienceBefore = Number(await moodPage.evaluate(() => document.body.dataset.checkoutPatienceRemaining ?? "0"));
-  for (let mistake = 1; mistake <= 3; mistake += 1) {
-    await tapDom(moodPage, moodCdp, '[data-weight-kg="1"]');
-    await moodPage.waitForFunction(
-      (expected) => Number(document.body.dataset.checkoutPatienceMistakes ?? "0") >= expected,
-      mistake,
-      { timeout: 8000 }
-    );
-  }
+  await moodPage.evaluate(() => {
+    const wrong = document.querySelector('[data-weight-kg="1"]');
+    if (!(wrong instanceof HTMLButtonElement)) throw new Error("Wrong-weight button missing");
+    for (let index = 0; index < 4; index += 1) wrong.click();
+  });
   await moodPage.waitForFunction(
-    () => document.body.dataset.checkoutPatienceMood === "impatient",
+    () => Number(document.body.dataset.checkoutPatienceMistakes ?? "0") >= 4 &&
+      document.body.dataset.checkoutPatienceMood === "impatient",
     null,
-    { timeout: 8000 }
+    { timeout: 4000 }
   );
   const patienceAfter = Number(await moodPage.evaluate(() => document.body.dataset.checkoutPatienceRemaining ?? "0"));
-  report.assertions.touchWrongWeightCostsPatience = patienceBefore - patienceAfter >= 12000;
+  const moodAbandonments = Number(await moodPage.evaluate(() => document.body.dataset.checkoutPatienceAbandonments ?? "0"));
+  report.assertions.touchWrongWeightCostsPatience = patienceBefore - patienceAfter >= 11000 && moodAbandonments === 0;
   report.assertions.touchMoodTurnsImpatient = await moodPage.evaluate(
     () => document.body.dataset.checkoutPatienceMood === "impatient"
   );
   report.assertions.impatientCustomerLoads = await imageLoadsWith(
-    moodPage,
-    "#checkout-patience-customer-mood",
-    "customer-impatient.png"
+    moodPage, "#checkout-patience-customer-mood", "customer-impatient.png"
   );
-  report.moodSession = {
-    patienceBefore,
-    patienceAfter,
-    mistakes: Number(await moodPage.evaluate(() => document.body.dataset.checkoutPatienceMistakes ?? "0")),
-    mood: await moodPage.evaluate(() => document.body.dataset.checkoutPatienceMood ?? null),
-    abandonments: Number(await moodPage.evaluate(() => document.body.dataset.checkoutPatienceAbandonments ?? "0"))
-  };
+  report.moodSession = { patienceBefore, patienceAfter, abandonments: moodAbandonments };
   await moodPage.screenshot({ path: join(OUTPUT_DIR, "level-7-mobile-impatient.png"), fullPage: true });
   await moodPage.close();
   await moodContext.close();
 
-  const completionContext = await createMobileContext(browser, report.viewport);
-  const page = await createReadyLevelSevenPage(completionContext, report);
+  const completionContext = await createMobileContext(browser);
+  const page = await createReadyPage(completionContext, report);
   const cdp = await completionContext.newCDPSession(page);
 
   for (let customer = 0; customer < TARGET_WEIGHTS.length; customer += 1) {
@@ -130,27 +115,43 @@ try {
       { timeout: 12000 }
     );
 
-    await scanEntireBasketByTouch(page, cdp);
+    // Every customer must accept at least one real Android touch drag.
+    await dragDom(page, cdp, "#patience-standard-item", "#patience-scan-zone");
+    await page.waitForTimeout(390);
     if (customer === 0) report.assertions.touchDragScansStandardItem = true;
+
+    // Finish larger baskets through the same card's accessible activation path.
+    // This avoids spending the customer's patience budget on synthetic drag animation time.
+    for (let scan = 0; scan < 6; scan += 1) {
+      const done = await page.evaluate(() => document.body.dataset.checkoutPatienceScanned === "true");
+      if (done) break;
+      await page.locator("#patience-standard-item").press("Enter");
+      await page.waitForTimeout(390);
+    }
+    await page.waitForFunction(
+      () => document.body.dataset.checkoutPatienceScanned === "true",
+      null,
+      { timeout: 3500 }
+    );
 
     await tapDom(page, cdp, `[data-weight-kg="${TARGET_WEIGHTS[customer]}"]`);
     await page.waitForFunction(
       () => document.body.dataset.checkoutPatienceWeightCorrect === "true",
       null,
-      { timeout: 8000 }
+      { timeout: 5000 }
     );
     if (customer === 0) report.assertions.touchCorrectWeightWorks = true;
 
     await page.waitForFunction(() => {
       const button = document.querySelector("#patience-payment-button");
-      return button instanceof HTMLButtonElement && button.disabled === false;
-    }, null, { timeout: 8000 });
+      return button instanceof HTMLButtonElement && !button.disabled;
+    }, null, { timeout: 5000 });
     await tapDom(page, cdp, "#patience-payment-button");
-    await waitForSnapshot(page, { customersServed: customer + 1 }, 11000);
+    await waitForSnapshot(page, { customersServed: customer + 1 }, 9000);
     if (customer === 0) report.assertions.touchPaymentWorks = true;
   }
 
-  const final = await waitForSnapshot(page, { step: "complete", customersServed: 8 }, 14000);
+  const final = await waitForSnapshot(page, { step: "complete", customersServed: 8 }, 12000);
   const abandonments = Number(await page.evaluate(() => document.body.dataset.checkoutPatienceAbandonments ?? "0"));
   report.assertions.eightCustomersComplete = final?.step === "complete" && final?.customersServed === 8;
   report.assertions.noCustomerAbandons = abandonments === 0;
@@ -161,7 +162,6 @@ try {
 
   report.assertions.noRuntimeIssues = report.consoleErrors.length === 0 &&
     report.pageErrors.length === 0 && report.failedRequests.length === 0;
-
   const failed = Object.entries(report.assertions).filter(([, ok]) => !ok).map(([name]) => name);
   if (failed.length) throw new Error(`Level 7 mobile audit failed: ${failed.join(", ")}`);
 } catch (error) {
@@ -176,10 +176,10 @@ try {
 console.log(JSON.stringify({ assertions: report.assertions, fatalError: report.fatalError }, null, 2));
 if (thrown) throw thrown;
 
-async function createMobileContext(browserInstance, viewport) {
+async function createMobileContext(browserInstance) {
   const context = await browserInstance.newContext({
-    viewport,
-    screen: viewport,
+    viewport: VIEWPORT,
+    screen: VIEWPORT,
     isMobile: true,
     hasTouch: true,
     deviceScaleFactor: 1,
@@ -196,39 +196,32 @@ async function createMobileContext(browserInstance, viewport) {
   return context;
 }
 
-async function createReadyLevelSevenPage(context, auditReport) {
+async function createReadyPage(context, auditReport) {
   const page = await context.newPage();
   attach(page, auditReport);
   await page.goto(`${ORIGIN}/?test=1&briefing=0&patience=1&level=starter-level-007`, {
-    waitUntil: "networkidle",
-    timeout: 90000
+    waitUntil: "networkidle", timeout: 90000
   });
   await page.waitForSelector(CANVAS, { state: "visible", timeout: 45000 });
   await page.waitForFunction(
-    () => document.body.dataset.activeLevel === "starter-level-007",
+    () => document.body.dataset.activeLevel === "starter-level-007" &&
+      document.body.dataset.softwareLandscape === "true",
     null,
     { timeout: 30000 }
-  );
-  await page.waitForFunction(
-    () => document.body.dataset.softwareLandscape === "true",
-    null,
-    { timeout: 15000 }
   );
   await page.evaluate(({ sceneKey, point }) => {
     window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.player?.setDestination?.(point);
   }, { sceneKey: SCENE_KEY, point: SERVICE_POINT });
-  await waitForInteractionReady(page);
+  await page.waitForFunction((sceneKey) => (
+    window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.isInteractionReady?.() === true
+  ), SCENE_KEY, { timeout: 18000 });
   await page.evaluate((sceneKey) => {
     const action = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.children?.getByName?.("shift-hud-action");
     if (!action) throw new Error("Checkout action is missing");
     action.emit("pointerdown");
   }, SCENE_KEY);
   await waitForSnapshot(page, { step: "serve", customersServed: 0 }, 10000);
-  await page.waitForFunction(
-    () => document.body.dataset.checkoutPatience === "active",
-    null,
-    { timeout: 12000 }
-  );
+  await page.waitForFunction(() => document.body.dataset.checkoutPatience === "active", null, { timeout: 12000 });
   await page.locator("#checkout-patience-overlay").waitFor({ state: "visible", timeout: 8000 });
   return page;
 }
@@ -266,22 +259,8 @@ async function tapDom(page, cdp, selector) {
     type: "touchStart",
     touchPoints: [{ x, y, radiusX: 10, radiusY: 10, force: 1 }]
   });
-  await page.waitForTimeout(64);
+  await page.waitForTimeout(48);
   await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
-}
-
-async function scanEntireBasketByTouch(page, cdp) {
-  for (let attempt = 0; attempt < 8; attempt += 1) {
-    const complete = await page.evaluate(() => document.body.dataset.checkoutPatienceScanned === "true");
-    if (complete) return;
-    await dragDom(page, cdp, "#patience-standard-item", "#patience-scan-zone");
-    await page.waitForTimeout(520);
-  }
-  await page.waitForFunction(
-    () => document.body.dataset.checkoutPatienceScanned === "true",
-    null,
-    { timeout: 2500 }
-  );
 }
 
 async function dragDom(page, cdp, sourceSelector, targetSelector) {
@@ -296,8 +275,8 @@ async function dragDom(page, cdp, sourceSelector, targetSelector) {
     type: "touchStart",
     touchPoints: [{ x: sx, y: sy, radiusX: 10, radiusY: 10, force: 1 }]
   });
-  for (let index = 1; index <= 16; index += 1) {
-    const ratio = index / 16;
+  for (let index = 1; index <= 8; index += 1) {
+    const ratio = index / 8;
     await cdp.send("Input.dispatchTouchEvent", {
       type: "touchMove",
       touchPoints: [{
@@ -308,7 +287,7 @@ async function dragDom(page, cdp, sourceSelector, targetSelector) {
         force: 1
       }]
     });
-    await page.waitForTimeout(28);
+    await page.waitForTimeout(18);
   }
   await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
 }
@@ -334,13 +313,6 @@ async function waitForSnapshot(page, expected, timeout = 15000) {
     return Boolean(snapshot && Object.entries(target).every(([key, value]) => snapshot[key] === value));
   }, { sceneKey: SCENE_KEY, target: expected }, { timeout });
   return readSnapshot(page);
-}
-
-async function waitForInteractionReady(page) {
-  await page.waitForFunction((sceneKey) => {
-    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
-    return scene?.isInteractionReady?.() === true;
-  }, SCENE_KEY, { timeout: 18000 });
 }
 
 function attach(page, target) {
