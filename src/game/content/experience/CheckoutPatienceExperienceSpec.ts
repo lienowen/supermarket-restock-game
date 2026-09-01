@@ -37,13 +37,13 @@ export const CHECKOUT_PATIENCE_EXPERIENCE_SPECS: readonly CheckoutPatienceExperi
     wrongWeightPenaltyMs: 3000,
     customerProfiles: Object.freeze([
       Object.freeze({ type: "regular" as const, itemCount: 2, patienceDurationMs: 20000, mistakePenaltyMultiplier: 1 }),
-      Object.freeze({ type: "rushed" as const, itemCount: 2, patienceDurationMs: 12000, mistakePenaltyMultiplier: 1.5 }),
+      Object.freeze({ type: "rushed" as const, itemCount: 2, patienceDurationMs: 18000, mistakePenaltyMultiplier: 1.5 }),
       Object.freeze({ type: "large-order" as const, itemCount: 4, patienceDurationMs: 26000, mistakePenaltyMultiplier: 1 }),
       Object.freeze({ type: "regular" as const, itemCount: 2, patienceDurationMs: 20000, mistakePenaltyMultiplier: 1 }),
-      Object.freeze({ type: "rushed" as const, itemCount: 2, patienceDurationMs: 12000, mistakePenaltyMultiplier: 1.5 }),
+      Object.freeze({ type: "rushed" as const, itemCount: 2, patienceDurationMs: 18000, mistakePenaltyMultiplier: 1.5 }),
       Object.freeze({ type: "large-order" as const, itemCount: 5, patienceDurationMs: 30000, mistakePenaltyMultiplier: 1 }),
       Object.freeze({ type: "regular" as const, itemCount: 3, patienceDurationMs: 22000, mistakePenaltyMultiplier: 1 }),
-      Object.freeze({ type: "rushed" as const, itemCount: 3, patienceDurationMs: 14000, mistakePenaltyMultiplier: 1.5 })
+      Object.freeze({ type: "rushed" as const, itemCount: 3, patienceDurationMs: 18000, mistakePenaltyMultiplier: 1.5 })
     ]),
     standardProductAssetKeys: Object.freeze([
       "product-milk-bottle",
