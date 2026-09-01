@@ -14,9 +14,12 @@ import {
 } from "./MarketUpgrades";
 import {
   DEFAULT_STAFF_PROGRESSION,
+  levelNumberFromId,
   normalizeStaffProgression,
+  promotionForCompletedLevel,
   staffAfterLevelCompletion,
-  type StaffProgressionState
+  type StaffProgressionState,
+  type StaffRankDefinition
 } from "./StaffProgression";
 
 export interface CampaignEconomy {
@@ -50,6 +53,11 @@ export interface CampaignResetOptions {
   readonly preserveMetaProgress?: boolean;
 }
 
+export interface StaffPromotionCelebration {
+  readonly completedLevelId: string;
+  readonly rank: StaffRankDefinition;
+}
+
 const normalizeEconomy = (economy: CampaignEconomy): CampaignEconomy => {
   const values = [economy.coins, economy.stars, economy.reputation];
   if (values.some((value) => !Number.isFinite(value) || value < 0)) {
@@ -80,6 +88,8 @@ const createSnapshot = (
 });
 
 export class CampaignSession {
+  private pendingPromotion?: StaffPromotionCelebration;
+
   constructor(
     readonly config: CampaignSessionConfig,
     private readonly store: CampaignSessionStore,
@@ -121,6 +131,14 @@ export class CampaignSession {
 
   staff(): StaffProgressionState {
     return this.snapshot().staff;
+  }
+
+  consumePendingPromotion(levelId?: string): StaffPromotionCelebration | undefined {
+    if (!this.pendingPromotion) return undefined;
+    if (levelId && this.pendingPromotion.completedLevelId !== levelId) return undefined;
+    const promotion = this.pendingPromotion;
+    this.pendingPromotion = undefined;
+    return promotion;
   }
 
   upgradeOptions(): readonly MarketUpgradeOption[] {
@@ -178,6 +196,18 @@ export class CampaignSession {
     const completed = new Set(previous?.completedLevelIds ?? []);
     completed.add(levelId);
     const previousStaff = previous?.staff ?? DEFAULT_STAFF_PROGRESSION;
+    const completedLevelNumber = levelNumberFromId(levelId);
+    const promotedRank = completedLevelNumber === undefined
+      ? undefined
+      : promotionForCompletedLevel(completedLevelNumber);
+    const firstPromotionCompletion = (
+      completedLevelNumber !== undefined &&
+      promotedRank !== undefined &&
+      completedLevelNumber > previousStaff.promotedThroughLevel
+    );
+    if (firstPromotionCompletion) {
+      this.pendingPromotion = Object.freeze({ completedLevelId: levelId, rank: promotedRank });
+    }
     const staff = staffAfterLevelCompletion(previousStaff, levelId, nextLevelId);
 
     const snapshot = createSnapshot(
@@ -202,6 +232,7 @@ export class CampaignSession {
 
   reset(options: CampaignResetOptions = {}): CampaignSessionSnapshot {
     const previous = this.store.load(this.config.campaignId);
+    this.pendingPromotion = undefined;
     this.store.clear(this.config.campaignId);
     const preserveMetaProgress = options.preserveMetaProgress !== false;
     const economy = normalizeEconomy(
