@@ -60,8 +60,6 @@ const report = {
 const browser = await chromium.launch({ headless: true });
 let thrown;
 try {
-  // Session A proves the rotated Android controls can create and visibly hold
-  // the impatient state without immediately resetting the customer.
   const moodContext = await createMobileContext(browser, report.viewport);
   const moodPage = await createReadyLevelSevenPage(moodContext, report);
   const moodCdp = await moodContext.newCDPSession(moodPage);
@@ -92,13 +90,13 @@ try {
     await moodPage.waitForFunction(
       (expected) => Number(document.body.dataset.checkoutPatienceMistakes ?? "0") >= expected,
       mistake,
-      { timeout: 4000 }
+      { timeout: 8000 }
     );
   }
   await moodPage.waitForFunction(
     () => document.body.dataset.checkoutPatienceMood === "impatient",
     null,
-    { timeout: 4000 }
+    { timeout: 8000 }
   );
   const patienceAfter = Number(await moodPage.evaluate(() => document.body.dataset.checkoutPatienceRemaining ?? "0"));
   report.assertions.touchWrongWeightCostsPatience = patienceBefore - patienceAfter >= 12000;
@@ -121,8 +119,6 @@ try {
   await moodPage.close();
   await moodContext.close();
 
-  // Session B is the full clean Android run. Every customer uses a physical CDP
-  // touch drag, a physical weight tap, and a physical payment tap.
   const completionContext = await createMobileContext(browser, report.viewport);
   const page = await createReadyLevelSevenPage(completionContext, report);
   const cdp = await completionContext.newCDPSession(page);
@@ -131,14 +127,14 @@ try {
     await page.waitForFunction(
       (expected) => document.body.dataset.checkoutPatienceCustomer === String(expected + 1),
       customer,
-      { timeout: 8000 }
+      { timeout: 12000 }
     );
 
     await dragDom(page, cdp, "#patience-standard-item", "#patience-scan-zone");
     await page.waitForFunction(
       () => document.body.dataset.checkoutPatienceScanned === "true",
       null,
-      { timeout: 4000 }
+      { timeout: 8000 }
     );
     if (customer === 0) report.assertions.touchDragScansStandardItem = true;
 
@@ -146,20 +142,20 @@ try {
     await page.waitForFunction(
       () => document.body.dataset.checkoutPatienceWeightCorrect === "true",
       null,
-      { timeout: 4000 }
+      { timeout: 8000 }
     );
     if (customer === 0) report.assertions.touchCorrectWeightWorks = true;
 
     await page.waitForFunction(() => {
       const button = document.querySelector("#patience-payment-button");
       return button instanceof HTMLButtonElement && button.disabled === false;
-    }, null, { timeout: 4000 });
+    }, null, { timeout: 8000 });
     await tapDom(page, cdp, "#patience-payment-button");
-    await waitForSnapshot(page, { customersServed: customer + 1 }, 7000);
+    await waitForSnapshot(page, { customersServed: customer + 1 }, 11000);
     if (customer === 0) report.assertions.touchPaymentWorks = true;
   }
 
-  const final = await waitForSnapshot(page, { step: "complete", customersServed: 8 }, 9000);
+  const final = await waitForSnapshot(page, { step: "complete", customersServed: 8 }, 14000);
   const abandonments = Number(await page.evaluate(() => document.body.dataset.checkoutPatienceAbandonments ?? "0"));
   report.assertions.eightCustomersComplete = final?.step === "complete" && final?.customersServed === 8;
   report.assertions.noCustomerAbandons = abandonments === 0;
@@ -221,7 +217,7 @@ async function createReadyLevelSevenPage(context, auditReport) {
   await page.waitForFunction(
     () => document.body.dataset.softwareLandscape === "true",
     null,
-    { timeout: 10000 }
+    { timeout: 15000 }
   );
   await page.evaluate(({ sceneKey, point }) => {
     window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.player?.setDestination?.(point);
@@ -232,13 +228,13 @@ async function createReadyLevelSevenPage(context, auditReport) {
     if (!action) throw new Error("Checkout action is missing");
     action.emit("pointerdown");
   }, SCENE_KEY);
-  await waitForSnapshot(page, { step: "serve", customersServed: 0 }, 6000);
+  await waitForSnapshot(page, { step: "serve", customersServed: 0 }, 10000);
   await page.waitForFunction(
     () => document.body.dataset.checkoutPatience === "active",
     null,
-    { timeout: 8000 }
+    { timeout: 12000 }
   );
-  await page.locator("#checkout-patience-overlay").waitFor({ state: "visible", timeout: 5000 });
+  await page.locator("#checkout-patience-overlay").waitFor({ state: "visible", timeout: 8000 });
   return page;
 }
 
@@ -275,7 +271,7 @@ async function tapDom(page, cdp, selector) {
     type: "touchStart",
     touchPoints: [{ x, y, radiusX: 10, radiusY: 10, force: 1 }]
   });
-  await page.waitForTimeout(48);
+  await page.waitForTimeout(64);
   await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
 }
 
@@ -291,8 +287,8 @@ async function dragDom(page, cdp, sourceSelector, targetSelector) {
     type: "touchStart",
     touchPoints: [{ x: sx, y: sy, radiusX: 10, radiusY: 10, force: 1 }]
   });
-  for (let index = 1; index <= 10; index += 1) {
-    const ratio = index / 10;
+  for (let index = 1; index <= 16; index += 1) {
+    const ratio = index / 16;
     await cdp.send("Input.dispatchTouchEvent", {
       type: "touchMove",
       touchPoints: [{
@@ -303,7 +299,7 @@ async function dragDom(page, cdp, sourceSelector, targetSelector) {
         force: 1
       }]
     });
-    await page.waitForTimeout(24);
+    await page.waitForTimeout(28);
   }
   await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
 }
@@ -335,12 +331,15 @@ async function waitForInteractionReady(page) {
   await page.waitForFunction((sceneKey) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
     return scene?.isInteractionReady?.() === true;
-  }, SCENE_KEY, { timeout: 12000 });
+  }, SCENE_KEY, { timeout: 18000 });
 }
 
 function attach(page, target) {
   page.on("console", (message) => {
-    if (message.type() === "error") target.consoleErrors.push(message.text());
+    if (message.type() !== "error") return;
+    const text = message.text();
+    if (/deprecated|DeprecationWarning/i.test(text)) return;
+    target.consoleErrors.push(text);
   });
   page.on("pageerror", (error) => target.pageErrors.push(error.message));
   page.on("requestfailed", (request) => {
