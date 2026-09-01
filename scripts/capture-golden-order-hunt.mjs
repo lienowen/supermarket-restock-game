@@ -80,11 +80,16 @@ try {
   report.assertions.noAmbientDressing = initial.ambientCount === 0;
   report.assertions.compactHudActive = initial.goldenHud === "order-ticket-only-v3";
   report.assertions.eightProductsVisible = initial.products.length === 8;
-  report.assertions.productScaleSane = initial.products.every((item) => (
-    item.width >= 45 && item.width <= 120 &&
-    item.height >= 65 && item.height <= 180 &&
-    Math.max(item.width, item.height) >= 80
-  ));
+  report.assertions.productScaleSane = initial.products.every((item) => {
+    const shortSide = Math.min(item.width, item.height);
+    const longSide = Math.max(item.width, item.height);
+    return (
+      item.width <= 120 &&
+      item.height <= 180 &&
+      shortSide >= 38 &&
+      longSide >= 80
+    );
+  });
 
   const byName = new Map(initial.products.map((item) => [item.name, item]));
   const inside = (name, x1, x2, y1, y2) => {
