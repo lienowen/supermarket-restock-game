@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "assets:materialize": "node scripts/materialize-recut-assets.mjs && node scripts/materialize-assets.mjs",
+    "assets:materialize": "node scripts/materialize-recut-assets.mjs && node scripts/materialize-assets.mjs && node scripts/materialize-staff-growth-assets.mjs",
     "predev": "npm run assets:materialize",
     "dev": "vite --host 0.0.0.0",
     "prebuild": "npm run assets:materialize",
