@@ -44,67 +44,21 @@ export const STAFF_GROWTH_ASSET_KEYS: Readonly<Record<Exclude<StaffRankId, "trai
   })
 });
 
+const staffAssetPath = (fileName: string): string => `assets/game/staff-growth/${fileName}`;
+
 export const STAFF_GROWTH_ASSET_CATALOGUE: AssetCatalogue = Object.freeze({
   assets: Object.freeze([
-    character(
-      STAFF_GROWTH_ASSET_KEYS["store-associate"].idle,
-      new URL("../../../asset-source/supermarket_staff_growth_phase1/store_associate_idle.png", import.meta.url).href,
-      "idle"
-    ),
-    character(
-      STAFF_GROWTH_ASSET_KEYS["store-associate"].carry,
-      new URL("../../../asset-source/supermarket_staff_growth_phase1/store_associate_carry-medium.png", import.meta.url).href,
-      "carry-medium"
-    ),
-    character(
-      STAFF_GROWTH_ASSET_KEYS["store-associate"].place,
-      new URL("../../../asset-source/supermarket_staff_growth_phase1/store_associate_place-low.png", import.meta.url).href,
-      "place-low"
-    ),
-    character(
-      STAFF_GROWTH_ASSET_KEYS["store-associate"].push,
-      new URL("../../../asset-source/supermarket_staff_growth_phase1/store_associate_push-cart.png", import.meta.url).href,
-      "push-cart"
-    ),
-    character(
-      STAFF_GROWTH_ASSET_KEYS["senior-associate"].idle,
-      new URL("../../../asset-source/supermarket_staff_growth_phase1/senior_associate_idle.png", import.meta.url).href,
-      "idle"
-    ),
-    character(
-      STAFF_GROWTH_ASSET_KEYS["senior-associate"].carry,
-      new URL("../../../asset-source/supermarket_staff_growth_phase1/senior_associate_carry-medium.png", import.meta.url).href,
-      "carry-medium"
-    ),
-    character(
-      STAFF_GROWTH_ASSET_KEYS["senior-associate"].place,
-      new URL("../../../asset-source/supermarket_staff_growth_phase1/senior_associate_place-low.png", import.meta.url).href,
-      "place-low"
-    ),
-    character(
-      STAFF_GROWTH_ASSET_KEYS["senior-associate"].push,
-      new URL("../../../asset-source/supermarket_staff_growth_phase1/senior_associate_push-cart.png", import.meta.url).href,
-      "push-cart"
-    ),
-    character(
-      STAFF_GROWTH_ASSET_KEYS["shift-leader"].idle,
-      new URL("../../../asset-source/supermarket_staff_growth_phase2_shift_leader/shift_leader_idle.png", import.meta.url).href,
-      "idle"
-    ),
-    character(
-      STAFF_GROWTH_ASSET_KEYS["shift-leader"].carry,
-      new URL("../../../asset-source/supermarket_staff_growth_phase2_shift_leader/shift_leader_carry-medium.png", import.meta.url).href,
-      "carry-medium"
-    ),
-    character(
-      STAFF_GROWTH_ASSET_KEYS["shift-leader"].place,
-      new URL("../../../asset-source/supermarket_staff_growth_phase2_shift_leader/shift_leader_place-low.png", import.meta.url).href,
-      "place-low"
-    ),
-    character(
-      STAFF_GROWTH_ASSET_KEYS["shift-leader"].push,
-      new URL("../../../asset-source/supermarket_staff_growth_phase2_shift_leader/shift_leader_push-cart.png", import.meta.url).href,
-      "push-cart"
-    )
+    character(STAFF_GROWTH_ASSET_KEYS["store-associate"].idle, staffAssetPath("store_associate_idle.png"), "idle"),
+    character(STAFF_GROWTH_ASSET_KEYS["store-associate"].carry, staffAssetPath("store_associate_carry-medium.png"), "carry-medium"),
+    character(STAFF_GROWTH_ASSET_KEYS["store-associate"].place, staffAssetPath("store_associate_place-low.png"), "place-low"),
+    character(STAFF_GROWTH_ASSET_KEYS["store-associate"].push, staffAssetPath("store_associate_push-cart.png"), "push-cart"),
+    character(STAFF_GROWTH_ASSET_KEYS["senior-associate"].idle, staffAssetPath("senior_associate_idle.png"), "idle"),
+    character(STAFF_GROWTH_ASSET_KEYS["senior-associate"].carry, staffAssetPath("senior_associate_carry-medium.png"), "carry-medium"),
+    character(STAFF_GROWTH_ASSET_KEYS["senior-associate"].place, staffAssetPath("senior_associate_place-low.png"), "place-low"),
+    character(STAFF_GROWTH_ASSET_KEYS["senior-associate"].push, staffAssetPath("senior_associate_push-cart.png"), "push-cart"),
+    character(STAFF_GROWTH_ASSET_KEYS["shift-leader"].idle, staffAssetPath("shift_leader_idle.png"), "idle"),
+    character(STAFF_GROWTH_ASSET_KEYS["shift-leader"].carry, staffAssetPath("shift_leader_carry-medium.png"), "carry-medium"),
+    character(STAFF_GROWTH_ASSET_KEYS["shift-leader"].place, staffAssetPath("shift_leader_place-low.png"), "place-low"),
+    character(STAFF_GROWTH_ASSET_KEYS["shift-leader"].push, staffAssetPath("shift_leader_push-cart.png"), "push-cart")
   ])
 });
