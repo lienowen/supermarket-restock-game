@@ -39,22 +39,22 @@ export const DEFAULT_MARKET_UPGRADES: MarketUpgradeLevels = Object.freeze({
 export const MARKET_UPGRADE_DEFINITIONS: readonly MarketUpgradeDefinition[] = Object.freeze([
   Object.freeze({
     id: "movement" as const,
-    title: "QUICK SHOES",
-    description: "+8% worker movement speed",
+    title: "MOVE SPEED",
+    description: "Move 8% faster per level",
     maxLevel: 3,
     costs: Object.freeze([120, 240, 420])
   }),
   Object.freeze({
     id: "service" as const,
-    title: "BETTER TOOLS",
-    description: "-10% checkout and task time",
+    title: "WORK EFFICIENCY",
+    description: "Complete work 10% faster per level",
     maxLevel: 3,
     costs: Object.freeze([140, 280, 460])
   }),
   Object.freeze({
     id: "profit" as const,
-    title: "STORE PROMO",
-    description: "+10% coins earned per level",
+    title: "EARNINGS BONUS",
+    description: "Earn 10% more coins per level",
     maxLevel: 3,
     costs: Object.freeze([160, 320, 520])
   })
