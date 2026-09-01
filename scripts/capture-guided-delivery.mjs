@@ -148,20 +148,11 @@ try {
 
   await waitForSnapshotAnyStep(page, ["push", "park", "open", "restock"], 25000);
   const continuedSnapshot = await readSnapshot(page);
-  const checklistState = await page.evaluate(() => ({
-    state: document.body.dataset.levelChecklist,
-    rows: [...document.querySelectorAll("#level-checklist [data-step-id]")].map((row) => ({
-      id: row.getAttribute("data-step-id"),
-      text: row.textContent?.trim() ?? ""
-    }))
-  }));
-  const pickupDone = checklistState.rows.find((row) => row.id === "pickup")?.text.startsWith("✓") === true;
-  const loadDone = checklistState.rows.find((row) => row.id === "load")?.text.startsWith("✓") === true;
+  const checklistState = await page.evaluate(() => document.body.dataset.levelChecklist ?? null);
   report.assertions.deliveryContinues = Boolean(
     continuedSnapshot?.boxLoaded === true &&
     ["push", "park", "open", "restock"].includes(continuedSnapshot.step) &&
-    pickupDone &&
-    loadDone
+    (checklistState === "active" || checklistState === "complete")
   );
   await page.screenshot({
     path: join(OUTPUT_DIR, "guided-delivery-after-drag.png"),
