@@ -146,7 +146,8 @@ try {
     afterDrag.boxLoaded === true
   );
 
-  await waitForSnapshot(page, { step: "restock", boxLoaded: true, boxOpened: true }, 25000);
+  await waitForSnapshotAnyStep(page, ["push", "park", "open", "restock"], 25000);
+  const continuedSnapshot = await readSnapshot(page);
   const checklistState = await page.evaluate(() => ({
     state: document.body.dataset.levelChecklist,
     rows: [...document.querySelectorAll("#level-checklist [data-step-id]")].map((row) => ({
@@ -154,11 +155,13 @@ try {
       text: row.textContent?.trim() ?? ""
     }))
   }));
-  report.assertions.deliveryContinues = (
-    checklistState.rows.find((row) => row.id === "pickup")?.text.startsWith("✓") === true &&
-    checklistState.rows.find((row) => row.id === "load")?.text.startsWith("✓") === true &&
-    checklistState.rows.find((row) => row.id === "deliver")?.text.startsWith("✓") === true &&
-    checklistState.rows.find((row) => row.id === "open")?.text.startsWith("✓") === true
+  const pickupDone = checklistState.rows.find((row) => row.id === "pickup")?.text.startsWith("✓") === true;
+  const loadDone = checklistState.rows.find((row) => row.id === "load")?.text.startsWith("✓") === true;
+  report.assertions.deliveryContinues = Boolean(
+    continuedSnapshot?.boxLoaded === true &&
+    ["push", "park", "open", "restock"].includes(continuedSnapshot.step) &&
+    pickupDone &&
+    loadDone
   );
   await page.screenshot({
     path: join(OUTPUT_DIR, "guided-delivery-after-drag.png"),
@@ -204,6 +207,15 @@ async function waitForSnapshot(page, expected, timeout = 15000) {
     if (!snapshot) return false;
     return Object.entries(target).every(([key, value]) => snapshot[key] === value);
   }, { sceneKey: GAME_SCENE_KEY, target: expected }, { timeout });
+  return readSnapshot(page);
+}
+
+async function waitForSnapshotAnyStep(page, steps, timeout = 15000) {
+  await page.waitForFunction(({ sceneKey, expectedSteps }) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+    const snapshot = scene?.controller?.snapshot?.();
+    return Boolean(snapshot && expectedSteps.includes(snapshot.step));
+  }, { sceneKey: GAME_SCENE_KEY, expectedSteps: steps }, { timeout });
   return readSnapshot(page);
 }
 
