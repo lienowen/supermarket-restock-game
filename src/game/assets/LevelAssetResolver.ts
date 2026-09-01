@@ -9,6 +9,7 @@ import {
 } from "./GlobalAssetPackRegistry";
 import { resolveLevelEnvironmentAssetKey } from "./LevelEnvironmentRegistry";
 import type { RuntimeAssetRegistry } from "./RuntimeAssetRegistry";
+import { resolveStaffGrowthAssets } from "./StaffGrowthAssetResolver";
 import type { CheckoutLevelRuntimeContent } from "../application/CheckoutLevelRuntimeContent";
 import type { RestockShiftRuntimeContent } from "../application/ShiftRuntimeContent";
 import type {
@@ -34,6 +35,9 @@ const FINAL_SHIFT_COOLER_CLOSEUP_KEY = "fixture-final-shift-cooler-closeup-l10";
 interface RestockVisualAssetKeys {
   readonly workerIdleAssetKey: string;
   readonly workerPushAssetKey: string;
+  readonly workerCarryAssetKey: string;
+  readonly workerStockAssetKey: string;
+  readonly workerWalkAssetKeys: readonly [string, string];
   readonly cartEmptyAssetKey: string;
   readonly cartLoadedAssetKey: string;
 }
@@ -108,32 +112,62 @@ const resolveDescriptors = (
 const baseAssets = (
   registry: RuntimeAssetRegistry,
   pack: RestockGlobalAssetPack | CheckoutGlobalAssetPack | CleanGlobalAssetPack | FindItemsGlobalAssetPack,
-  environmentAssetKey: string
+  environmentAssetKey: string,
+  workerWalkAssetKeys: readonly [string, string] = pack.workerWalkAssetKeys
 ): BaseResolvedLevelAssets => ({
   preload: Object.freeze([]),
   environment: registry.require(environmentAssetKey),
   workerWalk: Object.freeze([
-    registry.require(pack.workerWalkAssetKeys[0]),
-    registry.require(pack.workerWalkAssetKeys[1])
+    registry.require(workerWalkAssetKeys[0]),
+    registry.require(workerWalkAssetKeys[1])
   ]) as readonly [AssetDescriptor, AssetDescriptor]
 });
 
+const staffBaseKeys = (
+  registry: RuntimeAssetRegistry,
+  levelId: string,
+  fallbackIdle: string,
+  fallbackWalk: readonly [string, string]
+): {
+  readonly idle: string;
+  readonly walk: readonly [string, string];
+  readonly preload: readonly string[];
+} => {
+  const staff = resolveStaffGrowthAssets(registry, levelId);
+  if (!staff.keys) {
+    return Object.freeze({ idle: fallbackIdle, walk: fallbackWalk, preload: Object.freeze([]) });
+  }
+  return Object.freeze({
+    idle: staff.keys.idle,
+    walk: Object.freeze([staff.keys.idle, staff.keys.idle]) as readonly [string, string],
+    preload: Object.freeze([staff.keys.idle, staff.keys.carry, staff.keys.place, staff.keys.push])
+  });
+};
+
 const restockVisualAssetKeysFor = (
+  registry: RuntimeAssetRegistry,
   level: RestockLevelDefinition,
   pack: RestockGlobalAssetPack
 ): RestockVisualAssetKeys => {
-  if (!RECUT_RESTOCK_LEVEL_IDS.has(level.id)) {
-    return Object.freeze({
-      workerIdleAssetKey: pack.workerIdleAssetKey,
-      workerPushAssetKey: pack.workerPushAssetKey,
-      cartEmptyAssetKey: pack.cartEmptyAssetKey,
-      cartLoadedAssetKey: pack.cartLoadedAssetKey
-    });
-  }
+  const staff = resolveStaffGrowthAssets(registry, level.id);
+  const base = staffBaseKeys(registry, level.id, pack.workerIdleAssetKey, pack.workerWalkAssetKeys);
+  const defaultKeys = Object.freeze({
+    workerIdleAssetKey: base.idle,
+    workerPushAssetKey: staff.keys?.push ?? pack.workerPushAssetKey,
+    workerCarryAssetKey: staff.keys?.carry ?? pack.workerCarryAssetKey,
+    workerStockAssetKey: staff.keys?.place ?? pack.workerStockAssetKey,
+    workerWalkAssetKeys: base.walk,
+    cartEmptyAssetKey: pack.cartEmptyAssetKey,
+    cartLoadedAssetKey: pack.cartLoadedAssetKey
+  });
+
+  if (!RECUT_RESTOCK_LEVEL_IDS.has(level.id)) return defaultKeys;
 
   return Object.freeze({
+    ...defaultKeys,
     workerIdleAssetKey: "worker-restock-idle-v2",
     workerPushAssetKey: "worker-restock-push-v2",
+    workerWalkAssetKeys: pack.workerWalkAssetKeys,
     cartEmptyAssetKey: "equipment-restock-cart-empty-v2",
     cartLoadedAssetKey: level.id === "starter-level-002"
       ? "equipment-restock-cart-water-loaded-v2"
@@ -142,6 +176,7 @@ const restockVisualAssetKeysFor = (
 };
 
 const restockPreloadKeys = (
+  registry: RuntimeAssetRegistry,
   level: RestockLevelDefinition,
   pack: RestockGlobalAssetPack,
   visualAssetKeys: RestockVisualAssetKeys,
@@ -149,17 +184,19 @@ const restockPreloadKeys = (
   caseAssets: { readonly closedAssetKey: string; readonly openAssetKey: string },
   runtime: RestockShiftRuntimeContent
 ): readonly string[] => {
+  const staff = resolveStaffGrowthAssets(registry, level.id);
   const gameplayKeys = [
     environmentAssetKey,
     ...(environmentAssetKey === FINAL_SHIFT_ENVIRONMENT_KEY
       ? [FINAL_SHIFT_COOLER_CLOSEUP_KEY]
       : []),
-    ...pack.workerWalkAssetKeys,
+    ...visualAssetKeys.workerWalkAssetKeys,
     visualAssetKeys.workerIdleAssetKey,
     visualAssetKeys.workerPushAssetKey,
-    pack.workerCarryAssetKey,
+    visualAssetKeys.workerCarryAssetKey,
     pack.workerOpenAssetKey,
-    pack.workerStockAssetKey,
+    visualAssetKeys.workerStockAssetKey,
+    ...staff.preload.map((asset) => asset.key),
     visualAssetKeys.cartEmptyAssetKey,
     visualAssetKeys.cartLoadedAssetKey,
     caseAssets.closedAssetKey,
@@ -185,22 +222,22 @@ export function resolveRestockLevelAssets(
   runtime: RestockShiftRuntimeContent
 ): ResolvedRestockLevelAssets {
   const pack = resolveGlobalAssetPack(level.presentation.assetPackId, "restock");
-  const visualAssetKeys = restockVisualAssetKeysFor(level, pack);
+  const visualAssetKeys = restockVisualAssetKeysFor(registry, level, pack);
   const environmentAssetKey = resolveLevelEnvironmentAssetKey(level.id, pack.environmentAssetKey);
   const caseAssets = restockCaseAssetsFor(pack, runtime.product.id);
   const preload = resolveDescriptors(
     registry,
-    restockPreloadKeys(level, pack, visualAssetKeys, environmentAssetKey, caseAssets, runtime)
+    restockPreloadKeys(registry, level, pack, visualAssetKeys, environmentAssetKey, caseAssets, runtime)
   );
   return Object.freeze({
-    ...baseAssets(registry, pack, environmentAssetKey),
+    ...baseAssets(registry, pack, environmentAssetKey, visualAssetKeys.workerWalkAssetKeys),
     preload,
     fixture: registry.require(runtime.fixture.assetKey),
     workerIdle: registry.require(visualAssetKeys.workerIdleAssetKey),
     workerPush: registry.require(visualAssetKeys.workerPushAssetKey),
-    workerCarry: registry.require(pack.workerCarryAssetKey),
+    workerCarry: registry.require(visualAssetKeys.workerCarryAssetKey),
     workerOpen: registry.require(pack.workerOpenAssetKey),
-    workerStock: registry.require(pack.workerStockAssetKey),
+    workerStock: registry.require(visualAssetKeys.workerStockAssetKey),
     cart: registry.require(visualAssetKeys.cartEmptyAssetKey),
     cartLoaded: registry.require(visualAssetKeys.cartLoadedAssetKey),
     case: registry.require(caseAssets.closedAssetKey),
@@ -218,11 +255,14 @@ export function resolveCheckoutLevelAssets(
   const pack = resolveGlobalAssetPack(level.presentation.assetPackId, "checkout");
   const environmentAssetKey = resolveLevelEnvironmentAssetKey(level.id, pack.environmentAssetKey);
   const authoredCheckoutPlate = environmentAssetKey.startsWith("environment-project-checkout");
+  const staff = resolveStaffGrowthAssets(registry, level.id);
+  const base = staffBaseKeys(registry, level.id, pack.workerIdleAssetKey, pack.workerWalkAssetKeys);
   const preload = resolveDescriptors(registry, [
     environmentAssetKey,
     ...(authoredCheckoutPlate ? [] : pack.sharedStoreAssetKeys),
-    ...pack.workerWalkAssetKeys,
-    pack.workerIdleAssetKey,
+    ...base.walk,
+    base.idle,
+    ...staff.preload.map((asset) => asset.key),
     pack.workerScanAssetKey,
     runtime.fixture.assetKey,
     ...pack.customerAssetKeys,
@@ -230,10 +270,10 @@ export function resolveCheckoutLevelAssets(
     ...CHECKOUT_PRODUCT_ASSET_KEYS
   ]);
   return Object.freeze({
-    ...baseAssets(registry, pack, environmentAssetKey),
+    ...baseAssets(registry, pack, environmentAssetKey, base.walk),
     preload,
     fixture: registry.require(runtime.fixture.assetKey),
-    worker: registry.require(pack.workerIdleAssetKey),
+    worker: registry.require(base.idle),
     workerScan: registry.require(pack.workerScanAssetKey),
     customers: Object.freeze(pack.customerAssetKeys.map((key) => registry.require(key))),
     equipment: Object.freeze(pack.equipmentAssetKeys.map((key) => registry.require(key))),
@@ -248,11 +288,14 @@ export function resolveCleanLevelAssets(
 ): ResolvedCleanLevelAssets {
   const pack = resolveGlobalAssetPack(level.presentation.assetPackId, "clean");
   const environmentAssetKey = resolveLevelEnvironmentAssetKey(level.id, pack.environmentAssetKey);
+  const staff = resolveStaffGrowthAssets(registry, level.id);
+  const base = staffBaseKeys(registry, level.id, pack.workerIdleAssetKey, pack.workerWalkAssetKeys);
   const preload = resolveDescriptors(registry, [
     environmentAssetKey,
     ...pack.sharedStoreAssetKeys,
-    ...pack.workerWalkAssetKeys,
-    pack.workerIdleAssetKey,
+    ...base.walk,
+    base.idle,
+    ...staff.preload.map((asset) => asset.key),
     pack.workerMopAssetKey,
     pack.cleaningFixtureAssetKey,
     pack.cleaningCartAssetKey,
@@ -261,9 +304,9 @@ export function resolveCleanLevelAssets(
     ...CLEAN_SPILL_ASSET_KEYS
   ]);
   return Object.freeze({
-    ...baseAssets(registry, pack, environmentAssetKey),
+    ...baseAssets(registry, pack, environmentAssetKey, base.walk),
     preload,
-    worker: registry.require(pack.workerIdleAssetKey),
+    worker: registry.require(base.idle),
     workerMop: registry.require(pack.workerMopAssetKey),
     cleaningFixture: registry.require(pack.cleaningFixtureAssetKey),
     cleaningCart: registry.require(pack.cleaningCartAssetKey),
@@ -280,25 +323,28 @@ export function resolveFindItemsLevelAssets(
 ): ResolvedFindItemsLevelAssets {
   const pack = resolveGlobalAssetPack(level.presentation.assetPackId, "find-items");
   const productAssetKeys = runtime.products.map((product) => product.assetKey);
-  const workerIdleAssetKey = level.id === "starter-level-009"
+  const fallbackWorkerIdleAssetKey = level.id === "starter-level-009"
     ? "worker-priority-picker"
     : pack.workerIdleAssetKey;
+  const staff = resolveStaffGrowthAssets(registry, level.id);
+  const base = staffBaseKeys(registry, level.id, fallbackWorkerIdleAssetKey, pack.workerWalkAssetKeys);
   const environmentAssetKey = resolveLevelEnvironmentAssetKey(level.id, pack.environmentAssetKey);
   const authoredOrderHuntPlate = environmentAssetKey.startsWith("environment-project-order-hunt");
   const preload = resolveDescriptors(registry, [
     environmentAssetKey,
     ...(authoredOrderHuntPlate ? [] : pack.sharedStoreAssetKeys),
-    ...pack.workerWalkAssetKeys,
-    workerIdleAssetKey,
+    ...base.walk,
+    base.idle,
+    ...staff.preload.map((asset) => asset.key),
     pack.workerThinkingAssetKey,
     pack.basketAssetKey,
     ...(authoredOrderHuntPlate ? [] : [runtime.fixture.assetKey]),
     ...productAssetKeys
   ]);
   return Object.freeze({
-    ...baseAssets(registry, pack, environmentAssetKey),
+    ...baseAssets(registry, pack, environmentAssetKey, base.walk),
     preload,
-    worker: registry.require(workerIdleAssetKey),
+    worker: registry.require(base.idle),
     workerThinking: registry.require(pack.workerThinkingAssetKey),
     fixture: registry.require(runtime.fixture.assetKey),
     basket: registry.require(pack.basketAssetKey),
