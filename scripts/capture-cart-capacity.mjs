@@ -77,6 +77,17 @@ try {
   await page.waitForSelector(GAME_CANVAS_SELECTOR, { state: "visible", timeout: 45000 });
   await page.waitForFunction(() => document.body.dataset.activeLevel === "starter-level-006", null, { timeout: 30000 });
 
+  // activeLevel is written before Phaser finishes Scene.create(). Wait for the
+  // actual player/interaction port so the first action cannot be dropped.
+  await page.waitForFunction((sceneKey) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+    return Boolean(
+      scene?.playerPosition?.() &&
+      scene?.controller?.snapshot?.() &&
+      scene?.isInteractionReady?.() === true
+    );
+  }, GAME_SCENE_KEY, { timeout: 30000 });
+
   // Ask the same scene action used by the HUD. This avoids a brittle hardcoded
   // pixel after HUD/career layout changes while preserving the actual walk + pickup flow.
   await page.evaluate((sceneKey) => {
