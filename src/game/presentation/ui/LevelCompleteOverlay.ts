@@ -54,11 +54,11 @@ export class LevelCompleteOverlay {
   private create(): void {
     if (this.container) return;
     const { scene, config } = this;
-    const preview = config.progressionPreview ?? resolveCampaignProgressionPreview(
-      config.currentLevelId ?? document.body.dataset.activeLevel
-    );
+    const completedLevelId = config.currentLevelId ?? document.body.dataset.activeLevel;
+    const preview = config.progressionPreview ?? resolveCampaignProgressionPreview(completedLevelId);
     const registeredSession = scene.game.registry.get("campaignSession") as CampaignSession | undefined;
     const campaignSession = config.campaignSession ?? registeredSession;
+    const promotion = campaignSession?.consumePendingPromotion(completedLevelId);
     const hasUpgradeShop = Boolean(campaignSession);
     const compactMobile = document.body.dataset.mobileLandscape === "required";
     const finalScaleX = compactMobile ? 0.9 : 1;
@@ -93,34 +93,34 @@ export class LevelCompleteOverlay {
     card.strokeRoundedRect(-348, cardTop, 696, cardHeight, 36);
     card.fillStyle(0x2f8a58, 1);
     card.fillRoundedRect(-348, cardTop, 696, 82, { tl: 36, tr: 36, bl: 0, br: 0 });
-    card.fillStyle(0xe7f3e8, 1);
+    card.fillStyle(promotion ? 0xfff3c4 : 0xe7f3e8, 1);
     card.fillRoundedRect(-268, rewardY - 27, 536, 54, 18);
     card.fillStyle(config.panelColor, 0.96);
     card.fillRoundedRect(-280, previewPanelY, 560, 92, 22);
-    card.lineStyle(3, config.accentColor, 0.72);
+    card.lineStyle(3, promotion ? 0xffd95e : config.accentColor, 0.72);
     card.strokeRoundedRect(-280, previewPanelY, 560, 92, 22);
 
     const badgeY = cardTop + 2;
     const badgeShadow = scene.add.circle(0, badgeY + 10, 58, 0x173b2a, 0.32);
-    const badge = scene.add.circle(0, badgeY, 55, config.accentColor, 1)
+    const badge = scene.add.circle(0, badgeY, 55, promotion ? 0xffc947 : config.accentColor, 1)
       .setStrokeStyle(6, 0xfff3bf, 1);
-    const badgeStar = scene.add.text(0, badgeY - 2, "★", {
+    const badgeStar = scene.add.text(0, badgeY - 2, promotion ? "↑" : "★", {
       fontFamily: "Arial",
-      fontSize: "58px",
+      fontSize: promotion ? "54px" : "58px",
       color: "#ffffff",
       fontStyle: "bold",
       stroke: "#b98118",
       strokeThickness: 5
     }).setOrigin(0.5);
 
-    const status = scene.add.text(0, statusY, config.statusLabel, {
+    const status = scene.add.text(0, statusY, promotion ? "PROMOTED!" : config.statusLabel, {
       fontFamily: "Arial",
       fontSize: "18px",
       color: "#ffffff",
       fontStyle: "bold",
       letterSpacing: 3
     }).setOrigin(0.5);
-    const title = scene.add.text(0, titleY, config.levelTitle, {
+    const title = scene.add.text(0, titleY, promotion ? promotion.rank.title.toUpperCase() : config.levelTitle, {
       fontFamily: "Arial",
       fontSize: "35px",
       color: "#173b2a",
@@ -135,12 +135,14 @@ export class LevelCompleteOverlay {
       {
         fontFamily: "Arial",
         fontSize: index === 1 ? "34px" : "29px",
-        color: `#${config.accentColor.toString(16).padStart(6, "0")}`,
+        color: promotion ? "#ffc947" : `#${config.accentColor.toString(16).padStart(6, "0")}`,
         stroke: "#b98118",
         strokeThickness: 3
       }
     ).setOrigin(0.5));
-    const reward = scene.add.text(0, rewardY, config.rewardLabel, {
+    const reward = scene.add.text(0, rewardY, promotion
+      ? `NEW UNIFORM UNLOCKED  ·  ${config.rewardLabel}`
+      : config.rewardLabel, {
       fontFamily: "Arial",
       fontSize: "17px",
       color: "#28563d",
@@ -150,21 +152,25 @@ export class LevelCompleteOverlay {
       wordWrap: { width: 510 }
     }).setOrigin(0.5);
 
-    const previewEyebrow = scene.add.text(0, previewPanelY + 17, preview.eyebrow, {
+    const previewEyebrow = scene.add.text(0, previewPanelY + 17, promotion ? "CAREER ADVANCEMENT" : preview.eyebrow, {
       fontFamily: "Arial",
       fontSize: "13px",
       color: "#ffd95e",
       fontStyle: "bold",
       letterSpacing: 2
     }).setOrigin(0.5);
-    const previewTitle = scene.add.text(0, previewPanelY + 43, preview.title, {
+    const previewTitle = scene.add.text(0, previewPanelY + 43, promotion
+      ? `${promotion.rank.title.toUpperCase()} · NEXT SHIFT`
+      : preview.title, {
       fontFamily: "Arial",
       fontSize: "23px",
       color: "#ffffff",
       fontStyle: "bold",
       align: "center"
     }).setOrigin(0.5);
-    const previewDetail = scene.add.text(0, previewPanelY + 70, preview.detail, {
+    const previewDetail = scene.add.text(0, previewPanelY + 70, promotion
+      ? `New role active from the next level · ${preview.detail}`
+      : preview.detail, {
       fontFamily: "Arial",
       fontSize: "12px",
       color: "#b8d9c4",
@@ -226,9 +232,6 @@ export class LevelCompleteOverlay {
       color: "#ffffff",
       fontStyle: "bold"
     }).setOrigin(0.5);
-    // Keep one generous hit surface above every visual child. This avoids
-    // mobile edge misses on the arrow/right half after canvas fitting or the
-    // portrait-to-landscape coordinate transform.
     const buttonHit = scene.add.rectangle(0, 0, 460, 120, 0xffffff, 0.001)
       .setInteractive({ useHandCursor: true })
       .setName("completion-primary-action-hit");
@@ -249,11 +252,6 @@ export class LevelCompleteOverlay {
     buttonHit.on("pointerdown", () => this.continueOnce());
     buttonContainer.on("pointerdown", () => this.continueOnce());
 
-    // Android WebViews that keep a portrait viewport rotate the complete game
-    // with CSS. Phaser normally inverse-maps that pointer, but browser chrome
-    // resizing can leave the right half of this final button outside its hit
-    // result for a frame. A native capture listener maps the rendered canvas
-    // directly and treats the whole visual row as one action.
     this.mobileActionFallback = (event: PointerEvent): void => {
       if (!event.isPrimary || document.body.dataset.softwareLandscape !== "true") return;
       const canvas = scene.game.canvas;
@@ -312,7 +310,7 @@ export class LevelCompleteOverlay {
       scaleY: { from: 0.3, to: 1 },
       angle: { from: -14, to: 0 },
       delay: 120,
-      duration: 420,
+      duration: promotion ? 620 : 420,
       ease: "Back.Out"
     });
     scene.tweens.add({
