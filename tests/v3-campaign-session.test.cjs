@@ -44,7 +44,7 @@ test("A fresh direct level entry uses that level's configured fallback coins", (
   assert.deepEqual(session.upgrades(), { movement: 0, service: 0, profit: 0 });
 });
 
-test("Completing levels carries actual economy through the ten-level chain", () => {
+test("Completing levels carries actual economy and staff rank through the ten-level chain", () => {
   const session = createSession();
   const saved = session.completeLevel(
     "starter-level-001",
@@ -52,7 +52,8 @@ test("Completing levels carries actual economy through the ten-level chain", () 
     { coins: 200, stars: 1, reputation: 0 }
   );
 
-  assert.equal(saved.version, 2);
+  assert.equal(saved.version, 3);
+  assert.deepEqual(saved.staff, { rankId: "trainee", promotedThroughLevel: 0 });
   assert.deepEqual(validateCampaignSessionSnapshot(saved, "main-campaign"), []);
   assert.deepEqual(session.initialEconomyFor("starter-level-002", 999), {
     coins: 200,
@@ -60,11 +61,12 @@ test("Completing levels carries actual economy through the ten-level chain", () 
     reputation: 0
   });
 
-  session.completeLevel(
+  const levelNine = session.completeLevel(
     "starter-level-009",
     "starter-level-010",
     { coins: 1140, stars: 9, reputation: 23 }
   );
+  assert.deepEqual(levelNine.staff, { rankId: "shift-leader", promotedThroughLevel: 9 });
   assert.deepEqual(session.initialEconomyFor("starter-level-010", 999), {
     coins: 1140,
     stars: 9,
@@ -96,6 +98,26 @@ test("Purchased upgrades spend coins and change real gameplay values", () => {
   );
 });
 
+test("Promotion celebration is emitted once per milestone completion", () => {
+  const session = createSession();
+  session.completeLevel(
+    "starter-level-003",
+    "starter-level-004",
+    { coins: 300, stars: 3, reputation: 3 }
+  );
+  const first = session.consumePendingPromotion("starter-level-003");
+  assert.ok(first);
+  assert.equal(first.rank.id, "store-associate");
+  assert.equal(session.consumePendingPromotion("starter-level-003"), undefined);
+
+  session.completeLevel(
+    "starter-level-003",
+    "starter-level-004",
+    { coins: 300, stars: 3, reputation: 3 }
+  );
+  assert.equal(session.consumePendingPromotion("starter-level-003"), undefined);
+});
+
 test("Campaign replay begins only after Level 10 and keeps store growth", () => {
   const session = createSession();
   session.completeLevel(
@@ -109,12 +131,14 @@ test("Campaign replay begins only after Level 10 and keeps store growth", () => 
   assert.equal(replay.currentLevelId, "starter-level-001");
   assert.deepEqual(replay.completedLevelIds, []);
   assert.deepEqual(replay.upgrades, { movement: 1, service: 0, profit: 0 });
+  assert.deepEqual(replay.staff, { rankId: "trainee", promotedThroughLevel: 0 });
   assert.equal(replay.coins, 1220);
 
   const hardReset = session.reset({ preserveMetaProgress: false });
   assert.equal(hardReset.currentLevelId, "starter-level-001");
   assert.deepEqual(hardReset.completedLevelIds, []);
   assert.deepEqual(hardReset.upgrades, { movement: 0, service: 0, profit: 0 });
+  assert.deepEqual(hardReset.staff, { rankId: "trainee", promotedThroughLevel: 0 });
   assert.deepEqual(session.initialEconomyFor("starter-level-001", 999), {
     coins: 100,
     stars: 0,
@@ -122,7 +146,7 @@ test("Campaign replay begins only after Level 10 and keeps store growth", () => 
   });
 });
 
-test("Version 1 saves migrate without losing economy or campaign position", () => {
+test("Version 1 saves migrate without losing economy, campaign position, or derived staff rank", () => {
   const migrated = migrateCampaignSessionSnapshot({
     version: 1,
     campaignId: "main-campaign",
@@ -142,10 +166,30 @@ test("Version 1 saves migrate without losing economy or campaign position", () =
   }, "main-campaign");
 
   assert.ok(migrated);
-  assert.equal(migrated.version, 2);
+  assert.equal(migrated.version, 3);
   assert.equal(migrated.currentLevelId, "starter-level-008");
   assert.equal(migrated.coins, 860);
   assert.equal(migrated.completedLevelIds.length, 7);
   assert.deepEqual(migrated.upgrades, { movement: 0, service: 0, profit: 0 });
+  assert.deepEqual(migrated.staff, { rankId: "senior-associate", promotedThroughLevel: 0 });
+  assert.deepEqual(validateCampaignSessionSnapshot(migrated, "main-campaign"), []);
+});
+
+test("Version 2 saves migrate to v3 and derive the active career rank", () => {
+  const migrated = migrateCampaignSessionSnapshot({
+    version: 2,
+    campaignId: "main-campaign",
+    currentLevelId: "starter-level-005",
+    completedLevelIds: ["starter-level-001", "starter-level-002", "starter-level-003", "starter-level-004"],
+    coins: 520,
+    stars: 4,
+    reputation: 8,
+    upgrades: { movement: 1, service: 2, profit: 0 }
+  }, "main-campaign");
+
+  assert.ok(migrated);
+  assert.equal(migrated.version, 3);
+  assert.deepEqual(migrated.upgrades, { movement: 1, service: 2, profit: 0 });
+  assert.deepEqual(migrated.staff, { rankId: "store-associate", promotedThroughLevel: 0 });
   assert.deepEqual(validateCampaignSessionSnapshot(migrated, "main-campaign"), []);
 });
