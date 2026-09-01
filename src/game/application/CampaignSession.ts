@@ -12,6 +12,12 @@ import {
   type MarketUpgradeOption,
   type MarketUpgradePurchaseResult
 } from "./MarketUpgrades";
+import {
+  DEFAULT_STAFF_PROGRESSION,
+  normalizeStaffProgression,
+  staffAfterLevelCompletion,
+  type StaffProgressionState
+} from "./StaffProgression";
 
 export interface CampaignEconomy {
   readonly coins: number;
@@ -20,11 +26,12 @@ export interface CampaignEconomy {
 }
 
 export interface CampaignSessionSnapshot extends CampaignEconomy {
-  readonly version: 2;
+  readonly version: 3;
   readonly campaignId: string;
   readonly currentLevelId: string;
   readonly completedLevelIds: readonly string[];
   readonly upgrades: MarketUpgradeLevels;
+  readonly staff: StaffProgressionState;
 }
 
 export interface CampaignSessionStore {
@@ -60,14 +67,16 @@ const createSnapshot = (
   currentLevelId: string,
   completedLevelIds: readonly string[],
   economy: CampaignEconomy,
-  upgrades: MarketUpgradeLevels
+  upgrades: MarketUpgradeLevels,
+  staff: StaffProgressionState = DEFAULT_STAFF_PROGRESSION
 ): CampaignSessionSnapshot => Object.freeze({
-  version: 2 as const,
+  version: 3 as const,
   campaignId,
   currentLevelId,
   completedLevelIds: Object.freeze([...new Set(completedLevelIds)]),
   ...normalizeEconomy(economy),
-  upgrades: normalizeMarketUpgrades(upgrades)
+  upgrades: normalizeMarketUpgrades(upgrades),
+  staff: normalizeStaffProgression(staff, currentLevelId)
 });
 
 export class CampaignSession {
@@ -87,7 +96,8 @@ export class CampaignSession {
       this.config.firstLevelId,
       [],
       this.config.defaultEconomy,
-      DEFAULT_MARKET_UPGRADES
+      DEFAULT_MARKET_UPGRADES,
+      DEFAULT_STAFF_PROGRESSION
     );
   }
 
@@ -109,6 +119,10 @@ export class CampaignSession {
     return this.snapshot().upgrades;
   }
 
+  staff(): StaffProgressionState {
+    return this.snapshot().staff;
+  }
+
   upgradeOptions(): readonly MarketUpgradeOption[] {
     const snapshot = this.snapshot();
     return marketUpgradeOptions(snapshot, snapshot.upgrades);
@@ -124,7 +138,8 @@ export class CampaignSession {
       previous.currentLevelId,
       previous.completedLevelIds,
       result.economy,
-      result.upgrades
+      result.upgrades,
+      previous.staff
     );
     this.store.save(snapshot);
     this.events?.emit("campaign.upgrade-purchased", {
@@ -162,13 +177,16 @@ export class CampaignSession {
     const previous = this.store.load(this.config.campaignId);
     const completed = new Set(previous?.completedLevelIds ?? []);
     completed.add(levelId);
+    const previousStaff = previous?.staff ?? DEFAULT_STAFF_PROGRESSION;
+    const staff = staffAfterLevelCompletion(previousStaff, levelId, nextLevelId);
 
     const snapshot = createSnapshot(
       this.config.campaignId,
       nextLevelId ?? levelId,
       [...completed],
       normalizedEconomy,
-      previous?.upgrades ?? DEFAULT_MARKET_UPGRADES
+      previous?.upgrades ?? DEFAULT_MARKET_UPGRADES,
+      staff
     );
     this.store.save(snapshot);
     this.events?.emit("campaign.level-completed", {
@@ -194,7 +212,8 @@ export class CampaignSession {
       this.config.firstLevelId,
       [],
       economy,
-      preserveMetaProgress ? previous?.upgrades ?? DEFAULT_MARKET_UPGRADES : DEFAULT_MARKET_UPGRADES
+      preserveMetaProgress ? previous?.upgrades ?? DEFAULT_MARKET_UPGRADES : DEFAULT_MARKET_UPGRADES,
+      DEFAULT_STAFF_PROGRESSION
     );
     this.store.save(snapshot);
     this.events?.emit("campaign.reset", {
@@ -240,20 +259,37 @@ export function migrateCampaignSessionSnapshot(
       currentLevelId,
       completedLevelIds,
       economy,
-      DEFAULT_MARKET_UPGRADES
+      DEFAULT_MARKET_UPGRADES,
+      DEFAULT_STAFF_PROGRESSION
     );
   }
-  if (candidate.version !== 2) return undefined;
 
   const upgrades = candidate.upgrades && typeof candidate.upgrades === "object"
     ? candidate.upgrades as Partial<MarketUpgradeLevels>
+    : undefined;
+
+  if (candidate.version === 2) {
+    return createSnapshot(
+      campaignId,
+      currentLevelId,
+      completedLevelIds,
+      economy,
+      normalizeMarketUpgrades(upgrades),
+      DEFAULT_STAFF_PROGRESSION
+    );
+  }
+  if (candidate.version !== 3) return undefined;
+
+  const staff = candidate.staff && typeof candidate.staff === "object"
+    ? candidate.staff as Partial<StaffProgressionState>
     : undefined;
   return createSnapshot(
     campaignId,
     currentLevelId,
     completedLevelIds,
     economy,
-    normalizeMarketUpgrades(upgrades)
+    normalizeMarketUpgrades(upgrades),
+    normalizeStaffProgression(staff, currentLevelId)
   );
 }
 
@@ -262,7 +298,7 @@ export function validateCampaignSessionSnapshot(
   campaignId: string
 ): readonly string[] {
   const errors: string[] = [];
-  if (snapshot.version !== 2) errors.push("Unsupported campaign session version");
+  if (snapshot.version !== 3) errors.push("Unsupported campaign session version");
   if (snapshot.campaignId !== campaignId) errors.push("Campaign session belongs to another campaign");
   if (!snapshot.currentLevelId.trim()) errors.push("Campaign session requires a current level");
   if (new Set(snapshot.completedLevelIds).size !== snapshot.completedLevelIds.length) {
@@ -280,6 +316,13 @@ export function validateCampaignSessionSnapshot(
     normalizedUpgrades.profit !== snapshot.upgrades.profit
   ) {
     errors.push("Campaign upgrades are outside supported levels");
+  }
+  const normalizedStaff = normalizeStaffProgression(snapshot.staff, snapshot.currentLevelId);
+  if (
+    normalizedStaff.rankId !== snapshot.staff.rankId ||
+    normalizedStaff.promotedThroughLevel !== snapshot.staff.promotedThroughLevel
+  ) {
+    errors.push("Campaign staff progression is invalid");
   }
   return Object.freeze(errors);
 }
