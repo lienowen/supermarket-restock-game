@@ -25,14 +25,14 @@ const GOLDEN_NAVIGATION_POINTS: Readonly<Record<string, { readonly x: number; re
 });
 
 const GOLDEN_PRODUCT_LAYOUT = Object.freeze([
-  Object.freeze({ sourceName: "find-decoy-decoy-chips", name: "find-decoy-banana", interactionId: "decoy-chips", assetKey: "product-banana-bunch", x: 120, y: 515, maxWidth: 96, maxHeight: 72, requested: false }),
-  Object.freeze({ sourceName: "find-item-apple", name: "find-item-apple", interactionId: "apple", assetKey: "product-apple", x: 220, y: 515, maxWidth: 84, maxHeight: 84, requested: true }),
-  Object.freeze({ sourceName: "find-decoy-decoy-detergent", name: "find-decoy-grapes", interactionId: "decoy-detergent", assetKey: "product-grapes-pack", x: 320, y: 515, maxWidth: 92, maxHeight: 72, requested: false }),
-  Object.freeze({ sourceName: "find-item-cereal-box", name: "find-item-cereal-box", interactionId: "cereal-box", assetKey: "product-cereal-box", x: 620, y: 390, maxWidth: 74, maxHeight: 102, requested: true }),
-  Object.freeze({ sourceName: "find-decoy-decoy-oats", name: "find-decoy-oats", interactionId: "decoy-oats", assetKey: "product-oats-canister", x: 720, y: 390, maxWidth: 72, maxHeight: 98, requested: false }),
-  Object.freeze({ sourceName: "find-decoy-decoy-paper-towels", name: "find-decoy-peanut-butter", interactionId: "decoy-paper-towels", assetKey: "product-peanut-butter", x: 820, y: 390, maxWidth: 72, maxHeight: 96, requested: false }),
-  Object.freeze({ sourceName: "find-item-milk-bottle", name: "find-item-milk-bottle", interactionId: "milk-bottle", assetKey: "product-milk-bottle", x: 1290, y: 405, maxWidth: 76, maxHeight: 118, requested: true }),
-  Object.freeze({ sourceName: "find-decoy-decoy-yogurt", name: "find-decoy-yogurt", interactionId: "decoy-yogurt", assetKey: "product-yogurt-cup", x: 1400, y: 405, maxWidth: 78, maxHeight: 84, requested: false })
+  Object.freeze({ sourceName: "find-decoy-decoy-chips", name: "find-decoy-banana", interactionId: "decoy-chips", assetKey: "product-banana-bunch", x: 120, y: 515, maxWidth: 118, maxHeight: 88, requested: false }),
+  Object.freeze({ sourceName: "find-item-apple", name: "find-item-apple", interactionId: "apple", assetKey: "product-apple", x: 220, y: 515, maxWidth: 118, maxHeight: 118, requested: true }),
+  Object.freeze({ sourceName: "find-decoy-decoy-detergent", name: "find-decoy-grapes", interactionId: "decoy-detergent", assetKey: "product-grapes-pack", x: 320, y: 515, maxWidth: 112, maxHeight: 88, requested: false }),
+  Object.freeze({ sourceName: "find-item-cereal-box", name: "find-item-cereal-box", interactionId: "cereal-box", assetKey: "product-cereal-box", x: 620, y: 390, maxWidth: 112, maxHeight: 150, requested: true }),
+  Object.freeze({ sourceName: "find-decoy-decoy-oats", name: "find-decoy-oats", interactionId: "decoy-oats", assetKey: "product-oats-canister", x: 720, y: 390, maxWidth: 104, maxHeight: 138, requested: false }),
+  Object.freeze({ sourceName: "find-decoy-decoy-paper-towels", name: "find-decoy-peanut-butter", interactionId: "decoy-paper-towels", assetKey: "product-peanut-butter", x: 820, y: 390, maxWidth: 104, maxHeight: 132, requested: false }),
+  Object.freeze({ sourceName: "find-item-milk-bottle", name: "find-item-milk-bottle", interactionId: "milk-bottle", assetKey: "product-milk-bottle", x: 1290, y: 405, maxWidth: 104, maxHeight: 164, requested: true }),
+  Object.freeze({ sourceName: "find-decoy-decoy-yogurt", name: "find-decoy-yogurt", interactionId: "decoy-yogurt", assetKey: "product-yogurt-cup", x: 1400, y: 405, maxWidth: 104, maxHeight: 112, requested: false })
 ]);
 
 const WALK_FRAME_MS = 140;
@@ -203,7 +203,7 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
       fitImageIntoBox(object, layout.maxWidth, layout.maxHeight);
       object.setInteractive({ useHandCursor: true });
     });
-    document.body.dataset.goldenProductScale = "readable-v2";
+    document.body.dataset.goldenProductScale = "readable-v3";
   }
 
   private reframeBasket(): void {
@@ -232,8 +232,8 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
       const zone = this.add.zone(
         layout.x,
         layout.y - layout.maxHeight * 0.48,
-        96,
-        126
+        Math.max(108, layout.maxWidth + 24),
+        Math.max(132, layout.maxHeight + 20)
       )
         .setDepth(220)
         .setName(`golden-touch-${layout.interactionId}`)
@@ -255,7 +255,7 @@ export class GoldenOrderHuntScene extends UtilityTaskScene {
       this.mobileTouchZones.push(zone);
     });
 
-    document.body.dataset.goldenMobileTouch = "expanded-product-hotspots-v2";
+    document.body.dataset.goldenMobileTouch = "expanded-product-hotspots-v3";
     document.body.dataset.goldenMobileMoveSpeed = String(MOBILE_TOUCH_MOVE_SPEED);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       this.mobileTouchZones.splice(0).forEach((zone) => zone.destroy());
