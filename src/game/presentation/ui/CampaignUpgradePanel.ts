@@ -36,7 +36,7 @@ export class CampaignUpgradePanel {
     background.lineStyle(3, config.accentColor, 0.66);
     background.strokeRoundedRect(-config.width / 2, -78, config.width, 156, 22);
 
-    const title = scene.add.text(-config.width / 2 + 22, -59, "STORE UPGRADES", {
+    const title = scene.add.text(-config.width / 2 + 22, -59, "STAFF SKILLS", {
       fontFamily: "Arial",
       fontSize: "14px",
       color: "#ffd95e",
@@ -51,7 +51,7 @@ export class CampaignUpgradePanel {
       fontStyle: "bold"
     }).setOrigin(1, 0.5);
 
-    this.messageText = scene.add.text(0, 65, "Spend coins now. Upgrades affect every following shift.", {
+    this.messageText = scene.add.text(0, 65, "Spend coins on skills that improve every following shift.", {
       fontFamily: "Arial",
       fontSize: "11px",
       color: "#b8d9c4",
@@ -138,10 +138,10 @@ export class CampaignUpgradePanel {
   private purchase(upgradeId: MarketUpgradeId): void {
     const result = this.config.session.purchaseUpgrade(upgradeId);
     if (!result.purchased) {
-      this.showMessage(result.reason === "max-level" ? "Upgrade already maxed." : "Not enough coins yet.", true);
+      this.showMessage(result.reason === "max-level" ? "Skill already maxed." : "Not enough coins yet.", true);
       return;
     }
-    this.showMessage("Upgrade installed. The next shift is stronger.", false);
+    this.showMessage("Skill upgraded. The next shift is stronger.", false);
     this.refresh();
     this.scene.cameras.main.flash(120, 255, 226, 118, false);
   }
