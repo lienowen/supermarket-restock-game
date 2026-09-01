@@ -75,7 +75,10 @@ export const LEVEL_TWO_ASSET_CATALOGUE: AssetCatalogue = Object.freeze({
     }),
     asset({
       key: "prop-water-case-open-v2",
-      path: "assets/game/runtime-optimized/l1-l2/water-case-open.webp",
+      // The authored open-case PNG has a damaged image payload. Reuse the
+      // verified water-case texture until a clean open-water export replaces it;
+      // the worker open pose and workflow state still communicate the action.
+      path: "assets/game/runtime-optimized/l1-l2/water-case-closed.webp",
       category: "prop",
       canvasSize: [1536, 1024],
       anchor: [0.5, 0.96],
