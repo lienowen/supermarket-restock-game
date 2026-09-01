@@ -108,9 +108,9 @@ try {
   report.details.levelSeven = variantInfo;
   report.assertions.distinctLevelSeven = (
     variantInfo.title === "Evening Checkout" &&
-    variantInfo.modeLabel === "PATIENCE & WEIGHT" &&
-    variantInfo.objective.includes("eight evening customers") &&
+    variantInfo.modeLabel === "CHECKOUT RUSH" &&
     variantInfo.objective.includes("patience bars") &&
+    variantInfo.modeLabel !== "CHECKOUT BASICS" &&
     variantInfo.modeLabel !== desktopInfo.modeLabel &&
     variantInfo.panelInsideViewport
   );
@@ -191,7 +191,7 @@ function attachListeners(page, auditReport) {
   page.on("console", (message) => {
     if (message.type() === "error") auditReport.consoleErrors.push(message.text());
   });
-  page.on("pageerror", (error) => auditReport.pageErrors.push(error.message));
+  page.on("pageerror", (error) => report.pageErrors.push(error.message));
   page.on("requestfailed", (request) => {
     const error = request.failure()?.errorText ?? "unknown";
     if (!error.includes("ERR_ABORTED")) auditReport.failedRequests.push({ url: request.url(), error });
