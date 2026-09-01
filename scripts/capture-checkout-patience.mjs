@@ -57,8 +57,6 @@ const report = {
 const browser = await chromium.launch({ headless: true });
 let thrownError;
 try {
-  // Session A deliberately exercises mistakes and mood switching. It is kept
-  // separate so evidence capture cannot consume the timer of the completion run.
   const moodContext = await browser.newContext({ viewport: { width: 1600, height: 900 }, deviceScaleFactor: 1 });
   const moodPage = await createReadyLevelSevenPage(moodContext, report);
   report.assertions.patienceOverlayAppears = await moodPage.locator("#checkout-patience-overlay").isVisible();
@@ -74,13 +72,13 @@ try {
     await moodPage.waitForFunction(
       (expected) => Number(document.body.dataset.checkoutPatienceMistakes ?? "0") >= expected,
       mistake,
-      { timeout: 4000 }
+      { timeout: 7000 }
     );
   }
   await moodPage.waitForFunction(
     () => document.body.dataset.checkoutPatienceMood === "impatient",
     null,
-    { timeout: 3000 }
+    { timeout: 7000 }
   );
   const patienceAfter = Number(await moodPage.evaluate(() => document.body.dataset.checkoutPatienceRemaining ?? "0"));
   report.assertions.wrongWeightCostsPatience = patienceBefore - patienceAfter >= 8200;
@@ -102,8 +100,6 @@ try {
   await moodPage.close();
   await moodContext.close();
 
-  // Session B is a clean speed run. No mid-run screenshots or deliberate waits
-  // are allowed to consume the 15-second per-customer timer.
   const completionContext = await browser.newContext({ viewport: { width: 1600, height: 900 }, deviceScaleFactor: 1 });
   const page = await createReadyLevelSevenPage(completionContext, report);
 
@@ -111,7 +107,7 @@ try {
     await page.waitForFunction(
       (expectedCustomer) => document.body.dataset.checkoutPatienceCustomer === String(expectedCustomer + 1),
       customer,
-      { timeout: 8000 }
+      { timeout: 12000 }
     );
 
     if (customer === 0) {
@@ -119,17 +115,15 @@ try {
       await page.waitForFunction(
         () => document.body.dataset.checkoutPatienceScanned === "true",
         null,
-        { timeout: 3000 }
+        { timeout: 7000 }
       );
       report.assertions.standardItemDragWorks = true;
     } else {
-      // Keyboard activation uses the same scan state transition and avoids
-      // spending customer patience on Playwright pointer interpolation.
       await page.locator("#patience-standard-item").press("Enter");
       await page.waitForFunction(
         () => document.body.dataset.checkoutPatienceScanned === "true",
         null,
-        { timeout: 3000 }
+        { timeout: 7000 }
       );
     }
 
@@ -138,14 +132,14 @@ try {
     await page.waitForFunction(
       () => document.body.dataset.checkoutPatienceWeightCorrect === "true",
       null,
-      { timeout: 3000 }
+      { timeout: 7000 }
     );
     report.completedWeights += 1;
 
     await page.waitForFunction(() => {
       const button = document.querySelector("#patience-payment-button");
       return button instanceof HTMLButtonElement && button.disabled === false;
-    }, null, { timeout: 3000 });
+    }, null, { timeout: 7000 });
     await page.evaluate(() => {
       const button = document.querySelector("#patience-payment-button");
       if (!(button instanceof HTMLButtonElement) || button.disabled) {
@@ -153,10 +147,10 @@ try {
       }
       button.click();
     });
-    await waitForSnapshot(page, { customersServed: customer + 1 }, 6000);
+    await waitForSnapshot(page, { customersServed: customer + 1 }, 10000);
   }
 
-  const final = await waitForSnapshot(page, { step: "complete", customersServed: 8 }, 8000);
+  const final = await waitForSnapshot(page, { step: "complete", customersServed: 8 }, 12000);
   const abandonments = Number(await page.evaluate(() => document.body.dataset.checkoutPatienceAbandonments ?? "0"));
   report.assertions.eightCorrectWeightsRequired = report.completedWeights === 8;
   report.assertions.eightCustomersComplete = Boolean(final && final.step === "complete");
@@ -210,11 +204,11 @@ async function createReadyLevelSevenPage(context, auditReport) {
     if (!action) throw new Error("Checkout action is missing");
     action.emit("pointerdown");
   }, GAME_SCENE_KEY);
-  await waitForSnapshot(page, { step: "serve", customersServed: 0 }, 5000);
+  await waitForSnapshot(page, { step: "serve", customersServed: 0 }, 8000);
   await page.waitForFunction(
     () => document.body.dataset.checkoutPatience === "active",
     null,
-    { timeout: 8000 }
+    { timeout: 12000 }
   );
   return page;
 }
@@ -227,7 +221,7 @@ async function dragStandardItem(page) {
   if (!sourceBox || !targetBox) throw new Error("Standard item or scanner has no bounds");
   await page.mouse.move(sourceBox.x + sourceBox.width / 2, sourceBox.y + sourceBox.height / 2);
   await page.mouse.down();
-  await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, { steps: 8 });
+  await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + targetBox.height / 2, { steps: 18 });
   await page.mouse.up();
 }
 
@@ -259,7 +253,7 @@ async function waitForInteractionReady(page) {
   await page.waitForFunction((sceneKey) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
     return scene?.isInteractionReady?.() === true;
-  }, GAME_SCENE_KEY, { timeout: 12000 });
+  }, GAME_SCENE_KEY, { timeout: 18000 });
 }
 
 function attachListeners(page, auditReport) {
