@@ -4,6 +4,7 @@ import "./mature-clean.css";
 import "./mobile-playability.css";
 import "./mobile-landscape-fit.css";
 import { installMobileLandscapeController } from "./game/infrastructure/browser/MobileLandscapeController";
+import { installStaffCareerHud } from "./game/presentation/ui/installStaffCareerHud";
 
 const requestedLevel = (): string => {
   const parameters = new URLSearchParams(window.location.search);
@@ -49,6 +50,7 @@ const installPresentationPatches = async (levelId: string): Promise<void> => {
 };
 
 installMobileLandscapeController();
+installStaffCareerHud();
 
 void (async () => {
   try {
