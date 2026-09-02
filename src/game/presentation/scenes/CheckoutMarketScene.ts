@@ -220,8 +220,9 @@ export class CheckoutMarketScene extends Phaser.Scene {
     if (!action) return;
 
     const tuning = this.context.campaignLevel.level.tuning;
+    const isPatienceCheckout = this.context.campaignLevel.level.id === "starter-level-007";
     const lockDuration = action === "SCAN_CUSTOMER"
-      ? tuning.scanDurationMs + tuning.queueAdvanceDurationMs
+      ? (isPatienceCheckout ? 280 : tuning.scanDurationMs + tuning.queueAdvanceDurationMs)
       : 280;
     this.interactionGate.lockFor(lockDuration);
     const accepted = this.controller.dispatch(action);
