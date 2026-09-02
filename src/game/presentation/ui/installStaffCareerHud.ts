@@ -67,6 +67,32 @@ const ensureStyle = (): void => {
         transform-origin: top left;
       }
     }
+    @media (max-width: 600px) {
+      #${HUD_ID} {
+        left: max(8px, env(safe-area-inset-left));
+        top: max(52px, calc(env(safe-area-inset-top) + 44px));
+        min-width: 132px;
+        max-width: 150px;
+        padding: 5px 8px 6px;
+        border-radius: 10px;
+        transform: scale(.78);
+        transform-origin: top left;
+      }
+      #${HUD_ID} .staff-career-title {
+        font-size: 9px;
+        letter-spacing: .9px;
+      }
+      #${HUD_ID} .staff-career-progress {
+        margin-top: 3px;
+        font-size: 8px;
+        line-height: 1.2;
+        letter-spacing: .15px;
+      }
+      #${HUD_ID} .staff-career-track {
+        height: 4px;
+        margin-top: 4px;
+      }
+    }
   `;
   document.head.appendChild(style);
 };
