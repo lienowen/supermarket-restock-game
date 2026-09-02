@@ -91,9 +91,11 @@ export class PlayerNavigationView {
       width: config.displaySize.width,
       height: config.displaySize.height
     };
-    const resolvePoseKey = (assetKey: string): string => (
-      this.solidCutout ? createOpaqueCutoutTexture(scene, assetKey) : assetKey
-    );
+    const resolvePoseKey = (assetKey: string, fallbackAssetKey = config.assetKey): string => {
+      const safeAssetKey = scene.textures.exists(assetKey) ? assetKey : fallbackAssetKey;
+      if (!scene.textures.exists(safeAssetKey)) return "__DEFAULT";
+      return this.solidCutout ? createOpaqueCutoutTexture(scene, safeAssetKey) : safeAssetKey;
+    };
     this.idlePoseKey = resolvePoseKey(config.assetKey);
     this.walkPoseKeys = config.walkAssetKeys
       ? Object.freeze([
@@ -245,11 +247,12 @@ export class PlayerNavigationView {
   }
 
   setTexture(assetKey: string): void {
+    const safeAssetKey = this.scene.textures.exists(assetKey) ? assetKey : this.config.assetKey;
     const resolvedKey = this.solidCutout
-      ? createOpaqueCutoutTexture(this.scene, assetKey)
-      : assetKey;
+      ? createOpaqueCutoutTexture(this.scene, safeAssetKey)
+      : safeAssetKey;
     this.currentPoseKey = resolvedKey;
-    this.actor.setOrigin(0.5, footOriginForAsset(assetKey));
+    this.actor.setOrigin(0.5, footOriginForAsset(safeAssetKey));
     if (this.moving && this.canUseWalkFrames()) {
       this.actor.setTexture(this.walkPoseKeys?.[this.walkFrame] ?? resolvedKey);
       this.applyRequestedDisplaySize();
