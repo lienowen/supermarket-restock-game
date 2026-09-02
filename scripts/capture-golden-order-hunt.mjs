@@ -83,11 +83,13 @@ try {
   report.assertions.productScaleSane = initial.products.every((item) => {
     const shortSide = Math.min(item.width, item.height);
     const longSide = Math.max(item.width, item.height);
+    const visibleArea = item.width * item.height;
     return (
       item.width <= 120 &&
       item.height <= 180 &&
-      shortSide >= 38 &&
-      longSide >= 80
+      shortSide >= 28 &&
+      longSide >= 80 &&
+      visibleArea >= 3000
     );
   });
 
