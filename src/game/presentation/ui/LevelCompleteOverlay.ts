@@ -46,7 +46,7 @@ export class LevelCompleteOverlay {
     this.container?.destroy(true);
     this.container = undefined;
     if (this.mobileActionFallback) {
-      window.removeEventListener("pointerdown", this.mobileActionFallback, true);
+      window.removeEventListener("pointerup", this.mobileActionFallback, true);
       this.mobileActionFallback = undefined;
     }
   }
@@ -232,7 +232,12 @@ export class LevelCompleteOverlay {
       color: "#ffffff",
       fontStyle: "bold"
     }).setOrigin(0.5);
-    const buttonHit = scene.add.rectangle(0, 0, 460, 120, 0xffffff, 0.001)
+
+    // One top-most hit surface owns the completion action. Keeping a single
+    // Phaser input owner avoids parent/child pointer races on Android browsers.
+    const buttonHitWidth = compactMobile ? 540 : 460;
+    const buttonHitHeight = compactMobile ? 150 : 120;
+    const buttonHit = scene.add.rectangle(0, 0, buttonHitWidth, buttonHitHeight, 0xffffff, 0.001)
       .setInteractive({ useHandCursor: true })
       .setName("completion-primary-action-hit");
     const buttonContainer = scene.add.container(0, buttonY, [
@@ -243,35 +248,50 @@ export class LevelCompleteOverlay {
       buttonArrow,
       buttonHit
     ])
-      .setSize(460, 120)
-      .setInteractive({ useHandCursor: true })
+      .setSize(buttonHitWidth, buttonHitHeight)
       .setName("completion-primary-action");
 
     buttonHit.on("pointerover", () => buttonContainer.setScale(1.045));
     buttonHit.on("pointerout", () => buttonContainer.setScale(1));
-    buttonHit.on("pointerdown", () => this.continueOnce());
-    buttonContainer.on("pointerdown", () => this.continueOnce());
+    buttonHit.on("pointerup", () => this.continueOnce());
 
+    // Browser-level fallback covers both software-landscape rotation and
+    // normal mobile viewport scaling. It fires on pointerup so drags cannot
+    // accidentally advance the level.
     this.mobileActionFallback = (event: PointerEvent): void => {
-      if (!event.isPrimary || document.body.dataset.softwareLandscape !== "true") return;
+      if (!event.isPrimary || this.handled) return;
       const canvas = scene.game.canvas;
-      const mapped = mapSoftwareLandscapeClientPoint({
-        clientX: event.clientX,
-        clientY: event.clientY,
-        bodyRect: document.body.getBoundingClientRect(),
-        canvasRect: canvas.getBoundingClientRect(),
-        logicalWidth: config.worldWidth,
-        logicalHeight: config.worldHeight
-      });
+      const canvasRect = canvas.getBoundingClientRect();
+      let mapped: { x: number; y: number } | undefined;
+
+      if (document.body.dataset.softwareLandscape === "true") {
+        mapped = mapSoftwareLandscapeClientPoint({
+          clientX: event.clientX,
+          clientY: event.clientY,
+          bodyRect: document.body.getBoundingClientRect(),
+          canvasRect,
+          logicalWidth: config.worldWidth,
+          logicalHeight: config.worldHeight
+        }) ?? undefined;
+      } else if (canvasRect.width > 0 && canvasRect.height > 0) {
+        mapped = {
+          x: ((event.clientX - canvasRect.left) / canvasRect.width) * config.worldWidth,
+          y: ((event.clientY - canvasRect.top) / canvasRect.height) * config.worldHeight
+        };
+      }
+
       if (!mapped) return;
       const actionCentreY = config.centreY + buttonY * finalScaleY;
-      const insideAction = (
-        Math.abs(mapped.x - config.centreX) <= 250 * finalScaleX &&
-        Math.abs(mapped.y - actionCentreY) <= 72 * finalScaleY
-      );
-      if (insideAction) this.continueOnce();
+      const halfWidth = (compactMobile ? 300 : 250) * finalScaleX;
+      const halfHeight = (compactMobile ? 92 : 72) * finalScaleY;
+      if (
+        Math.abs(mapped.x - config.centreX) <= halfWidth &&
+        Math.abs(mapped.y - actionCentreY) <= halfHeight
+      ) {
+        this.continueOnce();
+      }
     };
-    window.addEventListener("pointerdown", this.mobileActionFallback, true);
+    window.addEventListener("pointerup", this.mobileActionFallback, true);
 
     this.container = scene.add.container(config.centreX, config.centreY, [
       shade,
