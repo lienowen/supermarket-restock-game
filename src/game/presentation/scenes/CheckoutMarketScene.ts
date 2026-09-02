@@ -8,6 +8,7 @@ import {
 } from "../../application/CheckoutSceneController";
 import type { NavigationPoint } from "../../application/PlayerNavigationController";
 import { resolveLevelProgression } from "../../application/LevelProgression";
+import { resolveCheckoutPatienceExperienceSpec } from "../../content/experience/CheckoutPatienceExperienceSpec";
 import { gameDomainEvents } from "../../events/GameDomainEvents";
 import { navigateToLevel } from "../../infrastructure/browser/BrowserLevelNavigator";
 import { PlayerNavigationView } from "../actors/PlayerNavigationView";
@@ -220,9 +221,11 @@ export class CheckoutMarketScene extends Phaser.Scene {
     if (!action) return;
 
     const tuning = this.context.campaignLevel.level.tuning;
-    const isPatienceCheckout = this.context.campaignLevel.level.id === "starter-level-007";
+    const usesPatienceCheckout = Boolean(
+      resolveCheckoutPatienceExperienceSpec(this.context.campaignLevel.level)
+    );
     const lockDuration = action === "SCAN_CUSTOMER"
-      ? (isPatienceCheckout ? 280 : tuning.scanDurationMs + tuning.queueAdvanceDurationMs)
+      ? (usesPatienceCheckout ? 280 : tuning.scanDurationMs + tuning.queueAdvanceDurationMs)
       : 280;
     this.interactionGate.lockFor(lockDuration);
     const accepted = this.controller.dispatch(action);
