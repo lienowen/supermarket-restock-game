@@ -14,15 +14,17 @@ test("mobile completion overlay uses a compact vertical scale", () => {
 });
 
 test("completion action owns one full-width topmost mobile hit surface", () => {
-  assert.match(source, /460, 120, 0xffffff, 0\.001/);
+  assert.match(source, /buttonHitWidth = compactMobile \? 540 : 460/);
+  assert.match(source, /buttonHitHeight = compactMobile \? 150 : 120/);
   assert.match(source, /completion-primary-action-hit/);
   assert.match(source, /buttonArrow,\s*buttonHit/);
-  assert.match(source, /buttonHit\.on\("pointerdown"/);
-  assert.match(source, /buttonContainer\.on\("pointerdown"/);
-  assert.match(source, /\.setSize\(460, 120\)/);
-  assert.match(source, /window\.addEventListener\("pointerdown", this\.mobileActionFallback, true\)/);
+  assert.match(source, /buttonHit\.on\("pointerup"/);
+  assert.doesNotMatch(source, /buttonContainer\.on\("pointer(?:down|up)"/);
+  assert.match(source, /\.setSize\(buttonHitWidth, buttonHitHeight\)/);
+  assert.match(source, /window\.addEventListener\("pointerup", this\.mobileActionFallback, true\)/);
   assert.match(source, /mapSoftwareLandscapeClientPoint/);
-  assert.match(source, /Math\.abs\(mapped\.x - config\.centreX\) <= 250 \* finalScaleX/);
+  assert.match(source, /halfWidth = \(compactMobile \? 300 : 250\) \* finalScaleX/);
+  assert.match(source, /halfHeight = \(compactMobile \? 92 : 72\) \* finalScaleY/);
 });
 
 test("software-landscape briefing is compact and uses the rotated viewport axes", () => {
