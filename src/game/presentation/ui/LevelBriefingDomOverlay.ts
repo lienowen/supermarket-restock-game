@@ -1,4 +1,5 @@
 import type { LevelExperienceSpec } from "../../content/experience/LevelExperienceSpec";
+import { resolveLevelStoryBeat } from "../../content/experience/LevelStorySpec";
 
 export interface LevelBriefingDomConfig {
   readonly levelLabel: string;
@@ -33,6 +34,7 @@ export function mountLevelBriefingDomOverlay(
   onStart: () => void
 ): LevelBriefingDomHandle {
   let active = true;
+  const story = resolveLevelStoryBeat(config.experience.levelId);
 
   const overlay = document.createElement("section");
   overlay.id = "level-briefing-overlay";
@@ -63,7 +65,7 @@ export function mountLevelBriefingDomOverlay(
     maxHeight: "calc(100dvh - 24px)",
     overflowY: "auto",
     boxSizing: "border-box",
-    padding: "clamp(18px, 2.5vw, 28px)",
+    padding: "clamp(16px, 2.3vw, 25px)",
     border: "1px solid rgba(255, 218, 102, 0.48)",
     borderRadius: "20px",
     background: "linear-gradient(145deg, rgba(10, 27, 18, 0.96), rgba(20, 48, 31, 0.94))",
@@ -77,7 +79,7 @@ export function mountLevelBriefingDomOverlay(
     flexWrap: "wrap",
     alignItems: "center",
     gap: "8px",
-    marginBottom: "12px"
+    marginBottom: "10px"
   });
 
   const modePill = createText("span", config.experience.modeLabel);
@@ -120,19 +122,42 @@ export function mountLevelBriefingDomOverlay(
   const title = createText("h1", config.experience.title);
   title.id = "level-briefing-title";
   applyStyles(title, {
-    margin: "0 0 9px",
+    margin: "0 0 8px",
     fontSize: "clamp(25px, 4vw, 36px)",
     lineHeight: "1.08",
     letterSpacing: "-0.8px"
   });
   panel.appendChild(title);
 
+  const storyText = createText("p", story.situation);
+  storyText.id = "level-briefing-story";
+  applyStyles(storyText, {
+    margin: "0 0 12px",
+    paddingLeft: "11px",
+    borderLeft: "3px solid #dcae2f",
+    color: "#dcebe1",
+    fontSize: "13px",
+    lineHeight: "1.42"
+  });
+  panel.appendChild(storyText);
+
+  const objectiveLabel = createText("div", "TODAY'S TASK");
+  applyStyles(objectiveLabel, {
+    marginBottom: "4px",
+    color: "#ffd966",
+    fontSize: "9px",
+    fontWeight: "900",
+    letterSpacing: "1.3px"
+  });
+  panel.appendChild(objectiveLabel);
+
   const objective = createText("p", config.experience.objective);
   applyStyles(objective, {
-    margin: "0 0 16px",
-    color: "#f2f8f4",
-    fontSize: "clamp(14px, 2vw, 17px)",
-    lineHeight: "1.42"
+    margin: "0 0 13px",
+    color: "#ffffff",
+    fontSize: "clamp(14px, 2vw, 16px)",
+    fontWeight: "700",
+    lineHeight: "1.38"
   });
   panel.appendChild(objective);
 
@@ -141,29 +166,32 @@ export function mountLevelBriefingDomOverlay(
     display: "grid",
     gridTemplateColumns: "1fr",
     gap: "8px",
-    marginBottom: "16px"
+    marginBottom: "14px"
   });
 
   const cardData = [
-    ["NEW THIS LEVEL", config.experience.mechanic],
-    ["HOW TO PLAY", config.experience.control],
-    ["SUCCESS", config.experience.successMetric]
+    ["QUICK CONTROL", story.quickControl, true],
+    ["NEW THIS SHIFT", config.experience.mechanic, false]
   ] as const;
 
-  cardData.forEach(([label, value]) => {
+  cardData.forEach(([label, value, highlight]) => {
     const card = document.createElement("div");
     applyStyles(card, {
-      padding: "11px 13px",
+      padding: "10px 12px",
       boxSizing: "border-box",
-      border: "1px solid rgba(255, 255, 255, 0.1)",
+      border: highlight
+        ? "1px solid rgba(246, 207, 87, 0.34)"
+        : "1px solid rgba(255, 255, 255, 0.1)",
       borderRadius: "12px",
-      background: "rgba(0, 0, 0, 0.16)"
+      background: highlight
+        ? "rgba(246, 207, 87, 0.08)"
+        : "rgba(0, 0, 0, 0.16)"
     });
 
     const cardLabel = createText("div", label);
     applyStyles(cardLabel, {
       marginBottom: "4px",
-      color: "#a9cfb7",
+      color: highlight ? "#ffd966" : "#a9cfb7",
       fontSize: "9px",
       fontWeight: "800",
       letterSpacing: "1.2px"
@@ -174,7 +202,8 @@ export function mountLevelBriefingDomOverlay(
     applyStyles(cardValue, {
       margin: "0",
       color: "#ffffff",
-      fontSize: "13px",
+      fontSize: highlight ? "12px" : "12px",
+      fontWeight: highlight ? "800" : "600",
       lineHeight: "1.38"
     });
     card.appendChild(cardValue);
@@ -201,18 +230,19 @@ export function mountLevelBriefingDomOverlay(
   });
   panel.appendChild(startButton);
 
-  const keyboardHint = createText("div", "Press Enter or tap the button to begin");
+  const keyboardHint = createText("div", "Tap START SHIFT · Enter also works on desktop");
   applyStyles(keyboardHint, {
-    marginTop: "8px",
+    marginTop: "7px",
     textAlign: "center",
     color: "#9db8a5",
-    fontSize: "11px"
+    fontSize: "10px"
   });
   panel.appendChild(keyboardHint);
 
   overlay.appendChild(panel);
   document.body.appendChild(overlay);
   document.body.dataset.levelBriefing = "open";
+  document.body.dataset.levelBriefingStory = "present";
 
   const destroy = (): void => {
     window.removeEventListener("keydown", handleKeyDown);
