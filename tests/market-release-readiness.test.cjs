@@ -4,10 +4,11 @@ const fs = require("node:fs");
 
 const read = (path) => fs.readFileSync(path, "utf8");
 
-test("Level 5 products stay shelf-sized instead of becoming floating stickers", () => {
+test("Level 5 products use one uniform shelf-fit pass without a second shrink", () => {
   const source = read("src/game/presentation/visual/TrimmedTexture.ts");
-  assert.match(source, /GOLDEN_REQUESTED_ITEM_SCALE = 0\.62/);
-  assert.match(source, /GOLDEN_DECOY_ITEM_SCALE = 0\.56/);
+  assert.doesNotMatch(source, /GOLDEN_REQUESTED_ITEM_SCALE/);
+  assert.doesNotMatch(source, /GOLDEN_DECOY_ITEM_SCALE/);
+  assert.match(source, /setDisplaySize\(width \* baseScale, height \* baseScale\)/);
 });
 
 test("Level 6 uses its authored dispatch plate without duplicate store dressing", () => {

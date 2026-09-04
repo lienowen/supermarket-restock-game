@@ -66,3 +66,18 @@ test("L7 transitions between scanned products instead of replacing the image ins
   assert.match(source, /loading the next product/);
   assert.match(source, /opacity 150ms ease/);
 });
+
+test("L7 payment is a single explicit READY -> controller transition", () => {
+  const dom = require("node:fs").readFileSync(
+    "src/game/presentation/ui/CheckoutPatienceDom.ts",
+    "utf8"
+  );
+  const scene = require("node:fs").readFileSync(
+    "src/game/presentation/scenes/CheckoutMarketScene.ts",
+    "utf8"
+  );
+  assert.match(dom, /checkoutPatienceFlow = "ready"/);
+  assert.match(dom, /confirmPatiencePayment/);
+  assert.doesNotMatch(dom, /action\.emit\("pointerdown"\)/);
+  assert.match(scene, /confirmPatiencePayment\(\): boolean/);
+});
