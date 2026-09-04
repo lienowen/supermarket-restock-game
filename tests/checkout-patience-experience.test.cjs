@@ -80,4 +80,5 @@ test("L7 payment is a single explicit READY -> controller transition", () => {
   assert.match(dom, /confirmPatiencePayment/);
   assert.doesNotMatch(dom, /action\.emit\("pointerdown"\)/);
   assert.match(scene, /confirmPatiencePayment\(\): boolean/);
+  assert.match(scene, /if \(lockDuration > 0\) this\.interactionGate\.lockFor\(lockDuration\)/);
 });

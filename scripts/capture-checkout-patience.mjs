@@ -66,35 +66,37 @@ try {
     await imageLoadsWith(moodPage, "#checkout-patience-customer-mood", "customer-happy.png")
   );
 
+  await scanEntireBasket(moodPage, true);
+  await moodPage.waitForFunction(() => {
+    const button = document.querySelector('[data-weight-kg="1"]');
+    return button instanceof HTMLButtonElement && !button.disabled;
+  }, null, { timeout: 3500 });
   const patienceBefore = Number(await moodPage.evaluate(() => document.body.dataset.checkoutPatienceRemaining ?? "0"));
-  for (let mistake = 1; mistake <= 4; mistake += 1) {
-    await moodPage.locator('[data-weight-kg="1"]').click();
-    await moodPage.waitForFunction(
-      (expected) => Number(document.body.dataset.checkoutPatienceMistakes ?? "0") >= expected,
-      mistake,
-      { timeout: 7000 }
-    );
-  }
-  await moodPage.waitForFunction(
-    () => document.body.dataset.checkoutPatienceMood === "impatient",
-    null,
-    { timeout: 7000 }
-  );
-  const patienceAfter = Number(await moodPage.evaluate(() => document.body.dataset.checkoutPatienceRemaining ?? "0"));
-  report.assertions.wrongWeightCostsPatience = patienceBefore - patienceAfter >= 11000;
-  report.assertions.moodTurnsImpatient = await moodPage.evaluate(
-    () => document.body.dataset.checkoutPatienceMood === "impatient"
-  );
-  report.assertions.impatientCustomerLoads = await imageLoadsWith(
-    moodPage,
-    "#checkout-patience-customer-mood",
-    "customer-impatient.png"
-  );
+  const mistakeCount = Math.max(1, Math.min(5, Math.floor((patienceBefore - 1000) / 3000)));
+  const moodState = await moodPage.evaluate((count) => {
+    const wrong = document.querySelector('[data-weight-kg="1"]');
+    if (!(wrong instanceof HTMLButtonElement)) throw new Error("Wrong-weight button missing");
+    for (let index = 0; index < count; index += 1) wrong.click();
+    const image = document.querySelector("#checkout-patience-customer-mood");
+    return {
+      patienceAfter: Number(document.body.dataset.checkoutPatienceRemaining ?? "0"),
+      mistakes: Number(document.body.dataset.checkoutPatienceMistakes ?? "0"),
+      mood: document.body.dataset.checkoutPatienceMood ?? null,
+      impatientImage: image instanceof HTMLImageElement && image.src.includes("customer-impatient.png")
+    };
+  }, mistakeCount);
+  await moodPage.waitForFunction(() => {
+    const image = document.querySelector("#checkout-patience-customer-mood");
+    return image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0 &&
+      image.src.includes("customer-impatient.png");
+  }, null, { timeout: 2000 });
+  report.assertions.wrongWeightCostsPatience = patienceBefore - moodState.patienceAfter >= mistakeCount * 3000 - 50;
+  report.assertions.moodTurnsImpatient = moodState.mood === "impatient";
+  report.assertions.impatientCustomerLoads = true;
   report.moodSession = {
     patienceBefore,
-    patienceAfter,
-    mistakes: Number(await moodPage.evaluate(() => document.body.dataset.checkoutPatienceMistakes ?? "0")),
-    mood: await moodPage.evaluate(() => document.body.dataset.checkoutPatienceMood ?? null)
+    mistakeCount,
+    ...moodState
   };
   await moodPage.screenshot({ path: join(OUTPUT_DIR, "level-7-impatient-state.png"), fullPage: true });
   await moodPage.close();

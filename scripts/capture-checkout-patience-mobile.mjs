@@ -78,28 +78,48 @@ try {
   );
   await moodPage.screenshot({ path: join(OUTPUT_DIR, "level-7-mobile-initial.png"), fullPage: true });
 
+  const moodCdp = await moodContext.newCDPSession(moodPage);
+  await dragDom(moodPage, moodCdp, "#patience-standard-item", "#patience-scan-zone");
+  await moodPage.waitForTimeout(390);
+  for (let scan = 0; scan < 6; scan += 1) {
+    const done = await moodPage.evaluate(() => document.body.dataset.checkoutPatienceScanned === "true");
+    if (done) break;
+    await moodPage.locator("#patience-standard-item").press("Enter");
+    await moodPage.waitForTimeout(390);
+  }
+  await moodPage.waitForFunction(
+    () => document.body.dataset.checkoutPatienceScanned === "true",
+    null,
+    { timeout: 3500 }
+  );
+  await moodPage.waitForFunction(() => {
+    const button = document.querySelector('[data-weight-kg="1"]');
+    return button instanceof HTMLButtonElement && !button.disabled;
+  }, null, { timeout: 3500 });
   const patienceBefore = Number(await moodPage.evaluate(() => document.body.dataset.checkoutPatienceRemaining ?? "0"));
-  await moodPage.evaluate(() => {
+  const mistakeCount = Math.max(1, Math.min(5, Math.floor((patienceBefore - 1000) / 3000)));
+  const moodState = await moodPage.evaluate((count) => {
     const wrong = document.querySelector('[data-weight-kg="1"]');
     if (!(wrong instanceof HTMLButtonElement)) throw new Error("Wrong-weight button missing");
-    for (let index = 0; index < 4; index += 1) wrong.click();
-  });
-  await moodPage.waitForFunction(
-    () => Number(document.body.dataset.checkoutPatienceMistakes ?? "0") >= 4 &&
-      document.body.dataset.checkoutPatienceMood === "impatient",
-    null,
-    { timeout: 4000 }
-  );
-  const patienceAfter = Number(await moodPage.evaluate(() => document.body.dataset.checkoutPatienceRemaining ?? "0"));
-  const moodAbandonments = Number(await moodPage.evaluate(() => document.body.dataset.checkoutPatienceAbandonments ?? "0"));
-  report.assertions.touchWrongWeightCostsPatience = patienceBefore - patienceAfter >= 11000 && moodAbandonments === 0;
-  report.assertions.touchMoodTurnsImpatient = await moodPage.evaluate(
-    () => document.body.dataset.checkoutPatienceMood === "impatient"
-  );
-  report.assertions.impatientCustomerLoads = await imageLoadsWith(
-    moodPage, "#checkout-patience-customer-mood", "customer-impatient.png"
-  );
-  report.moodSession = { patienceBefore, patienceAfter, abandonments: moodAbandonments };
+    for (let index = 0; index < count; index += 1) wrong.click();
+    const image = document.querySelector("#checkout-patience-customer-mood");
+    return {
+      patienceAfter: Number(document.body.dataset.checkoutPatienceRemaining ?? "0"),
+      mistakes: Number(document.body.dataset.checkoutPatienceMistakes ?? "0"),
+      mood: document.body.dataset.checkoutPatienceMood ?? null,
+      abandonments: Number(document.body.dataset.checkoutPatienceAbandonments ?? "0"),
+      impatientImage: image instanceof HTMLImageElement && image.src.includes("customer-impatient.png")
+    };
+  }, mistakeCount);
+  await moodPage.waitForFunction(() => {
+    const image = document.querySelector("#checkout-patience-customer-mood");
+    return image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0 &&
+      image.src.includes("customer-impatient.png");
+  }, null, { timeout: 2000 });
+  report.assertions.touchWrongWeightCostsPatience = patienceBefore - moodState.patienceAfter >= mistakeCount * 3000 - 50 && moodState.abandonments === 0;
+  report.assertions.touchMoodTurnsImpatient = moodState.mood === "impatient";
+  report.assertions.impatientCustomerLoads = true;
+  report.moodSession = { patienceBefore, mistakeCount, ...moodState };
   await moodPage.screenshot({ path: join(OUTPUT_DIR, "level-7-mobile-impatient.png"), fullPage: true });
   await moodPage.close();
   await moodContext.close();
@@ -109,6 +129,7 @@ try {
   const cdp = await completionContext.newCDPSession(page);
 
   for (let customer = 0; customer < TARGET_WEIGHTS.length; customer += 1) {
+    report.currentCustomer = customer + 1;
     await page.waitForFunction(
       (expected) => document.body.dataset.checkoutPatienceCustomer === String(expected + 1),
       customer,
@@ -148,6 +169,7 @@ try {
     }, null, { timeout: 5000 });
     await tapDom(page, cdp, "#patience-payment-button");
     await waitForSnapshot(page, { customersServed: customer + 1 }, 9000);
+    report.customersCompleted = customer + 1;
     if (customer === 0) report.assertions.touchPaymentWorks = true;
   }
 

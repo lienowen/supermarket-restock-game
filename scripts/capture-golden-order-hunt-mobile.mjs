@@ -86,7 +86,7 @@ try {
   await page.waitForSelector(CANVAS, { state: "visible", timeout: 45000 });
   await page.waitForFunction(() => document.body.dataset.goldenLevel === "level-5-three-zone-v3", null, { timeout: 30000 });
   await page.waitForFunction(() => document.body.dataset.softwareLandscape === "true", null, { timeout: 10000 });
-  await page.waitForFunction(() => document.body.dataset.goldenMobileTouch === "expanded-product-hotspots-v2", null, { timeout: 10000 });
+  await page.waitForFunction(() => document.body.dataset.goldenMobileTouch === "expanded-product-hotspots-v3", null, { timeout: 10000 });
   await page.waitForTimeout(350);
 
   const layout = await page.evaluate((selector) => {
@@ -110,7 +110,7 @@ try {
   report.assertions.authoredBackground = initial.environmentKey === "environment-project-order-hunt-v2";
   report.assertions.backgroundOnly = initial.sceneDressing === "background-only";
   report.assertions.noAmbientDressing = initial.ambientCount === 0;
-  report.assertions.expandedProductHotspots = initial.mobileTouch === "expanded-product-hotspots-v2";
+  report.assertions.expandedProductHotspots = initial.mobileTouch === "expanded-product-hotspots-v3";
   report.assertions.joystickVisibleAndInteractive = initial.joystickVisible === true && initial.joystickInteractive === true;
   report.assertions.orderIconsNormalized = (
     initial.orderIcons.length === ORDER_ICON_IDS.length &&
