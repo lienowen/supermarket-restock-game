@@ -206,6 +206,20 @@ export class CheckoutMarketScene extends Phaser.Scene {
     return this.player?.position();
   }
 
+  /**
+   * The DOM checkout owns scan/weight validation. Once that flow reaches READY,
+   * payment must commit directly through the checkout controller instead of
+   * re-emitting the Phaser HUD hit target (whose interactive state can change
+   * during overlay and queue transitions).
+   */
+  confirmPatiencePayment(): boolean {
+    if (
+      this.controller.snapshot().step !== "serve" ||
+      !resolveCheckoutPatienceExperienceSpec(this.context.campaignLevel.level)
+    ) return false;
+    return this.dispatchAction("SCAN_CUSTOMER");
+  }
+
   private compactCheckoutCustomer(): void {
     const customer = this.children.getByName("checkout-active-customer") as Phaser.GameObjects.Image | null;
     customer?.setDisplaySize(140, 230);
@@ -220,6 +234,10 @@ export class CheckoutMarketScene extends Phaser.Scene {
     const action = this.controller.actionForCurrentStep();
     if (!action) return;
 
+    this.dispatchAction(action);
+  }
+
+  private dispatchAction(action: "OPEN_REGISTER" | "SCAN_CUSTOMER"): boolean {
     const tuning = this.context.campaignLevel.level.tuning;
     const usesPatienceCheckout = Boolean(
       resolveCheckoutPatienceExperienceSpec(this.context.campaignLevel.level)
@@ -229,7 +247,7 @@ export class CheckoutMarketScene extends Phaser.Scene {
       : 280;
     this.interactionGate.lockFor(lockDuration);
     const accepted = this.controller.dispatch(action);
-    if (!accepted) return;
+    if (!accepted) return false;
 
     gameDomainEvents.emit("task.action-accepted", {
       levelId: this.context.campaignLevel.level.id,
@@ -254,6 +272,7 @@ export class CheckoutMarketScene extends Phaser.Scene {
     if (position) {
       playActionFeedback(this, position, action === "SCAN_CUSTOMER" ? "scan" : "interact");
     }
+    return true;
   }
 
   private sync(snapshot: CheckoutSceneSnapshot, copy: CheckoutSceneCopy): void {

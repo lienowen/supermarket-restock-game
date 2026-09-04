@@ -33,6 +33,9 @@ interface PrimaryActionScenePort {
   readonly children?: {
     readonly getByName?: (name: string) => Phaser.GameObjects.GameObject | null;
   };
+  readonly controller?: {
+    readonly snapshot?: () => { readonly step?: string };
+  };
 }
 
 interface DragState {
@@ -344,7 +347,12 @@ export function mountCartCapacityLoadDom(
     if (input) input.enabled = enabled;
   };
 
-  const isReady = (): boolean => config.spec.autoStart || Boolean(scenePort()?.isInteractionReady?.());
+  const sceneStep = (): string | undefined => scenePort()?.controller?.snapshot?.().step;
+  const capacityStepReached = (): boolean => {
+    const step = sceneStep();
+    return step === "load" || step === "push";
+  };
+  const isReady = (): boolean => Boolean(scenePort()?.isInteractionReady?.());
   const isOptionUsed = (id: string): boolean => (
     committedOptionIds.has(id) || currentTripOptionIds.includes(id)
   );
@@ -491,7 +499,7 @@ export function mountCartCapacityLoadDom(
   };
 
   const show = (): void => {
-    if (visible || completed || !armed || !isReady()) return;
+    if (visible || completed || !armed || !capacityStepReached() || !isReady()) return;
     visible = true;
     overlay.style.display = "flex";
     setSceneInputEnabled(false);

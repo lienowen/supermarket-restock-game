@@ -32,9 +32,7 @@ interface CheckoutScenePort {
     };
   };
   readonly isInteractionReady?: () => boolean;
-  readonly children?: {
-    readonly getByName?: (name: string) => Phaser.GameObjects.GameObject | null;
-  };
+  readonly confirmPatiencePayment?: () => boolean;
 }
 
 const applyStyles = (element: HTMLElement, styles: Partial<CSSStyleDeclaration>): void => {
@@ -511,6 +509,7 @@ export function mountCheckoutPatienceDom(
   let mood: "happy" | "impatient" = "happy";
   let elapsedServiceMs = 0;
   let completedPatienceRatioTotal = 0;
+  let paymentPending = false;
 
   const activeProfile = () => config.spec.customerProfiles[Math.max(0, activeCustomer)];
   const activePatienceDuration = () => activeProfile()?.patienceDurationMs ?? config.spec.patienceDurationMs;
@@ -566,13 +565,15 @@ export function mountCheckoutPatienceDom(
   };
 
   const setPaymentEnabled = (): void => {
-    const enabled = standardScanned && weightCorrect && isReady();
+    const enabled = standardScanned && weightCorrect && !paymentPending;
     payment.disabled = !enabled;
     payment.style.cursor = enabled ? "pointer" : "not-allowed";
     payment.style.background = enabled
       ? "linear-gradient(180deg, #f3ce59, #d7aa31)"
       : "rgba(255,255,255,0.08)";
     payment.style.color = enabled ? "#26352d" : "rgba(255,255,255,0.42)";
+    payment.setAttribute("aria-busy", paymentPending ? "true" : "false");
+    if (enabled) document.body.dataset.checkoutPatienceFlow = "ready";
   };
 
   const updatePatienceUi = (): void => {
@@ -606,7 +607,7 @@ export function mountCheckoutPatienceDom(
     standardCard.style.opacity = standardScanned ? "0.34" : "1";
     standardCard.setAttribute("aria-disabled", standardScanned ? "true" : "false");
     weightButtons.forEach((button) => {
-      button.disabled = weightCorrect;
+      button.disabled = !standardScanned || weightCorrect || paymentPending;
       if (weightCorrect) {
         button.style.opacity = button.dataset.weightKg === String(config.spec.targetWeightsKg[activeCustomer])
           ? "1"
@@ -625,10 +626,12 @@ export function mountCheckoutPatienceDom(
     standardScanned = false;
     scannedItemCount = 0;
     weightCorrect = false;
+    paymentPending = false;
     remainingMs = config.spec.customerProfiles[customerIndex]?.patienceDurationMs ?? config.spec.patienceDurationMs;
     lastFrameMs = performance.now();
     document.body.dataset.checkoutPatienceScanned = "false";
     document.body.dataset.checkoutPatienceWeightCorrect = "false";
+    document.body.dataset.checkoutPatienceFlow = "scan";
     mood = "impatient";
     setMood("happy");
     resetDrag();
@@ -723,6 +726,7 @@ export function mountCheckoutPatienceDom(
       });
     }, 155);
     document.body.dataset.checkoutPatienceScanned = String(standardScanned);
+    document.body.dataset.checkoutPatienceFlow = standardScanned ? "weight" : "scan";
   };
 
   standardCard.addEventListener("pointerdown", (event) => {
@@ -777,7 +781,7 @@ export function mountCheckoutPatienceDom(
     button.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      if (!visible || weightCorrect) return;
+      if (!visible || !standardScanned || weightCorrect || paymentPending) return;
       const selectedWeight = Number(button.dataset.weightKg);
       const targetWeight = config.spec.targetWeightsKg[activeCustomer];
       if (selectedWeight === targetWeight) {
@@ -786,6 +790,7 @@ export function mountCheckoutPatienceDom(
         feedback.style.color = "#72ef9e";
         remainingMs = Math.min(activePatienceDuration(), remainingMs + 700);
         document.body.dataset.checkoutPatienceWeightCorrect = "true";
+        document.body.dataset.checkoutPatienceFlow = "ready";
         setMood("happy");
       } else {
         mistakes += 1;
@@ -804,19 +809,22 @@ export function mountCheckoutPatienceDom(
   payment.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
-    if (payment.disabled || !standardScanned || !weightCorrect || !isReady()) return;
-    const action = scenePort()?.children?.getByName?.("shift-hud-action") as Phaser.GameObjects.GameObject | null;
-    if (!action) {
-      feedback.textContent = "The register action is not available.";
+    if (payment.disabled || !standardScanned || !weightCorrect || paymentPending) return;
+    paymentPending = true;
+    setPaymentEnabled();
+    document.body.dataset.checkoutPatienceFlow = "processing";
+    const accepted = scenePort()?.confirmPatiencePayment?.() ?? false;
+    if (!accepted) {
+      paymentPending = false;
+      setPaymentEnabled();
+      feedback.textContent = "Payment was not accepted. Tap TAKE PAYMENT again.";
       feedback.style.color = "#ffba9b";
       return;
     }
-    payment.disabled = true;
     completedPatienceRatioTotal += Math.max(0, remainingMs / activePatienceDuration());
     setMood("happy");
     feedback.textContent = "Payment accepted. Customer satisfied.";
     feedback.style.color = "#ffd95e";
-    action.emit("pointerdown");
   });
 
   const patienceLoop = (nowMs: number): void => {
@@ -893,6 +901,7 @@ export function mountCheckoutPatienceDom(
       delete document.body.dataset.checkoutPatienceScanned;
       delete document.body.dataset.checkoutPatienceWeightCorrect;
       delete document.body.dataset.checkoutPatienceMood;
+      delete document.body.dataset.checkoutPatienceFlow;
       delete document.body.dataset.checkoutRushSpeed;
       delete document.body.dataset.checkoutRushAccuracy;
       delete document.body.dataset.checkoutRushSatisfaction;

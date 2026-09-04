@@ -16,3 +16,13 @@ test("L6 accepts only one large, medium and small case", () => {
   assert.equal(isDispatchOrderValid(["medium", "medium", "medium"], required), false);
   assert.equal(isDispatchOrderValid(["large", "medium"], required), false);
 });
+
+test("L6 opens capacity only after the auto-walk reaches the load step", () => {
+  const source = require("node:fs").readFileSync(
+    "src/game/presentation/ui/CartCapacityLoadDom.ts",
+    "utf8"
+  );
+  assert.match(source, /capacityStepReached/);
+  assert.match(source, /!capacityStepReached\(\) \|\| !isReady\(\)/);
+  assert.doesNotMatch(source, /config\.spec\.autoStart \|\| Boolean/);
+});
