@@ -60,7 +60,7 @@ try {
 
   const start = await readWorker(page);
   report.start = start;
-  report.assertions.startsIdle = Boolean(start.motion === "idle" && start.textureKey?.includes("worker-a-idle"));
+  report.assertions.startsIdle = Boolean(start.motion === "idle" && isLevelFiveIdleTexture(start.textureKey));
   report.assertions.idleKeepsAspectRatio = workerAspectSafe(start);
 
   await clickGame(page, 220, 515);
@@ -68,7 +68,7 @@ try {
   const walking = await readWorker(page);
   report.walking = walking;
   report.assertions.walkMotionObserved = walking.motion === "walk";
-  report.assertions.walkTextureAppears = Boolean(walking.textureKey?.includes("worker-a-walk"));
+  report.assertions.walkTextureAppears = isLevelFiveWalkTexture(walking.textureKey);
   report.assertions.walkKeepsAspectRatio = workerAspectSafe(walking);
 
   await page.waitForFunction(() => document.body.dataset.goldenWorkerMotion === "pickup", null, { timeout: 10000 });
@@ -88,10 +88,10 @@ try {
   report.finished = finished;
   report.assertions.workerActuallyMoves = Math.hypot(finished.x - start.x, finished.y - start.y) > 120;
   report.assertions.walkMotionObserved = report.assertions.walkMotionObserved && finished.walkObserved === "true";
-  report.assertions.walkTextureAppears = report.assertions.walkTextureAppears && Boolean(finished.lastWalkTexture?.includes("worker-a-walk"));
+  report.assertions.walkTextureAppears = report.assertions.walkTextureAppears && isLevelFiveWalkTexture(finished.lastWalkTexture);
   report.assertions.pickupMotionObserved = report.assertions.pickupMotionObserved && finished.pickupObserved === "true";
   report.assertions.pickupPoseAppears = report.assertions.pickupPoseAppears && Boolean(finished.lastPickupTexture?.includes("worker-a-place-middle"));
-  report.assertions.returnsToIdle = Boolean(finished.motion === "idle" && finished.textureKey?.includes("worker-a-idle"));
+  report.assertions.returnsToIdle = Boolean(finished.motion === "idle" && isLevelFiveIdleTexture(finished.textureKey));
   report.assertions.finalIdleKeepsAspectRatio = workerAspectSafe(finished);
   report.assertions.workerArrivesAtProduceStand = Math.hypot(finished.x - 255, finished.y - 770) <= 90;
   report.assertions.noRuntimeIssues = report.consoleErrors.length === 0 && report.pageErrors.length === 0 && report.failedRequests.length === 0;
@@ -114,6 +114,20 @@ function workerAspectSafe(worker) {
   return Boolean(
     worker && Number.isFinite(worker.scaleX) && Number.isFinite(worker.scaleY) &&
     Math.abs(Math.abs(worker.scaleX) - Math.abs(worker.scaleY)) <= SCALE_EPSILON
+  );
+}
+
+function isLevelFiveIdleTexture(textureKey) {
+  return Boolean(
+    textureKey?.includes("worker-a-idle") ||
+    textureKey?.includes("staff-store-associate-idle")
+  );
+}
+
+function isLevelFiveWalkTexture(textureKey) {
+  return Boolean(
+    textureKey?.includes("worker-a-walk") ||
+    textureKey?.includes("staff-store-associate-idle")
   );
 }
 

@@ -245,7 +245,7 @@ export class CheckoutMarketScene extends Phaser.Scene {
     const lockDuration = action === "SCAN_CUSTOMER"
       ? (usesPatienceCheckout ? 0 : tuning.scanDurationMs + tuning.queueAdvanceDurationMs)
       : 280;
-    this.interactionGate.lockFor(lockDuration);
+    if (lockDuration > 0) this.interactionGate.lockFor(lockDuration);
     const accepted = this.controller.dispatch(action);
     if (!accepted) return false;
 
