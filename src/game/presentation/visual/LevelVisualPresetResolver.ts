@@ -15,29 +15,6 @@ import {
   type RestockLevelVisualPreset
 } from "./MarketLevelVisualPreset";
 
-const resolveMatureRestockPreset = (level: RestockLevelDefinition): RestockLevelVisualPreset => {
-  const preset = resolveMarketLevelVisualPreset(level.presentation.visualPresetId, "restock");
-  if (level.id !== "starter-level-006") return preset;
-
-  // L6 uses the capacity-cart challenge in the same supermarket scene. The
-  // standard restock actor sizes were much larger than the cart and caused the
-  // worker/push-cart composition to look stretched and mis-anchored on mobile.
-  return Object.freeze({
-    ...preset,
-    actor: Object.freeze({
-      ...preset.actor,
-      idleSize: Object.freeze({ width: 205, height: 300 }),
-      pushSize: Object.freeze({ width: 230, height: 300 }),
-      carrySize: Object.freeze({ width: 215, height: 300 }),
-      motionMode: "route" as const
-    }),
-    props: Object.freeze({
-      ...preset.props,
-      cartSize: Object.freeze({ width: 300, height: 228 })
-    })
-  });
-};
-
 const resolveMatureCleanPreset = (level: CleanLevelDefinition): CleanLevelVisualPreset => {
   const preset = resolveMarketLevelVisualPreset(level.presentation.visualPresetId, "clean");
   return Object.freeze({
@@ -119,7 +96,7 @@ export function resolveLevelVisualPreset(
 export function resolveLevelVisualPreset(level: LevelDefinition): MarketLevelVisualPreset {
   switch (level.mode) {
     case "restock":
-      return resolveMatureRestockPreset(level);
+      return resolveMarketLevelVisualPreset(level.presentation.visualPresetId, "restock");
     case "checkout":
       return resolveMarketLevelVisualPreset(level.presentation.visualPresetId, "checkout");
     case "clean":
