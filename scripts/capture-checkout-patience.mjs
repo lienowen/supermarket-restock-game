@@ -124,17 +124,8 @@ try {
     );
     report.completedWeights += 1;
 
-    await page.waitForFunction(() => {
-      const button = document.querySelector("#patience-payment-button");
-      return button instanceof HTMLButtonElement && button.disabled === false;
-    }, null, { timeout: 7000 });
-    await page.evaluate(() => {
-      const button = document.querySelector("#patience-payment-button");
-      if (!(button instanceof HTMLButtonElement) || button.disabled) {
-        throw new Error("Payment did not unlock after correct scan and weight");
-      }
-      button.click();
-    });
+    const payment = page.locator("#patience-payment-button");
+    await payment.click({ timeout: 7000 });
     await waitForSnapshot(page, { customersServed: customer + 1 }, 10000);
   }
 
