@@ -12,7 +12,6 @@ const SCENE_KEY = "starter-market-shift";
 const LEVEL_ID = "starter-level-010";
 const WIDTH = 1600;
 const HEIGHT = 900;
-const BLIND_INSTRUCTION = "Tap the shelf from memory once. The worker places all 3 bottles.";
 
 if (!existsSync(join(DIST_DIR, "index.html"))) throw new Error("dist/index.html is missing. Run npm run build first.");
 mkdirSync(OUTPUT_DIR, { recursive: true });
@@ -32,18 +31,15 @@ await new Promise((done) => server.listen(PORT, "127.0.0.1", done));
 
 const report = {
   generatedAt: new Date().toISOString(),
-  waveOneSequence: [],
-  waveTwoSequence: [],
+  plannedRoute: [],
   assertions: {
-    waveMemoryModeActive: false,
-    waveOnePreviewMatchesRoute: false,
-    waveOneRunsWithoutTargetGlow: false,
-    blindHudInstructionCorrect: false,
-    wrongShelfKeepsRouteStable: false,
-    waveTwoPreviewStartsAfterThreeShelves: false,
-    waveTwoPreviewMatchesRoute: false,
-    waveTwoRunsWithoutTargetGlow: false,
-    bothWavesCompleteCampaign: false,
+    integratedRushModeActive: false,
+    memoryModalAbsent: false,
+    sixShelfRouteUnique: false,
+    activeShelfTargetValid: false,
+    wrongShelfCostsMistake: false,
+    threePlacementsPerShelf: false,
+    eighteenPlacementsCompleteCampaign: false,
     noRuntimeIssues: false
   },
   consoleErrors: [], pageErrors: [], failedRequests: [], fatalError: null
@@ -68,59 +64,48 @@ try {
   await page.waitForFunction(() => document.body.dataset.activeLevel === "starter-level-010", null, { timeout: 30000 });
 
   await completeDeliverySetup(page);
-  await page.waitForFunction(() => document.body.dataset.restockChallenge === "wave-memory", null, { timeout: 10000 });
-  await page.waitForSelector("#restock-memory-preview", { state: "visible", timeout: 15000 });
+  report.deliveryState = await readState(page);
   const planned = await page.evaluate((key) => [...window.__IMMERSIVE_GAME__.scene.getScene(key).rush.plannedRowIndexes()], SCENE_KEY);
-  const waveOnePreview = await readPreviewSequence(page);
-  report.waveOneSequence = waveOnePreview;
-  report.assertions.waveMemoryModeActive = planned.length === 6 && documentMode(await readState(page)) === "wave-memory";
-  report.assertions.waveOnePreviewMatchesRoute = same(waveOnePreview, planned.slice(0, 3));
-  await page.screenshot({ path: join(OUTPUT_DIR, "level-10-wave-1-preview.png"), fullPage: true });
-
-  await waitForWaveActive(page, "1/2");
+  report.plannedRoute = planned;
   let state = await readState(page);
-  report.assertions.waveOneRunsWithoutTargetGlow = state.visibleRowGlows === 0 && state.rush?.activeRowIndex === planned[0];
-  report.assertions.blindHudInstructionCorrect = state.visibleTexts.includes(BLIND_INSTRUCTION);
-  await page.screenshot({ path: join(OUTPUT_DIR, "level-10-wave-1-active.png"), fullPage: true });
+  report.assertions.integratedRushModeActive = state.mode === "rush" && state.controller?.step === "restock";
+  report.assertions.memoryModalAbsent = await page.locator("#restock-memory-preview").count() === 0;
+  report.assertions.sixShelfRouteUnique = planned.length === 6 && new Set(planned).size === 6;
+  report.assertions.activeShelfTargetValid = Number.isInteger(state.rush?.activeRowIndex) &&
+    planned.includes(state.rush.activeRowIndex);
+  await page.screenshot({ path: join(OUTPUT_DIR, "level-10-rush-active.png"), fullPage: true });
 
   const expectedBeforeMistake = state.rush.activeRowIndex;
   const wrongRow = (expectedBeforeMistake + 1) % 6;
   await clickRow(page, wrongRow);
-  await page.waitForFunction(({ key, expected }) => {
+  await page.waitForFunction((key) => {
     const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(key);
     const rush = scene?.rush?.snapshot?.(scene.time.now);
-    return rush?.mistakes === 1 && rush?.activeRowIndex === expected;
-  }, { key: SCENE_KEY, expected: expectedBeforeMistake }, { timeout: 10000 });
+    return rush?.mistakes === 1;
+  }, SCENE_KEY, { timeout: 10000 });
   state = await readState(page);
-  report.assertions.wrongShelfKeepsRouteStable = state.rush.mistakes === 1 && state.rush.activeRowIndex === expectedBeforeMistake;
-  await page.screenshot({ path: join(OUTPUT_DIR, "level-10-wave-1-wrong-route.png"), fullPage: true });
+  report.assertions.wrongShelfCostsMistake = state.rush.mistakes === 1 && state.rush.totalItemsStocked === 0;
+  await page.screenshot({ path: join(OUTPUT_DIR, "level-10-wrong-shelf.png"), fullPage: true });
 
-  for (let index = 0; index < 3; index += 1) {
+  let firstShelf = state.rush.activeRowIndex;
+  for (let item = 1; item <= 18; item += 1) {
     await waitForGameReady(page);
-    await clickRow(page, planned[index]);
-    if (index < 2) await waitForFilledCount(page, index + 1);
-  }
-
-  await page.waitForSelector("#restock-memory-preview", { state: "visible", timeout: 15000 });
-  state = await readState(page);
-  report.assertions.waveTwoPreviewStartsAfterThreeShelves = state.controller?.stockedRows === 3 && state.wave === "2/2" && state.waveState === "preview";
-  const waveTwoPreview = await readPreviewSequence(page);
-  report.waveTwoSequence = waveTwoPreview;
-  report.assertions.waveTwoPreviewMatchesRoute = same(waveTwoPreview, planned.slice(3, 6));
-  await page.screenshot({ path: join(OUTPUT_DIR, "level-10-wave-2-preview.png"), fullPage: true });
-
-  await waitForWaveActive(page, "2/2");
-  state = await readState(page);
-  report.assertions.waveTwoRunsWithoutTargetGlow = state.visibleRowGlows === 0 && state.rush?.activeRowIndex === planned[3];
-
-  for (let index = 3; index < 6; index += 1) {
-    await waitForGameReady(page);
-    await clickRow(page, planned[index]);
-    if (index < 5) await waitForFilledCount(page, index + 1);
+    const activeRow = await page.evaluate((key) => {
+      const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(key);
+      return scene?.rush?.snapshot?.(scene.time.now)?.activeRowIndex;
+    }, SCENE_KEY);
+    await clickRow(page, activeRow);
+    await waitForItemCount(page, item);
+    if (item === 3) {
+      state = await readState(page);
+      report.assertions.threePlacementsPerShelf = state.rush?.filledRowIndexes?.length === 1 &&
+        state.rush?.rowItemCounts?.[firstShelf] === 3;
+    }
   }
   await page.waitForFunction((key) => window.__IMMERSIVE_GAME__?.scene?.getScene(key)?.controller?.snapshot?.().step === "complete", SCENE_KEY, { timeout: 15000 });
   state = await readState(page);
-  report.assertions.bothWavesCompleteCampaign = state.controller?.stockedRows === 6 && state.rush?.complete === true && state.rush?.mistakes === 1;
+  report.assertions.eighteenPlacementsCompleteCampaign = state.controller?.stockedRows === 6 &&
+    state.rush?.totalItemsStocked === 18 && state.rush?.complete === true && state.rush?.mistakes === 1;
   report.assertions.noRuntimeIssues = report.consoleErrors.length === 0 && report.pageErrors.length === 0 && report.failedRequests.length === 0;
   await page.screenshot({ path: join(OUTPUT_DIR, "level-10-complete.png"), fullPage: true });
 
@@ -136,14 +121,39 @@ try {
   await browser.close();
   await new Promise((done) => server.close(done));
 }
-console.log(JSON.stringify({ assertions: report.assertions, waveOneSequence: report.waveOneSequence, waveTwoSequence: report.waveTwoSequence, fatalError: report.fatalError }, null, 2));
+console.log(JSON.stringify({ assertions: report.assertions, plannedRoute: report.plannedRoute, fatalError: report.fatalError }, null, 2));
 if (thrown) throw thrown;
 
 async function completeDeliverySetup(page) {
-  await waitForHudAction(page); await clickHudAction(page);
-  await page.waitForFunction((key) => window.__IMMERSIVE_GAME__?.scene?.getScene(key)?.controller?.snapshot?.().step === "load", SCENE_KEY, { timeout: 25000 });
-  await waitForGameReady(page); await waitForHudAction(page); await clickHudAction(page);
-  await page.waitForFunction((key) => window.__IMMERSIVE_GAME__?.scene?.getScene(key)?.controller?.snapshot?.().step === "restock", SCENE_KEY, { timeout: 30000 });
+  for (let action = 0; action < 6; action += 1) {
+    const step = await currentStep(page);
+    if (step === "restock") return;
+    await advanceHudStep(page, step);
+  }
+  throw new Error(`Level 10 delivery did not reach restock; stopped at ${await currentStep(page)}`);
+}
+
+async function advanceHudStep(page, previousStep) {
+  await waitForHudAction(page);
+  await clickHudAction(page);
+  const changedImmediately = await page.waitForFunction(
+    ({ key, previous }) => window.__IMMERSIVE_GAME__?.scene?.getScene(key)?.controller?.snapshot?.().step !== previous,
+    { key: SCENE_KEY, previous: previousStep },
+    { timeout: 900 }
+  ).then(() => true).catch(() => false);
+  if (changedImmediately) return;
+  await waitForGameReady(page);
+  await waitForHudAction(page);
+  await clickHudAction(page);
+  await page.waitForFunction(
+    ({ key, previous }) => window.__IMMERSIVE_GAME__?.scene?.getScene(key)?.controller?.snapshot?.().step !== previous,
+    { key: SCENE_KEY, previous: previousStep },
+    { timeout: 8000 }
+  );
+}
+
+async function currentStep(page) {
+  return page.evaluate((key) => window.__IMMERSIVE_GAME__?.scene?.getScene(key)?.controller?.snapshot?.().step ?? null, SCENE_KEY);
 }
 
 async function readState(page) {
@@ -161,17 +171,8 @@ async function readState(page) {
     };
   }, SCENE_KEY);
 }
-function documentMode(state) { return state.mode; }
-async function readPreviewSequence(page) {
-  return page.$$eval("#restock-memory-grid [data-order]", (cells) => cells
-    .map((cell) => ({ slot: Number(cell.dataset.slotIndex), order: Number(cell.dataset.order) }))
-    .filter((entry) => entry.order > 0).sort((a, b) => a.order - b.order).map((entry) => entry.slot));
-}
-async function waitForWaveActive(page, wave) {
-  await page.waitForFunction((wave) => document.body.dataset.restockFinaleWave === wave && document.body.dataset.restockFinaleWaveState === "active" && !document.getElementById("restock-memory-preview"), wave, { timeout: 15000 });
-}
-async function waitForFilledCount(page, count) {
-  await page.waitForFunction(({ key, count }) => window.__IMMERSIVE_GAME__?.scene?.getScene(key)?.rush?.snapshot?.(window.__IMMERSIVE_GAME__.scene.getScene(key).time.now)?.filledRowIndexes?.length === count, { key: SCENE_KEY, count }, { timeout: 10000 });
+async function waitForItemCount(page, count) {
+  await page.waitForFunction(({ key, count }) => window.__IMMERSIVE_GAME__?.scene?.getScene(key)?.rush?.snapshot?.(window.__IMMERSIVE_GAME__.scene.getScene(key).time.now)?.totalItemsStocked === count, { key: SCENE_KEY, count }, { timeout: 10000 });
 }
 async function waitForGameReady(page) {
   await page.waitForFunction((key) => window.__IMMERSIVE_GAME__?.scene?.getScene(key)?.isInteractionReady?.() === true, SCENE_KEY, { timeout: 20000 });
@@ -194,7 +195,6 @@ async function clickLogical(page, x, y) {
   if (!box) throw new Error("Game canvas has no bounding box");
   await page.mouse.click(box.x + (x / WIDTH) * box.width, box.y + (y / HEIGHT) * box.height);
 }
-function same(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
 function attach(page, target) {
   page.on("console", (message) => { if (message.type() === "error") target.consoleErrors.push(message.text()); });
   page.on("pageerror", (error) => target.pageErrors.push(String(error)));

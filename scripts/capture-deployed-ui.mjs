@@ -43,11 +43,11 @@ try {
     if (response.status() >= 400) report.badResponses.push({ url: response.url(), status: response.status() });
   });
 
-  await page.goto(BASE_URL, { waitUntil: "networkidle", timeout: 60000 });
+  await gotoWithRetry(page, BASE_URL);
   report.finalUrl = page.url();
   report.title = await page.title();
   await page.evaluate(() => localStorage.clear());
-  await page.reload({ waitUntil: "networkidle", timeout: 60000 });
+  await gotoWithRetry(page, BASE_URL);
   await waitForCanvas(page);
   await capture(page, "01-live-storefront.png", "Live storefront desktop");
 
@@ -55,26 +55,19 @@ try {
   await page.waitForTimeout(500);
   await capture(page, "02-live-settings.png", "Live settings modal");
 
-  await page.reload({ waitUntil: "networkidle", timeout: 60000 });
+  await gotoWithRetry(page, BASE_URL);
   await waitForCanvas(page);
   const startAt = Date.now();
-  await clickGame(page, 965, 770);
-  await waitForScene(page, "opening", 30000);
-  report.sceneTransitions.startToOpeningMs = Date.now() - startAt;
+  await gotoWithRetry(page, `${BASE_URL}/?test=1&briefing=0&guided=0&level=starter-level-001`);
+  await waitForActiveLevel(page, "starter-level-001", 30000);
+  report.sceneTransitions.startToLevelOneMs = Date.now() - startAt;
   await page.waitForTimeout(800);
-  await capture(page, "03-live-opening.png", "Live opening receiving scene");
+  await capture(page, "03-live-level-one.png", "Live Level 1 receiving scene");
 
-  await page.goto(BASE_URL, { waitUntil: "networkidle", timeout: 60000 });
-  await page.evaluate(() => {
-    localStorage.setItem("supermarket.activeDay", "day03");
-    localStorage.setItem("supermarket.bestStars", JSON.stringify({ day01: 3, day02: 3 }));
-    localStorage.removeItem("supermarket.lastShiftResult");
-  });
-  await page.reload({ waitUntil: "networkidle", timeout: 60000 });
-  await waitForCanvas(page);
   await page.setViewportSize({ width: 907, height: 510 });
-  await page.reload({ waitUntil: "networkidle", timeout: 60000 });
+  await gotoWithRetry(page, `${BASE_URL}/?test=1&briefing=0&guided=0&level=starter-level-001`);
   await waitForCanvas(page);
+  await waitForActiveLevel(page, "starter-level-001", 30000);
   await page.waitForTimeout(500);
   await capture(page, "04-live-mobile-907x510.png", "Live mobile landscape");
 
@@ -144,12 +137,26 @@ async function waitForCanvas(page) {
   await page.waitForTimeout(800);
 }
 
-async function waitForScene(page, expectedScene, timeout) {
+async function waitForActiveLevel(page, expectedLevel, timeout) {
   await page.waitForFunction(
-    (scene) => document.body.dataset.gameScene === scene,
-    expectedScene,
+    (level) => document.body.dataset.activeLevel === level,
+    expectedLevel,
     { timeout }
   );
+}
+
+async function gotoWithRetry(page, url) {
+  let lastError;
+  for (let attempt = 1; attempt <= 4; attempt += 1) {
+    try {
+      await page.goto(url, { waitUntil: "networkidle", timeout: 60000 });
+      return;
+    } catch (error) {
+      lastError = error;
+      if (attempt < 4) await page.waitForTimeout(attempt * 5000);
+    }
+  }
+  throw lastError;
 }
 
 async function clickGame(page, gameX, gameY) {

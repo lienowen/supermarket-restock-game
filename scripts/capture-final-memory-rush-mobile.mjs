@@ -30,11 +30,12 @@ const report = {
   assertions: {
     portraitSoftwareLandscapeActive: false,
     touchInputUsesCanvasGeometry: false,
-    waveOnePreviewVisible: false,
-    blindTouchWrongShelfKeepsRoute: false,
-    physicalTouchClearsWaveOne: false,
-    waveTwoPreviewVisible: false,
-    physicalTouchCompletesFinale: false,
+    integratedRushModeActive: false,
+    memoryModalAbsent: false,
+    sixShelfRouteUnique: false,
+    wrongShelfCostsMistake: false,
+    threeTouchesPerShelf: false,
+    eighteenTouchesCompleteFinale: false,
     noRuntimeIssues: false
   },
   plannedRoute: [], consoleErrors: [], pageErrors: [], failedRequests: [], fatalError: null
@@ -66,41 +67,41 @@ try {
   report.assertions.touchInputUsesCanvasGeometry = await page.evaluate(() => document.body.dataset.softwareLandscapeInput === "canvas-geometry-v2");
 
   await completeDeliverySetup(page, cdp);
-  await page.waitForSelector("#restock-memory-preview", { state: "visible", timeout: 15000 });
+  report.deliveryState = await readState(page);
   report.plannedRoute = await page.evaluate((key) => [...window.__IMMERSIVE_GAME__.scene.getScene(key).rush.plannedRowIndexes()], SCENE_KEY);
-  report.assertions.waveOnePreviewVisible = await page.evaluate(() => document.body.dataset.restockChallenge === "wave-memory" && document.body.dataset.restockFinaleWave === "1/2" && document.body.dataset.restockFinaleWaveState === "preview");
-  await page.screenshot({ path: join(OUTPUT_DIR, "level-10-mobile-wave-1-preview.png"), fullPage: true });
+  let state = await readState(page);
+  report.assertions.integratedRushModeActive = state.mode === "rush" && state.controller?.step === "restock";
+  report.assertions.memoryModalAbsent = await page.locator("#restock-memory-preview").count() === 0;
+  report.assertions.sixShelfRouteUnique = report.plannedRoute.length === 6 && new Set(report.plannedRoute).size === 6;
 
-  await waitForWaveActive(page, "1/2");
-  const initial = await readState(page);
-  const expected = initial.rush.activeRowIndex;
-  const wrong = (expected + 1) % 6;
-  await touchRow(page, cdp, wrong);
-  await page.waitForFunction(({ key, expected }) => { const s = window.__IMMERSIVE_GAME__?.scene?.getScene(key); const r = s?.rush?.snapshot?.(s.time.now); return r?.mistakes === 1 && r?.activeRowIndex === expected; }, { key: SCENE_KEY, expected }, { timeout: 12000 });
-  const afterWrong = await readState(page);
-  report.assertions.blindTouchWrongShelfKeepsRoute = afterWrong.rush?.mistakes === 1 && afterWrong.rush?.activeRowIndex === expected && afterWrong.visibleRowGlows === 0;
-  await page.screenshot({ path: join(OUTPUT_DIR, "level-10-mobile-blind-active.png"), fullPage: true });
+  const wrongRow = (state.rush.activeRowIndex + 1) % 6;
+  await touchRow(page, cdp, wrongRow);
+  await page.waitForFunction((key) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(key);
+    return scene?.rush?.snapshot?.(scene.time.now)?.mistakes === 1;
+  }, SCENE_KEY, { timeout: 10000 });
+  state = await readState(page);
+  report.assertions.wrongShelfCostsMistake = state.rush?.mistakes === 1 && state.rush?.totalItemsStocked === 0;
 
-  for (let index = 0; index < 3; index += 1) {
+  const firstShelf = state.rush.activeRowIndex;
+  for (let item = 1; item <= 18; item += 1) {
     await waitForGameReady(page);
-    await touchRow(page, cdp, report.plannedRoute[index]);
-    if (index < 2) await waitForFilledCount(page, index + 1);
-  }
-  await page.waitForSelector("#restock-memory-preview", { state: "visible", timeout: 15000 });
-  const waveTwoState = await readState(page);
-  report.assertions.physicalTouchClearsWaveOne = waveTwoState.controller?.stockedRows === 3;
-  report.assertions.waveTwoPreviewVisible = waveTwoState.wave === "2/2" && waveTwoState.waveState === "preview";
-  await page.screenshot({ path: join(OUTPUT_DIR, "level-10-mobile-wave-2-preview.png"), fullPage: true });
-
-  await waitForWaveActive(page, "2/2");
-  for (let index = 3; index < 6; index += 1) {
-    await waitForGameReady(page);
-    await touchRow(page, cdp, report.plannedRoute[index]);
-    if (index < 5) await waitForFilledCount(page, index + 1);
+    const activeRow = await page.evaluate((key) => {
+      const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(key);
+      return scene?.rush?.snapshot?.(scene.time.now)?.activeRowIndex;
+    }, SCENE_KEY);
+    await touchRow(page, cdp, activeRow);
+    await waitForItemCount(page, item);
+    if (item === 3) {
+      state = await readState(page);
+      report.assertions.threeTouchesPerShelf = state.rush?.filledRowIndexes?.length === 1 &&
+        state.rush?.rowItemCounts?.[firstShelf] === 3;
+    }
   }
   await page.waitForFunction((key) => window.__IMMERSIVE_GAME__?.scene?.getScene(key)?.controller?.snapshot?.().step === "complete", SCENE_KEY, { timeout: 15000 });
-  const final = await readState(page);
-  report.assertions.physicalTouchCompletesFinale = final.controller?.stockedRows === 6 && final.rush?.complete === true && final.rush?.mistakes === 1;
+  state = await readState(page);
+  report.assertions.eighteenTouchesCompleteFinale = state.controller?.stockedRows === 6 &&
+    state.rush?.totalItemsStocked === 18 && state.rush?.complete === true && state.rush?.mistakes === 1;
   report.assertions.noRuntimeIssues = report.consoleErrors.length === 0 && report.pageErrors.length === 0 && report.failedRequests.length === 0;
   await page.screenshot({ path: join(OUTPUT_DIR, "level-10-mobile-complete.png"), fullPage: true });
 
@@ -117,20 +118,38 @@ console.log(JSON.stringify({ assertions: report.assertions, plannedRoute: report
 if (thrown) throw thrown;
 
 async function completeDeliverySetup(page, cdp) {
+  for (let action = 0; action < 6; action += 1) {
+    const step = await currentStep(page);
+    if (step === "restock") return;
+    await advanceHudStep(page, cdp, step);
+  }
+  throw new Error(`Level 10 mobile delivery did not reach restock; stopped at ${await currentStep(page)}`);
+}
+async function advanceHudStep(page, cdp, previousStep) {
   await waitForHudAction(page); await touchHudAction(page, cdp);
-  await page.waitForFunction((key) => window.__IMMERSIVE_GAME__?.scene?.getScene(key)?.controller?.snapshot?.().step === "load", SCENE_KEY, { timeout: 25000 });
+  const changedImmediately = await page.waitForFunction(
+    ({ key, previous }) => window.__IMMERSIVE_GAME__?.scene?.getScene(key)?.controller?.snapshot?.().step !== previous,
+    { key: SCENE_KEY, previous: previousStep }, { timeout: 900 }
+  ).then(() => true).catch(() => false);
+  if (changedImmediately) return;
   await waitForGameReady(page); await waitForHudAction(page); await touchHudAction(page, cdp);
-  await page.waitForFunction((key) => window.__IMMERSIVE_GAME__?.scene?.getScene(key)?.controller?.snapshot?.().step === "restock", SCENE_KEY, { timeout: 30000 });
+  await page.waitForFunction(
+    ({ key, previous }) => window.__IMMERSIVE_GAME__?.scene?.getScene(key)?.controller?.snapshot?.().step !== previous,
+    { key: SCENE_KEY, previous: previousStep }, { timeout: 8000 }
+  );
+}
+async function currentStep(page) {
+  return page.evaluate((key) => window.__IMMERSIVE_GAME__?.scene?.getScene(key)?.controller?.snapshot?.().step ?? null, SCENE_KEY);
 }
 async function readState(page) {
   return page.evaluate((key) => { const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(key); const list = scene?.children?.list ?? []; return {
+    mode: document.body.dataset.restockChallenge ?? null,
     wave: document.body.dataset.restockFinaleWave ?? null, waveState: document.body.dataset.restockFinaleWaveState ?? null,
     controller: scene?.controller?.snapshot?.() ?? null, rush: scene?.rush?.snapshot?.(scene.time.now) ?? null,
     visibleRowGlows: list.filter((entry) => entry?.visible === true && typeof entry?.name === "string" && entry.name.startsWith("beverage-cooler-row-glow-")).length
   }; }, SCENE_KEY);
 }
-async function waitForWaveActive(page, wave) { await page.waitForFunction((wave) => document.body.dataset.restockFinaleWave === wave && document.body.dataset.restockFinaleWaveState === "active" && !document.getElementById("restock-memory-preview"), wave, { timeout: 15000 }); }
-async function waitForFilledCount(page, count) { await page.waitForFunction(({ key, count }) => { const s = window.__IMMERSIVE_GAME__?.scene?.getScene(key); return s?.rush?.snapshot?.(s.time.now)?.filledRowIndexes?.length === count; }, { key: SCENE_KEY, count }, { timeout: 12000 }); }
+async function waitForItemCount(page, count) { await page.waitForFunction(({ key, count }) => { const s = window.__IMMERSIVE_GAME__?.scene?.getScene(key); return s?.rush?.snapshot?.(s.time.now)?.totalItemsStocked === count; }, { key: SCENE_KEY, count }, { timeout: 12000 }); }
 async function waitForGameReady(page) { await page.waitForFunction((key) => window.__IMMERSIVE_GAME__?.scene?.getScene(key)?.isInteractionReady?.() === true, SCENE_KEY, { timeout: 20000 }); }
 async function waitForHudAction(page) { await page.waitForFunction((key) => { const a = window.__IMMERSIVE_GAME__?.scene?.getScene(key)?.children?.getByName?.("shift-hud-action"); return Boolean(a?.visible && a?.input?.enabled); }, SCENE_KEY, { timeout: 15000 }); }
 async function touchHudAction(page, cdp) { const p = await page.evaluate((key) => { const a = window.__IMMERSIVE_GAME__?.scene?.getScene(key)?.children?.getByName?.("shift-hud-action"); return a ? { x: a.x, y: a.y } : null; }, SCENE_KEY); if (!p) throw new Error("HUD action missing"); await touchTapLogical(page, cdp, p.x, p.y); }
