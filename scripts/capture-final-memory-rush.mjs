@@ -178,7 +178,7 @@ async function waitForGameReady(page) {
   await page.waitForFunction((key) => window.__IMMERSIVE_GAME__?.scene?.getScene(key)?.isInteractionReady?.() === true, SCENE_KEY, { timeout: 20000 });
 }
 async function waitForHudAction(page) {
-  await page.waitForFunction((key) => { const a = window.__IMMERSIVE_GAME__?.scene?.getScene(key)?.children?.getByName?.("shift-hud-action"); return Boolean(a?.visible && a?.input?.enabled); }, SCENE_KEY, { timeout: 15000 });
+  await page.waitForFunction((key) => { const a = window.__IMMERSIVE_GAME__?.scene?.getScene(key)?.children?.getByName?.("shift-hud-action"); return Boolean(a?.visible && a?.input?.enabled); }, SCENE_KEY, { timeout: 45000 });
 }
 async function clickHudAction(page) {
   const p = await page.evaluate((key) => { const a = window.__IMMERSIVE_GAME__?.scene?.getScene(key)?.children?.getByName?.("shift-hud-action"); return a ? { x: a.x, y: a.y } : null; }, SCENE_KEY);

@@ -151,7 +151,7 @@ async function readState(page) {
 }
 async function waitForItemCount(page, count) { await page.waitForFunction(({ key, count }) => { const s = window.__IMMERSIVE_GAME__?.scene?.getScene(key); return s?.rush?.snapshot?.(s.time.now)?.totalItemsStocked === count; }, { key: SCENE_KEY, count }, { timeout: 12000 }); }
 async function waitForGameReady(page) { await page.waitForFunction((key) => window.__IMMERSIVE_GAME__?.scene?.getScene(key)?.isInteractionReady?.() === true, SCENE_KEY, { timeout: 20000 }); }
-async function waitForHudAction(page) { await page.waitForFunction((key) => { const a = window.__IMMERSIVE_GAME__?.scene?.getScene(key)?.children?.getByName?.("shift-hud-action"); return Boolean(a?.visible && a?.input?.enabled); }, SCENE_KEY, { timeout: 15000 }); }
+async function waitForHudAction(page) { await page.waitForFunction((key) => { const a = window.__IMMERSIVE_GAME__?.scene?.getScene(key)?.children?.getByName?.("shift-hud-action"); return Boolean(a?.visible && a?.input?.enabled); }, SCENE_KEY, { timeout: 45000 }); }
 async function touchHudAction(page, cdp) { const p = await page.evaluate((key) => { const a = window.__IMMERSIVE_GAME__?.scene?.getScene(key)?.children?.getByName?.("shift-hud-action"); return a ? { x: a.x, y: a.y } : null; }, SCENE_KEY); if (!p) throw new Error("HUD action missing"); await touchTapLogical(page, cdp, p.x, p.y); }
 async function touchRow(page, cdp, rowIndex) { const p = await page.evaluate(({ key, rowIndex }) => window.__IMMERSIVE_GAME__?.scene?.getScene(key)?.cooler?.rowCentre?.(rowIndex) ?? null, { key: SCENE_KEY, rowIndex }); if (!p) throw new Error(`Missing row ${rowIndex}`); await touchTapLogical(page, cdp, p.x, p.y); }
 async function touchTapLogical(page, cdp, logicalX, logicalY) {
