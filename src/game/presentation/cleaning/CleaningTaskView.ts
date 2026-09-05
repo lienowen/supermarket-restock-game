@@ -28,13 +28,16 @@ const SPILL_SIZE_MULTIPLIERS = Object.freeze([
   Object.freeze({ width: 1.12, height: 0.98 }),
   Object.freeze({ width: 1.22, height: 1.02 })
 ]);
-const SCRUB_DISTANCE_REQUIRED = 260;
-const MAX_SCRUB_STEP = 46;
-const MOBILE_SPILL_TOUCH_WIDTH = 230;
-const MOBILE_SPILL_TOUCH_HEIGHT = 170;
+const SCRUB_DISTANCE_REQUIRED = 220;
+const MAX_SCRUB_STEP = 64;
+const MOBILE_SPILL_TOUCH_WIDTH = 280;
+const MOBILE_SPILL_TOUCH_HEIGHT = 220;
+const CLEANING_ARRIVAL_RADIUS = 42;
+const MIN_RELEASE_SCRUB_DISTANCE = 48;
 
 interface CleanNavigationPort {
   setDestination(point: NavigationPoint): void;
+  position?(): NavigationPoint;
 }
 
 interface CleanScenePort extends Phaser.Scene {
@@ -154,7 +157,7 @@ export class CleaningTaskView {
     scene.events.on(Phaser.Scenes.Events.UPDATE, this.handleSceneUpdate, this);
 
     this.showToolsPhase(false);
-    document.body.dataset.cleaningPresentation = "mature-clean-v3-tap-walk-scrub";
+    document.body.dataset.cleaningPresentation = "mature-clean-v4-mobile-reliable-scrub";
     document.body.dataset.cleaningSpillArt = "water-juice-dirt-production";
     document.body.dataset.cleaningControl = "tap-target-auto-walk-then-drag";
     document.body.dataset.cleanScrubProgress = "0";
@@ -165,7 +168,6 @@ export class CleaningTaskView {
     this.currentPhase = state.phase;
     if (state.phase === "tools") {
       this.showToolsPhase(this.previousPhase !== "tools");
-      // The cart itself is now the action surface; never require a small HUD button.
       this.setHudActionVisible(false);
     } else if (state.phase === "spills") {
       this.pendingToolWalk = false;
@@ -354,8 +356,8 @@ export class CleaningTaskView {
       .setData("spill-source-key", sourceKey)
       .setName(`clean-spill-${index + 1}`);
 
-    const touchWidth = Math.max(MOBILE_SPILL_TOUCH_WIDTH, maxWidth * 1.42);
-    const touchHeight = Math.max(MOBILE_SPILL_TOUCH_HEIGHT, maxHeight * 1.65);
+    const touchWidth = Math.max(MOBILE_SPILL_TOUCH_WIDTH, maxWidth * 1.55);
+    const touchHeight = Math.max(MOBILE_SPILL_TOUCH_HEIGHT, maxHeight * 1.9);
     const touchZone = scene.add.zone(point.x, point.y, touchWidth, touchHeight)
       .setDepth(28)
       .setName(`clean-spill-touch-${index + 1}`)
@@ -390,11 +392,18 @@ export class CleaningTaskView {
     document.body.dataset.cleaningPendingWalk = "tools";
   }
 
+  private playerNearPoint(point: NavigationPoint): boolean {
+    const position = (this.scene as CleanScenePort).player?.position?.();
+    if (!position) return false;
+    return Math.hypot(position.x - point.x, position.y - point.y) <= CLEANING_ARRIVAL_RADIUS;
+  }
+
   private beginScrub(index: number, pointer: Phaser.Input.Pointer): void {
     if (index !== this.activeSpillIndex || this.currentPhase !== "spills") return;
     const scene = this.scene as CleanScenePort;
-    if (scene.isInteractionReady?.() !== true) {
-      scene.player?.setDestination(this.config.spotPositions[index] ?? this.config.toolPoint);
+    const point = this.config.spotPositions[index] ?? this.config.toolPoint;
+    if (!this.playerNearPoint(point)) {
+      scene.player?.setDestination(point);
       this.pendingSpillWalkIndex = index;
       this.scrubHint.setText("MOVING TO SPILL");
       document.body.dataset.cleaningPendingWalk = `spill-${index + 1}`;
@@ -410,9 +419,8 @@ export class CleaningTaskView {
 
   private readonly handleSceneUpdate = (): void => {
     const scene = this.scene as CleanScenePort;
-    if (scene.isInteractionReady?.() !== true) return;
 
-    if (this.pendingToolWalk && this.currentPhase === "tools") {
+    if (this.pendingToolWalk && this.currentPhase === "tools" && scene.isInteractionReady?.() === true) {
       this.pendingToolWalk = false;
       delete document.body.dataset.cleaningPendingWalk;
       this.commitWorldAction();
@@ -423,6 +431,12 @@ export class CleaningTaskView {
       this.currentPhase === "spills" &&
       this.pendingSpillWalkIndex === this.activeSpillIndex
     ) {
+      const point = this.config.spotPositions[this.activeSpillIndex];
+      if (!point) return;
+      if (!this.playerNearPoint(point)) {
+        scene.player?.setDestination(point);
+        return;
+      }
       this.pendingSpillWalkIndex = -1;
       delete document.body.dataset.cleaningPendingWalk;
       this.scrubHint.setText("DRAG TO SCRUB");
@@ -464,6 +478,11 @@ export class CleaningTaskView {
     if (this.scrubPointerId !== pointer.id) return;
     this.scrubPointerId = undefined;
     this.scrubLastPoint = undefined;
+    if (this.scrubDistance >= MIN_RELEASE_SCRUB_DISTANCE) {
+      this.scrubDistance = SCRUB_DISTANCE_REQUIRED;
+      this.commitScrub();
+      return;
+    }
     if (this.scrubRatio() < 1) {
       this.scrubHint.setText(`KEEP SCRUBBING · ${Math.round(this.scrubRatio() * 100)}%`);
     }
