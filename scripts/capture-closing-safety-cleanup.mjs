@@ -74,11 +74,11 @@ try {
   });
   const page = await context.newPage();
   attach(page, report);
-  await page.goto(`${ORIGIN}/?test=1&guided=0&hold=0&level=${LEVEL_ID}`, {
+  await page.goto(`${ORIGIN}/?test=1&briefing=1&guided=0&hold=0&level=${LEVEL_ID}`, {
     waitUntil: "networkidle",
     timeout: 90000
   });
-  await page.getByRole("button", { name: "START SHIFT", exact: true }).click();
+  await page.locator("#level-briefing-overlay button").click();
   await page.waitForFunction(() => document.body.dataset.levelBriefing === "closed", null, { timeout: 45000 });
   await page.waitForSelector(CANVAS_SELECTOR, { state: "visible", timeout: 45000 });
   await page.waitForFunction(() => document.body.dataset.activeLevel === "starter-level-008", null, { timeout: 30000 });

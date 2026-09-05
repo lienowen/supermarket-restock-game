@@ -103,7 +103,9 @@ try {
   await waitForStep(page, "clean");
   report.assertions.physicalToolTapWorks = true;
 
-  for (let index = 0; index < 6; index += 1) {
+  let completed = 0;
+  let signsPlaced = 0;
+  for (const index of [0, 2, 4, 1, 3, 5]) {
     const before = await readState(page);
     const spot = before.spotPositions[index];
     if (!spot) throw new Error(`Missing L8 mobile spill position ${index + 1}`);
@@ -116,6 +118,7 @@ try {
         { timeout: 12000 }
       );
       const signed = await readState(page);
+      signsPlaced += 1;
       if (index === 0) {
         report.firstSign = signed;
         report.assertions.physicalSafetySignTapWorks = signed.controller?.progress === 0 &&
@@ -127,7 +130,11 @@ try {
     }
 
     await touchScrubLogical(page, cdp, spot.x, spot.y);
-    await waitForProgress(page, index + 1);
+    if (SAFETY_INDEXES.has(index)) {
+      await page.waitForFunction((number) => document.body.dataset.cleaningAwaitingSignRecovery === String(number), index + 1);
+      await touchTapLogical(page, cdp, spot.x, spot.y);
+    }
+    await waitForProgress(page, ++completed);
     if (index === 0) report.assertions.physicalScrubWorks = true;
     await page.waitForTimeout(340);
   }
@@ -136,7 +143,7 @@ try {
   report.final = final;
   report.assertions.allSixSpillsComplete = final.controller?.step === "complete" &&
     final.controller?.progress === 6 && final.controller?.total === 6;
-  report.assertions.allThreeSafetySignsPlaced = final.safetyPlaced === "1,3,5";
+  report.assertions.allThreeSafetySignsPlaced = signsPlaced === 3 && final.safetyPlaced === "";
   report.assertions.noRuntimeIssues = report.consoleErrors.length === 0 &&
     report.pageErrors.length === 0 && report.failedRequests.length === 0;
   await page.screenshot({ path: join(OUTPUT_DIR, "level-8-mobile-complete.png"), fullPage: true });
