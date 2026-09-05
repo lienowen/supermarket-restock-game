@@ -49,20 +49,46 @@ const installPresentationPatches = async (levelId: string): Promise<void> => {
   await Promise.all(imports);
 };
 
+const recoverFromBootstrapFailure = (levelId: string, message: string): boolean => {
+  const retryKey = `supermarket-bootstrap-retry:${levelId}`;
+  try {
+    if (window.sessionStorage.getItem(retryKey) === "1") {
+      window.sessionStorage.removeItem(retryKey);
+      return false;
+    }
+    window.sessionStorage.setItem(retryKey, "1");
+    const url = new URL(window.location.href);
+    url.searchParams.set("bootRetry", String(Date.now()));
+    document.body.dataset.bootstrapRecovery = "reloading";
+    document.body.dataset.bootstrapError = message;
+    window.location.replace(url.toString());
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 installMobileLandscapeController();
 installStaffCareerHud();
 
 void (async () => {
+  const levelId = requestedLevel();
   try {
-    const levelId = requestedLevel();
     const [bootstrapModule] = await Promise.all([
       import("./game/bootstrap"),
       installPresentationPatches(levelId)
     ]);
     await bootstrapModule.bootstrapGame();
+    try {
+      window.sessionStorage.removeItem(`supermarket-bootstrap-retry:${levelId}`);
+    } catch {
+      // Storage can be unavailable in embedded/private contexts; gameplay is already running.
+    }
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
+    if (recoverFromBootstrapFailure(levelId, message)) return;
     document.body.dataset.bootstrapError = message;
+    document.body.dataset.bootstrapRecovery = "failed";
     console.error("Game bootstrap failed.", error);
   }
 })();
