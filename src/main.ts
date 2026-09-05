@@ -4,6 +4,7 @@ import "./mature-clean.css";
 import "./mobile-playability.css";
 import "./mobile-landscape-fit.css";
 import { installMobileLandscapeController } from "./game/infrastructure/browser/MobileLandscapeController";
+import { installStableDestinationMovement } from "./game/presentation/actors/installStableDestinationMovement";
 import { installStaffCareerHud } from "./game/presentation/ui/installStaffCareerHud";
 
 const requestedLevel = (): string => {
@@ -69,6 +70,7 @@ const recoverFromBootstrapFailure = (levelId: string, message: string): boolean 
 };
 
 installMobileLandscapeController();
+installStableDestinationMovement();
 installStaffCareerHud();
 
 void (async () => {
