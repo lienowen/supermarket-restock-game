@@ -33,7 +33,6 @@ const MAX_SCRUB_STEP = 64;
 const MOBILE_SPILL_TOUCH_WIDTH = 280;
 const MOBILE_SPILL_TOUCH_HEIGHT = 220;
 const CLEANING_ARRIVAL_RADIUS = 42;
-const MIN_RELEASE_SCRUB_DISTANCE = 48;
 
 interface CleanNavigationPort {
   setDestination(point: NavigationPoint): void;
@@ -157,7 +156,7 @@ export class CleaningTaskView {
     scene.events.on(Phaser.Scenes.Events.UPDATE, this.handleSceneUpdate, this);
 
     this.showToolsPhase(false);
-    document.body.dataset.cleaningPresentation = "mature-clean-v4-mobile-reliable-scrub";
+    document.body.dataset.cleaningPresentation = "mature-clean-v3-tap-walk-scrub";
     document.body.dataset.cleaningSpillArt = "water-juice-dirt-production";
     document.body.dataset.cleaningControl = "tap-target-auto-walk-then-drag";
     document.body.dataset.cleanScrubProgress = "0";
@@ -478,11 +477,6 @@ export class CleaningTaskView {
     if (this.scrubPointerId !== pointer.id) return;
     this.scrubPointerId = undefined;
     this.scrubLastPoint = undefined;
-    if (this.scrubDistance >= MIN_RELEASE_SCRUB_DISTANCE) {
-      this.scrubDistance = SCRUB_DISTANCE_REQUIRED;
-      this.commitScrub();
-      return;
-    }
     if (this.scrubRatio() < 1) {
       this.scrubHint.setText(`KEEP SCRUBBING · ${Math.round(this.scrubRatio() * 100)}%`);
     }
