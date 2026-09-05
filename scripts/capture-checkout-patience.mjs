@@ -107,7 +107,9 @@ try {
 
   for (let customer = 0; customer < TARGET_WEIGHTS.length; customer += 1) {
     await page.waitForFunction(
-      (expectedCustomer) => document.body.dataset.checkoutPatienceCustomer === String(expectedCustomer + 1),
+      (expectedCustomer) => document.body.dataset.checkoutPatienceCustomer === String(expectedCustomer + 1) &&
+        document.body.dataset.checkoutPatienceScanned === "false" &&
+        document.body.dataset.checkoutPatienceWeightCorrect === "false",
       customer,
       { timeout: 12000 }
     );
