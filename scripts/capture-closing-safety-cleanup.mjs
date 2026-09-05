@@ -74,10 +74,12 @@ try {
   });
   const page = await context.newPage();
   attach(page, report);
-  await page.goto(`${ORIGIN}/?test=1&briefing=0&guided=0&hold=0&level=${LEVEL_ID}`, {
+  await page.goto(`${ORIGIN}/?test=1&guided=0&hold=0&level=${LEVEL_ID}`, {
     waitUntil: "networkidle",
     timeout: 90000
   });
+  await page.getByRole("button", { name: "START SHIFT", exact: true }).click();
+  await page.waitForFunction(() => document.body.dataset.levelBriefing === "closed", null, { timeout: 45000 });
   await page.waitForSelector(CANVAS_SELECTOR, { state: "visible", timeout: 45000 });
   await page.waitForFunction(() => document.body.dataset.activeLevel === "starter-level-008", null, { timeout: 30000 });
   await page.waitForFunction(
@@ -102,7 +104,8 @@ try {
   await waitForStep(page, "clean");
 
   let everyHazardGated = true;
-  for (let index = 0; index < 6; index += 1) {
+  let completed = 0;
+  for (const index of [0, 2, 4, 1, 3, 5]) {
     const before = await readState(page);
     const spot = before.spotPositions[index];
     if (!spot) throw new Error(`Missing L8 spill position ${index + 1}`);
@@ -128,13 +131,17 @@ try {
     }
 
     await scrubSpill(page, index);
-    await waitForProgress(page, index + 1);
+    if (SAFETY_INDEXES.has(index)) {
+      await page.waitForFunction((number) => document.body.dataset.cleaningAwaitingSignRecovery === String(number), index + 1);
+      await clickLogical(page, spot.x, spot.y);
+    }
+    await waitForProgress(page, ++completed);
     await page.waitForTimeout(320);
   }
 
   const final = await readState(page);
   report.final = final;
-  report.assertions.warningSignsGateAllHazards = everyHazardGated && final.safetyPlaced === "1,3,5";
+  report.assertions.warningSignsGateAllHazards = everyHazardGated && final.safetyPlaced === "";
   report.assertions.allSixSpillsScrubbed = final.controller?.progress === 6 && final.controller?.total === 6;
   report.assertions.completionReached = final.controller?.step === "complete";
   report.assertions.noRuntimeIssues = report.consoleErrors.length === 0 &&

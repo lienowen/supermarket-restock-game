@@ -356,7 +356,7 @@ export async function createPhaserGame(
       );
     }
 
-    game.events.once(Phaser.Core.Events.READY, () => {
+    activeScene.events.once(Phaser.Scenes.Events.CREATE, () => {
       coreReady = true;
       game.scene.pause(presentation.scene.key);
       crazyGamesPlatform.gameplayStop();

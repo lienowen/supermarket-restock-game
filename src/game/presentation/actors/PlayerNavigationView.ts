@@ -84,7 +84,7 @@ export class PlayerNavigationView {
     });
     this.solidCutout = config.solidCutout !== false;
     this.preserveAspectRatio = (
-      config.preserveAspectRatio === true ||
+      config.preserveAspectRatio !== false ||
       ASPECT_SAFE_ACTOR_NAMES.has(config.name)
     );
     this.requestedDisplaySize = {

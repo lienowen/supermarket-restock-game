@@ -175,7 +175,7 @@ export class RestockActorView {
       shadowOffset: config.shadowOffset,
       name: "restock-worker",
       baseDepth: 24,
-      preserveAspectRatio: config.workerIdleAssetKey === "worker-restock-idle-v2",
+      preserveAspectRatio: true,
       onManualNavigation: config.onManualNavigation
     });
     this.navigation.setEnabled(this.motionMode === "route");

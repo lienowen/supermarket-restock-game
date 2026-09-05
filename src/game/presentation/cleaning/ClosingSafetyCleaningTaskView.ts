@@ -433,6 +433,7 @@ export class ClosingSafetyCleaningTaskView {
       this.activeSpillIndex = index;
       this.resetScrubProgress();
       this.highlightSelectedSpill(index);
+      this.syncSpillInteractivity();
     }
     const scene = this.scene as CleanScenePort;
     const point = this.config.spotPositions[index] ?? this.config.toolPoint;
@@ -756,9 +757,11 @@ export class ClosingSafetyCleaningTaskView {
       const enabled = Boolean(
         this.currentPhase === "spills" &&
         !this.completedSpillIndexes.has(index) &&
+        this.routeChoices().includes(index) &&
         spill?.visible
       );
       if (enabled) {
+        zone.setDepth(index === this.activeSpillIndex ? 30 : 28);
         if (!zone.input?.enabled) zone.setInteractive({ useHandCursor: true });
       } else if (zone.input?.enabled) {
         zone.disableInteractive();
