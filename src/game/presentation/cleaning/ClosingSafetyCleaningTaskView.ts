@@ -612,16 +612,13 @@ export class ClosingSafetyCleaningTaskView {
     const cleanedIndex = this.activeSpillIndex;
     this.scrubPointerId = undefined;
     this.scrubLastPoint = undefined;
-    this.scrubHint.setText(this.warningRequired.has(cleanedIndex)
-      ? "CLEAN · TAP AGAIN TO RECOVER SAFETY SIGN"
-      : "CLEAN!");
+    this.scrubHint.setText("CLEAN!");
     document.body.dataset.cleanScrubProgress = "100";
     if (cleanedIndex < 0) return;
     this.showCleanFeedback(cleanedIndex);
     if (this.warningRequired.has(cleanedIndex)) {
       this.awaitingSignRecovery.add(cleanedIndex);
-      document.body.dataset.cleaningAwaitingSignRecovery = String(cleanedIndex + 1);
-      this.syncSpillInteractivity();
+      this.recoverWarningSign(cleanedIndex);
       return;
     }
     this.completeSelectedSpill(cleanedIndex);
@@ -703,10 +700,11 @@ export class ClosingSafetyCleaningTaskView {
   private showCleanFeedback(index: number): void {
     const spill = this.spills[index];
     if (!spill) return;
+    const completedCount = this.completedSpillIndexes.size + 1;
     const label = this.scene.add.text(
       spill.x,
       spill.y - 112,
-      `CLEAN! ${index + 1}/${this.spills.length}`,
+      `CLEAN! ${completedCount}/${this.spills.length}`,
       {
         fontFamily: "Arial, sans-serif",
         fontSize: "18px",
