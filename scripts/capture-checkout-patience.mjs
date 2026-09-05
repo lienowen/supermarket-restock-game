@@ -72,7 +72,7 @@ try {
     return button instanceof HTMLButtonElement && !button.disabled;
   }, null, { timeout: 3500 });
   const patienceBefore = Number(await moodPage.evaluate(() => document.body.dataset.checkoutPatienceRemaining ?? "0"));
-  const mistakeCount = Math.max(1, Math.min(5, Math.floor((patienceBefore - 1000) / 3000)));
+  const mistakeCount = Math.max(1, Math.min(8, Math.floor((patienceBefore - 1000) / 3000)));
   const moodState = await moodPage.evaluate((count) => {
     const wrong = document.querySelector('[data-weight-kg="1"]');
     if (!(wrong instanceof HTMLButtonElement)) throw new Error("Wrong-weight button missing");

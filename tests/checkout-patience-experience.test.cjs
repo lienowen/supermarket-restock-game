@@ -25,7 +25,7 @@ test("Evening checkout owns eight patience and produce-weight decisions", () => 
 
 test("Wrong produce weight has a meaningful patience penalty", () => {
   const spec = CHECKOUT_PATIENCE_EXPERIENCE_SPECS[0];
-  assert.equal(spec.patienceDurationMs, 20000);
+  assert.equal(spec.patienceDurationMs, 28000);
   assert.equal(spec.wrongWeightPenaltyMs, 3000);
   assert.ok(spec.wrongWeightPenaltyMs < spec.patienceDurationMs);
   assert.equal(new Set(spec.standardProductAssetKeys).size, 5);
