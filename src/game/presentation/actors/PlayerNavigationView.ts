@@ -206,6 +206,10 @@ export class PlayerNavigationView {
 
   setDestination(point: NavigationPoint): void {
     if (!this.enabled) return;
+    if (
+      this.activeDestination &&
+      Math.hypot(this.activeDestination.x - point.x, this.activeDestination.y - point.y) <= 1
+    ) return;
     this.cancelDestinationMovement();
 
     this.controller.setDestination(point);
