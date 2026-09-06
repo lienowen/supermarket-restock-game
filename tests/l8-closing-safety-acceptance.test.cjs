@@ -36,7 +36,10 @@ test("L8 provides a guided cart handoff and reliable mobile scrubbing", () => {
   );
   assert.match(source, /awaitingSignRecovery/);
   assert.match(source, /recoverWarningSign/);
-  assert.match(source, /TAP AGAIN TO RECOVER SAFETY SIGN/);
+  assert.doesNotMatch(source, /TAP AGAIN TO RECOVER SAFETY SIGN/);
+  assert.match(source, /this\.recoverWarningSign\(cleanedIndex\)/);
+  assert.match(source, /this\.completeSelectedSpill\(index\)/);
+  assert.match(source, /completedSpillIndexes\.size \+ 1/);
   assert.match(source, /DANGER FIRST/);
   assert.match(source, /cleaning-cart-guide/);
   assert.match(source, /GO TO THE CLEANING CART/);
