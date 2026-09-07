@@ -127,7 +127,7 @@ try {
         await page.screenshot({ path: join(OUTPUT_DIR, "level-8-first-safety-sign.png"), fullPage: true });
       }
     } else {
-      await waitForInteractionReady(page);
+      await waitForInteractionReady(page, index);
     }
 
     await scrubSpill(page, index);
@@ -211,10 +211,12 @@ async function waitForStep(page, expected) {
   ), { sceneKey: SCENE_KEY, expected }, { timeout: 15000 });
 }
 
-async function waitForInteractionReady(page) {
-  await page.waitForFunction((sceneKey) => (
-    window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey)?.isInteractionReady?.() === true
-  ), SCENE_KEY, { timeout: 15000 });
+async function waitForInteractionReady(page, index) {
+  await page.waitForFunction(({ sceneKey, index }) => {
+    const scene = window.__IMMERSIVE_GAME__?.scene?.getScene(sceneKey);
+    const point = scene?.context?.runtime?.spotPositions?.[index];
+    return Boolean(point && scene?.isPlayerNear?.(point) === true);
+  }, { sceneKey: SCENE_KEY, index }, { timeout: 15000 });
   await page.waitForFunction(() => !document.body.dataset.cleaningPendingWalk, null, { timeout: 4000 });
 }
 
@@ -235,7 +237,7 @@ async function clickLogical(page, logicalX, logicalY) {
 }
 
 async function scrubSpill(page, index) {
-  await waitForInteractionReady(page);
+  await waitForInteractionReady(page, index);
   const state = await readState(page);
   const spill = state.spills[index];
   if (!spill?.visible) throw new Error(`L8 spill ${index + 1} is not visible`);
