@@ -131,10 +131,6 @@ try {
     }
 
     await scrubSpill(page, index);
-    if (SAFETY_INDEXES.has(index)) {
-      await page.waitForFunction((number) => document.body.dataset.cleaningAwaitingSignRecovery === String(number), index + 1);
-      await clickLogical(page, spot.x, spot.y);
-    }
     await waitForProgress(page, ++completed);
     await page.waitForTimeout(320);
   }
