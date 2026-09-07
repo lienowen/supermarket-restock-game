@@ -130,10 +130,6 @@ try {
     }
 
     await touchScrubLogical(page, cdp, spot.x, spot.y);
-    if (SAFETY_INDEXES.has(index)) {
-      await page.waitForFunction((number) => document.body.dataset.cleaningAwaitingSignRecovery === String(number), index + 1);
-      await touchTapLogical(page, cdp, spot.x, spot.y);
-    }
     await waitForProgress(page, ++completed);
     if (index === 0) report.assertions.physicalScrubWorks = true;
     await page.waitForTimeout(340);
