@@ -3,6 +3,8 @@ name: Mature Level 8 Audit
 on:
   pull_request:
     paths:
+      - "src/main.ts"
+      - "src/game/infrastructure/phaser/createPhaserGame.ts"
       - "src/game/assets/GlobalProjectAssetCatalogue.ts"
       - "src/game/assets/LevelEnvironmentRegistry.ts"
       - "src/game/presentation/actors/PlayerNavigationView.ts"
@@ -20,6 +22,8 @@ on:
     branches:
       - main
     paths:
+      - "src/main.ts"
+      - "src/game/infrastructure/phaser/createPhaserGame.ts"
       - "src/game/assets/GlobalProjectAssetCatalogue.ts"
       - "src/game/assets/LevelEnvironmentRegistry.ts"
       - "src/game/presentation/actors/PlayerNavigationView.ts"
